@@ -15,6 +15,8 @@ harness/
   research/<week>/<day>.md   research briefs (committed; the audit trail for every claim)
 ```
 
+Decisions that shaped any of this (and every later schedule/scope change) are logged in `decisions/README.md` (newest first; see `AGENTS.md` for the rule, D-0001).
+
 ## Per-day pipeline
 
 | Stage | Author writes | Critic checks (spec) | Gate |

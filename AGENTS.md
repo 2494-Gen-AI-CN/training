@@ -6,6 +6,11 @@ Committed home for project-intrinsic knowledge: build, test, authoring rules and
 
 Prep repo for the 11-week **2494 Gen-AI Python** training. Two deliverables per day: live code-along demos (`demos/`) and a GitHub Pages site (`docs/`) with notes, quizzes and exercises. `harness/` is the agent-driven pipeline that produces them. Trainer-only runbooks and solutions live in a separate private repo cloned at `trainer/` (gitignored).
 
+## Decision log (read first)
+
+- `decisions/README.md` is the newest-first index of every on-the-fly decision (schedule, scope, API currency, naming). **Read it at session start.** Never redo or undo a logged decision; supersede it with a new entry.
+- Any change to `harness/curriculum.json`, `harness/metrics.json`, `harness/config.json`, `harness/critics/*.md`, or the calendar (dates, holidays) requires an entry: `python decisions/new.py "Decision" --why "..." --affects "..."` and the printed ID (`D-NNNN`) goes in the commit message. `tests/test_decisions.py` enforces the format.
+
 ## Rules
 
 - `harness/curriculum.json` is the single source of truth for weeks, days, slugs and status. Never hand-edit the WEEKS block in `docs/index.html`; run `python harness/build_index.py`.

@@ -122,6 +122,7 @@
   <tr><td>Agent budget</td><td><span class="tag ok">locked</span>Per-day runs (~12 agents clean, ~27 worst)</td><td>One Workflow invocation per training day</td></tr>
   <tr><td>Dir naming</td><td><span class="tag ok">locked</span><code>week-01/day-1-orientation-agile-and-git</code></td><td>Same shape in demos/, exercises/, trainer/, docs/weeks/, harness/research/; slug lives in curriculum.json</td></tr>
   <tr><td>Quiz "Next" lock</td><td><span class="tag ok">locked</span>Keep the lock</td><td>Next-day link unlocks after the 6-question check; supports self-study evenings</td></tr>
+  <tr><td>Change tracking</td><td><span class="tag ok">locked</span>Append-only decision log in <code>decisions/</code> (D-0001)</td><td>This table is a snapshot; <code>decisions/README.md</code> is the living, newest-first record every session reads first. Each row above has an entry (D-0002 … D-0012).</td></tr>
 </table>
 
 <!-- ============================================================ -->
@@ -347,7 +348,7 @@ node --check docs/assets/js/*.js</code></pre>
 
 <!-- ============================================================ -->
 <h2 id="open"><span class="n">11</span>Remaining decisions &amp; risks</h2>
-<div class="callout"><b>Status:</b> scaffold complete. Next step is the week-01 day-1 dry run (section 10, step 3). Fill in <code>repoUrl</code> and <code>feedbackFormUrl</code> in <code>harness/config.json</code> and <code>docs/index.html</code> before publishing.</div>
+<div class="callout"><b>Status:</b> scaffold complete; decision log live at <code>decisions/README.md</code> (log every schedule/scope/currency call there before acting). Next step is the week-01 day-1 dry run (section 10, step 3). Fill in <code>repoUrl</code> and <code>feedbackFormUrl</code> in <code>harness/config.json</code> and <code>docs/index.html</code> before publishing.</div>
 <div class="callout q"><b>Friday review days.</b> Proposed artifact set: recap notes page, cumulative quiz, week mini-exercise, runbook with review agenda and feedback form slot. A prompt variant keyed on <code>kind: review</code>.</div>
 <div class="callout q"><b>W1D1 exercise.</b> Orientation and git day; a pytest exercise is awkward. Proposal: small script exercise (parse a <code>git log --oneline</code> fixture) so the contract holds every day.</div>
 <details>
