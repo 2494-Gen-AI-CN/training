@@ -33,10 +33,12 @@ Single "what's next" surface for this repo. Read it at session start together wi
 | O-7 | Phone-width layout overflows horizontally (h1 and side cards clipped at 400px) | trainer | before trainees read on phones | pre-existing in `day.exemplar.html`, not page-specific; `docs/assets/css/style.css` responsive rules |
 | O-8 | NEXT links: `args_for.py` now points NEXT at the index unless the next day is already `live` (changed by the Verify FIX agent so `test_pages` passes); Wire step 4 must rewrite the previous page's NEXT when the next day ships — confirm it does on W1D3 | harness | W1D3 run | the quiz "next-day lock" (D-0009) lands on the index until then |
 | O-9 | Runbook critic repeatedly caught arithmetic/date nits (float output, "tomorrow" vs Day 5, minute budgets); consider a runbook self-check line in the author prompt | harness | milestone 7 | not a bar change; prompt-only |
+| O-10 | Codify the mined TRNG-2442 rules (`docs/process/mined-rules-catalog.md`, D-0028): decide the demo contract first (A1 script-first, A13 week batch, A21 publish-as-you-go, A22 no code demo for process topics), then candidate skills I.1–I.6 | trainer | before W1D3 run (milestone 6) | W1D2 demos 02/03 are print-slideware and 04/05 subprocess wrappers under the current contract |
 
 ## Log
 
 - 2026-10-11 — scaffold, decision log, dates, theme landed; STATUS.md created.
 - 2026-10-11 — W1D2 pilot run (D-0021): 20 agents, 4/5 artifacts passed the critic, runbook hand-fixed; `tests/test_trainer.py` regex gained `re.M` (was unpassable); `args_for.py` NEXT-only-if-live; Mocha diagram text fix; page screenshots checked in Mocha and Latte.
 - 2026-10-11 — D-0023/D-0024/D-0025: learner persona (config.json audience), week-1 arc + W1D2 reshape (30-min on-ramp, then SDLC → Agile → Scrum → story points → Git), rubric exercise kind (Git exercise is the exercise). W1D2 re-run `wf_ce312ce5-ce9`: 20 agents, 40.5 min, 0 flagged, tests green; page is 1 on-ramp step + 5 team-practice steps, 1766 words.
+- 2026-10-11 — D-0028: mined the TRNG-2442 prep repo for reusable process rules; catalog at `docs/process/mined-rules-catalog.md` (A–I: demo authoring, notes, exercises, governance, delivery model, machinery, lessons, gap map, candidate skills). Nothing codified; O-10 opened.
 - 2026-10-11 — D-0022: Markdown-style code on notes pages (inline chips, fenced `<pre><code>` command blocks); CSS, exemplar example, notes author prompt line, W1D2 retrofitted with 6 blocks (1779 words, still in band).
