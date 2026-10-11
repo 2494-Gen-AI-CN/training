@@ -10,6 +10,7 @@ Newest first.
 
 | ID | Date | Status | Decision | Affects | Supersedes |
 |---|---|---|---|---|---|
+| D-0020 | 2026-10-11 | accepted | Site theme: Catppuccin Mocha dark by default with Latte as the optional light mode; IBM Plex Sans + IBM Plex Mono self-hosted; no Revature branding colours | docs/assets/css/style.css (tokens, @font-face), docs/assets/fonts/, docs/assets/js/theme.js resolve(), every page via ?v= cache-bust | — |
 | D-0019 | 2026-10-11 | accepted | Site theme: cool slate neutrals with self-hosted Inter (body) and JetBrains Mono (code); Revature orange accent kept | docs/assets/css/style.css (:root and dark tokens, @font-face), docs/assets/fonts/, every page via ?v= cache-bust | — |
 | D-0018 | 2026-10-11 | accepted | Phase palette: Gen AI foundations colour changes from violet #7048e8 to amber #c98500; other four phase colours unchanged | harness/curriculum.json phases.genai.c, docs/index.html generated block, every page that reads window.PHASES | — |
 | D-0017 | 2026-10-11 | accepted | Week 11 redistribution (Fri 12-25 holiday): Fri MLOps orientation and program wrap-up merge into Thu SageMaker Pipelines day, which becomes kind review with the feedback form; last teaching day is Thu 12-24 | harness/curriculum.json week 11 day 4 (slug renamed, kind review), Curricula/Weeks/week11.png mapping | — |

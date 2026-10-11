@@ -1,51 +1,61 @@
 /* 2494 Gen-AI training site — notes + scrollytelling + quiz (forked from a prior cohort site)
-   Self-contained, no external deps: fonts are self-hosted in ../fonts (theme "cool slate", D-0019). */
+   Self-contained, no external deps: fonts are self-hosted in ../fonts.
+   Theme: Catppuccin Mocha (dark, the default) / Latte (light, optional) with IBM Plex Sans + Mono (D-0020). */
 
-/* Self-hosted variable fonts (latin subset, SIL OFL). Weights are axes, so one file each. */
+/* Self-hosted fonts (latin subset, SIL OFL). Plex Sans is a variable file; Plex Mono ships two static weights. */
 @font-face {
-  font-family: "Inter";
+  font-family: "IBM Plex Sans";
   font-style: normal;
   font-weight: 400 700;
   font-display: swap;
-  src: url("../fonts/inter-latin-wght.woff2") format("woff2");
+  src: url("../fonts/ibm-plex-sans-latin-wght.woff2") format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
-  font-family: "JetBrains Mono";
+  font-family: "IBM Plex Mono";
   font-style: normal;
-  font-weight: 400 500;
+  font-weight: 400;
   font-display: swap;
-  src: url("../fonts/jetbrains-mono-latin-wght.woff2") format("woff2");
+  src: url("../fonts/ibm-plex-mono-400-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("../fonts/ibm-plex-mono-500-latin.woff2") format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 :root {
-  --bg: #f3f5f8;            /* cool slate */
-  --ink: #0f172a;
-  --ink-soft: #475569;
-  --line: #d9dfe7;
-  --accent: #e8590c;        /* Revature-ish orange */
-  --accent-soft: #fff1e8;
+  /* Catppuccin Latte — the optional light mode */
+  --bg: #eff1f5;
+  --ink: #4c4f69;
+  --ink-soft: #6c6f85;
+  --line: #ccd0da;
+  --accent: #1a56cc;        /* Latte blue, darkened for link-text contrast */
+  --accent-soft: #e2ebfd;
   --node: var(--surface);
-  --node-stroke: #2b2f36;
-  --dim: #9aa4b2;
-  --good: #2f9e44;
-  --bad: #e03131;
+  --node-stroke: #5c5f77;
+  --dim: #9ca0b0;
+  --good: #40a02b;
+  --bad: #d20f39;
   --maxprose: 780px;
-  --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  --font: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono: "IBM Plex Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
   /* semantic surfaces (themeable) */
   --surface: #ffffff;       /* cards, panels, stage */
-  --surface-2: #eef1f5;     /* subtle raised panels, run output */
-  --code-bg: #e8edf3;       /* inline code */
-  --bar-bg: rgba(243,245,248,.92);  /* sticky topbar */
-  --shadow: rgba(15,23,42,.08);
+  --surface-2: #e6e9ef;     /* subtle raised panels, run output */
+  --code-bg: #e6e9ef;       /* inline code */
+  --bar-bg: rgba(239,241,245,.92);  /* sticky topbar */
+  --shadow: rgba(76,79,105,.08);
   /* semantic tints (themeable) — used by page-specific panels/pills/badges */
   --good-soft: #ebfbee; --good-line: #cfe6cf; --good-ink: #2f7d32;
   --bad-soft: #fff5f5;  --bad-line: #ffc9c9;  --bad-ink: #c92a2a;
   --info: #1c7ed6;      --info-soft: #eef7ff; --info-line: #d0ebff;
   --warn-soft: #fff4e6; --warn-line: #ffe3b0; --warn-ink: #b45309;
-  --accent-line: #ffd8bf; --accent-ink: #c2410c;
+  --accent-line: #b9cdf6; --accent-ink: #1a56cc;
   color-scheme: light;
 }
 
@@ -964,31 +974,32 @@ html[data-theme="dark"] .cd-repo { background:#2b313a; }
 /* ===================== Dark mode ===================== */
 html[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #0b1220;                /* cool slate, dark */
-  --ink: #e6edf6;
-  --ink-soft: #9fb0c6;
-  --line: #243149;
-  --accent: #ff8a4c;            /* brighter orange for dark backgrounds */
-  --accent-soft: #2a1a10;
-  --node: #111a2b;
-  --node-stroke: #4a5a74;
-  --dim: #5f7290;
-  --good: #51cf66;
-  --bad: #ff6b6b;
-  --surface: #111a2b;
-  --surface-2: #172238;
-  --code-bg: #1a2740;
-  --bar-bg: rgba(11,18,32,.92);
+  /* Catppuccin Mocha — the default */
+  --bg: #1e1e2e;
+  --ink: #cdd6f4;
+  --ink-soft: #a6adc8;
+  --line: #45475a;
+  --accent: #89b4fa;            /* Mocha blue */
+  --accent-soft: #2b3250;
+  --node: #272739;
+  --node-stroke: #7f849c;
+  --dim: #6c7086;
+  --good: #a6e3a1;
+  --bad: #f38ba8;
+  --surface: #272739;
+  --surface-2: #313244;
+  --code-bg: #313244;
+  --bar-bg: rgba(30,30,46,.92);
   --shadow: rgba(0,0,0,.45);
   --good-soft: rgba(81,207,102,.12); --good-line: rgba(81,207,102,.40); --good-ink: #69db7c;
   --bad-soft: rgba(255,107,107,.12); --bad-line: rgba(255,107,107,.40); --bad-ink: #ff8787;
   --info: #74c0fc; --info-soft: rgba(116,192,252,.10); --info-line: rgba(116,192,252,.35);
   --warn-soft: rgba(245,159,0,.12); --warn-line: rgba(245,159,0,.38); --warn-ink: #e6c980;
-  --accent-line: rgba(255,138,76,.38); --accent-ink: #ffa273;
+  --accent-line: rgba(137,180,250,.38); --accent-ink: #b4d0ff;
 }
 /* Tinted callouts / states -> translucent on dark so they read as accents, not slabs */
 html[data-theme="dark"] .callout.mindset,
-html[data-theme="dark"] .closing .card.mindset { background: rgba(255,138,76,.10); border-color: rgba(255,138,76,.32); }
+html[data-theme="dark"] .closing .card.mindset { background: rgba(137,180,250,.10); border-color: rgba(137,180,250,.32); }
 html[data-theme="dark"] .callout.warn { background: rgba(255,107,107,.10); border-color: rgba(255,107,107,.32); }
 html[data-theme="dark"] .quiz .opt.correct,
 html[data-theme="dark"] #quiz .opt.correct,

@@ -11,12 +11,11 @@
   var root = document.documentElement;
 
   function saved() { try { return localStorage.getItem(KEY); } catch (e) { return null; } }
-  function systemDark() {
-    return !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
-  }
   function resolve() {
+    // Dark is the designed default (D-0020); light is the optional toggle and is
+    // remembered once chosen. The OS preference is deliberately not consulted.
     var s = saved();
-    return (s === "dark" || s === "light") ? s : (systemDark() ? "dark" : "light");
+    return (s === "dark" || s === "light") ? s : "dark";
   }
   function current() { return root.getAttribute("data-theme") === "dark" ? "dark" : "light"; }
   function apply(t) { root.setAttribute("data-theme", t); }
