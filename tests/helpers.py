@@ -38,10 +38,17 @@ def metrics() -> dict:
     return load_json(HARNESS / "metrics.json")
 
 
-def all_days():
-    """Yield (week, day, rel) for every curriculum day."""
+def all_slots():
+    """Yield (week, slot) for every weekday slot, holidays included."""
     for w in curriculum()["weeks"]:
         for d in w["days"]:
+            yield w, d
+
+
+def all_days():
+    """Yield (week, day, rel) for every teaching day (holiday slots have no slug)."""
+    for w, d in all_slots():
+        if d.get("kind") != "holiday":
             yield w, d, f"{w['dir']}/{d['slug']}"
 
 

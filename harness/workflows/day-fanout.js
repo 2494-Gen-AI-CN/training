@@ -26,6 +26,7 @@ export const meta = {
 
 const A = typeof args === 'string' ? JSON.parse(args) : (args || {})
 if (!A.root || !A.today || !Array.isArray(A.days) || !A.days.length) throw new Error('args must come from harness/args_for.py (root, today, days[] required)')
+if (A.days.some(d => !d.date || !d.dateLabel || d.kind === 'holiday')) throw new Error('every day needs date/dateLabel from args_for.py and must not be a holiday slot')
 const ROOT = A.root
 const H = `${ROOT}/harness`
 const TRAINER = `${ROOT}/trainer`
@@ -86,7 +87,8 @@ const compact = (x) => x ? ({ task:x.task, status:x.status, passes:x.passes, ...
 const J = (x) => JSON.stringify(x, null, 1)
 
 const dayHeader = (d) =>
-  `DAY: ${d.id} — "${d.title}" (${d.subtitle}). Week ${A.week} "${A.theme}", day ${d.day}, kind=${d.kind}, gate=${d.gate}, demoFormat=${d.demoFormat}, feedbackForm=${d.feedback}.\n` +
+  `DAY: ${d.id} — "${d.title}" (${d.subtitle}). Week ${A.week} "${A.theme}", day ${d.day} = ${d.weekday}, kind=${d.kind}, gate=${d.gate}, demoFormat=${d.demoFormat}, feedbackForm=${d.feedback}.\n` +
+  `Calendar date of this training day: ${d.dateLabel} (${d.date}, ${A.timezone}); week ${A.week} runs ${A.weekStart} to ${A.weekEnd}. Use this date wherever the day is dated; never invent one.\n` +
   `Subtopics (teach in this order, nothing from later days): ${J(d.subtopics)}\n` +
   (A.weekNotes ? `Week note: ${A.weekNotes}\n` : '') +
   `Today's date for stamps: ${A.today}. Python ${CFG.python}. LLM config for this week: ${J(LLM)}.\n` +
@@ -143,7 +145,7 @@ async function materialsStage(d, demo) {
       `Read (1) ${TEMPLATE} — copy its FULL structure (head+meta tc-day, topbar, nav.toc, article.reading-col with .lede + section.step blocks + section.reading-sources, aside.side with diagram + .demo-card + quiz card + side-nav, #quiz-modal, #goals-modal, optional #deep-modal, 0–2 #code-* popups, inline window.NEXT/DIAGRAM/QUIZ, the exact script tags). (2) ${d.researchFile} — your ONLY source of facts. (3) ${d.demoDir}/README.md and the demo files ${J(fileNames)}.\n` +
       `Write ${d.pageFile}:\n` +
       `- <meta name="tc-day" content="${d.id}">; title "<title> | ${CFG.siteTitle}"; topbar brand "${(CFG.brand||{}).bold}·${(CFG.brand||{}).rest}", Home ../../index.html, Demos ${CFG.repoUrl}/tree/main/demos, Exercises ${CFG.repoUrl}/tree/main/exercises.\n` +
-      `- .lede meta: "Week ${A.week} · Day ${d.day}", "${A.theme}", "~N min" where N = round(prose words / ${MN.readingWpm || 150}).\n` +
+      `- .lede meta: "Week ${A.week} · Day ${d.day}", "${d.dateLabel}", "${A.theme}", "~N min" where N = round(prose words / ${MN.readingWpm || 150}).\n` +
       `- ${MN.stepsMin}–${MN.stepsMax} section.step (data-step 0..n-1), prose ${WORD_MIN}–${WORD_MAX} words total; the page is the reference that deepens what the demos show — name the demo files where the reader should go run them.\n` +
       `- .demo-card: "Code-along files" linking each demo file as ${demoUrl}/<file>.\n` +
       `- window.DIAGRAM with captions.length == step count, nodes {id,step,x,y,w,h,label,detail?}, edges referencing real ids; each step reveals something the section explains.\n` +
@@ -178,7 +180,7 @@ async function materialsStage(d, demo) {
     (cr) => agent(
       `You are the RUNBOOK author (trainer-only talk track). ${dayHeader(d)}` +
       `Read ${d.researchFile}, ${d.demoDir}/README.md and every demo file ${J(fileNames)}, ${d.pageFile} if it exists (for objectives), and the exercise README at ${d.exDir}/README.md if it exists. Read the template ${H}/templates/runbook.md.\n` +
-      `Write ${d.trDir}/runbook.md: first line "# ${d.id} runbook — ${d.title}"; headings in template order; "Day at a glance" table whose Minutes sum to ${M.runbook.dayMinutesMin}–${M.runbook.dayMinutesMax} incl. breaks/lunch; one "## Demo N: <exact filename>" per demo file with Goal, type-live/paste per STEP, numbered talk track, ≥2 checkpoint questions, expected output, ≥1 pitfall from the brief; Notes page handoff; Exercise briefing (module, acceptance, ≥2 stuck points, solutions path ${d.trDir}/solutions); Common questions; If running long / short${d.feedback ? '; "## Feedback form" with ' + CFG.feedbackFormUrl : ''}${d.kind === 'review' ? '; "## Review agenda"' : ''}.\n` +
+      `Write ${d.trDir}/runbook.md: first line "# ${d.id} runbook — ${d.title}"; second line "Week ${A.week} · Day ${d.day} · ${d.dateLabel} · ${A.theme}"; headings in template order; "Day at a glance" table whose Minutes sum to ${M.runbook.dayMinutesMin}–${M.runbook.dayMinutesMax} incl. breaks/lunch; one "## Demo N: <exact filename>" per demo file with Goal, type-live/paste per STEP, numbered talk track, ≥2 checkpoint questions, expected output, ≥1 pitfall from the brief; Notes page handoff; Exercise briefing (module, acceptance, ≥2 stuck points, solutions path ${d.trDir}/solutions); Common questions; If running long / short${d.feedback ? '; "## Feedback form" with ' + CFG.feedbackFormUrl : ''}${d.kind === 'review' ? '; "## Review agenda"' : ''}.\n` +
       `Return totalMinutes, demoSections, solutionFiles (what exists under solutions/), summary.` + fix(cr),
       { schema: RUNBOOK_SCHEMA, label:`${d.id}:runbook`, phase:'Materials' }),
     (_r) => agent(

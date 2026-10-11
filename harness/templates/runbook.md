@@ -1,6 +1,6 @@
 # {{id}} runbook — {{title}}
 
-Week {{week}} · Day {{day}} · {{theme}}
+Week {{week}} · Day {{day}} · {{dateLabel}} · {{theme}}
 Notes page: docs/weeks/{{rel}}.html · Demos: demos/{{rel}}/ · Exercise: exercises/{{rel}}/
 
 ## Day at a glance

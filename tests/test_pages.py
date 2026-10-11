@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import re
+import sys
 import unittest
 from pathlib import Path
 
 from helpers import DOCS, FORBIDDEN_RE, HARNESS, PAGE_SCRIPT_ORDER, ROOT, ParsedPage, live_days, metrics, node_exe
+
+sys.path.insert(0, str(HARNESS))
+import build_index  # noqa: E402
 
 EXEMPLAR = HARNESS / "templates" / "day.exemplar.html"
 
@@ -70,7 +74,7 @@ class LivePageTests(unittest.TestCase):
             path = DOCS / "weeks" / f"{rel}.html"
             with self.subTest(rel=rel):
                 page = ParsedPage(path)
-                _structure_checks(self, page, d["id"], bool(d.get("feedback")))
+                _structure_checks(self, page, d["id"], build_index.is_feedback(w, d))
                 steps = page.root.find_all("section", "step")
                 self.assertTrue(M["stepsMin"] <= len(steps) <= M["stepsMax"], len(steps))
                 words = page.prose_words()

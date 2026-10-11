@@ -1,7 +1,32 @@
 {
-  "_comment": "Single source of truth for the 11-week calendar. Transcribed from Curricula/Weeks/week1..11.png. Every other path is derived as {week.dir}/{day.slug}. status flips planned->live when the harness Wire step ships a day.",
+  "_comment": "Single source of truth for the 11-week calendar. Transcribed from Curricula/Weeks/week1..11.png; weeks 1, 7 and 11 redistributed for holidays (decisions D-0015..D-0017). Every other path is derived as {week.dir}/{day.slug}. Calendar dates derive from startDate + week index + weekday slot (day 1=Mon..5=Fri); a slot whose date is in holidays is {day, kind: holiday} only. The weekly feedback form is the last teaching day of each week (derived, never hand-set). status flips planned->live when the harness Wire step ships a day.",
   "cohort": "2494-Gen-AI-CN",
   "siteTitle": "2494 · Gen-AI Python",
+  "startDate": "2026-10-13",
+  "endDate": "2026-12-24",
+  "timezone": "America/Toronto",
+  "holidays": [
+    {
+      "date": "2026-10-12",
+      "label": "Thanksgiving (Canada)",
+      "scope": "ca"
+    },
+    {
+      "date": "2026-11-26",
+      "label": "Thanksgiving (US)",
+      "scope": "us"
+    },
+    {
+      "date": "2026-11-27",
+      "label": "Day after Thanksgiving (US)",
+      "scope": "us"
+    },
+    {
+      "date": "2026-12-25",
+      "label": "Christmas Day",
+      "scope": "ca"
+    }
+  ],
   "phases": {
     "py": {
       "label": "Python foundations",
@@ -57,8 +82,12 @@
       "days": [
         {
           "day": 1,
-          "slug": "day-1-orientation-agile-and-git",
-          "id": "w01d1",
+          "kind": "holiday"
+        },
+        {
+          "day": 2,
+          "slug": "day-2-orientation-agile-and-git",
+          "id": "w01d2",
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "py",
@@ -83,9 +112,9 @@
           ]
         },
         {
-          "day": 2,
-          "slug": "day-2-python-basics",
-          "id": "w01d2",
+          "day": 3,
+          "slug": "day-3-python-basics",
+          "id": "w01d3",
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "py",
@@ -103,9 +132,9 @@
           ]
         },
         {
-          "day": 3,
-          "slug": "day-3-python-data-types",
-          "id": "w01d3",
+          "day": 4,
+          "slug": "day-4-python-data-types",
+          "id": "w01d4",
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "py",
@@ -129,36 +158,22 @@
           ]
         },
         {
-          "day": 4,
-          "slug": "day-4-control-flow-and-functions",
-          "id": "w01d4",
+          "day": 5,
+          "slug": "day-5-control-flow-functions-and-classes",
+          "id": "w01d5",
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "py",
           "status": "planned",
-          "title": "Control flow, functions & arrays",
-          "subtitle": "if/else · while · for · functions · lambda · arrays",
+          "title": "Control flow, functions & classes",
+          "subtitle": "if/else · loops · functions · lambda · arrays · OOP · inheritance · iterators · scope",
           "subtopics": [
             "If-else",
             "While loops",
             "For loops",
             "Functions",
             "Lambda",
-            "Arrays"
-          ]
-        },
-        {
-          "day": 5,
-          "slug": "day-5-classes-and-inheritance",
-          "id": "w01d5",
-          "kind": "lesson",
-          "feedback": true,
-          "gate": "light",
-          "demoFormat": "py",
-          "status": "planned",
-          "title": "Classes & inheritance",
-          "subtitle": "OOP concepts · inheritance · iterators · scope · classes and objects",
-          "subtopics": [
+            "Arrays",
             "OOP concepts",
             "Inheritance",
             "Iterators",
@@ -258,7 +273,6 @@
           "slug": "day-5-python-review",
           "id": "w02d5",
           "kind": "review",
-          "feedback": true,
           "gate": "light",
           "demoFormat": "py",
           "status": "planned",
@@ -384,7 +398,6 @@
           "slug": "day-5-views-procedures-and-indexes",
           "id": "w03d5",
           "kind": "lesson",
-          "feedback": true,
           "gate": "light",
           "demoFormat": "py",
           "status": "planned",
@@ -501,7 +514,6 @@
           "slug": "day-5-etl-and-elt-pipelines",
           "id": "w04d5",
           "kind": "lesson",
-          "feedback": true,
           "gate": "light",
           "demoFormat": "py",
           "status": "planned",
@@ -608,7 +620,6 @@
           "slug": "day-5-gen-ai-review",
           "id": "w05d5",
           "kind": "review",
-          "feedback": true,
           "gate": "full",
           "demoFormat": "py",
           "status": "planned",
@@ -703,7 +714,6 @@
           "slug": "day-5-perceptrons-and-tensorflow-basics",
           "id": "w06d5",
           "kind": "lesson",
-          "feedback": true,
           "gate": "light",
           "demoFormat": "nb",
           "status": "planned",
@@ -731,86 +741,67 @@
       "days": [
         {
           "day": 1,
-          "slug": "day-1-mlp-and-backpropagation",
+          "slug": "day-1-mlp-backprop-and-digit-classifier",
           "id": "w07d1",
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "nb",
           "status": "planned",
-          "title": "Multi-layer perceptrons & backpropagation",
-          "subtitle": "limits of single perceptrons · MLP · backprop algorithm",
+          "title": "Multi-layer perceptrons, backprop & digit classifier",
+          "subtitle": "limits of single perceptrons · MLP · backprop algorithm · MLP digit classifier · TensorBoard",
           "subtopics": [
             "Limitations of single perceptrons",
             "Multi-layer perceptrons",
             "Backpropagation algorithm",
-            "Understand backprop - neural network"
+            "Understand backprop - neural network",
+            "MLP digit classifier using TensorFlow",
+            "TensorBoard"
           ]
         },
         {
           "day": 2,
-          "slug": "day-2-digit-classifier-and-autoencoders",
+          "slug": "day-2-autoencoders-rbm-and-sequential-api",
           "id": "w07d2",
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "nb",
           "status": "planned",
-          "title": "Digit classifier, TensorBoard & autoencoders",
-          "subtitle": "MLP digit classifier · TensorBoard · collaborative filtering with RBM · autoencoders",
+          "title": "Autoencoders, RBM & the Keras Sequential API",
+          "subtitle": "collaborative filtering with RBM · autoencoders · composing models · sequential composition",
           "subtopics": [
-            "MLP digit classifier using TensorFlow",
-            "TensorBoard",
             "Collaborative filtering with RBM",
-            "Autoencoders"
-          ]
-        },
-        {
-          "day": 3,
-          "slug": "day-3-tflearn-api",
-          "id": "w07d3",
-          "kind": "lesson",
-          "gate": "light",
-          "demoFormat": "nb",
-          "status": "planned",
-          "title": "High-level model APIs (TFLearn / Keras)",
-          "subtitle": "composing models · sequential composition",
-          "subtopics": [
+            "Autoencoders",
             "TFLearn API",
             "Composing models in TFLearn",
             "Sequential composition"
           ]
         },
         {
-          "day": 4,
-          "slug": "day-4-layers-batch-norm-and-saving",
-          "id": "w07d4",
+          "day": 3,
+          "slug": "day-3-functional-api-layers-and-custom-training",
+          "id": "w07d3",
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "nb",
           "status": "planned",
-          "title": "Functional composition, layers, batch norm & saving",
-          "subtitle": "functional composition · predefined layers · batch normalization · save/load",
+          "title": "Functional API, layers, batch norm, saving & custom training",
+          "subtitle": "functional composition · predefined layers · batch normalization · save/load · custom training loops · TensorBoard callbacks",
           "subtopics": [
             "Functional composition",
             "Predefined neural network layers",
             "Batch normalization",
-            "Saving and loading a model with TFLearn"
-          ]
-        },
-        {
-          "day": 5,
-          "slug": "day-5-custom-training-and-tensorboard",
-          "id": "w07d5",
-          "kind": "lesson",
-          "feedback": true,
-          "gate": "light",
-          "demoFormat": "nb",
-          "status": "planned",
-          "title": "Custom training loops & TensorBoard",
-          "subtitle": "customizing the training process · TensorBoard with high-level APIs",
-          "subtopics": [
+            "Saving and loading a model with TFLearn",
             "Customizing the training process",
             "TensorBoard with TFLearn"
           ]
+        },
+        {
+          "day": 4,
+          "kind": "holiday"
+        },
+        {
+          "day": 5,
+          "kind": "holiday"
         }
       ]
     },
@@ -903,7 +894,6 @@
           "slug": "day-5-semantic-search-and-embeddings",
           "id": "w08d5",
           "kind": "lesson",
-          "feedback": true,
           "gate": "full",
           "demoFormat": "py",
           "status": "planned",
@@ -1019,7 +1009,6 @@
           "slug": "day-5-streamlit-and-langchain-review",
           "id": "w09d5",
           "kind": "lesson",
-          "feedback": true,
           "gate": "full",
           "demoFormat": "py",
           "status": "planned",
@@ -1125,7 +1114,6 @@
           "slug": "day-5-langgraph-review",
           "id": "w10d5",
           "kind": "review",
-          "feedback": true,
           "gate": "full",
           "demoFormat": "py",
           "status": "planned",
@@ -1199,34 +1187,25 @@
         },
         {
           "day": 4,
-          "slug": "day-4-sagemaker-pipelines-and-cicd",
+          "slug": "day-4-sagemaker-pipelines-cicd-and-mlops-wrap-up",
           "id": "w11d4",
-          "kind": "lesson",
+          "kind": "review",
           "gate": "full",
           "demoFormat": "py",
           "status": "planned",
-          "title": "SageMaker Pipelines & CI/CD",
-          "subtitle": "pipeline steps: prep / train / evaluate / register / deploy · registry integration",
+          "title": "SageMaker Pipelines, CI/CD & MLOps wrap-up",
+          "subtitle": "pipeline steps: prep / train / evaluate / register / deploy · registry integration · MLOps orientation · Project 2 showcase · program review",
           "subtopics": [
             "Introduction to SageMaker Pipelines for MLOps automation",
             "Creating pipeline steps: data prep / train / evaluate / register / deploy",
-            "Integrating Model Registry with deployment workflows"
+            "Integrating Model Registry with deployment workflows",
+            "MLOps orientation",
+            "Project 2 showcase & program review"
           ]
         },
         {
           "day": 5,
-          "slug": "day-5-mlops-orientation",
-          "id": "w11d5",
-          "kind": "review",
-          "feedback": true,
-          "gate": "full",
-          "demoFormat": "py",
-          "status": "planned",
-          "title": "MLOps orientation & program wrap-up",
-          "subtitle": "MLOps principles · Project 2 showcase · program review",
-          "subtopics": [
-            "MLOps orientation"
-          ]
+          "kind": "holiday"
         }
       ]
     }

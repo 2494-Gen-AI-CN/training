@@ -7,8 +7,8 @@ harness/
   curriculum.json      source of truth: weeks, days, slugs, gate, demoFormat, status
   metrics.json         quality bars (word band, steps, quiz count, test counts, day minutes)
   config.json          site title, repo URL, feedback form, LLM provider defaults
-  build_index.py       curriculum.json -> WEEKS block in docs/index.html   (--check in tests)
-  args_for.py          prints the Workflow args for <week> <day...>
+  build_index.py       curriculum.json -> CAL/WEEKS block in docs/index.html (--check in tests); owns all calendar arithmetic
+  args_for.py          prints the Workflow args for <week> <day...> (day = weekday slot; holiday slots refused)
   workflows/day-fanout.js   the Workflow-tool script
   templates/           day.exemplar.html, research.md, runbook.md, demo-README.md, exercise-README.md, conftest.py
   critics/             PASS criteria each critic agent reads: research, demos, notes, runbook, exercise
@@ -33,7 +33,7 @@ Each gated artifact: author → critic → up to 3 repair passes → else **flag
 ## Running a day
 
 ```
-python harness/args_for.py 1 1 --today 2026-10-13
+python harness/args_for.py 1 2 --today 2026-10-13      # week 1, weekday slot 2 (Tue Oct 13; slot 1 is Thanksgiving)
 ```
 Paste the JSON as `args`:
 ```

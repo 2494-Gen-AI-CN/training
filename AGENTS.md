@@ -14,7 +14,8 @@ Prep repo for the 11-week **2494 Gen-AI Python** training. Two deliverables per 
 ## Rules
 
 - `harness/curriculum.json` is the single source of truth for weeks, days, slugs and status. Never hand-edit the WEEKS block in `docs/index.html`; run `python harness/build_index.py`.
-- Paths are always `{week.dir}/{day.slug}` (e.g. `week-01/day-1-orientation-agile-and-git`) across `demos/`, `exercises/`, `trainer/`, `docs/weeks/`, `harness/research/`. The short `id` (`w01d1`) is only for `<meta name="tc-day">`, localStorage keys and test keys.
+- Calendar dates derive from `startDate` + week index + weekday slot, with `holidays` turning slots into `kind: "holiday"` (D-0013, D-0014). Never hand-type a date into a page, prompt or template; use `build_index.slot_date` / `args_for.py`. `day` is the weekday slot (1=Mon … 5=Fri); the feedback form is the last teaching day of each week, derived, never a JSON flag.
+- Paths are always `{week.dir}/{day.slug}` (e.g. `week-01/day-2-orientation-agile-and-git`) across `demos/`, `exercises/`, `trainer/`, `docs/weeks/`, `harness/research/`. The short `id` (`w01d2`) is only for `<meta name="tc-day">`, localStorage keys and test keys.
 - Authoring is research-first: no notes page, demo or runbook is written before `harness/research/<week>/<day>.md` exists. Gate level (`full` | `light`) is per day in the curriculum. Full-gate briefs verify every URL; light-gate briefs still need version stamps and 3 official-doc URLs.
 - Demos are authored before notes/runbook/exercise; those three only link to demo files that exist.
 - Quality bars live in `harness/metrics.json`; critic PASS criteria live in `harness/critics/*.md`. Change those files, not the prompts, when the bar moves.

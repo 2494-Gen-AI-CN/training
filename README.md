@@ -4,7 +4,20 @@ Welcome. This repo holds everything you need for the 11-week program: the code w
 
 **This repo:** https://github.com/2494-Gen-AI-CN/training
 **Notes site:** https://2494-gen-ai-cn.github.io/training/
-**Weekly feedback form (Fridays):** [Microsoft Forms](https://forms.cloud.microsoft/pages/responsepage.aspx?id=iuJja_motUeqQJfiMSFRZMU3bOO2vNdAiSFsti9sgKVUQkhYWEhIRzJSWjNOVVM5REFOU0tWT0JXQyQlQCN0PWcu&route=shorturl)
+**Weekly feedback form (last day of each week):** [Microsoft Forms](https://forms.cloud.microsoft/pages/responsepage.aspx?id=iuJja_motUeqQJfiMSFRZMU3bOO2vNdAiSFsti9sgKVUQkhYWEhIRzJSWjNOVVM5REFOU0tWT0JXQyQlQCN0PWcu&route=shorturl)
+
+## Dates
+
+Training runs **Tue 2026-10-13 → Thu 2026-12-24**, Monday to Friday, Eastern time (America/Toronto). No class on:
+
+| Date | Holiday |
+|---|---|
+| Mon 2026-10-12 | Thanksgiving (Canada) |
+| Thu 2026-11-26 | Thanksgiving (US) |
+| Fri 2026-11-27 | Day after Thanksgiving (US) |
+| Fri 2026-12-25 | Christmas Day |
+
+So week 1 is Tue–Fri, week 7 (Nov 23–27) is Mon–Wed, and week 11 (Dec 21–24) is Mon–Thu. The [notes site](https://2494-gen-ai-cn.github.io/training/) calendar shows the date on every day and highlights today.
 
 ## How each day works
 
@@ -58,7 +71,7 @@ exercises/   daily exercises: README, starter/, tests/
 Curricula/   the official topic grid for all 11 weeks
 ```
 
-Folders are named `week-01/day-1-orientation-agile-and-git`, so the path tells you the week, the day and the topic.
+Folders are named `week-01/day-2-orientation-agile-and-git`, so the path tells you the week, the day and the topic.
 
 ## The 11 weeks
 
@@ -76,7 +89,7 @@ Projects: Project 0 (weeks 1–5), Project 1 (weeks 6–8), Project 2 (weeks 9�
 
 ## Stuck?
 
-Ask in class. Trainees are welcome to self-organize on Discord for study groups and peer help. If something in the materials is wrong or confusing, say so in the Friday feedback form — it gets read.
+Ask in class. Trainees are welcome to self-organize on Discord for study groups and peer help. If something in the materials is wrong or confusing, say so in the weekly feedback form (last day of each week) — it gets read.
 
 ---
 
