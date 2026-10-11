@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Training Harness Walkthrough</title>
+<style>
+  :root {
+    --bg: #faf8f4; --fg: #1e1e1e; --muted: #5b5b5b; --line: #e3ded4; --card: #ffffff;
+    --accent: #c2410c; --accent2: #1d4ed8; --ok: #15803d; --warn: #b45309; --code: #f1efe9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141414; --fg: #e8e6e1; --muted: #a3a09a; --line: #2c2c2c; --card: #1d1d1d;
+      --accent: #fb923c; --accent2: #60a5fa; --ok: #4ade80; --warn: #fbbf24; --code: #232323;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141414; --fg: #e8e6e1; --muted: #a3a09a; --line: #2c2c2c; --card: #1d1d1d;
+    --accent: #fb923c; --accent2: #60a5fa; --ok: #4ade80; --warn: #fbbf24; --code: #232323;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .wrap { display: grid; grid-template-columns: 240px 1fr; gap: 32px; max-width: 1200px; margin: 0 auto; padding: 24px 16px 80px; }
+  nav.toc { position: sticky; top: 16px; align-self: start; font-size: 14px; }
+  nav.toc a { display: block; color: var(--muted); text-decoration: none; padding: 4px 0; border-left: 2px solid transparent; padding-left: 10px; }
+  nav.toc a:hover { color: var(--fg); border-color: var(--accent); }
+  nav.toc .step-num { color: var(--accent); font-weight: 600; margin-right: 6px; }
+  main { min-width: 0; }
+  h1 { font-size: 32px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 32px; }
+  h2 { font-size: 22px; margin: 48px 0 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+  h2 .n { color: var(--accent); font-weight: 700; margin-right: 8px; }
+  h3 { font-size: 17px; margin: 24px 0 8px; }
+  p { margin: 0 0 12px; }
+  ul, ol { margin: 0 0 12px; padding-left: 22px; }
+  li { margin-bottom: 4px; }
+  code { background: var(--code); padding: 1px 5px; border-radius: 4px; font-size: 0.92em; }
+  pre { background: var(--code); padding: 14px 16px; border-radius: 8px; overflow-x: auto; font-size: 13px; line-height: 1.45; border: 1px solid var(--line); }
+  pre code { background: none; padding: 0; }
+  table { border-collapse: collapse; width: 100%; margin: 0 0 16px; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .03em; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; margin: 0 0 16px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .tag { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; margin-right: 6px; }
+  .tag.ok { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+  .tag.warn { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+  .tag.info { background: color-mix(in srgb, var(--accent2) 18%, transparent); color: var(--accent2); }
+  .tag.drop { background: color-mix(in srgb, #dc2626 18%, transparent); color: #dc2626; }
+  .callout { border-left: 4px solid var(--accent); padding: 10px 14px; background: var(--card); border-radius: 0 8px 8px 0; margin: 0 0 16px; }
+  .callout.q { border-color: var(--accent2); }
+  .pipe { display: flex; gap: 10px; flex-wrap: wrap; align-items: stretch; margin: 12px 0 16px; }
+  .pipe .ph { flex: 1 1 160px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px; font-size: 13px; }
+  .pipe .ph b { display: block; font-size: 14px; margin-bottom: 4px; color: var(--accent); }
+  .pipe .ph .gate { color: var(--muted); font-size: 12px; margin-top: 6px; }
+  .muted { color: var(--muted); }
+  details { margin: 0 0 10px; }
+  summary { cursor: pointer; font-weight: 600; }
+  @media (max-width: 860px) {
+    .wrap { grid-template-columns: 1fr; }
+    nav.toc { position: static; display: flex; flex-wrap: wrap; gap: 4px 12px; }
+    .grid2 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="toc">
+  <a href="#goal"><span class="step-num">0</span>Goal &amp; context</a>
+  <a href="#decisions"><span class="step-num">1</span>Decisions so far</a>
+  <a href="#curriculum"><span class="step-num">2</span>Curriculum map</a>
+  <a href="#layout"><span class="step-num">3</span>Repo layout</a>
+  <a href="#artifacts"><span class="step-num">4</span>Per-day artifacts</a>
+  <a href="#pipeline"><span class="step-num">5</span>Workflow pipeline</a>
+  <a href="#critics"><span class="step-num">6</span>Critics &amp; gates</a>
+  <a href="#budget"><span class="step-num">7</span>Agent budget</a>
+  <a href="#fork"><span class="step-num">8</span>What we fork / drop</a>
+  <a href="#tests"><span class="step-num">9</span>Tests</a>
+  <a href="#pilot"><span class="step-num">10</span>Pilot sequence</a>
+  <a href="#open"><span class="step-num">11</span>Remaining items</a>
+</nav>
+
+<main>
+<h1>Training-Content Harness</h1>
+<p class="sub">2494 Gen-AI Python training · 11 weeks · setup and workflows as of 2026-10-11 (scaffold built; week-01 pilot next)</p>
+
+<!-- ============================================================ -->
+<h2 id="goal"><span class="n">0</span>Goal &amp; context</h2>
+<p>Build a repeatable, agent-driven pipeline that turns each curriculum day into a complete, reviewed set of training materials. The harness is the deliverable right now. Content for the 55 training days comes out of running it.</p>
+<div class="grid2">
+  <div class="card">
+    <h3 style="margin-top:0">Delivery context (ours)</h3>
+    <ul>
+      <li>In person or Zoom, <b>live code-along demos are the core</b>.</li>
+      <li>Site supports the demos: notes, examples, short quizzes, exercises.</li>
+      <li>No AI grading of trainee answers. No login, no progress sync, no backend.</li>
+      <li>Trainer keeps a private runbook and solutions per day.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">Reference (2463-FDE site)</h3>
+    <ul>
+      <li>Fully remote, part-time, self-paced readings.</li>
+      <li>Cloudflare Worker backend: LLM proxy, AI-graded spoken summaries, interview question bank, progress sync, trainer dashboard.</li>
+      <li>Research-first authoring pipeline with critics and repass loops. <b>This part we keep.</b></li>
+      <li>Static HTML + JS front end, zero build step. <b>This part we fork.</b></li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="decisions"><span class="n">1</span>Decisions so far</h2>
+<table>
+  <tr><th>Question</th><th>Decision</th><th>Consequence</th></tr>
+  <tr><td>Per-day outputs</td><td><span class="tag ok">locked</span>All four: demo code, trainer runbook, notes page + quiz, exercise with pytest checks</td><td>5 artifacts per day counting the research brief</td></tr>
+  <tr><td>Site stack</td><td><span class="tag ok">locked</span>Reuse reference HTML/JS (style.css, quiz, diagram, scrolly, modals, glossary, codeviewer)</td><td>Zero build. Strip backend-coupled scripts.</td></tr>
+  <tr><td>Demo format</td><td><span class="tag ok">locked</span><code>.py</code> scripts by default; notebooks where exploratory (pandas, TensorFlow, embeddings, SageMaker)</td><td>Per-demo README with run order</td></tr>
+  <tr><td>Research gate</td><td><span class="tag ok">locked</span>Tiered: full web-verified gate for weeks 5, 8, 9, 10, 11; light gate for 1–4, 6, 7</td><td>Fast-moving libs get verified; stable topics stay cheap</td></tr>
+  <tr><td>Trainer material</td><td><span class="tag ok">locked</span>Separate private repo cloned at <code>trainer/</code>, gitignored by parent</td><td>Public repo never contains solutions or runbooks; tests skip when absent</td></tr>
+  <tr><td>Pages source</td><td><span class="tag ok">locked</span>Site root is <code>docs/</code>, served natively by GitHub Pages from <code>main</code></td><td>No CI needed for deploy</td></tr>
+  <tr><td>Agent budget</td><td><span class="tag ok">locked</span>Per-day runs (~12 agents clean, ~27 worst)</td><td>One Workflow invocation per training day</td></tr>
+  <tr><td>Dir naming</td><td><span class="tag ok">locked</span><code>week-01/day-1-orientation-agile-and-git</code></td><td>Same shape in demos/, exercises/, trainer/, docs/weeks/, harness/research/; slug lives in curriculum.json</td></tr>
+  <tr><td>Quiz "Next" lock</td><td><span class="tag ok">locked</span>Keep the lock</td><td>Next-day link unlocks after the 6-question check; supports self-study evenings</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="curriculum"><span class="n">2</span>Curriculum map</h2>
+<p>Transcribed from <code>Curricula/Weeks/week1..11.png</code>. Each week is Mon–Fri; Friday is usually review plus feedback form. This becomes <code>harness/curriculum.json</code>, the single source of truth every other file derives from.</p>
+<table>
+  <tr><th>Wk</th><th>Theme</th><th>Project</th><th>Gate</th><th>Highlights</th></tr>
+  <tr><td>1</td><td>Agile, Git, Python fundamentals</td><td>P0</td><td>light</td><td>SDLC/Scrum, git, syntax, datatypes, control flow, functions, OOP</td></tr>
+  <tr><td>2</td><td>Python advanced</td><td>P0</td><td>light</td><td>modules, exceptions, files, pytest, matplotlib/pandas/numpy, collections</td></tr>
+  <tr><td>3</td><td>SQL (MySQL)</td><td>P0</td><td>light</td><td>DDL/DML/DQL/DCL/TCL, keys, normalization, joins, transactions, views/procs/indexes</td></tr>
+  <tr><td>4</td><td>Data, cloud, warehousing, ETL</td><td>P0</td><td>light</td><td>IaaS/PaaS/SaaS, big data, OLTP vs OLAP, BigQuery, star/snowflake, SCD, ETL/ELT</td></tr>
+  <tr><td>5</td><td>Gen AI introduction</td><td>P0</td><td><b>full</b></td><td>prompt engineering, LLM landscape, AI dev tooling, security</td></tr>
+  <tr><td>6</td><td>AI/ML fundamentals</td><td>P1</td><td>light</td><td>regression, classification, k-means, DL/CNN/NLP, TensorFlow intro</td></tr>
+  <tr><td>7</td><td>TensorFlow</td><td>P1</td><td>light</td><td>MLP, backprop, digit classifier, TensorBoard, autoencoders, TFLearn</td></tr>
+  <tr><td>8</td><td>Feature eng, model eval, vector DBs</td><td>P1</td><td><b>full</b></td><td>encoding, metrics, Chroma, Pinecone, semantic search, NER, embeddings</td></tr>
+  <tr><td>9</td><td>LangChain</td><td>P2</td><td><b>full</b></td><td>RAG, Bedrock, prompts, loaders, retrievers, chains, memory, Streamlit</td></tr>
+  <tr><td>10</td><td>LangGraph, agents</td><td>P2</td><td><b>full</b></td><td>agentic AI, graphs/state/reducers, multi-agent patterns, crewAI</td></tr>
+  <tr><td>11</td><td>SageMaker, MLOps</td><td>P2</td><td><b>full</b></td><td>Vertex AI, SageMaker lifecycle, endpoints, registry, pipelines</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="layout"><span class="n">3</span>Repo layout</h2>
+<p>Root is this folder, initialised as a git repo. <code>Reference-Example/</code> stays on disk but is gitignored (it contains two nested git clones).</p>
+<pre><code>2494-Gen-AI-CN/
+  .gitignore              Reference-Example/  trainer/  __pycache__/  .pytest_cache/  .env
+  AGENTS.md               agent memory (authoring rules, test command, sharp edges)
+  CLAUDE.md               -&gt; "AGENTS.md"
+  README.md  requirements-dev.txt  harness-walkthrough.html (this page)
+  Curricula/              existing input (PDF + week PNGs)
+  Reference-Example/      existing, gitignored
+
+  docs/                   GitHub Pages root (zero build, served natively from main)
+    .nojekyll  index.html  bump-css.sh
+    assets/css/style.css  assets/favicon.svg
+    assets/js/{theme,diagram,scrolly,modals,quiz,widgets,glossary,codeviewer,survey}.js
+    weeks/week-WW/day-N-slug.html   one notes page per day
+
+  demos/week-WW/day-N-slug/        README.md, 01_slug.py ... (or .ipynb), requirements.txt?, .env.example?
+  exercises/week-WW/day-N-slug/    README.md, starter/module.py, tests/test_module.py, tests/conftest.py
+
+  trainer/                SEPARATE PRIVATE REPO, cloned here, gitignored by parent
+    week-WW/day-N-slug/runbook.md
+    week-WW/day-N-slug/solutions/module.py
+
+  harness/
+    curriculum.json       single source of truth (55 days, slugs, gate, demoFormat, status)
+    metrics.json          word band, step count, quiz count, test counts, day minutes
+    config.json           site title, repo URL, feedback form, LLM defaults
+    build_index.py        curriculum.json -&gt; WEEKS block in docs/index.html
+    args_for.py           prints the Workflow args JSON for a week/day set
+    research/week-WW/day-N-slug.md
+    workflows/day-fanout.js
+    templates/            day.exemplar.html, research.md, runbook.md, demo-README.md, exercise-README.md, conftest.py
+    critics/              research.md, demos.md, notes.md, runbook.md, exercise.md (PASS criteria)
+
+  tests/                  python unittest contract tests (18 tests, green on the empty scaffold)</code></pre>
+
+<!-- ============================================================ -->
+<h2 id="artifacts"><span class="n">4</span>Per-day artifacts</h2>
+<p>Every curriculum day produces the same five things. Metrics are sized for an in-person day where demos carry the explanation and notes are a reference, not a self-paced reading.</p>
+
+<div class="card">
+  <h3 style="margin-top:0">a. Research brief <span class="muted">harness/research/week-WW/day-N-slug.md</span></h3>
+  <ul>
+    <li>Header: title, gate level, verified date, version stamps per library.</li>
+    <li><b>Claims</b>: full gate = every claim carries a fetched URL; light gate = 3–8 claims, sources optional.</li>
+    <li><b>Sources</b>: at least 3 official-doc URLs either way.</li>
+    <li><b>Glossary terms</b> (3–8), <b>common pitfalls</b> (3–6), <b>demo plan hints</b> (2–4). These feed the runbook, quiz distractors and the demo author.</li>
+  </ul>
+</div>
+<div class="card">
+  <h3 style="margin-top:0">b. Demo code <span class="muted">demos/week-WW/day-N-slug/</span></h3>
+  <ul>
+    <li>2–5 files, numbered in teaching order, each under roughly 90 lines. Top docstring states purpose and expected output.</li>
+    <li><code># --- STEP n: what to type next ---</code> comment checkpoints so the trainer can type along.</li>
+    <li>README with a run-order table: file, what it shows, run command, needs key?</li>
+    <li>Anything needing a key guards with an env check and exits cleanly. LLM provider from <code>config.json</code>: Anthropic SDK in week 5, Bedrock Converse in week 9 per curriculum.</li>
+    <li>Notebooks: nbformat v4, one markdown cell per STEP, outputs cleared.</li>
+  </ul>
+</div>
+<div class="card">
+  <h3 style="margin-top:0">c. Notes page + quiz <span class="muted">docs/weeks/week-WW/day-N-slug.html</span></h3>
+  <table>
+    <tr><th>Metric</th><th>Target</th><th>Reference had</th></tr>
+    <tr><td>Prose</td><td>1,200–1,800 words (8–12 min)</td><td>2,400–3,000</td></tr>
+    <tr><td>Scrolly steps with diagram</td><td>5–7</td><td>7–9</td></tr>
+    <tr><td>Quiz</td><td>6 questions, mix of scq / tf / mcq-or-match, at most 1 open</td><td>6</td></tr>
+    <tr><td>Goals modal</td><td>3–5 objectives + exercise link + demo file list</td><td>objectives + NOTES.md deliverable</td></tr>
+    <tr><td>Code popups</td><td>0–2, each an excerpt of a real demo file</td><td>exactly 1, Bedrock-only</td></tr>
+    <tr><td>Sources block</td><td>3+ URLs</td><td>same</td></tr>
+    <tr><td>Side cards</td><td>Code-along files, Comprehension check, optional Deep dive</td><td>Deep dive, Check</td></tr>
+  </table>
+</div>
+<div class="card">
+  <h3 style="margin-top:0">d. Exercise <span class="muted">exercises/week-WW/day-N-slug/</span></h3>
+  <ul>
+    <li>README: task, acceptance criteria, how to run <code>python -m pytest</code>.</li>
+    <li><code>starter/module.py</code>: signatures, docstrings, <code>raise NotImplementedError</code>.</li>
+    <li><code>tests/</code>: 4–10 tests, no network. <code>conftest.py</code> puts <code>starter/</code> on the path unless <code>EXERCISE_SRC</code> points elsewhere.</li>
+    <li>Contract enforced by critic and test suite: starter <b>fails</b>, trainer solution <b>passes</b>.</li>
+  </ul>
+</div>
+<div class="card">
+  <h3 style="margin-top:0">e. Trainer runbook <span class="muted">trainer/week-WW/day-N-slug/runbook.md</span> + solutions</h3>
+  <ul>
+    <li>Day at a glance: timing table summing to a 6-hour day (330–390 min).</li>
+    <li>Objectives, setup check, one section per demo file (talk track, type-live vs paste, checkpoint questions, expected output, pitfalls).</li>
+    <li>Notes page handoff, exercise briefing with where trainees get stuck, common questions, if-running-long / short.</li>
+    <li>Friday review days add review agenda and feedback form slot.</li>
+  </ul>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="pipeline"><span class="n">5</span>Workflow pipeline</h2>
+<p>One script, <code>harness/workflows/day-fanout.js</code>, run through the Workflow tool. Adapted from the reference <code>week-fanout.js</code>, keeping its <code>gated()</code> repass helper, verdict schema and salvage pattern. Invocation:</p>
+<pre><code>Workflow({ scriptPath: "harness/workflows/day-fanout.js",
+           args: { week: 1, days: [1], today: "2026-10-11", wordMin: 1200, wordMax: 1800 } })</code></pre>
+<div class="pipe">
+  <div class="ph"><b>1 · Research</b>Per day. Prompt branches on <code>gate</code>: full = WebSearch + WebFetch every URL; light = version stamps + 3 official URLs, no fetch.<div class="gate">critic: research.md</div></div>
+  <div class="ph"><b>2 · Demos</b>Author writes demo dir from the brief. Critic compiles every file, runs the ones that need no key, checks README order and STEP markers.<div class="gate">critic: demos.md</div></div>
+  <div class="ph"><b>3 · Materials</b>Three authors in parallel, each handed the demo file list: notes page, runbook + solutions, exercise.<div class="gate">critics: notes.md, runbook.md, exercise.md</div></div>
+  <div class="ph"><b>4 · Wire</b>Serial, one agent. Append glossary terms, flip day <code>status</code> to live, regenerate index WEEKS block, fix NEXT links.<div class="gate">shared files, no parallel edits</div></div>
+  <div class="ph"><b>5 · Verify</b>One agent runs <code>python -m unittest</code>. If a failure names a day artifact, one targeted fix agent, then re-run (max 2).<div class="gate">report + flagged count</div></div>
+</div>
+<p><b>Demos before pages.</b> Notes, runbook and exercise all cite demo filenames, so demos must exist first. The notes critic rejects links to files that do not exist.</p>
+<p><b>Repass loop</b> (every gated artifact): generate, critic judges, if fail regenerate with the critiques, up to 3 passes. On the third fail the item is <i>flagged</i> for human review and the run continues. Critic is never the same agent as the author.</p>
+<p><b>Dropped from reference:</b> concept reconciliation (fed a backend taxonomy we do not have), interview question authoring, STT day-summary, client packets. Replaced by a cheap glossary-term append in the Wire step.</p>
+<p><b>Multi-day runs:</b> days are pipelined (day 2 can be in Materials while day 1 is in Research), then a serial Wire barrier, then Verify.</p>
+
+<!-- ============================================================ -->
+<h2 id="critics"><span class="n">6</span>Critics &amp; gates</h2>
+<p>Each critic reads a short spec in <code>harness/critics/</code> so PASS criteria live in one editable place, not buried in prompts.</p>
+<table>
+  <tr><th>Critic</th><th>PASS only if</th><th>Checks by running</th></tr>
+  <tr><td>Research</td><td>structure complete; full gate: 3+ URLs spot-fetched and supportive, no deprecated APIs, stamps current; light gate: structure only</td><td>WebFetch (full only)</td></tr>
+  <tr><td>Demos</td><td>every <code>.py</code> compiles; key-free runnable files produce the docstring's expected output; notebooks validate; README order matches files; STEP markers present; no secrets; API shapes match research stamps</td><td><code>py_compile</code>, run scripts, <code>nbformat.validate</code></td></tr>
+  <tr><td>Notes</td><td>word band; 5–7 steps; captions == steps; 6 questions with type mix; demo-card links resolve; popups excerpt real demo files; no leftover backend scripts; facts trace to brief</td><td>Python one-liner counts</td></tr>
+  <tr><td>Runbook</td><td>required headings; timing sums to 330–390 min; one section per demo file; solutions dir exists and module name matches exercise</td><td>file checks</td></tr>
+  <tr><td>Exercise</td><td>pytest on starter <b>fails</b>; pytest with <code>EXERCISE_SRC=…/solutions</code> <b>passes</b>; 4+ tests; no network; README criteria match tests</td><td><code>python -m pytest</code> twice</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="budget"><span class="n">7</span>Agent budget</h2>
+<div class="callout">
+<p><b>What it means.</b> A Workflow run spawns sub-agents. Every gated artifact costs one author agent plus one critic agent per pass. The Workflow tool in this session carries a guideline of fewer than 10 agents per run. It is a guideline, not a hard cap. The hard limit is 16 agents running concurrently.</p>
+</div>
+<table>
+  <tr><th>Scope</th><th>Pass-1 agents</th><th>Worst case (3 passes everywhere)</th></tr>
+  <tr><td>One day</td><td>5 artifacts × 2 = 10, + wire + verify = <b>12</b></td><td>5 × 5 + 2 = <b>27</b></td></tr>
+  <tr><td>One week (5 days)</td><td><b>56</b></td><td><b>130</b></td></tr>
+</table>
+<p>Three ways to run it:</p>
+<ol>
+  <li><b>Per-day runs, accept 12–27.</b> One invocation per training day. Fits the concurrency cap. Simplest, and the natural unit for the pilot. <span class="tag info">recommended</span></li>
+  <li><b>Split into two scripts per day.</b> <code>day-research-demos.js</code> (~6 agents) then <code>day-materials.js</code> (~8). Stays near the guideline, doubles the invocations and needs the demo result handed between runs.</li>
+  <li><b>Per-week runs.</b> Raise the limit via <code>/config</code> (Dynamic workflow size). 5 days pipelined in one run, 56–130 agents. Fewest invocations, biggest single bill.</li>
+</ol>
+<p class="muted"><b>Decision:</b> per-day runs. <code>python harness/args_for.py &lt;week&gt; &lt;day&gt;</code> prints the args; one <code>Workflow</code> call per training day.</p>
+
+<!-- ============================================================ -->
+<h2 id="fork"><span class="n">8</span>What we fork from the reference, and what we drop</h2>
+<div class="grid2">
+  <div class="card">
+    <h3 style="margin-top:0"><span class="tag ok">copy verbatim</span></h3>
+    <ul>
+      <li><code>style.css</code>, <code>favicon.svg</code>, <code>.nojekyll</code>, <code>bump-css.sh</code></li>
+      <li><code>diagram.js</code>, <code>scrolly.js</code>, <code>codeviewer.js</code></li>
+      <li>Test helpers: HTML parser page model + node probe that evaluates inline <code>window.DIAGRAM</code> / <code>window.QUIZ</code></li>
+      <li>Workflow helpers: <code>gated</code>, <code>fix</code>, <code>VERDICT</code>, <code>repairNulls</code>, <code>compact</code>, salvage critic</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0"><span class="tag info">copy and modify</span></h3>
+    <ul>
+      <li><code>quiz.js</code>: remove identity bypass and tracking beacon; storage key <code>tc_results</code>; gate behaviour per open decision</li>
+      <li><code>theme.js</code>, <code>modals.js</code>: rename <code>FDE_*</code> globals and storage keys</li>
+      <li><code>glossary.js</code>: empty the array except generic seed terms; harness appends per day</li>
+      <li><code>interactive.js</code> → <code>widgets.js</code>: keep only the client-side predict / spot / legend widgets</li>
+      <li><code>survey.js</code>: strip identity gate; Friday pages only; external feedback form is primary</li>
+      <li><code>index.html</code>: keep grid CSS; new phases and project bands; rewrite render loop (no rituals, no progress buttons); WEEKS block generated between markers</li>
+      <li>Day page template: strip backend metas, nav, inline widgets, NOTES.md deliverable; add demo card; script tags reduced to 8</li>
+    </ul>
+  </div>
+</div>
+<div class="card">
+  <h3 style="margin-top:0"><span class="tag drop">drop entirely</span></h3>
+  <p><code>auth</code>, <code>progress</code>, <code>day-summary</code>, <code>reading-coach</code>, <code>coding-coach</code>, <code>codex-usage</code>, <code>roster</code>, <code>usage-notice</code>, <code>learning-chrome</code>, <code>lesson</code>, all <code>interactive-*</code> variants, <code>gauntlet/</code>, <code>atlas/</code>, every root page except index, and the entire <code>fde-backend</code> Worker.</p>
+  <p>A contract test greps the whole site for <code>FDE_</code>, <code>workers.dev</code>, <code>2463</code> and the old script names and fails on any hit. That is the guarantee the fork is clean.</p>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="tests"><span class="n">9</span>Tests</h2>
+<p>Python <code>unittest</code>, no third-party packages beyond pytest and nbformat. Run with <code>python -m unittest discover -s tests -v</code>.</p>
+<table>
+  <tr><th>File</th><th>Covers</th></tr>
+  <tr><td><code>test_curriculum.py</code></td><td>JSON valid; 11 weeks × 5 days; slugs unique; index WEEKS block equals regenerated output (hand edits on either side fail)</td></tr>
+  <tr><td><code>test_pages.py</code></td><td>Every live day page: structure, step count, captions == steps, 6 quiz questions with valid answers, word band, demo links resolve, popups match demo files, sources present, NEXT resolves, forbidden backend strings absent</td></tr>
+  <tr><td><code>test_demos.py</code></td><td>Dir + README + code; every <code>.py</code> compiles; notebooks validate; no secret patterns; README names existing files</td></tr>
+  <tr><td><code>test_exercises.py</code></td><td>Starter fails pytest; solution passes (skipped when <code>trainer/</code> absent so public CI stays green)</td></tr>
+  <tr><td><code>test_trainer.py</code></td><td>Runbook headings; solution module matches exercise. Skipped when <code>trainer/</code> absent</td></tr>
+  <tr><td><code>test_glossary.py</code></td><td>No duplicate terms or aliases</td></tr>
+  <tr><td><code>test_assets.py</code></td><td>Exactly the allowed JS files exist; no <code>FDE_</code> anywhere in <code>docs/</code></td></tr>
+  <tr><td><code>test_links_external.py</code></td><td>Opt-in (<code>CHECK_EXTERNAL=1</code>): HEAD every external link</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="pilot"><span class="n">10</span>Pilot sequence</h2>
+<ol>
+  <li><b>Scaffold.</b> Directories, gitignore, copy and modify assets, transcribe <code>curriculum.json</code> from the PNGs, write metrics / config / build_index / templates / critic specs / tests. <code>git init</code> at root and inside <code>trainer/</code>. Test suite passes with zero live days.</li>
+  <li><b>Hand-build the exemplar page</b> from the reference w02d1 with placeholder content, so authors copy structure rather than RAG content.</li>
+  <li><b>Dry run W1D1.</b> Single-day run. Review all five artifacts by hand, rehearse the runbook against the demo files, fix prompts and critic specs, re-run using <code>resumeFromRunId</code> so unchanged steps are cached.</li>
+  <li><b>Promote W1D1</b> to the template. Run W1 d2–d5. Full test suite, local <code>http.server</code> walk-through, <code>bump-css.sh</code>.</li>
+  <li><b>W1 retrospective.</b> Update <code>AGENTS.md</code>, metrics, critic specs. Then scale week by week. Before week 5 (first full gate, first LLM demos) run W5D1 alone as a second pilot.</li>
+</ol>
+<h3>Verification commands</h3>
+<pre><code>python -m unittest discover -s tests -v
+(cd exercises/week-01/day-1-orientation-agile-and-git &amp;&amp; python -m pytest -q)                                             # expect failures
+(cd exercises/week-01/day-1-orientation-agile-and-git &amp;&amp; EXERCISE_SRC=../../../trainer/week-01/day-1-orientation-agile-and-git/solutions python -m pytest -q) # expect pass
+for f in demos/week-01/day-1-orientation-agile-and-git/*.py; do python -m py_compile "$f"; done
+python harness/build_index.py --check
+(cd docs &amp;&amp; python -m http.server 8000)    # http://localhost:8000/weeks/week-01/day-1-orientation-agile-and-git.html
+node --check docs/assets/js/*.js</code></pre>
+
+<!-- ============================================================ -->
+<h2 id="open"><span class="n">11</span>Remaining decisions &amp; risks</h2>
+<div class="callout"><b>Status:</b> scaffold complete. Next step is the week-01 day-1 dry run (section 10, step 3). Fill in <code>repoUrl</code> and <code>feedbackFormUrl</code> in <code>harness/config.json</code> and <code>docs/index.html</code> before publishing.</div>
+<div class="callout q"><b>Friday review days.</b> Proposed artifact set: recap notes page, cumulative quiz, week mini-exercise, runbook with review agenda and feedback form slot. A prompt variant keyed on <code>kind: review</code>.</div>
+<div class="callout q"><b>W1D1 exercise.</b> Orientation and git day; a pytest exercise is awkward. Proposal: small script exercise (parse a <code>git log --oneline</code> fixture) so the contract holds every day.</div>
+<details>
+  <summary>Known risks</summary>
+  <ul>
+    <li><b>Key-gated demos</b> (Anthropic wk 5, Bedrock wk 9, Pinecone wk 8, SageMaker wk 11): critics can compile and shape-check but not execute. Rehearse manually.</li>
+    <li><b>Heavy dependencies</b> (TensorFlow wk 6–7, SageMaker SDK wk 11): critic execution impractical here; structure validation only. Document a venv per week.</li>
+    <li><b>Dating:</b> Workflow scripts cannot call <code>Date</code>; <code>args.today</code> is mandatory and stamped into briefs.</li>
+    <li><b>Nested git clones</b> under <code>Reference-Example/</code>: never <code>git add</code>; gitignored.</li>
+    <li><b>Node in this shell:</b> the nvm hook is broken in the Bash tool here. Node 22 exists on the machine; tests that need it must locate it or skip.</li>
+  </ul>
+</details>
+</main>
+</div>
+</body>
+</html>

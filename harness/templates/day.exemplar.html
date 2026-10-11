@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w00d0">
+<title>W0·D0 — Topic Title | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261011">
+<script src="../../assets/js/theme.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises" target="_blank" rel="noopener">Exercises</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>Topic Title: One-Line Hook</h1>
+        <div class="meta">
+          <span><b>Week 0</b> · Day 0</span>
+          <span>Phase label (week theme)</span>
+          <span><b>~10 min</b> · notes @150 wpm + diagram + check</span>
+        </div>
+        <p class="summary">Two to four sentences. What today's demos showed, why it matters, and what this page adds
+        on top of the live session. Point at the code-along files by name so the reader knows where to go and run
+        things. This is a reference the learner returns to, not a self-paced course.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="0">
+        <div class="tag">Framing</div>
+        <h2>Section heading that states the idea</h2>
+        <p>Prose paragraph. Facts come only from the research brief. Each section is 150–350 words and the diagram
+        on the right reveals one more piece as the reader scrolls. The first section anchors the whole day in one
+        sentence a learner could repeat back.</p>
+        <p>Second paragraph. Name the demo file the reader should open: <code>01_example.py</code> in today's demo
+        folder shows this with real output.</p>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">Mechanics</div>
+        <h2>How it actually works</h2>
+        <p>Prose. Keep code out of prose; put short excerpts in a code popup (below) that names a real demo file.</p>
+        <div class="ix-predict" data-q="Before you reveal: what does the demo print on STEP 2?" data-a="The expected output, taken from the demo file docstring."></div>
+        <button class="code-cta" type="button" data-modal="code-w00d0"><span class="cc-ico">&lt;/&gt;</span> See the demo code <span class="cc-meta">· 01_example.py</span></button>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">Pitfall</div>
+        <h2>Where people go wrong</h2>
+        <p>Prose drawn from the brief's Common pitfalls. A spot-the-problem widget works well here.</p>
+        <div class="ix-spot" data-snippet="for i in range(len(items)):&#10;    print(items[i])" data-q="What is the un-Pythonic habit here?" data-a="Index-looping. Iterate the items directly: for item in items."></div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="3">
+        <div class="tag">Practice</div>
+        <h2>Connecting to the exercise</h2>
+        <p>Prose. Tie the concept to what the exercise asks for, without giving the solution away.</p>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">Wrap-up</div>
+        <h2>What to remember</h2>
+        <p>Prose. Three to five sentences that a learner can use as revision notes. End by pointing to tomorrow.</p>
+      </section>
+
+      <section class="reading-sources" aria-label="Sources and deeper dive">
+        <h2>Sources &amp; deeper dive</h2>
+        <ul>
+          <li><a href="https://docs.python.org/3/tutorial/" target="_blank" rel="noopener">Python docs — The Python Tutorial</a> — one line on why it matters.</li>
+          <li><a href="https://git-scm.com/book/en/v2" target="_blank" rel="noopener">Pro Git (git-scm.com)</a> — one line.</li>
+          <li><a href="https://peps.python.org/pep-0008/" target="_blank" rel="noopener">PEP 8 — Style Guide for Python Code</a> — one line.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+        <div class="activity-card demo-card">
+          <div class="ac-k">⌨ Code-along files</div>
+          <div class="ac-t">
+            <a href="https://github.com/2494-Gen-AI-CN/training/tree/main/demos/week-00/day-0-example/01_example.py" target="_blank" rel="noopener">01_example.py</a> ·
+            <a href="https://github.com/2494-Gen-AI-CN/training/tree/main/demos/week-00/day-0-example/02_example.py" target="_blank" rel="noopener">02_example.py</a>
+          </div>
+          <div class="ac-meta">run in order · README has the steps</div>
+        </div>
+        <button class="activity-card" type="button" data-modal="deep-modal">
+          <div class="ac-k">⌖ Deep dive</div>
+          <div class="ac-t">Optional extra material</div>
+          <div class="ac-meta">optional · +10 min</div>
+        </button>
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · practice, not graded</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 0 Day 0</footer>
+
+<!-- deep-dive modal (optional) -->
+<div id="deep-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Deep dive: optional extra</h2>
+    <p class="quiz-sub">Optional. ~10 minutes.</p>
+    <p>Extra material grounded in the brief. Worked example or the numbers behind the idea.</p>
+  </div>
+</div>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 0 — goals &amp; exercise</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Objective one, phrased as something the learner can do</li>
+      <li>Objective two</li>
+      <li>Objective three</li>
+    </ul>
+    <div class="ma-k">Today's exercise</div>
+    <ul class="deliv-list check">
+      <li><a href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-00/day-0-example" target="_blank" rel="noopener">exercises/week-00/day-0-example</a> — one line on the task. Run <code>python -m pytest -q</code> until green.</li>
+    </ul>
+    <div class="ma-k">Demo files in order</div>
+    <ul class="deliv-list">
+      <li><code>01_example.py</code> — what it shows</li>
+      <li><code>02_example.py</code> — what it shows</li>
+    </ul>
+    <p class="goals-foot">Tomorrow builds on this. Finish the check to unlock the next page.</p>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Day 1 — Next topic →", href: "day-1-next-topic.html" };
+window.DIAGRAM = {
+  title: "Topic · how the pieces connect",
+  width: 500, height: 420,
+  nodes: [
+    { id:"idea",  step:0, kind:"example", x:14, y:14, w:472, h:56, label:"THE IDEA IN ONE LINE\n  what today is about" },
+    { id:"a",     step:1, x:24,  y:96,  w:200, h:44, label:"Part A", detail:"Tap-for-detail text explaining part A, from the brief." },
+    { id:"b",     step:1, x:276, y:96,  w:200, h:44, label:"Part B" },
+    { id:"trap",  step:2, x:150, y:180, w:200, h:44, label:"Common pitfall", detail:"What goes wrong and why." },
+    { id:"ex",    step:3, x:150, y:260, w:200, h:44, label:"Exercise target" },
+    { id:"sum",   step:4, x:24,  y:340, w:452, h:50, label:"What to remember\n  three bullets" }
+  ],
+  edges: [
+    { id:"e1", step:1, from:"idea", to:"a", dir:"-" },
+    { id:"e2", step:1, from:"idea", to:"b", dir:"-" },
+    { id:"e3", step:2, from:"a", to:"trap", label:"misuse" },
+    { id:"e4", step:3, from:"trap", to:"ex", label:"practice" },
+    { id:"e5", step:4, from:"ex", to:"sum", dir:"-" }
+  ],
+  captions: [
+    "Step 0 caption: the one-line idea. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "Step 1 caption: parts A and B and how they relate.",
+    "Step 2 caption: the pitfall and why it bites.",
+    "Step 3 caption: what the exercise asks you to build.",
+    "Step 4 caption: what to remember."
+  ]
+};
+window.QUIZ = {
+  id: "w00-d0",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "Single-choice question grounded in the brief?",
+      options: ["Wrong option", "Correct option", "Wrong option", "Wrong option"], answer: 1,
+      explain: "Why the correct option is correct, in one or two sentences." },
+    { type: "scq", stem: "Second single-choice question?",
+      options: ["Correct option", "Wrong option", "Wrong option"], answer: 0,
+      explain: "Why." },
+    { type: "tf", stem: "A true/false statement from the brief.", answer: true,
+      explain: "Why it is true." },
+    { type: "mcq", stem: "Select all that apply.",
+      options: ["Correct A", "Correct B", "Wrong C", "Correct D"], answer: [0, 1, 3],
+      explain: "Why A, B and D are correct and C is not." },
+    { type: "match", stem: "Match each term to its meaning.",
+      pairs: [ { l: "Term 1", r: "Meaning 1" }, { l: "Term 2", r: "Meaning 2" }, { l: "Term 3", r: "Meaning 3" } ],
+      explain: "One line per pair." },
+    { type: "open", stem: "In one or two sentences: explain the core idea in your own words.",
+      hint: "Think about the diagram's first node.",
+      model: "A model answer the learner compares against." }
+  ]
+};
+</script>
+
+<!-- code popup: an excerpt of a REAL demo file -->
+<div id="code-w00d0" class="modal-overlay" hidden>
+  <div class="modal-card code-modal">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Demo code: 01_example.py</h2>
+    <p class="cv-cap">What this excerpt shows and which STEP of the demo it comes from.</p>
+    <div class="cv" data-file="01_example.py" data-lang="python"><pre class="cv-raw">&quot;&quot;&quot;Demo 1 — what it demonstrates.
+
+Expected output:
+    hello, world
+&quot;&quot;&quot;
+# --- STEP 1: print something ---
+print(&quot;hello, world&quot;)
+
+# --- STEP 2: a function ---
+def greet(name: str) -&gt; str:
+    return f&quot;hello, {name}&quot;</pre></div>
+    <p class="cv-foot">One line on what to notice.</p>
+  </div>
+</div>
+
+<script src="../../assets/js/diagram.js?v=20261011"></script>
+<script src="../../assets/js/scrolly.js?v=20261011"></script>
+<script src="../../assets/js/modals.js?v=20261011"></script>
+<script src="../../assets/js/quiz.js?v=20261011"></script>
+<script src="../../assets/js/widgets.js?v=20261011"></script>
+<script src="../../assets/js/glossary.js?v=20261011"></script>
+<script src="../../assets/js/codeviewer.js?v=20261011"></script>
+</body>
+</html>

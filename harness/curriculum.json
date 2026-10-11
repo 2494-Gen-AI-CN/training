@@ -1,0 +1,1234 @@
+{
+  "_comment": "Single source of truth for the 11-week calendar. Transcribed from Curricula/Weeks/week1..11.png. Every other path is derived as {week.dir}/{day.slug}. status flips planned->live when the harness Wire step ships a day.",
+  "cohort": "2494-Gen-AI-CN",
+  "siteTitle": "2494 · Gen-AI Python",
+  "phases": {
+    "py": {
+      "label": "Python foundations",
+      "c": "#e8590c"
+    },
+    "data": {
+      "label": "Data, SQL & cloud",
+      "c": "#1c7ed6"
+    },
+    "genai": {
+      "label": "Gen AI foundations",
+      "c": "#7048e8"
+    },
+    "ml": {
+      "label": "ML & deep learning",
+      "c": "#0ca678"
+    },
+    "llm": {
+      "label": "LLM applications & MLOps",
+      "c": "#e03131"
+    }
+  },
+  "projects": {
+    "P0": {
+      "label": "Project 0",
+      "weeks": [
+        1,
+        5
+      ]
+    },
+    "P1": {
+      "label": "Project 1",
+      "weeks": [
+        6,
+        8
+      ]
+    },
+    "P2": {
+      "label": "Project 2",
+      "weeks": [
+        9,
+        11
+      ]
+    }
+  },
+  "weeks": [
+    {
+      "week": 1,
+      "dir": "week-01",
+      "phase": "py",
+      "project": "P0",
+      "theme": "Agile for developers, Git & Python fundamentals",
+      "days": [
+        {
+          "day": 1,
+          "slug": "day-1-orientation-agile-and-git",
+          "id": "w01d1",
+          "kind": "lesson",
+          "gate": "light",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "Orientation, Agile & Git fundamentals",
+          "subtitle": "SDLC · Scrum · story pointing · git init/commit/branch/merge/push/pull",
+          "subtopics": [
+            "Python orientation",
+            "Full stack overview",
+            "Interpreter vs compiler",
+            "REPL and Jupyter",
+            "SDLC and introduction to SDLC",
+            "Agile vs waterfall",
+            "Story pointing",
+            "Scrum ceremonies",
+            "Git fundamentals",
+            "Initializing a repository",
+            "Pushing to a remote repository",
+            "Commit, branch, merge, push, pull",
+            "Source control management (git, vcs, cvcs, dvcs)",
+            "Git exercise"
+          ]
+        },
+        {
+          "day": 2,
+          "slug": "day-2-python-basics",
+          "id": "w01d2",
+          "kind": "lesson",
+          "gate": "light",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "Python basics",
+          "subtitle": "syntax · comments · variables & datatypes · operators · input/output",
+          "subtopics": [
+            "Python syntax",
+            "Comments",
+            "Variables and datatypes",
+            "Operators",
+            "User input and output",
+            "What is Python, why Python",
+            "Professionalism at Revature"
+          ]
+        },
+        {
+          "day": 3,
+          "slug": "day-3-python-data-types",
+          "id": "w01d3",
+          "kind": "lesson",
+          "gate": "light",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "Python data types",
+          "subtitle": "strings · casting · bool · list · tuple · range · set · dict · numbers · datetime",
+          "subtopics": [
+            "Strings",
+            "Casting",
+            "Boolean",
+            "Lists",
+            "Tuples",
+            "Range",
+            "Sets",
+            "Binary types",
+            "NoneType",
+            "Dictionaries",
+            "Numbers",
+            "Datetime",
+            "Namespaces"
+          ]
+        },
+        {
+          "day": 4,
+          "slug": "day-4-control-flow-and-functions",
+          "id": "w01d4",
+          "kind": "lesson",
+          "gate": "light",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "Control flow, functions & arrays",
+          "subtitle": "if/else · while · for · functions · lambda · arrays",
+          "subtopics": [
+            "If-else",
+            "While loops",
+            "For loops",
+            "Functions",
+            "Lambda",
+            "Arrays"
+          ]
+        },
+        {
+          "day": 5,
+          "slug": "day-5-classes-and-inheritance",
+          "id": "w01d5",
+          "kind": "lesson",
+          "feedback": true,
+          "gate": "light",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "Classes & inheritance",
+          "subtitle": "OOP concepts · inheritance · iterators · scope · classes and objects",
+          "subtopics": [
+            "OOP concepts",
+            "Inheritance",
+            "Iterators",
+            "Scope",
+            "Classes and objects"
+          ]
+        }
+      ]
+    },
+    {
+      "week": 2,
+      "dir": "week-02",
+      "phase": "py",
+      "project": "P0",
+      "theme": "Python advanced",
+      "days": [
+        {
+          "day": 1,
+          "slug": "day-1-modules-and-packaging",
+          "id": "w02d1",
+          "kind": "lesson",
+          "gate": "light",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "Modules & packaging",
+          "subtitle": "math · logging · json · regex · pip · pylint · writing modules",
+          "subtopics": [
+            "Math module",
+            "Logging",
+            "JSON",
+            "Regex",
+            "pip and installing packages",
+            "pylint",
+            "Writing your own module"
+          ]
+        },
+        {
+          "day": 2,
+          "slug": "day-2-exceptions-and-file-handling",
+          "id": "w02d2",
+          "kind": "lesson",
+          "gate": "light",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "Exceptions & file handling",
+          "subtitle": "errors · try/except · read, write, create, delete files",
+          "subtopics": [
+            "Errors",
+            "Exception handling",
+            "try-except",
+            "File handling",
+            "Read files",
+            "Write and create files",
+            "Delete files"
+          ]
+        },
+        {
+          "day": 3,
+          "slug": "day-3-pytest-and-data-libraries",
+          "id": "w02d3",
+          "kind": "lesson",
+          "gate": "light",
+          "demoFormat": "nb",
+          "status": "planned",
+          "title": "Testing with pytest & data libraries",
+          "subtitle": "unit testing · pytest · matplotlib · pandas · numpy · interview mindset pt 1",
+          "subtopics": [
+            "Testing overview",
+            "Unit testing",
+            "Pytest",
+            "Overview of data visualization",
+            "Matplotlib",
+            "Pandas",
+            "Numpy",
+            "Interview mindset - 1st part"
+          ]
+        },
+        {
+          "day": 4,
+          "slug": "day-4-collections-module",
+          "id": "w02d4",
+          "kind": "lesson",
+          "gate": "light",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "The collections module",
+          "subtitle": "Counter · namedtuple · OrderedDict",
+          "subtopics": [
+            "Counters",
+            "Named tuples",
+            "Ordered dicts",
+            "Collections module"
+          ]
+        },
+        {
+          "day": 5,
+          "slug": "day-5-python-review",
+          "id": "w02d5",
+          "kind": "review",
+          "feedback": true,
+          "gate": "light",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "Python review",
+          "subtitle": "weeks 1–2 recap · cumulative check · mini-project",
+          "subtopics": [
+            "Python review"
+          ]
+        }
+      ]
+    },
+    {
+      "week": 3,
+      "dir": "week-03",
+      "phase": "data",
+      "project": "P0",
+      "theme": "SQL with MySQL",
+      "days": [
+        {
+          "day": 1,
+          "slug": "day-1-sql-and-rdbms-intro",
+          "id": "w03d1",
+          "kind": "lesson",
+          "gate": "light",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "SQL & RDBMS introduction",
+          "subtitle": "MySQL · schema · tables · data types · ERD · data modeling",
+          "subtopics": [
+            "MySQL",
+            "Introduction to RDBMS",
+            "What is SQL",
+            "Schema",
+            "Table structure",
+            "SQL data types",
+            "Data modeling and ERD",
+            "Defining schema"
+          ]
+        },
+        {
+          "day": 2,
+          "slug": "day-2-sql-sublanguages",
+          "id": "w03d2",
+          "kind": "lesson",
+          "gate": "light",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "SQL sublanguages",
+          "subtitle": "DDL · DML · DQL · DCL · TCL · interview prep pt 2",
+          "subtopics": [
+            "DDL",
+            "DML",
+            "DQL",
+            "DCL",
+            "TCL",
+            "Overview of sublanguages",
+            "Getting ready for your interview - 2nd part"
+          ]
+        },
+        {
+          "day": 3,
+          "slug": "day-3-keys-constraints-and-normalization",
+          "id": "w03d3",
+          "kind": "lesson",
+          "gate": "light",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "Keys, constraints & normalization",
+          "subtitle": "primary/composite/foreign/unique keys · referential integrity · normalization · CRUD",
+          "subtopics": [
+            "Primary key",
+            "Composite key",
+            "Foreign key",
+            "Referential integrity",
+            "Unique key",
+            "Secondary alternate key",
+            "Normalization",
+            "Multiplicity",
+            "Consistency",
+            "CREATE DROP TRUNCATE",
+            "Constraints",
+            "Auto incrementing",
+            "CHECK",
+            "DEFAULT",
+            "CASCADE",
+            "INSERT",
+            "UPDATE",
+            "DELETE"
+          ]
+        },
+        {
+          "day": 4,
+          "slug": "day-4-joins-subqueries-and-transactions",
+          "id": "w03d4",
+          "kind": "lesson",
+          "gate": "light",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "Joins, subqueries & transactions",
+          "subtitle": "clauses · scalar/aggregate functions · joins · ACID · isolation levels",
+          "subtopics": [
+            "Clauses",
+            "Scalar functions",
+            "Aggregate functions",
+            "What is a subquery",
+            "What is a join",
+            "Aliases",
+            "Cross join",
+            "Equi and theta joins",
+            "Inner join",
+            "Left and right joins",
+            "Outer join",
+            "Transaction commit rollback isolation levels",
+            "What is a transaction",
+            "ACID properties",
+            "Transaction properties",
+            "CRUD operations",
+            "Sequence"
+          ]
+        },
+        {
+          "day": 5,
+          "slug": "day-5-views-procedures-and-indexes",
+          "id": "w03d5",
+          "kind": "lesson",
+          "feedback": true,
+          "gate": "light",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "Advanced SQL: triggers, views, procedures & indexes",
+          "subtitle": "trigger · views · stored procedures · UDFs · indexes · review",
+          "subtopics": [
+            "Trigger",
+            "Views",
+            "What is a stored procedure",
+            "What is a user defined function",
+            "Indexes",
+            "Review"
+          ]
+        }
+      ]
+    },
+    {
+      "week": 4,
+      "dir": "week-04",
+      "phase": "data",
+      "project": "P0",
+      "theme": "Data fundamentals, cloud concepts, data warehousing, ETL/ELT",
+      "days": [
+        {
+          "day": 1,
+          "slug": "day-1-cloud-computing-concepts",
+          "id": "w04d1",
+          "kind": "lesson",
+          "gate": "light",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "Cloud computing concepts",
+          "subtitle": "model & service types · IaaS/PaaS/SaaS · pricing · AWS/Azure/GCP data services",
+          "subtopics": [
+            "Cloud computing model types",
+            "Cloud computing service types",
+            "Cloud computing definition",
+            "IaaS, PaaS, SaaS",
+            "Challenges",
+            "Pricing",
+            "AWS/Azure/GCP data services"
+          ]
+        },
+        {
+          "day": 2,
+          "slug": "day-2-big-data-fundamentals",
+          "id": "w04d2",
+          "kind": "lesson",
+          "gate": "light",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "Big data fundamentals",
+          "subtitle": "components · architecture · data lifecycle · structured/semi/unstructured · file types",
+          "subtopics": [
+            "Big data fundamentals",
+            "Components of big data",
+            "Architecture",
+            "Benefits",
+            "Challenges",
+            "Data lifecycle stages",
+            "Types of data: structured, semi-structured, unstructured",
+            "File types"
+          ]
+        },
+        {
+          "day": 3,
+          "slug": "day-3-data-warehousing-and-bigquery",
+          "id": "w04d3",
+          "kind": "lesson",
+          "gate": "light",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "Data warehousing & BigQuery",
+          "subtitle": "OLTP vs OLAP · warehouse vs lake · ODS · data mart · BigQuery datasets, tables, queries",
+          "subtopics": [
+            "Data warehousing introduction",
+            "Data store vendors",
+            "OLTP versus OLAP",
+            "Data warehouse architecture",
+            "Data warehouse versus data lake",
+            "Operational data store",
+            "Data mart",
+            "Data cleansing",
+            "BigQuery",
+            "Creating datasets",
+            "Create and use tables",
+            "BigQuery queries",
+            "Advanced queries",
+            "Denormalization"
+          ]
+        },
+        {
+          "day": 4,
+          "slug": "day-4-dimensional-modeling",
+          "id": "w04d4",
+          "kind": "lesson",
+          "gate": "light",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "Dimensional modeling",
+          "subtitle": "conceptual/logical/physical · star & snowflake schema · slowly changing dimensions",
+          "subtopics": [
+            "Modeling",
+            "Conceptual/logical/physical",
+            "Dimension modeling",
+            "Star schema",
+            "Snowflake schema",
+            "Slowly changing dimensions",
+            "SCD types"
+          ]
+        },
+        {
+          "day": 5,
+          "slug": "day-5-etl-and-elt-pipelines",
+          "id": "w04d5",
+          "kind": "lesson",
+          "feedback": true,
+          "gate": "light",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "ETL & ELT pipelines",
+          "subtitle": "ETL overview · BigQuery connections · building ETL/ELT processes · review",
+          "subtopics": [
+            "ETL overview",
+            "BigQuery connections",
+            "Building ETL/ELT processes",
+            "Review"
+          ]
+        }
+      ]
+    },
+    {
+      "week": 5,
+      "dir": "week-05",
+      "phase": "genai",
+      "project": "P0",
+      "theme": "Gen AI introduction",
+      "days": [
+        {
+          "day": 1,
+          "slug": "day-1-gen-ai-and-prompt-engineering",
+          "id": "w05d1",
+          "kind": "lesson",
+          "gate": "full",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "Gen AI orientation & prompt engineering",
+          "subtitle": "ML/DL/GenAI overview · zero/few-shot · constraints · hallucinations · responsible use",
+          "subtopics": [
+            "ML and DL introduction",
+            "GenAI overview",
+            "AI introduction",
+            "Zero-shot prompting",
+            "Few-shot prompting",
+            "Constraints",
+            "Fine-tuning and conditioning",
+            "Iteration and dialog state",
+            "Instructions and guidelines",
+            "Hallucinations",
+            "Responsible usage",
+            "Security",
+            "Prompt engineering introduction"
+          ]
+        },
+        {
+          "day": 2,
+          "slug": "day-2-llm-landscape-and-api-basics",
+          "id": "w05d2",
+          "kind": "lesson",
+          "gate": "full",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "LLM landscape & API basics",
+          "subtitle": "GPT · BERT · Claude · Llama · Copilot · use cases · best practices · security",
+          "subtopics": [
+            "LLMs (GPT, BERT, Claude, Llama, Copilot, Codeium)",
+            "Use cases for LLMs",
+            "LLM best practices",
+            "LLM security considerations"
+          ]
+        },
+        {
+          "day": 3,
+          "slug": "day-3-ai-assisted-development",
+          "id": "w05d3",
+          "kind": "lesson",
+          "gate": "full",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "AI-assisted development",
+          "subtitle": "pair programming · Copilot · IDE integration · code generation · documentation",
+          "subtopics": [
+            "Gen AI for developers",
+            "Introduction to AI pair programming",
+            "Overview of Copilot",
+            "Integration with IDE",
+            "Using Gen AI for code generation",
+            "Using Gen AI for documentation"
+          ]
+        },
+        {
+          "day": 4,
+          "slug": "day-4-ai-tooling-review-and-security",
+          "id": "w05d4",
+          "kind": "lesson",
+          "gate": "full",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "AI tooling: optimization, analysis & security",
+          "subtitle": "code optimization · code analysis · responsible use · security risks",
+          "subtopics": [
+            "Code optimization",
+            "Code analysis",
+            "Responsible use",
+            "Security risks",
+            "AI tooling review"
+          ]
+        },
+        {
+          "day": 5,
+          "slug": "day-5-gen-ai-review",
+          "id": "w05d5",
+          "kind": "review",
+          "feedback": true,
+          "gate": "full",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "Gen AI review & Project 0 wrap-up",
+          "subtitle": "week recap · cumulative check · project checkpoint",
+          "subtopics": [
+            "Review",
+            "Feedback form"
+          ]
+        }
+      ]
+    },
+    {
+      "week": 6,
+      "dir": "week-06",
+      "phase": "ml",
+      "project": "P1",
+      "theme": "AI/ML fundamentals",
+      "days": [
+        {
+          "day": 1,
+          "slug": "day-1-ml-intro-and-supervised-learning",
+          "id": "w06d1",
+          "kind": "lesson",
+          "gate": "light",
+          "demoFormat": "nb",
+          "status": "planned",
+          "title": "ML introduction & supervised learning",
+          "subtitle": "algorithms & use cases · regression · fitting the line · classification",
+          "subtopics": [
+            "Intro to machine learning - algorithms and use cases",
+            "Supervised/unsupervised learning",
+            "Applications of regression",
+            "Types of regression, fitting the line",
+            "Applications of classification"
+          ]
+        },
+        {
+          "day": 2,
+          "slug": "day-2-clustering-and-k-means",
+          "id": "w06d2",
+          "kind": "lesson",
+          "gate": "light",
+          "demoFormat": "nb",
+          "status": "planned",
+          "title": "Unsupervised learning: clustering",
+          "subtitle": "distance between clusters · k-means",
+          "subtopics": [
+            "Unsupervised learning - clustering",
+            "Distance between clusters",
+            "k-means algorithm"
+          ]
+        },
+        {
+          "day": 3,
+          "slug": "day-3-deep-learning-concepts",
+          "id": "w06d3",
+          "kind": "lesson",
+          "gate": "light",
+          "demoFormat": "nb",
+          "status": "planned",
+          "title": "Introduction to deep learning",
+          "subtitle": "neural network types · CNN & image classification · ANN layers · NLP",
+          "subtopics": [
+            "Intro to deep learning",
+            "Neural networks - types",
+            "CNN and image classification",
+            "Artificial neural network, layers",
+            "Natural language processing - techniques, components, applications"
+          ]
+        },
+        {
+          "day": 4,
+          "slug": "day-4-tensorflow-introduction",
+          "id": "w06d4",
+          "kind": "lesson",
+          "gate": "light",
+          "demoFormat": "nb",
+          "status": "planned",
+          "title": "TensorFlow introduction",
+          "subtitle": "history · basic graphs · tensors of arbitrary shape · graphs, sessions, TensorBoard",
+          "subtopics": [
+            "TensorFlow introduction",
+            "History of TensorFlow",
+            "Implementing basic graphs",
+            "Reducing tensors of arbitrary shape",
+            "Graphs, sessions, TensorBoard"
+          ]
+        },
+        {
+          "day": 5,
+          "slug": "day-5-perceptrons-and-tensorflow-basics",
+          "id": "w06d5",
+          "kind": "lesson",
+          "feedback": true,
+          "gate": "light",
+          "demoFormat": "nb",
+          "status": "planned",
+          "title": "Perceptrons & TensorFlow basics",
+          "subtitle": "activation functions · perceptrons · graph visualization · constants/variables · creating a model",
+          "subtopics": [
+            "Activation functions",
+            "Perceptrons - illustration, training, parameters",
+            "TensorFlow basics",
+            "Graph visualization",
+            "Constants, placeholders, variables",
+            "Creating a model"
+          ]
+        }
+      ],
+      "notes": "CURRENCY RISK: 'graphs, sessions, TensorBoard' and 'constants, placeholders, variables' are TF1 concepts. Teach TF2 eager execution + tf.function, tf.constant/tf.Variable, Keras model building; mention Session/placeholder only as history. Verify against current tensorflow.org guides."
+    },
+    {
+      "week": 7,
+      "dir": "week-07",
+      "phase": "ml",
+      "project": "P1",
+      "theme": "TensorFlow",
+      "notes": "Curriculum names TFLearn, which is unmaintained. Research briefs must verify current status and map each TFLearn topic to its Keras/TF2 equivalent before authoring.",
+      "days": [
+        {
+          "day": 1,
+          "slug": "day-1-mlp-and-backpropagation",
+          "id": "w07d1",
+          "kind": "lesson",
+          "gate": "light",
+          "demoFormat": "nb",
+          "status": "planned",
+          "title": "Multi-layer perceptrons & backpropagation",
+          "subtitle": "limits of single perceptrons · MLP · backprop algorithm",
+          "subtopics": [
+            "Limitations of single perceptrons",
+            "Multi-layer perceptrons",
+            "Backpropagation algorithm",
+            "Understand backprop - neural network"
+          ]
+        },
+        {
+          "day": 2,
+          "slug": "day-2-digit-classifier-and-autoencoders",
+          "id": "w07d2",
+          "kind": "lesson",
+          "gate": "light",
+          "demoFormat": "nb",
+          "status": "planned",
+          "title": "Digit classifier, TensorBoard & autoencoders",
+          "subtitle": "MLP digit classifier · TensorBoard · collaborative filtering with RBM · autoencoders",
+          "subtopics": [
+            "MLP digit classifier using TensorFlow",
+            "TensorBoard",
+            "Collaborative filtering with RBM",
+            "Autoencoders"
+          ]
+        },
+        {
+          "day": 3,
+          "slug": "day-3-tflearn-api",
+          "id": "w07d3",
+          "kind": "lesson",
+          "gate": "light",
+          "demoFormat": "nb",
+          "status": "planned",
+          "title": "High-level model APIs (TFLearn / Keras)",
+          "subtitle": "composing models · sequential composition",
+          "subtopics": [
+            "TFLearn API",
+            "Composing models in TFLearn",
+            "Sequential composition"
+          ]
+        },
+        {
+          "day": 4,
+          "slug": "day-4-layers-batch-norm-and-saving",
+          "id": "w07d4",
+          "kind": "lesson",
+          "gate": "light",
+          "demoFormat": "nb",
+          "status": "planned",
+          "title": "Functional composition, layers, batch norm & saving",
+          "subtitle": "functional composition · predefined layers · batch normalization · save/load",
+          "subtopics": [
+            "Functional composition",
+            "Predefined neural network layers",
+            "Batch normalization",
+            "Saving and loading a model with TFLearn"
+          ]
+        },
+        {
+          "day": 5,
+          "slug": "day-5-custom-training-and-tensorboard",
+          "id": "w07d5",
+          "kind": "lesson",
+          "feedback": true,
+          "gate": "light",
+          "demoFormat": "nb",
+          "status": "planned",
+          "title": "Custom training loops & TensorBoard",
+          "subtitle": "customizing the training process · TensorBoard with high-level APIs",
+          "subtopics": [
+            "Customizing the training process",
+            "TensorBoard with TFLearn"
+          ]
+        }
+      ]
+    },
+    {
+      "week": 8,
+      "dir": "week-08",
+      "phase": "llm",
+      "project": "P1",
+      "theme": "Feature engineering & vector databases",
+      "days": [
+        {
+          "day": 1,
+          "slug": "day-1-feature-engineering",
+          "id": "w08d1",
+          "kind": "lesson",
+          "gate": "full",
+          "demoFormat": "nb",
+          "status": "planned",
+          "title": "Feature engineering",
+          "subtitle": "encoding categorical data · missing values & outliers · feature selection",
+          "subtopics": [
+            "Feature engineering",
+            "Encoding categorical data",
+            "Handling missing values, outliers",
+            "Feature selection techniques"
+          ]
+        },
+        {
+          "day": 2,
+          "slug": "day-2-model-evaluation-and-metrics",
+          "id": "w08d2",
+          "kind": "lesson",
+          "gate": "full",
+          "demoFormat": "nb",
+          "status": "planned",
+          "title": "Model evaluation & metrics",
+          "subtitle": "accuracy · precision · recall · F1 · confusion matrix · overfitting & cross-validation",
+          "subtopics": [
+            "Model evaluation and metrics",
+            "Accuracy, precision, recall, F1-score",
+            "Confusion matrix interpretation",
+            "Avoiding overfitting (regularization, cross-validation)"
+          ]
+        },
+        {
+          "day": 3,
+          "slug": "day-3-vector-databases-chroma-and-pinecone",
+          "id": "w08d3",
+          "kind": "lesson",
+          "gate": "full",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "Vector databases: Chroma & Pinecone",
+          "subtitle": "vectors · use cases · SQLite storage · similarity search · Chroma setup · Pinecone setup · CRUD",
+          "subtopics": [
+            "VectorDB introduction",
+            "Vector overview",
+            "Vector database use cases",
+            "Storing and retrieving data in SQLite",
+            "Vector similarity search",
+            "Chroma DB setup",
+            "Local vector DB with Chroma DB",
+            "Pinecone overview",
+            "CRUD with vector data",
+            "Pinecone setup"
+          ]
+        },
+        {
+          "day": 4,
+          "slug": "day-4-vector-index-management",
+          "id": "w08d4",
+          "kind": "lesson",
+          "gate": "full",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "Vector index & collection management",
+          "subtitle": "index management · collections · partitioning · upsert · metadata · distance metrics · project review",
+          "subtopics": [
+            "Index management",
+            "Collection",
+            "Partitioning vectors",
+            "Upsert",
+            "Vector partitioning using metadata",
+            "Distance metrics",
+            "Project review"
+          ]
+        },
+        {
+          "day": 5,
+          "slug": "day-5-semantic-search-and-embeddings",
+          "id": "w08d5",
+          "kind": "lesson",
+          "feedback": true,
+          "gate": "full",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "Semantic search & embedding pipelines",
+          "subtitle": "preprocessing · upsert prep · semantic query · NER · embedding models · batching · metadata",
+          "subtopics": [
+            "Semantic search",
+            "Data preprocessing",
+            "Preparing for upsert",
+            "Vector query with semantic search",
+            "Named entity recognition (NER)",
+            "Vector embedding models",
+            "Data preparation",
+            "NER helper function",
+            "Vector embedding in batches",
+            "Metadata processing",
+            "VectorDB review"
+          ]
+        }
+      ]
+    },
+    {
+      "week": 9,
+      "dir": "week-09",
+      "phase": "llm",
+      "project": "P2",
+      "theme": "LangChain",
+      "days": [
+        {
+          "day": 1,
+          "slug": "day-1-langchain-bedrock-and-prompts",
+          "id": "w09d1",
+          "kind": "lesson",
+          "gate": "full",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "LangChain orientation, Bedrock & prompts",
+          "subtitle": "RAG intro · models · Bedrock fundamentals & architecture · AWS SDK · prompt templates · output parsing",
+          "subtopics": [
+            "Introduction to retrieval-augmented generation (RAG)",
+            "Introduction to models",
+            "Using LLMs with LangChain examples",
+            "Bedrock fundamentals",
+            "Overview of Amazon Bedrock architecture",
+            "API usage via AWS SDK",
+            "Connect Bedrock LLMs to LangChain",
+            "Prompt templates",
+            "Parsing output",
+            "Serialization of prompts"
+          ]
+        },
+        {
+          "day": 2,
+          "slug": "day-2-document-loaders-and-retrievers",
+          "id": "w09d2",
+          "kind": "lesson",
+          "gate": "full",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "Data connections: loaders, embeddings & retrievers",
+          "subtitle": "document loaders · transformers · text embedding · vector store · retrievers · multi-query · first chains",
+          "subtopics": [
+            "Introduction to data connections",
+            "Document loaders",
+            "Document transformers",
+            "Text embedding",
+            "Vector store",
+            "Retrievers",
+            "Multi-query retrieval",
+            "LangChain chains",
+            "LLMChain",
+            "SimpleSequentialChain"
+          ]
+        },
+        {
+          "day": 3,
+          "slug": "day-3-chains-and-structured-output",
+          "id": "w09d3",
+          "kind": "lesson",
+          "gate": "full",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "Chains & structured output",
+          "subtitle": "SequentialChain · router · transform · math · structured output & audit-trail logging",
+          "subtopics": [
+            "SequentialChain",
+            "LLMRouterChain",
+            "TransformChain",
+            "MathChain",
+            "Structured output design and audit-trail logging for reliability"
+          ]
+        },
+        {
+          "day": 4,
+          "slug": "day-4-conversation-memory",
+          "id": "w09d4",
+          "kind": "lesson",
+          "gate": "full",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "Conversation memory",
+          "subtitle": "ChatMessageHistory · buffer · buffer window · summary memory",
+          "subtopics": [
+            "Introduction to memory",
+            "ChatMessageHistory",
+            "ConversationBufferMemory",
+            "ConversationBufferWindowMemory",
+            "ConversationSummaryMemory"
+          ]
+        },
+        {
+          "day": 5,
+          "slug": "day-5-streamlit-and-langchain-review",
+          "id": "w09d5",
+          "kind": "lesson",
+          "feedback": true,
+          "gate": "full",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "Streamlit integration & LangChain review",
+          "subtitle": "Streamlit · contributing to a LangChain open-source project · review",
+          "subtopics": [
+            "Streamlit",
+            "Adding to LangChain open-source project",
+            "LangChain review"
+          ]
+        }
+      ],
+      "notes": "CURRENCY RISK: the listed topics (LLMChain, SimpleSequentialChain, SequentialChain, LLMRouterChain, TransformChain, MathChain, ConversationBufferMemory / BufferWindow / Summary memory, ChatMessageHistory) are pre-1.0 LangChain classes, deprecated or moved to langchain-classic. Research briefs MUST verify against current LangChain 1.x docs and teach the current equivalent (LCEL runnables / prompt | model | parser pipes, RunnableBranch or routing via structured output, with_structured_output, RunnableWithMessageHistory or LangGraph checkpointer-based memory, create_agent). Keep the curriculum topic NAME in titles so the grid matches, but the demo code must be current. Bedrock: use langchain-aws ChatBedrockConverse; model ids from current Bedrock docs."
+    },
+    {
+      "week": 10,
+      "dir": "week-10",
+      "phase": "llm",
+      "project": "P2",
+      "theme": "LangGraph & agentic AI",
+      "days": [
+        {
+          "day": 1,
+          "slug": "day-1-agentic-ai-concepts",
+          "id": "w10d1",
+          "kind": "lesson",
+          "gate": "full",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "Agentic AI concepts",
+          "subtitle": "LLM vs chain vs agent · autonomy, planning, memory, tool use · LangChain → LangGraph · human-in-the-loop",
+          "subtopics": [
+            "What is agentic AI - difference between LLMs, chains, and agents",
+            "Core components: autonomy, planning, memory, and tool-use",
+            "Why traditional chains fall short for complex reasoning",
+            "The evolution from LangChain to LangGraph",
+            "Human-in-the-loop design"
+          ]
+        },
+        {
+          "day": 2,
+          "slug": "day-2-langgraph-fundamentals",
+          "id": "w10d2",
+          "kind": "lesson",
+          "gate": "full",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "LangGraph fundamentals",
+          "subtitle": "graphs, nodes, edges, state, reducers · branching workflows · memory & async tools",
+          "subtopics": [
+            "LangGraph overview",
+            "LangGraph fundamentals",
+            "LangGraph architecture: graphs, nodes, edges, states, and reducers",
+            "Creating multi-step workflows with branching logic",
+            "Managing memory and async tool execution",
+            "Comparison to LangChain agents"
+          ]
+        },
+        {
+          "day": 3,
+          "slug": "day-3-multi-agent-patterns",
+          "id": "w10d3",
+          "kind": "lesson",
+          "gate": "full",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "Multi-agent patterns",
+          "subtitle": "planner–executor–critic · communication · shared state · pipeline, supervisor, hierarchical, network, fan-out",
+          "subtopics": [
+            "How multiple AI agents coordinate (planner-executor-critic pattern)",
+            "Communication protocols between agents",
+            "Long-term memory and shared state stores",
+            "Tools integration (APIs, databases, vector stores)",
+            "Agent decomposition rationale",
+            "Choosing a multi-agent architecture pattern",
+            "Pipeline/sequential pattern",
+            "Supervisor/router pattern (hub-and-spoke)",
+            "Hierarchical pattern",
+            "Network/peer-to-peer pattern",
+            "Parallel fan-out/fan-in pattern"
+          ]
+        },
+        {
+          "day": 4,
+          "slug": "day-4-crewai-and-agent-security",
+          "id": "w10d4",
+          "kind": "lesson",
+          "gate": "full",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "crewAI & agent security",
+          "subtitle": "crewAI framework · multi-role orchestration · LangChain/LangGraph integration · agent identity & session security",
+          "subtopics": [
+            "Introduction to crewAI",
+            "Open-source framework for collaborative agent systems",
+            "Multi-role, multi-agent orchestration",
+            "Integration with LangChain and LangGraph",
+            "Agent identity and session security"
+          ]
+        },
+        {
+          "day": 5,
+          "slug": "day-5-langgraph-review",
+          "id": "w10d5",
+          "kind": "review",
+          "feedback": true,
+          "gate": "full",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "LangGraph review",
+          "subtitle": "week recap · cumulative check · Project 2 checkpoint",
+          "subtopics": [
+            "LangGraph review"
+          ]
+        }
+      ],
+      "notes": "CURRENCY RISK: 'LangGraph agents', 'comparison to LangChain agents' and crewAI integration assume pre-1.0 APIs (AgentExecutor, initialize_agent). Research briefs MUST verify against current LangGraph 1.x docs: StateGraph, typed state with reducers, checkpointers for memory, interrupt() for human-in-the-loop, create_agent / prebuilt agents, Send API for fan-out. crewAI: verify current version, Flows vs Crews, and the current LangChain-tool integration path; model ids from current docs."
+    },
+    {
+      "week": 11,
+      "dir": "week-11",
+      "phase": "llm",
+      "project": "P2",
+      "theme": "AWS SageMaker & MLOps",
+      "days": [
+        {
+          "day": 1,
+          "slug": "day-1-sagemaker-and-vertex-orientation",
+          "id": "w11d1",
+          "kind": "lesson",
+          "gate": "full",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "SageMaker & Vertex AI orientation",
+          "subtitle": "managed ML services · Studio setup & IAM · project structure · SageMaker lifecycle",
+          "subtopics": [
+            "Vertex AI",
+            "Introduction to AWS SageMaker and managed ML services",
+            "SageMaker Studio setup and IAM role permissions",
+            "Project structure and dataset preparation for ML",
+            "Overview of the SageMaker lifecycle (data / train / deploy / monitor)"
+          ]
+        },
+        {
+          "day": 2,
+          "slug": "day-2-training-and-deployment",
+          "id": "w11d2",
+          "kind": "lesson",
+          "gate": "full",
+          "demoFormat": "nb",
+          "status": "planned",
+          "title": "Model training & deployment",
+          "subtitle": "SavedModel packaging · Estimators & Python SDK · real-time & serverless endpoints · testing",
+          "subtopics": [
+            "Preparing TensorFlow models for deployment (SavedModel, .tar.gz)",
+            "Using SageMaker Estimators and the Python SDK for training jobs",
+            "Creating real-time and serverless inference endpoints",
+            "Testing predictions and optimizing performance"
+          ]
+        },
+        {
+          "day": 3,
+          "slug": "day-3-model-registry-and-monitoring",
+          "id": "w11d3",
+          "kind": "lesson",
+          "gate": "full",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "Model registry & monitoring",
+          "subtitle": "SageMaker Experiments · Model Registry · endpoint rollback · proactive monitoring",
+          "subtopics": [
+            "Tracking experiments with SageMaker Experiments",
+            "Managing model versions with the Model Registry",
+            "Endpoint deployment and rollback strategies",
+            "Proactive monitoring pattern"
+          ]
+        },
+        {
+          "day": 4,
+          "slug": "day-4-sagemaker-pipelines-and-cicd",
+          "id": "w11d4",
+          "kind": "lesson",
+          "gate": "full",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "SageMaker Pipelines & CI/CD",
+          "subtitle": "pipeline steps: prep / train / evaluate / register / deploy · registry integration",
+          "subtopics": [
+            "Introduction to SageMaker Pipelines for MLOps automation",
+            "Creating pipeline steps: data prep / train / evaluate / register / deploy",
+            "Integrating Model Registry with deployment workflows"
+          ]
+        },
+        {
+          "day": 5,
+          "slug": "day-5-mlops-orientation",
+          "id": "w11d5",
+          "kind": "review",
+          "feedback": true,
+          "gate": "full",
+          "demoFormat": "py",
+          "status": "planned",
+          "title": "MLOps orientation & program wrap-up",
+          "subtitle": "MLOps principles · Project 2 showcase · program review",
+          "subtopics": [
+            "MLOps orientation"
+          ]
+        }
+      ]
+    }
+  ]
+}

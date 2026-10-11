@@ -1,0 +1,35 @@
+{
+  "_comment": "Environment + provider defaults used by authoring agents and page templates.",
+  "cohort": "2494-Gen-AI-CN",
+  "siteTitle": "2494 · Gen-AI Python",
+  "brand": {
+    "bold": "2494",
+    "rest": "Gen-AI"
+  },
+  "repoUrl": "https://github.com/2494-Gen-AI-CN/training",
+  "repoBranch": "main",
+  "feedbackFormUrl": "https://REPLACE_ME.example/feedback",
+  "python": "3.12",
+  "llm": {
+    "default": {
+      "provider": "anthropic",
+      "sdk": "anthropic",
+      "model": "claude-haiku-4-5",
+      "envKey": "ANTHROPIC_API_KEY"
+    },
+    "byWeek": {
+      "9": {
+        "provider": "bedrock",
+        "sdk": "boto3",
+        "api": "converse",
+        "model": "RESOLVE_AT_RESEARCH_TIME",
+        "envKey": "AWS_BEARER_TOKEN_BEDROCK"
+      }
+    },
+    "rule": "Model ids are resolved in the research brief from current docs, never from memory."
+  },
+  "trainerRepo": {
+    "path": "trainer",
+    "note": "Separate private git repo cloned at ./trainer and gitignored by this repo."
+  }
+}

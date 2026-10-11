@@ -1,0 +1,17 @@
+{
+  "_comment": "Quality bars for every generated day. Tests and critics read this file; the workflow passes wordMin/wordMax as args overrides.",
+  "notes": {
+    "wordMin": 1200, "wordMax": 1800, "wordTolerance": 100,
+    "readingWpm": 150,
+    "stepsMin": 5, "stepsMax": 7,
+    "quizQuestions": 6,
+    "quizTypeMix": { "scq": 1, "tf": 1, "mcqOrMatch": 1, "openMax": 1 },
+    "goalsMin": 3, "goalsMax": 5,
+    "codePopupsMin": 0, "codePopupsMax": 2,
+    "sourcesMin": 3
+  },
+  "demos": { "filesMin": 2, "filesMax": 5, "maxLinesPerFile": 90 },
+  "exercise": { "testsMin": 4, "testsMax": 10, "pytestTimeoutSec": 120 },
+  "runbook": { "dayMinutesMin": 330, "dayMinutesMax": 390 },
+  "research": { "glossaryMin": 3, "glossaryMax": 8, "pitfallsMin": 3, "pitfallsMax": 6, "demoHintsMin": 2, "demoHintsMax": 4, "fullGateUrlSpotChecks": 3 }
+}

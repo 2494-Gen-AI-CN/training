@@ -1,0 +1,20 @@
+# Reference material (contains nested git clones) — never commit
+Reference-Example/
+# Trainer-only material lives in its own private repo cloned here
+trainer/
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+.ipynb_checkpoints/
+# Secrets
+.env
+*.env
+!.env.example
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
