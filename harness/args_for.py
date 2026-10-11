@@ -62,12 +62,16 @@ def main(argv: list[str]) -> int:
         s = by_slot[d["day"]]
         idx = teaching.index(d)
         nxt = teaching[idx + 1] if idx + 1 < len(teaching) else None
+        # Only link forward to a page that exists; a planned day falls back to the program index.
+        if nxt is not None and nxt.get("status") != "live":
+            nxt = None
         days.append({
             **{k: d[k] for k in ("day", "slug", "id", "kind", "gate", "demoFormat", "title", "subtitle", "subtopics")},
             "date": s["date"].isoformat(),
             "weekday": s["weekday"],
             "dateLabel": bi.date_label(s["date"], year=True),
             "feedback": bi.is_feedback(week, d),
+            "notes": d.get("notes", ""),
             "rel": f"{week['dir']}/{d['slug']}",
             "nextHref": f"{nxt['slug']}.html" if nxt else "../../index.html",
             "nextLabel": f"Day {nxt['day']} — {nxt['title']} →" if nxt else "Back to program →",

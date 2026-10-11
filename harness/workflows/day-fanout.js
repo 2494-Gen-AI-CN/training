@@ -91,6 +91,7 @@ const dayHeader = (d) =>
   `Calendar date of this training day: ${d.dateLabel} (${d.date}, ${A.timezone}); week ${A.week} runs ${A.weekStart} to ${A.weekEnd}. Use this date wherever the day is dated; never invent one.\n` +
   `Subtopics (teach in this order, nothing from later days): ${J(d.subtopics)}\n` +
   (A.weekNotes ? `Week note: ${A.weekNotes}\n` : '') +
+  (d.notes ? `Day note: ${d.notes}\n` : '') +
   `Today's date for stamps: ${A.today}. Python ${CFG.python}. LLM config for this week: ${J(LLM)}.\n` +
   `Root: ${ROOT}. Metrics: ${J(M)}.\n`
 

@@ -91,7 +91,7 @@
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "py",
-          "status": "planned",
+          "status": "live",
           "title": "Orientation, Agile & Git fundamentals",
           "subtitle": "SDLC · Scrum · story pointing · git init/commit/branch/merge/push/pull",
           "subtopics": [
@@ -109,7 +109,8 @@
             "Commit, branch, merge, push, pull",
             "Source control management (git, vcs, cvcs, dvcs)",
             "Git exercise"
-          ]
+          ],
+          "notes": "EXERCISE SHAPE (D-0021): today's pytest exercise is a tiny Python-orientation exercise (variables, arithmetic, strings, simple functions; stdlib only; no git, no subprocess, no classes, no comprehensions, no file I/O) that proves the script/REPL workflow and the pytest loop. The 'Git exercise' subtopic is practised live in the demos (init, commit, branch, merge, push, pull), not in pytest. Exercise author and critic: this replaces 'exercises this day's subtopics'; do not demand a git-based exercise and do not flag the Python-orientation scope as pre-teaching day 3."
         },
         {
           "day": 3,

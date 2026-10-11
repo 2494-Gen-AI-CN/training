@@ -29,7 +29,7 @@ class TrainerTests(unittest.TestCase):
                     self.assertIn("## Review agenda", text)
                 demo_files = sorted(p.name for p in (ROOT / "demos" / rel).iterdir() if re.match(r"^\d{2}_", p.name))
                 for f in demo_files:
-                    self.assertRegex(text, rf"^## Demo \d+: {re.escape(f)}", f"no section for demo {f}")
+                    self.assertRegex(text, re.compile(rf"^## Demo \d+: {re.escape(f)}", re.M), f"no section for demo {f}")
                 # minutes table sums into the day band
                 glance = text.split("## Day at a glance", 1)[1].split("\n## ", 1)[0]
                 mins = [int(m) for m in re.findall(r"^\|[^|]*\|\s*(\d+)\s*\|", glance, re.M)]

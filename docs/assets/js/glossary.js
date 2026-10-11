@@ -80,7 +80,17 @@
     { term: "vector store", def: "A database built to find the stored vectors nearest a query vector, fast.", aka: ["vector database", "vector databases", "vector stores"] },
     { term: "RAG", def: "Retrieval-Augmented Generation — fetch relevant documents, then answer using them.", aka: ["retrieval-augmented generation", "retrieval augmented generation"] },
     { term: "fine-tuning", def: "Continuing to train a model on your own data so new behaviour lives in its weights.", aka: ["fine-tune", "fine-tuned", "finetuning"] },
-    { term: "agent", def: "A program that lets a model decide which tools to call, in what order, to reach a goal.", aka: ["agents", "agentic"] }
+    { term: "agent", def: "A program that lets a model decide which tools to call, in what order, to reach a goal.", aka: ["agents", "agentic"] },
+
+    // — w01d2: orientation, Agile & Git —
+    { term: "repository", def: "A folder whose full change history Git tracks in a hidden .git directory.", aka: ["repo", "repositories"] },
+    { term: "staging area", def: "The holding area where you put changes with git add before they become part of the next commit.", aka: ["staged", "git index"] },
+    { term: "remote", def: "A copy of a repository hosted elsewhere (such as GitHub) that you push to and pull from.", aka: ["origin"] },
+    { term: "SDLC", def: "Software Development Life Cycle — the stages software goes through from idea to retirement: plan, design, build, test, deploy, maintain.", aka: ["software development life cycle"] },
+    { term: "Scrum", def: "An Agile framework that delivers work in short fixed-length Sprints with defined roles, events and artifacts.", aka: ["scrum framework"] },
+    { term: "sprint", def: "A fixed time-box of one month or less in which a Scrum team turns backlog items into a usable increment." },
+    { term: "story point", def: "A relative, unit-less estimate of how much effort a backlog item takes compared with other items, not a number of hours." },
+    { term: "Jupyter notebook", def: "A browser document of code and text cells where each code cell runs in a live kernel and shows its output underneath.", aka: ["notebook", "Jupyter", ".ipynb"] }
     // GLOSSARY:END
   ];
 

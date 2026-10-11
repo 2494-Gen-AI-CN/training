@@ -230,7 +230,7 @@ details.deep[open] summary { border-bottom: 1px solid var(--line); margin-bottom
 .d-example text { fill: #e8e6e1; font-family: var(--mono); font-size: 12px; }
 .d-example.dim rect { fill: #2b2f36; }
 .d-example.hot rect { fill: #1f2329; stroke: var(--accent); stroke-width: 3; }
-.d-example.hot text { fill: var(--surface); }
+.d-example.hot text { fill: #e8e6e1; } /* the card is always dark; --surface is dark too in Mocha */
 /* edge labels live in a top layer; keep them crisp */
 .d-elabel text { font-size: 11.5px; }
 /* halo = a knockout behind the label so the line doesn't cut through it. Must be

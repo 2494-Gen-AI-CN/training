@@ -10,6 +10,7 @@ Newest first.
 
 | ID | Date | Status | Decision | Affects | Supersedes |
 |---|---|---|---|---|---|
+| D-0021 | 2026-10-11 | accepted | W1D2 exercise shape: a tiny Python-orientation exercise (variables, arithmetic, strings, simple functions; stdlib only, no git); git practice happens live in the demos; pytest contract kept | harness/curriculum.json week 1 day 2 (notes), harness/args_for.py (day notes passthrough), harness/workflows/day-fanout.js dayHeader, exercises/week-01/day-2-orientation-agile-and-git, trainer/week-01/day-2-orientation-agile-and-git/solutions | — |
 | D-0020 | 2026-10-11 | accepted | Site theme: Catppuccin Mocha dark by default with Latte as the optional light mode; IBM Plex Sans + IBM Plex Mono self-hosted; no Revature branding colours | docs/assets/css/style.css (tokens, @font-face), docs/assets/fonts/, docs/assets/js/theme.js resolve(), every page via ?v= cache-bust | — |
 | D-0019 | 2026-10-11 | accepted | Site theme: cool slate neutrals with self-hosted Inter (body) and JetBrains Mono (code); Revature orange accent kept | docs/assets/css/style.css (:root and dark tokens, @font-face), docs/assets/fonts/, every page via ?v= cache-bust | — |
 | D-0018 | 2026-10-11 | accepted | Phase palette: Gen AI foundations colour changes from violet #7048e8 to amber #c98500; other four phase colours unchanged | harness/curriculum.json phases.genai.c, docs/index.html generated block, every page that reads window.PHASES | — |
