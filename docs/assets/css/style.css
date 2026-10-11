@@ -624,6 +624,10 @@ footer.foot { border-top:1px solid var(--line); margin-top:50px; padding: 26px 2
 .reading-col .step h2 { font-size:33px; line-height:1.15; margin:6px 0 14px; }
 .reading-col .step p { font-size:21px; line-height:1.75; margin:0 0 18px; }
 .reading-col code { max-width:100%; white-space:pre-wrap; overflow-wrap:anywhere; word-break:break-word; }
+/* Markdown-style code on notes pages: inline chips and fenced command blocks (D-0022) */
+.reading-col code { font-family:var(--mono); font-size:.86em; background:var(--code-bg); padding:1px 5px; border-radius:4px; }
+.reading-col pre { font-family:var(--mono); font-size:13.5px; line-height:1.5; background:var(--code-bg); border:1px solid var(--line); border-radius:8px; padding:10px 14px; margin:14px 0; overflow-x:auto; white-space:pre; }
+.reading-col pre code { background:none; padding:0; border-radius:0; font-size:inherit; white-space:inherit; }
 /* multi-diagram chapter divider in the reading column */
 .reading-col .chapter { margin:46px 0 6px; padding-top:26px; border-top:2px solid var(--line); font-size:13px; text-transform:uppercase; letter-spacing:.13em; font-weight:700; color:var(--accent); }
 .reading-col .chapter .ch-sub { display:block; text-transform:none; letter-spacing:0; font-size:16px; font-weight:600; color:var(--ink-soft); margin-top:4px; }

@@ -38,3 +38,4 @@ Single "what's next" surface for this repo. Read it at session start together wi
 
 - 2026-10-11 — scaffold, decision log, dates, theme landed; STATUS.md created.
 - 2026-10-11 — W1D2 pilot run (D-0021): 20 agents, 4/5 artifacts passed the critic, runbook hand-fixed; `tests/test_trainer.py` regex gained `re.M` (was unpassable); `args_for.py` NEXT-only-if-live; Mocha diagram text fix; page screenshots checked in Mocha and Latte.
+- 2026-10-11 — D-0022: Markdown-style code on notes pages (inline chips, fenced `<pre><code>` command blocks); CSS, exemplar example, notes author prompt line, W1D2 retrofitted with 6 blocks (1779 words, still in band).

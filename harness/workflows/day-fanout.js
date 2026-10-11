@@ -153,6 +153,7 @@ async function materialsStage(d, demo) {
       `- window.QUIZ with exactly ${MN.quizQuestions} questions: ≥1 scq, ≥1 tf, ≥1 mcq or match, ≤1 open; every non-open question has explain; grounded in the brief and the demos.\n` +
       `- #goals-modal: ${MN.goalsMin}–${MN.goalsMax} "By the end of today you can" items; "Today's exercise" link ${exUrl}; "Demo files in order" list.\n` +
       `- Code popups: 0–2, each excerpting a REAL demo file (data-file = exact filename, code HTML-escaped).\n` +
+      `- Code in prose: single tokens (a command, a filename, an identifier) inline as <code>; any sequence of 2+ commands or lines the reader would type goes in a <pre><code> block (HTML-escaped, one command per line, no prompt characters) — never a run of commands inside a sentence.\n` +
       `- section.reading-sources with ≥${MN.sourcesMin} URLs from the brief.\n` +
       `- window.NEXT = { label: ${J(d.nextLabel)}, href: ${J(d.nextHref)} }.\n` +
       `- Scripts: theme.js in head; bottom exactly diagram, scrolly, modals, quiz, widgets, glossary, codeviewer${d.feedback ? ', survey (+ a #survey section with window.SURVEY and a link to ' + CFG.feedbackFormUrl + ')' : ''}; relative ../../assets/... paths. Widgets allowed: .ix-legend, .ix-predict, .ix-spot only.\n` +

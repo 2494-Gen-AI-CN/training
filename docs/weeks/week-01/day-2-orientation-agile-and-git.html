@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="tc-day" content="w01d2">
 <title>W1·D2 — Orientation, Agile &amp; Git fundamentals | 2494 · Gen-AI Python</title>
-<link rel="stylesheet" href="../../assets/css/style.css?v=20261011-2">
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261011-3">
 <script src="../../assets/js/theme.js"></script>
 </head>
 <body>
@@ -142,14 +142,25 @@
         <code>add</code> both starts tracking new files and stages modified ones. <code>git commit -m "message"</code>
         records the staged snapshot and <code>git log --oneline</code> lists one commit per line. On a fresh Windows
         machine the first commit usually fails with "Author identity unknown"; set <code>user.name</code> and
-        <code>user.email</code> once with <code>git config --global</code>.</p>
+        <code>user.email</code> once with <code>git config --global</code>. The whole local loop, in the order the
+        demo runs it:</p>
+<pre><code>git init
+git status
+git add hello.py
+git commit -m "add hello script"
+git log --oneline</code></pre>
         <p><code>git branch feature</code> creates a branch but does not switch to it; <code>git switch feature</code>
         (Git 2.23+) moves <code>HEAD</code>, and <code>git switch -c feature</code> does both in one step. A merge is a fast-forward when the target branch has no new commits since the feature
         branch diverged, so Git simply moves the pointer. Otherwise Git creates a merge commit with two parents, and
         if both sides changed the same lines it stops with <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code>,
         <code>=======</code> and <code>&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code> markers for you to resolve, then
         <code>git add</code> and <code>git commit</code>. STEP 4 of the demo forces exactly that and keeps both
-        greetings.</p>
+        greetings. The branch-and-merge loop from STEP 3:</p>
+<pre><code>git switch -c feature
+git commit -am "greet from feature"
+git switch main
+git merge feature
+git log --oneline --graph</code></pre>
         <div class="ix-spot" data-snippet="git branch feature&#10;# ...edit hello.py...&#10;git commit -am &quot;greet from feature&quot;" data-q="Where did that commit land, and why is the feature branch still empty?" data-a="On main. git branch only creates the branch; HEAD never moved. Use git switch -c feature (or git checkout -b feature) and check git status or git branch before committing."></div>
         <button class="code-cta" type="button" data-modal="code-w01d2-merge"><span class="cc-ico">&lt;/&gt;</span> See the branch, merge and conflict steps <span class="cc-meta">· 04_git_local_loop.py</span></button>
       </section>
@@ -163,6 +174,12 @@
         <code>git remote add origin &lt;url&gt;</code> names the remote, and <code>git push -u origin main</code>
         uploads the branch and sets the upstream so later <code>git push</code> and <code>git pull</code> need no
         arguments.</p>
+<pre><code>git remote add origin &lt;url&gt;
+git remote -v
+git push -u origin main
+git fetch
+git log --oneline main..origin/main
+git pull</code></pre>
         <p>STEP 3 clones a second copy as the teammate, commits a README there and pushes, which is what editing a
         file in the GitHub web UI does to your repo. STEP 4 then splits pull in two. <code>git fetch</code> downloads
         the new history without changing your working tree: the demo's file list after fetch has no
@@ -178,16 +195,26 @@
       <section class="step" data-diagram="0" data-step="6">
         <div class="tag">Wrap-up</div>
         <h2>The Git exercise is live; the pytest exercise is Python</h2>
-        <p>Today's Git practice is not a test file. After demo 04, make a fresh folder (<code>mkdir w01d2-git</code>,
-        <code>cd w01d2-git</code>, <code>git init</code>) and repeat STEPs 2 to 4 by hand: add, commit,
-        <code>git switch -c feature</code>, merge, one deliberate conflict. After demo 05, create an empty repository
-        on GitHub, <code>git remote add origin</code>, <code>git push -u origin main</code>, edit a file in the web UI,
-        <code>git pull</code>, and read <code>git log --oneline</code>.</p>
+        <p>Today's Git practice is not a test file. After demo 04, make a fresh folder outside the course repository
+        and repeat STEPs 2 to 4 by hand: add, commit, <code>git switch -c feature</code>, merge, one deliberate
+        conflict.</p>
+<pre><code>mkdir w01d2-git
+cd w01d2-git
+git init</code></pre>
+        <p>After demo 05, create an empty repository on GitHub (no README), connect it, push, edit a file in the web
+        UI, then pull the change back and read the log.</p>
+<pre><code>git remote add origin &lt;url&gt;
+git push -u origin main
+git fetch
+git pull
+git log --oneline</code></pre>
         <p>The pytest exercise is deliberately small: variables, arithmetic, strings and a few simple functions,
         standard library only. Its job is to prove the script-and-REPL workflow and the test loop. pytest collects
         files named <code>test_*.py</code> or <code>*_test.py</code> and runs functions whose names start with
         <code>test</code>; a plain <code>assert</code> is enough, because pytest rewrites it to show the compared
-        values on failure. Run <code>python -m pytest -q</code> until green.</p>
+        values on failure. Run pytest from the exercise folder until green:</p>
+<pre><code>cd exercises/week-01/day-2-orientation-agile-and-git
+python -m pytest -q</code></pre>
         <p>Remember three things. CPython compiles to bytecode and then interprets it, and the REPL keeps your last
         result in <code>_</code>. The SDLC phases never change; Scrum runs all of them inside every Sprint and sizes
         work in relative points, not hours. Git moves files from modified to staged to committed, and pull is fetch

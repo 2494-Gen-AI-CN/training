@@ -56,7 +56,12 @@
       <section class="step" data-diagram="0" data-step="1">
         <div class="tag">Mechanics</div>
         <h2>How it actually works</h2>
-        <p>Prose. Keep code out of prose; put short excerpts in a code popup (below) that names a real demo file.</p>
+        <p>Prose. Single tokens go inline as <code>python -m pytest -q</code>; a sequence the reader would type goes in a
+        fenced block, one command per line, no prompt characters; longer excerpts go in a code popup (below) that
+        names a real demo file.</p>
+<pre><code>git switch -c feature
+git add hello.py
+git commit -m "greet from feature"</code></pre>
         <div class="ix-predict" data-q="Before you reveal: what does the demo print on STEP 2?" data-a="The expected output, taken from the demo file docstring."></div>
         <button class="code-cta" type="button" data-modal="code-w00d0"><span class="cc-ico">&lt;/&gt;</span> See the demo code <span class="cc-meta">· 01_example.py</span></button>
       </section>
