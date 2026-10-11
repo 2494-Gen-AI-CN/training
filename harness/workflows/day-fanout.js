@@ -6,6 +6,9 @@
 //
 // Pipeline per day:  Research (gate-tiered) -> Demos -> Materials (notes ∥ runbook ∥ exercise)
 // then, once every day is through:  Wire (serial, shared files) -> Verify (unittest, ≤2 fix loops).
+// Demos (D-0030): walkthrough scripts + answer keys are authored to trainer/<rel>/demos/ (private) and
+// published to demos/<rel>/ by harness/publish_demos.py only once curriculum.json carries taught:<date>.
+// A demoFormat "none" day skips the Demos stage; its runbook carries facilitation scripts instead.
 // Every artifact is produced by an author agent and judged by a DIFFERENT critic agent
 // reading harness/critics/<artifact>.md; up to 3 passes, then the item is flagged (never blocks).
 //
@@ -55,7 +58,10 @@ const tierLabel = (s) => { const t = tier(s); return `${s}=${t.model || 'inherit
 const DAYS = A.days.map(d => ({
   ...d,
   researchFile: `${H}/research/${d.rel}.md`,
-  demoDir: `${ROOT}/demos/${d.rel}`,
+  demoDir: `${TRAINER}/${d.rel}/demos`,          // scripts (NN_<slug>.md) + key/ (answer keys): private until taught
+  keyDir: `${TRAINER}/${d.rel}/demos/key`,
+  pubDemoDir: `${ROOT}/demos/${d.rel}`,           // written only by harness/publish_demos.py
+  noDemos: d.demoFormat === 'none',
   exDir: `${ROOT}/exercises/${d.rel}`,
   trDir: `${TRAINER}/${d.rel}`,
   pageFile: `${ROOT}/docs/weeks/${d.rel}.html`,
@@ -71,9 +77,10 @@ const RESEARCH_SCHEMA = { type:'object', additionalProperties:false, properties:
   pitfalls:{ type:'array', items:{type:'string'} },
   summary:{type:'string'} }, required:['versionStamps','sourceCount','glossaryTerms','pitfalls','summary'] }
 const DEMO_SCHEMA = { type:'object', additionalProperties:false, properties:{
-  files:{ type:'array', items:{ type:'object', additionalProperties:false, properties:{ name:{type:'string'}, shows:{type:'string'}, runnable:{type:'boolean'}, needsKey:{type:'boolean'} }, required:['name','shows','runnable','needsKey'] } },
+  scripts:{ type:'array', items:{ type:'object', additionalProperties:false, properties:{ name:{type:'string'}, key:{type:'string'}, objective:{type:'string'}, minutes:{type:'number'}, mode:{type:'string'}, needsKey:{type:'boolean'} }, required:['name','key','objective','minutes','mode','needsKey'] } },
+  facilitation:{ type:'array', items:{type:'string'} },
   requirements:{ type:'array', items:{type:'string'} },
-  summary:{type:'string'} }, required:['files','requirements','summary'] }
+  summary:{type:'string'} }, required:['scripts','facilitation','requirements','summary'] }
 const NOTES_SCHEMA = { type:'object', additionalProperties:false, properties:{
   wordCount:{type:'number'}, declaredMinutes:{type:'number'}, steps:{type:'number'}, quizCount:{type:'number'},
   demoLinks:{ type:'array', items:{type:'string'} }, codePopups:{ type:'array', items:{type:'string'} }, summary:{type:'string'} },
@@ -136,19 +143,21 @@ async function researchStage(d) {
 }
 
 async function demosStage(d) {
+  if (d.noDemos) return { task: `${d.id} demos`, status:'skipped', passes:0, summary:'demoFormat none: no code demo; the runbook carries a facilitation script per subtopic', result:{ scripts:[], facilitation: d.subtopics, requirements:[], summary:'' } }
   return gated(`${d.id} demos`,
     (cr, pass) => agent(
-      `You are the DEMO author. ${dayHeader(d)}` +
-      `Read the research brief ${d.researchFile} — your only source of facts and version/API shapes. Read ${H}/templates/demo-README.md.\n` +
-      `Write ${d.demoDir}/: README.md (title, prerequisites, run-order table file|shows|run|needs key?, STEP explanation), ${M.demos.filesMin}–${M.demos.filesMax} code files named NN_<slug>.${d.demoFormat === 'nb' ? 'ipynb (notebooks for exploratory parts; .py allowed for setup)' : 'py'} in teaching order.\n` +
-      `Each .py: ≤${M.demos.maxLinesPerFile} lines; top docstring with PURPOSE and EXPECTED OUTPUT; ≥2 "# --- STEP n: <what to type next> ---" markers in order; runnable with "python <file>" from the demo dir. Each .ipynb: nbformat v4, markdown cell before each STEP, outputs cleared.\n` +
-      `Anything needing a key: guard with an env check that prints a clear message and exits 0 when absent; add .env.example (names only). requirements.txt only if non-stdlib, pinned to the brief's stamps.\n` +
-      `LLM calls (if this day has any) use exactly ${J(LLM)}; model id from the brief. No secrets. Use Bash to run every key-free script and confirm its output matches its docstring before returning.\n` +
-      `Return files[] (name, shows, runnable, needsKey), requirements[], summary.` + fix(cr),
+      `You are the DEMO author (D-0030: a demo IS the walkthrough script the trainer types in front of the room; the committed code is the answer key). ${dayHeader(d)}` +
+      `Read the research brief ${d.researchFile} — your only source of facts and version/API shapes. Read ${H}/templates/demo-script.md (script format, every rule in its comments) and ${H}/templates/demo-README.md. Read ${H}/critics/demos.md so you know what the critic runs.\n` +
+      `FIRST sort the day's subtopics by the CONSULT-vs-WRITE test: a subtopic whose objective is fluency (the room must become able to type it: code, commands, git, SDK calls) gets a script with Delivery mode "typed"; reference material learners will look up later may be "lecture-over-file" (rare); a concept subtopic (SDLC, Scrum, story points, MLOps concepts, professionalism) gets NO script — list it under facilitation[] and the runbook author writes a timed facilitation block for it. Respect the Day note's limits (e.g. "at most one demo on the on-ramp").\n` +
+      `Write ${d.demoDir}/ (private trainer repo; create dirs): ${M.demos.scriptsMin}–${M.demos.scriptsMax} scripts named NN_<slug>.md in teaching order, each ${M.demos.minutesPerScriptMin}–${M.demos.minutesPerScriptMax} min, with the nine header bullets, "## Step n — title (M min)" headings (≥2, minutes summing to Time), a cwd: line in every step that has a code or command block, the exact code/commands in fenced blocks (\`\`\`python for code typed into a file, \`\`\`bash for terminal commands one per line without prompt characters, \`\`\`text for expected output), "Talking points while typing" per step, Common pitfalls (symptom + fix), What we did NOT cover (intentional), Wrap-up questions, Sequence pointer. Every token introduced before first use; the first script that uses a tool carries install + version + config commands proven by running them; every tool-generated claim proven by running the tool.\n` +
+      `Write ${d.keyDir}/: one answer key per script with the same NN and slug: key/NN_<slug>.${d.demoFormat === 'nb' ? 'ipynb (nbformat v4, outputs cleared, one markdown cell per step; .py allowed for setup)' : 'py'} (≤${M.demos.maxLinesPerFile} lines, runnable with "python <file>" from key/, its lines EXACTLY the union of the script's \`\`\`python blocks — no elisions, no stubs; a line typed then replaced goes in a \`\`\`python transient block) OR key/NN_<slug>.md for a terminal demo (a transcript: \`\`\`console blocks whose "$ " lines are exactly the script's \`\`\`bash commands in order, followed by the real output you captured by running them). Plus key/README.md (run-order table file|shows|run|needs key? listing every key file; template demo-README.md), key/requirements.txt only if non-stdlib (pinned to the brief's stamps), key/.env.example only if a key is needed (names only; such keys guard with an env check that prints a clear message and exits 0 when absent).\n` +
+      `LLM calls (if this day has any) use exactly ${J(LLM)}; model id from the brief. No secrets. Do NOT write anything under ${d.pubDemoDir} (published later by harness/publish_demos.py).\n` +
+      `Before returning, with Bash: run "python ${H}/demo_check.py ${d.demoDir}" until it prints OK; run every .py key from key/ and confirm the output matches the script's Check blocks; replay every transcript's commands in a scratch folder and confirm the output.\n` +
+      `Return scripts[] (name, key, objective, minutes, mode, needsKey), facilitation[] (subtopics with no script), requirements[], summary.` + fix(cr),
       { schema: DEMO_SCHEMA, label:`${d.id}:demos`, phase:'Demos', ...tier('demos', pass) }),
     (_r) => agent(
-      `DEMOS CRITIC. Read ${H}/critics/demos.md and apply it to ${d.demoDir}/ against the brief ${d.researchFile}. Use Bash: py_compile every .py, nbformat.validate every .ipynb, RUN every key-free script (60 s timeout) and compare to its docstring, run key-gated scripts without the key. Day context: ${dayHeader(d)}` +
-      `Return pass, critiques (file + concrete fix), one-sentence summary.`,
+      `DEMOS CRITIC. Read ${H}/critics/demos.md and apply it to ${d.demoDir}/ (scripts + key/) against the brief ${d.researchFile}. Use Bash: run "python ${H}/demo_check.py ${d.demoDir}" and quote its output; RUN every .py key from key/ (60 s timeout) against the script's Check blocks; replay every transcript key's "$ " commands in a fresh scratch folder; run key-gated keys without the key; nbformat.validate every .ipynb. Then walk every script as a learner (items 5–8) and judge the CONSULT-vs-WRITE split (item 9). Day context: ${dayHeader(d)}` +
+      `Return pass, critiques (file + step + concrete fix), one-sentence summary.`,
       { schema: VERDICT, label:`${d.id}:demos-crit`, phase:'Demos', ...tier('critic') }))
 }
 
@@ -162,23 +171,29 @@ const humanize = (d) => agent(
   { label:`${d.id}:notes-humanize`, phase:'Materials', ...tier('humanize') })
 
 async function materialsStage(d, demo) {
-  const files = (demo && demo.result && demo.result.files) ? demo.result.files : []
-  const fileNames = files.map(f => f.name)
+  const scripts = (demo && demo.result && demo.result.scripts) ? demo.result.scripts : []
+  const scriptNames = scripts.map(s => s.name)
+  const keyNames = scripts.map(s => s.key)
+  const facilitation = (demo && demo.result && demo.result.facilitation) ? demo.result.facilitation : []
   const demoUrl = `${CFG.repoUrl}/tree/${CFG.repoBranch || 'main'}/demos/${d.rel}`
   const exUrl = `${CFG.repoUrl}/tree/${CFG.repoBranch || 'main'}/exercises/${d.rel}`
+  const demoCtx = d.noDemos
+    ? `This day has NO code demos (demoFormat none): every subtopic is facilitated from the runbook.\n`
+    : `Demo scripts (private until taught, in ${d.demoDir}): ${J(scripts.map(s => ({ name:s.name, key:s.key, objective:s.objective, minutes:s.minutes })))}. Answer keys in ${d.keyDir}. Subtopics facilitated without a demo: ${J(facilitation)}.\n`
   const notes = () => gated(`${d.id} notes page`,
     (cr, pass) => agent(
-      `You are the NOTES-PAGE author. ${dayHeader(d)}` +
-      `Read (1) ${TEMPLATE} — copy its FULL structure (head+meta tc-day, topbar, nav.toc, article.reading-col with .lede + section.step blocks + section.reading-sources, aside.side with diagram + .demo-card + quiz card + side-nav, #quiz-modal, #goals-modal, optional #deep-modal, 0–2 #code-* popups, inline window.NEXT/DIAGRAM/QUIZ, the exact script tags). (2) ${d.researchFile} — your ONLY source of facts. (3) ${d.demoDir}/README.md and the demo files ${J(fileNames)}.\n` +
+      `You are the NOTES-PAGE author. ${dayHeader(d)}${demoCtx}` +
+      `Read (1) ${TEMPLATE} — copy its FULL structure (head+meta tc-day, topbar, nav.toc, article.reading-col with .lede + section.step blocks + section.reading-sources, aside.side with diagram + ${d.noDemos ? 'NO demo card (demoFormat none)' : '.demo-card variant A (pending)'} + quiz card + side-nav, #quiz-modal, #goals-modal, optional #deep-modal, 0–2 #code-* popups, inline window.NEXT/DIAGRAM/QUIZ, the exact script tags). (2) ${d.researchFile} — your ONLY source of facts. (3) ${d.noDemos ? 'nothing else' : 'the demo scripts ' + J(scriptNames) + ' in ' + d.demoDir + ' and the answer keys in ' + d.keyDir}.\n` +
       `Write ${d.pageFile}:\n` +
       `- <meta name="tc-day" content="${d.id}">; title "<title> | ${CFG.siteTitle}"; topbar brand "${(CFG.brand||{}).bold}·${(CFG.brand||{}).rest}", Home ../../index.html, Demos ${CFG.repoUrl}/tree/main/demos, Exercises ${CFG.repoUrl}/tree/main/exercises.\n` +
       `- .lede meta: "Week ${A.week} · Day ${d.day}", "${d.dateLabel}", "${A.theme}", "~N min" where N = round(prose words / ${MN.readingWpm || 150}).\n` +
-      `- ${MN.stepsMin}–${MN.stepsMax} section.step (data-step 0..n-1), prose ${WORD_MIN}–${WORD_MAX} words total; the page is the reference that deepens what the demos show — name the demo files where the reader should go run them.\n` +
-      `- .demo-card: "Code-along files" linking each demo file as ${demoUrl}/<file>.\n` +
+      `- ${MN.stepsMin}–${MN.stepsMax} section.step (data-step 0..n-1), prose ${WORD_MIN}–${WORD_MAX} words total; the page is the reference that deepens what the trainer types live — refer to a demo by its objective ("the Git local-loop demo"), never by a file path (the answer keys are not public until after class).\n` +
+      (d.noDemos ? `- NO .demo-card and no "Demos today" list (demoFormat none).\n`
+                 : `- .demo-card exactly as the template's variant A: data-demo="pending", text "Published after class", no links (D-0030; harness/publish_demos.py flips it after the session).\n`) +
       `- window.DIAGRAM with captions.length == step count, nodes {id,step,x,y,w,h,label,detail?}, edges referencing real ids; each step reveals something the section explains.\n` +
       `- window.QUIZ with exactly ${MN.quizQuestions} questions: ≥1 scq, ≥1 tf, ≥1 mcq or match, ≤1 open; every non-open question has explain; grounded in the brief and the demos.\n` +
-      `- #goals-modal: ${MN.goalsMin}–${MN.goalsMax} "By the end of today you can" items; "Today's exercise" link ${exUrl}; "Demo files in order" list.\n` +
-      `- Code popups: 0–2, each excerpting a REAL demo file (data-file = exact filename, code HTML-escaped).\n` +
+      `- #goals-modal: ${MN.goalsMin}–${MN.goalsMax} "By the end of today you can" items; "Today's exercise" link ${exUrl}; ${d.noDemos ? 'no demo list' : '"Demos today" list: one item per script, its objective in order, no file names or links'}.\n` +
+      `- Code popups: 0–2, each a SHORT excerpt of a real answer key in ${d.keyDir} (data-file = exact key filename, e.g. ${keyNames[0] || '01_<slug>.py'}; code HTML-escaped; never the whole file).\n` +
       `- Code in prose: single tokens (a command, a filename, an identifier) inline as <code>; any sequence of 2+ commands or lines the reader would type goes in a <pre><code> block (HTML-escaped, one command per line, no prompt characters) — never a run of commands inside a sentence.\n` +
       `- section.reading-sources with ≥${MN.sourcesMin} URLs from the brief.\n` +
       `- window.NEXT = { label: ${J(d.nextLabel)}, href: ${J(d.nextHref)} }.\n` +
@@ -188,7 +203,7 @@ async function materialsStage(d, demo) {
       { schema: NOTES_SCHEMA, label:`${d.id}:notes`, phase:'Materials', ...tier('notes', pass) })
       .then(async (r) => { if (r) await humanize(d); return r }),
     (_r) => agent(
-      `NOTES CRITIC. Read ${H}/critics/notes.md and apply it to ${d.pageFile} against ${d.researchFile} (allowed facts), ${TEMPLATE} (structure), demo files ${J(fileNames)} in ${d.demoDir}. Word band ${WORD_MIN}–${WORD_MAX}. Run the verification snippet in the critic spec with Bash. Day context: ${dayHeader(d)}` +
+      `NOTES CRITIC. Read ${H}/critics/notes.md and apply it to ${d.pageFile} against ${d.researchFile} (allowed facts), ${TEMPLATE} (structure), ${d.noDemos ? 'no demos (demoFormat none: the page must carry NO demo card)' : 'demo scripts ' + J(scriptNames) + ' in ' + d.demoDir + ' and answer keys ' + J(keyNames) + ' in ' + d.keyDir + ' (the demo card must be data-demo="pending" with no links)'}. Word band ${WORD_MIN}–${WORD_MAX}. Run the verification snippet in the critic spec with Bash. Day context: ${dayHeader(d)}` +
       `Return pass, critiques (concrete fixes), one-sentence summary.`,
       { schema: VERDICT, label:`${d.id}:notes-crit`, phase:'Materials', ...tier('critic') }))
 
@@ -196,7 +211,7 @@ async function materialsStage(d, demo) {
   const exercise = () => rubric ? gated(`${d.id} exercise`,
     (cr, pass) => agent(
       `You are the EXERCISE author (RUBRIC kind: a hands-on deliverable marked against a rubric; NO starter module, NO pytest). ${dayHeader(d)}` +
-      `Read ${d.researchFile} and the demos in ${d.demoDir} (${J(fileNames)}). Read ${H}/templates/exercise-rubric-README.md and follow its headings.\n` +
+      `${demoCtx}Read ${d.researchFile}${d.noDemos ? '' : ', the demo scripts in ' + d.demoDir + ' and the answer keys in ' + d.keyDir}. Read ${H}/templates/exercise-rubric-README.md and follow its headings.\n` +
       `Write ${d.exDir}/README.md: the task (what trainees build on their own machine/GitHub, drawn from this day's subtopics and the Day note), "## Deliverable" (exactly what they hand in or show), "## Acceptance criteria" (5–8 observable checklist items), "## Rubric" (markdown table criterion | meets | partial | missing), "## Getting started" (commands in a fenced block), "## Hints" (≥2); sized for 60–90 min. Do NOT create starter/ or tests/.\n` +
       `ALSO write ${d.trDir}/solutions/RUBRIC.md (private trainer marking guide; create dirs): for every acceptance criterion, the exact command(s) a trainer runs against a trainee's repo to check it in under two minutes, the expected output, and what "meets" vs "partial" looks like; plus common failure modes.\n` +
       `Return module="rubric", testCount=<number of acceptance criteria>, starterFailed=false, solutionPassed=<true iff RUBRIC.md covers every criterion>, summary.` + fix(cr),
@@ -208,7 +223,7 @@ async function materialsStage(d, demo) {
   : gated(`${d.id} exercise`,
     (cr, pass) => agent(
       `You are the EXERCISE author. ${dayHeader(d)}` +
-      `Read ${d.researchFile} and the demos in ${d.demoDir} (${J(fileNames)}). Read ${H}/templates/exercise-README.md and ${H}/templates/conftest.py.\n` +
+      `${demoCtx}Read ${d.researchFile}${d.noDemos ? '' : ', the demo scripts in ' + d.demoDir + ' and the answer keys in ' + d.keyDir}. Read ${H}/templates/exercise-README.md and ${H}/templates/conftest.py.\n` +
       `Write ${d.exDir}/: README.md (task, acceptance checklist mapping 1:1 to test names, getting started, ≥2 hints; 60–90 min), starter/<module>.py (signatures + docstrings + raise NotImplementedError only), tests/conftest.py (copy the template verbatim), tests/test_<module>.py with ${M.exercise.testsMin}–${M.exercise.testsMax} deterministic, network-free tests.\n` +
       `ALSO write the reference solution to ${d.trDir}/solutions/<module>.py (private trainer repo path; create dirs).\n` +
       `Use Bash from ${d.exDir}: "python -m pytest -q" MUST fail; "EXERCISE_SRC=${d.trDir}/solutions python -m pytest -q" MUST pass. Confirm both before returning.\n` +
@@ -222,12 +237,12 @@ async function materialsStage(d, demo) {
   const runbook = () => gated(`${d.id} runbook`,
     (cr, pass) => agent(
       `You are the RUNBOOK author (trainer-only talk track). ${dayHeader(d)}` +
-      `Read ${d.researchFile}, ${d.demoDir}/README.md and every demo file ${J(fileNames)}, ${d.pageFile} if it exists (for objectives), and the exercise README at ${d.exDir}/README.md if it exists. Read the template ${H}/templates/runbook.md.\n` +
-      `Write ${d.trDir}/runbook.md: first line "# ${d.id} runbook — ${d.title}"; second line "Week ${A.week} · Day ${d.day} · ${d.dateLabel} · ${A.theme}"; third line links every artifact exactly as the template does (the trainer repo is separate, so public links are absolute): notes page ${CFG.siteUrl}weeks/${d.rel}.html, demos ${demoUrl}, exercise ${exUrl}, brief ${CFG.repoUrl}/blob/${CFG.repoBranch || 'main'}/harness/research/${d.rel}.md, and the relative link solutions/; headings in template order; "Day at a glance" table whose Minutes sum to ${M.runbook.dayMinutesMin}–${M.runbook.dayMinutesMax} incl. breaks/lunch; one "## Demo N: <exact filename>" per demo file with Goal, type-live/paste per STEP, numbered talk track, ≥2 checkpoint questions, expected output, ≥1 pitfall from the brief; Notes page handoff; Exercise briefing (${rubric ? 'deliverable, acceptance criteria, ≥2 stuck points, how to mark in the room, marking guide ' + d.trDir + '/solutions/RUBRIC.md' : 'module, acceptance, ≥2 stuck points, solutions path ' + d.trDir + '/solutions'}); Common questions; If running long / short${d.feedback ? '; "## Feedback form" with ' + CFG.feedbackFormUrl : ''}${d.kind === 'review' ? '; "## Review agenda"' : ''}.\n` +
-      `Return totalMinutes, demoSections, solutionFiles (what exists under solutions/), summary.` + fix(cr),
+      `${demoCtx}Read ${d.researchFile}${d.noDemos ? '' : ', every demo script ' + J(scriptNames) + ' in ' + d.demoDir + ' (header + steps; you point at them, you do not copy them)'}, ${d.pageFile} if it exists (for objectives), and the exercise README at ${d.exDir}/README.md if it exists. Read the template ${H}/templates/runbook.md.\n` +
+      `Write ${d.trDir}/runbook.md: first line "# ${d.id} runbook — ${d.title}"; second line "Week ${A.week} · Day ${d.day} · ${d.dateLabel} · ${A.theme}"; third line links every artifact exactly as the template does (the trainer repo is separate, so public links are absolute): notes page ${CFG.siteUrl}weeks/${d.rel}.html, demos ${demoUrl}, exercise ${exUrl}, brief ${CFG.repoUrl}/blob/${CFG.repoBranch || 'main'}/harness/research/${d.rel}.md, and the relative link solutions/; headings in template order; "Day at a glance" table whose Minutes sum to ${M.runbook.dayMinutesMin}–${M.runbook.dayMinutesMax} incl. breaks/lunch, demo rows using each script's Time; then the teaching blocks in the order the day runs them: ${d.noDemos ? '' : 'one "## Demo N: <script filename, e.g. 01_<slug>.md>" per script (script path demos/<file> relative to the runbook, answer key path, Time, room state before, stop point if long, ≥2 checkpoint questions, ≥1 pitfall from the brief; NO talk track, the script is the talk track) and '}one "## Facilitation N: <subtopic> (M min)" per subtopic with no demo (${J(d.noDemos ? d.subtopics : facilitation)}): Goal, numbered timed beats (board plan, ask the room, pairs, debrief), ≥2 "Ask the room" questions with the steering answer, ≥1 misconception from the brief, what the room writes down; Notes page handoff; Exercise briefing (${rubric ? 'deliverable, acceptance criteria, ≥2 stuck points, how to mark in the room, marking guide ' + d.trDir + '/solutions/RUBRIC.md' : 'module, acceptance, ≥2 stuck points, solutions path ' + d.trDir + '/solutions'}); Common questions; If running long / short${d.feedback ? '; "## Feedback form" with ' + CFG.feedbackFormUrl : ''}${d.kind === 'review' ? '; "## Review agenda"' : ''}.\n` +
+      `Return totalMinutes, demoSections (Demo + Facilitation blocks), solutionFiles (what exists under solutions/), summary.` + fix(cr),
       { schema: RUNBOOK_SCHEMA, label:`${d.id}:runbook`, phase:'Materials', ...tier('runbook', pass) }),
     (_r) => agent(
-      `RUNBOOK CRITIC. Read ${H}/critics/runbook.md and apply it to ${d.trDir}/runbook.md with demos in ${d.demoDir}, exercise in ${d.exDir}, solutions in ${d.trDir}/solutions, brief ${d.researchFile}. ${rubric ? 'Rubric-kind day: check solutions/RUBRIC.md exists and the briefing matches it; no pytest.' : 'Run the solutions pytest check with Bash.'} Day context: ${dayHeader(d)}` +
+      `RUNBOOK CRITIC. Read ${H}/critics/runbook.md and apply it to ${d.trDir}/runbook.md with ${d.noDemos ? 'no demo scripts (demoFormat none: every teaching block is a Facilitation block)' : 'demo scripts ' + J(scriptNames) + ' in ' + d.demoDir + ' and facilitation subtopics ' + J(facilitation)}, exercise in ${d.exDir}, solutions in ${d.trDir}/solutions, brief ${d.researchFile}. ${rubric ? 'Rubric-kind day: check solutions/RUBRIC.md exists and the briefing matches it; no pytest.' : 'Run the solutions pytest check with Bash.'} Day context: ${dayHeader(d)}` +
       `Return pass, critiques (concrete fixes), one-sentence summary.`,
       { schema: VERDICT, label:`${d.id}:runbook-crit`, phase:'Materials', ...tier('critic') }))
 
@@ -256,10 +271,11 @@ perDay.forEach(x => { if (x && x.research && x.research.result) (x.research.resu
 const wire = await agent(
   `WIRE step (serial, shared files). Days shipped this run: ${J(DAYS.map(d => ({ id:d.id, rel:d.rel, page:d.pageRel })))}.\n` +
   `1. Open ${ROOT}/docs/assets/js/glossary.js. Between "// GLOSSARY:BEGIN" and "// GLOSSARY:END" append these entries as { term, def, aka } lines, SKIPPING any whose term or aka already exists (case-insensitive, check both term and aka of existing entries): ${J(glossaryAdds)}. Keep the file valid JS (node --check).\n` +
-  `2. In ${H}/curriculum.json set "status": "live" for ${J(DAYS.map(d => d.id))} ONLY if that day's page ${'`'}docs/weeks/<rel>.html${'`'}, demos/<rel>/README.md and exercises/<rel>/README.md all exist on disk.\n` +
+  `2. In ${H}/curriculum.json set "status": "live" for ${J(DAYS.map(d => d.id))} ONLY if that day's page ${'`'}docs/weeks/<rel>.html${'`'}, exercises/<rel>/README.md and (unless demoFormat is "none") ${TRAINER}/<rel>/demos/key/README.md all exist on disk. Never touch the "taught" field.\n` +
   `3. Run: python ${H}/build_index.py\n` +
   `4. For each shipped day whose previous day page exists, confirm the previous page's window.NEXT.href points at this day's filename; fix if not.\n` +
-  `5. Run ${ROOT}/docs/bump-css.sh --all if you changed glossary.js.\n` +
+  `5. Publish step (D-0030): for each shipped day run "python ${H}/publish_demos.py <week> <day>" (${J(DAYS.map(d => `${A.week} ${d.day}`))}). It copies the answer keys to demos/<rel>/ and flips the notes demo card ONLY if curriculum.json carries taught:<date> for that day (set by the delivery-day close); otherwise it prints "not taught yet" and that is the expected outcome on an authoring run. Never copy demo files by hand.\n` +
+  `6. Run ${ROOT}/docs/bump-css.sh --all if you changed glossary.js.\n` +
   `Return a one-paragraph summary of what changed.`,
   { label:'wire', phase:'Wire', ...tier('wire') })
 

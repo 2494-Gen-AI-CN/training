@@ -21,7 +21,7 @@ So week 1 is Tue–Fri, week 7 (Nov 23–27) is Mon–Wed, and week 11 (Dec 21�
 
 ## How each day works
 
-1. **Code-along demos** — the trainer builds the day's examples live. Follow along in `demos/<week>/<day>/`. Each file is split into `# --- STEP n ---` checkpoints so you can catch up if you fall behind.
+1. **Code-along demos** — the trainer types the day's examples live, step by step; you type along. After the session the finished files (the answer key) are published to `demos/<week>/<day>/` with a README that lists them in order, so you can replay anything you missed.
 2. **Notes page** — on the site, one page per day: the ideas behind the demo, a live diagram, and a 6-question self-check. Finishing the check unlocks the next day's page.
 3. **Exercise** — in `exercises/<week>/<day>/`. Implement the starter file until the tests pass.
 
@@ -42,14 +42,14 @@ Each morning: `git pull` to get the day's material.
 
 Some weeks need extra packages or an API key. The demo folder for that day has a `requirements.txt` and/or `.env.example` with instructions.
 
-## Running a demo
+## Replaying a demo (after class)
 
 ```
-cd demos/week-01/day-2-python-basics
+cd demos/week-01/day-3-python-basics
 python 01_<name>.py
 ```
 
-The README in each demo folder lists the files in run order and what each one shows.
+The README in each demo folder lists the files in run order and what each one shows. A `.md` file there is the transcript of a terminal demo: replay its `$` commands in a scratch folder. The folder appears after the day has been taught.
 
 ## Doing an exercise
 

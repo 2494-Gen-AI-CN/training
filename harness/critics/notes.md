@@ -10,19 +10,19 @@ You are judging `docs/weeks/<week>/<day>.html`. You are NOT the author. Read the
 4. `.lede` has `h1`, `.meta` with "Week W · Day D", the week theme, and "~N min" where N == round(prose words / 150).
 5. `section.step` count within `metrics.notes.stepsMin..stepsMax` (5–7); `data-step` values are 0..n-1 in order; each has a `.tag` and an `h2`.
 6. `section.reading-sources` present with ≥ `metrics.notes.sourcesMin` (3) `http` links, all taken from the research brief.
-7. Aside: `.side-diagram` with `svg#diagram` + `.stage-caption`; `.side-cards` containing a `.demo-card` (links to ≥1 real file under `demos/<week>/<day>/` via the config repo URL, filenames exactly as on disk), a quiz `.activity-card[data-modal="quiz-modal"]`, optional deep-dive card; `.side-nav` with Back, Daily goals, and an empty `a.snav-next`.
-8. Modals: `#quiz-modal` (with `section#quiz` + `.modal-next`), `#goals-modal` (3–5 `.goals-list` items + "Today's exercise" link to the exercise README + "Demo files in order" list), optional `#deep-modal`, 0–2 `#code-*` popups.
+7. Aside: `.side-diagram` with `svg#diagram` + `.stage-caption`; `.side-cards` containing a `.demo-card` with `data-demo="pending"` and the text "Published after class" and NO links (D-0030: answer keys are trainer-only until the day's `taught` date; `harness/publish_demos.py` flips the card to links afterwards), a quiz `.activity-card[data-modal="quiz-modal"]`, optional deep-dive card; `.side-nav` with Back, Daily goals, and an empty `a.snav-next`. On a `demoFormat: none` day there is NO `.demo-card` at all.
+8. Modals: `#quiz-modal` (with `section#quiz` + `.modal-next`), `#goals-modal` (3–5 `.goals-list` items + "Today's exercise" link to the exercise README + a "Demos today" list naming each demo script's objective in order, no file links; omitted on `demoFormat: none` days), optional `#deep-modal`, 0–2 `#code-*` popups.
 9. Script tags, in order: `theme.js` in head; at the bottom exactly `diagram.js, scrolly.js, modals.js, quiz.js, widgets.js, glossary.js, codeviewer.js` (+ `survey.js` only on `feedback: true` days). No other scripts. No `FDE_`, `roster`, `progress.js`, `day-summary`, `auth.js`, `workers.dev`, `2463` anywhere.
 
 ## Content
 
 10. Prose word count (text inside `.reading-col` excluding `.reading-sources`, code and buttons) within `wordMin..wordMax` from args (default 1,200–1,800).
 11. Every factual claim traces to the research brief. Flag invented numbers, versions, API names.
-12. The page teaches THIS day's subtopics; it references the demo files by name where the reader should go run them.
+12. The page teaches THIS day's subtopics; where the reader should go and do what the trainer typed it names the demo by its objective ("the Git local-loop demo"), not by a file path that is not public yet.
 13. `window.DIAGRAM` present: `captions.length == step count`; every node has `step, x, y, w, h, label`; edges reference existing node ids; each step reveals something that matters for that section (not decoration).
 14. `window.QUIZ.questions.length == 6`; type mix ≥1 `scq`, ≥1 `tf`, ≥1 `mcq` or `match`, ≤1 `open`; `answer` indices in range; every `explain` present; questions test the brief's content.
 15. `window.NEXT = { label, href }` points to the next day's page (or `../../index.html` after day 5).
-16. Code popups (if any): `button.code-cta[data-modal="code-<x>"]` + matching `#code-<x>.modal-overlay .code-modal` with `.cv[data-file]` naming a REAL demo file; the `<pre class="cv-raw">` content is an excerpt of that file (HTML-escaped `< > &`).
+16. Code popups (if any): `button.code-cta[data-modal="code-<x>"]` + matching `#code-<x>.modal-overlay .code-modal` with `.cv[data-file]` naming a REAL answer-key file (in `trainer/<week>/<day>/demos/key/` before the day is taught, `demos/<week>/<day>/` after); the `<pre class="cv-raw">` content is a short excerpt of that file (HTML-escaped `< > &`), never the whole key.
 17. Widgets allowed: `.ix-legend`, `.ix-predict`, `.ix-spot` only.
 18. Prose reads like a person wrote it (D-0029; the `humanizer` skill's pattern list is the reference). FAIL on any of these in `.reading-col` prose, quiz `explain` text or diagram captions: "not X but Y" / "not just X, it's Y" contrasts; one-line closers that restate the paragraph ("That is the point."); forced triads where the meaning does not ask for three; em-dashes used as the default joiner (more than ~2 per section); bold labels at the start of list items or paragraphs; stock AI words (delve, crucial, robust, seamless, leverage, landscape, tapestry, navigate, journey, foster, testament, underscore, vibrant). Quote the offending sentence and give the plain rewrite. Facts, code, inline code, paths and link targets are out of scope for this item.
 

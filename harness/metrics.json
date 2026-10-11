@@ -10,7 +10,7 @@
     "codePopupsMin": 0, "codePopupsMax": 2,
     "sourcesMin": 3
   },
-  "demos": { "filesMin": 2, "filesMax": 5, "maxLinesPerFile": 90 },
+  "demos": { "scriptsMin": 2, "scriptsMax": 5, "minutesPerScriptMin": 15, "minutesPerScriptMax": 45, "maxLinesPerFile": 90 },
   "exercise": { "testsMin": 4, "testsMax": 10, "pytestTimeoutSec": 120 },
   "runbook": { "dayMinutesMin": 330, "dayMinutesMax": 390 },
   "research": { "glossaryMin": 3, "glossaryMax": 8, "pitfallsMin": 3, "pitfallsMax": 6, "demoHintsMin": 2, "demoHintsMax": 4, "fullGateUrlSpotChecks": 3 }

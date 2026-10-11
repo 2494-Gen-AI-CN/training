@@ -2,7 +2,7 @@
 
 Single "what's next" surface for this repo. Read it at session start together with `decisions/README.md` (the *why*). Update it in the same commit as the work it describes. Per-day content progress lives in `harness/curriculum.json` (`status: planned | live`) and is not duplicated here.
 
-**Phase:** pilot done; W1D2 is live. Training starts Tue 2026-10-13.
+**Phase:** codify Stage 1 done (demo contract, D-0030); W1D2 is back to `planned` until Stage 3 re-authors its demos under the new contract. Training starts Tue 2026-10-13.
 **Last updated:** 2026-10-11
 
 ## Milestones
@@ -14,7 +14,7 @@ Single "what's next" surface for this repo. Read it at session start together wi
 | 3 | Real training dates, holidays, week 1/7/11 redistribution | 2026-10-11 | D-0013..D-0017; 51 teaching days |
 | 4 | Site theme: Catppuccin Mocha dark default, IBM Plex, self-hosted fonts | 2026-10-11 | D-0018..D-0020 |
 | 5 | Pilot: W1D2 single-day run, all five artifacts reviewed by hand | 2026-10-11 | run `wf_c27f2c3a-6ab`, 20 agents; research 2 passes, demos/notes/exercise 1 pass, runbook flagged after 3 and hand-fixed (4 nits); D-0021 |
-| 6 | Promote the W1D2 page to the template; run W1 days 3–5 | — | set `template` arg to `docs/weeks/week-01/day-2-*.html`; page NOT yet promoted |
+| 6 | Promote the W1D2 page to the template; run W1 days 3–5 | — | blocked on codify Stage 3 (W1D2 demos re-authored under D-0030, day back to `live`); then set `template` arg to `docs/weeks/week-01/day-2-*.html` |
 | 7 | Week-1 retrospective: AGENTS.md, metrics, critic specs | — | log bar changes as decisions; see O-7..O-9 |
 | 8 | Weeks 2–4 | — | one day per invocation |
 | 9 | Second pilot: W5D1 alone (first full gate, first LLM demos) | — | key-gated; rehearse manually |
@@ -33,10 +33,11 @@ Single "what's next" surface for this repo. Read it at session start together wi
 | O-7 | Phone-width layout overflows horizontally (h1 and side cards clipped at 400px) | trainer | before trainees read on phones | pre-existing in `day.exemplar.html`, not page-specific; `docs/assets/css/style.css` responsive rules |
 | O-8 | NEXT links: `args_for.py` now points NEXT at the index unless the next day is already `live` (changed by the Verify FIX agent so `test_pages` passes); Wire step 4 must rewrite the previous page's NEXT when the next day ships — confirm it does on W1D3 | harness | W1D3 run | the quiz "next-day lock" (D-0009) lands on the index until then |
 | O-9 | Runbook critic repeatedly caught arithmetic/date nits (float output, "tomorrow" vs Day 5, minute budgets); consider a runbook self-check line in the author prompt | harness | milestone 7 | not a bar change; prompt-only |
-| O-10 | Codify the mined TRNG-2442 rules: staged plan with per-session prompts in `docs/process/codify-plan.md` (Stage 1 demo contract → Stage 3 W1D2 re-author → W1D3 → Stage 4 delivery close → Stages 2, 7, 5, 6) | trainer | Stage 1 + 3 before Tue 2026-10-13; Stage 4 before Tue evening | Stage 0 (humanizer, D-0029) done 2026-10-11 |
+| O-10 | Codify the mined TRNG-2442 rules: staged plan with per-session prompts in `docs/process/codify-plan.md` (Stage 1 demo contract → Stage 3 W1D2 re-author → W1D3 → Stage 4 delivery close → Stages 2, 7, 5, 6) | trainer | Stage 3 before Tue 2026-10-13; Stage 4 before Tue evening | Stage 0 (humanizer, D-0029) done 2026-10-11. Stage 1 (demo contract, D-0030) done 2026-10-11: scripts + answer keys in `trainer/<rel>/demos/`, `demo_check.py`, `publish_demos.py` gated on `taught`, `demoFormat: none`; W1D2 set to `planned` because its five old-shape `.py` demos (public, no scripts) fail the new tests; Stage 3 removes `demos/week-01/day-2-*/` and re-authors. Stage 4 must set `taught` and run `publish_demos.py` in the close |
 
 ## Log
 
+- 2026-10-11 — D-0030 (codify Stage 1): demo contract. A demo is the walkthrough script the trainer types (`trainer/<rel>/demos/NN_<slug>.md`, template `demo-script.md`), the code is its answer key (`key/`), checked both ways by `harness/demo_check.py`; keys publish to `demos/<rel>/` via `harness/publish_demos.py` only once `taught` is set; concept subtopics are runbook Facilitation blocks; `demoFormat: none`. Critics (demos rewrite, notes, runbook), metrics, templates, day-fanout, build_index, tests updated. W1D2 → `planned` (old demos fail the new contract; Stage 3 re-authors). 38 tests green.
 - 2026-10-11 — scaffold, decision log, dates, theme landed; STATUS.md created.
 - 2026-10-11 — W1D2 pilot run (D-0021): 20 agents, 4/5 artifacts passed the critic, runbook hand-fixed; `tests/test_trainer.py` regex gained `re.M` (was unpassable); `args_for.py` NEXT-only-if-live; Mocha diagram text fix; page screenshots checked in Mocha and Latte.
 - 2026-10-11 — D-0023/D-0024/D-0025: learner persona (config.json audience), week-1 arc + W1D2 reshape (30-min on-ramp, then SDLC → Agile → Scrum → story points → Git), rubric exercise kind (Git exercise is the exercise). W1D2 re-run `wf_ce312ce5-ce9`: 20 agents, 40.5 min, 0 flagged, tests green; page is 1 on-ramp step + 5 team-practice steps, 1766 words.

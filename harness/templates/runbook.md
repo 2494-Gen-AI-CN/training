@@ -9,16 +9,19 @@ Notes page: [{{rel}}.html]({{siteUrl}}weeks/{{rel}}.html) · Demos: [demos/{{rel
 |---|---|---|
 | Setup check | 10 | — |
 | Recap / framing | 15 | notes page lede |
-| Demo 1: 01_<slug>.py | 40 | demos/… |
+| Facilitation 1: <concept subtopic> | 30 | this runbook |
+| Demo 1: 01_<slug>.md | 30 | demos/01_<slug>.md (script) |
 | Break | 10 | — |
-| Demo 2: 02_<slug>.py | 40 | demos/… |
+| Demo 2: 02_<slug>.md | 40 | demos/02_<slug>.md (script) |
 | Lunch | 60 | — |
-| Demo 3: 03_<slug>.py | 40 | demos/… |
+| Demo 3: 03_<slug>.md | 40 | demos/03_<slug>.md (script) |
 | Notes page walkthrough + quiz | 25 | docs/weeks/… |
 | Exercise briefing | 10 | exercises/… |
-| Exercise (trainees work) | 90 | exercises/… |
+| Exercise (trainees work) | 70 | exercises/… |
 | Wrap-up / questions | 20 | — |
 | **Total** | **360** | |
+
+Demo scripts (what the trainer types, step by step) and their answer keys live beside this file in `demos/` (D-0030). The answer keys are published to the public `demos/<week>/<day>/` only after the delivery-day close sets `taught`; until then trainees see "Published after class" on the notes page.
 
 ## Objectives
 
@@ -30,22 +33,31 @@ By the end of today trainees can:
 - Python {{python}} present: `python --version`
 - Packages: `pip install -r demos/{{rel}}/requirements.txt` (if present)
 - Env keys (if any): copy `.env.example` → `.env`
-- Trainees have pulled the repo and can run `python demos/{{rel}}/01_*.py`
+- Trainees have pulled the repo; the trainer's scratch folder for today is empty and the terminal font is readable from the back row
 
-## Demo 1: 01_<slug>.py
+## Facilitation 1: <concept subtopic> (30 min)
 
-**Goal:** ...
-**Type live / paste:** STEP 1–2 live, STEP 3 paste.
-**Talk track:**
-1. ...
+**Goal:** what the room can do after this block (one sentence).
+**Sequence:**
+1. (5 min) Board plan: ...
+2. (10 min) Ask the room: "...?" → steer toward: ...
+3. (10 min) Pairs: ... ; debrief: ...
+4. (5 min) What they write down: ...
+**Ask the room:** ≥2 questions with the answer you are steering toward.
+**Misconception to surface:** from the brief, and how you surface it.
+
+## Demo 1: 01_<slug>.md
+
+**Script:** demos/01_<slug>.md · **Answer key:** demos/key/01_<slug>.py · **Time:** 30 min
+**Room state before:** (from the script's "Before the room arrives")
+**Stop point if long:** after Step n; the rest moves to ...
 **Checkpoint questions for the room:**
 - ...
-**Expected output:** ...
-**Pitfalls:** ...
+**Pitfall from the brief:** ...
 
-## Demo 2: 02_<slug>.py
+## Demo 2: 02_<slug>.md
 
-(same structure)
+(same structure; the talk track lives in the script, not here)
 
 ## Notes page handoff
 

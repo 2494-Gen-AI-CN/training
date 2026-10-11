@@ -53,8 +53,13 @@ class CurriculumTests(unittest.TestCase):
                 self.assertEqual(f"w{w['week']:02d}d{d['day']}", d["id"])
                 self.assertIn(d["kind"], ("lesson", "review"))
                 self.assertIn(d["gate"], ("full", "light"))
-                self.assertIn(d["demoFormat"], ("py", "nb"))
+                self.assertIn(d["demoFormat"], ("py", "nb", "none"))
                 self.assertIn(d["status"], ("planned", "live"))
+                if "taught" in d:  # D-0030: set by the delivery-day close, after the session
+                    self.assertRegex(d["taught"], r"^20\d\d-\d\d-\d\d$")
+                    self.assertEqual("live", d["status"], "a taught day must be live")
+                    slot = build_index.slot_date(self.cur, w["week"], d["day"])
+                    self.assertGreaterEqual(dt.date.fromisoformat(d["taught"]), slot, "taught before its calendar date")
                 self.assertTrue(d["subtopics"])
                 self.assertIn(w["phase"], self.cur["phases"])
                 self.assertIn(w["project"], self.cur["projects"])
@@ -176,7 +181,11 @@ class CurriculumTests(unittest.TestCase):
                 continue
             with self.subTest(rel=rel):
                 self.assertTrue((DOCS / "weeks" / f"{rel}.html").exists())
-                self.assertTrue((ROOT / "demos" / rel / "README.md").exists())
+                # D-0030: answer keys are public only once taught; demoFormat none days never have a demos/ folder
+                if d.get("taught") and d["demoFormat"] != "none":
+                    self.assertTrue((ROOT / "demos" / rel / "README.md").exists())
+                else:
+                    self.assertFalse((ROOT / "demos" / rel).exists(), f"demos/{rel} must not exist before the day is taught")
                 self.assertTrue((ROOT / "exercises" / rel / "README.md").exists())
                 self.assertTrue((HARNESS / "research" / f"{rel}.md").exists())
 

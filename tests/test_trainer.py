@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 import unittest
 
-from helpers import HARNESS, ROOT, TRAINER, live_days, load_json, metrics
+from helpers import HARNESS, ROOT, TRAINER, live_days, load_json, metrics, trainer_demos
 
 CONFIG = load_json(HARNESS / "config.json")
 REQUIRED = ["## Day at a glance", "## Objectives", "## Setup check", "## Notes page handoff",
@@ -33,9 +33,16 @@ class TrainerTests(unittest.TestCase):
                     self.assertIn("## Feedback form", text)
                 if d["kind"] == "review":
                     self.assertIn("## Review agenda", text)
-                demo_files = sorted(p.name for p in (ROOT / "demos" / rel).iterdir() if re.match(r"^\d{2}_", p.name))
-                for f in demo_files:
-                    self.assertRegex(text, re.compile(rf"^## Demo \d+: {re.escape(f)}", re.M), f"no section for demo {f}")
+                # D-0030: one "## Demo N: <script>" per walkthrough script in trainer/<rel>/demos/; concept days facilitate
+                if d["demoFormat"] == "none":
+                    self.assertNotRegex(text, re.compile(r"^## Demo \d+:", re.M), "demoFormat none: no Demo sections")
+                    self.assertRegex(text, re.compile(r"^## Facilitation \d+: .+\(\d+ min\)", re.M), "demoFormat none day needs timed Facilitation sections")
+                else:
+                    scripts = sorted(p.name for p in trainer_demos(rel).glob("*.md") if re.match(r"^\d{2}_", p.name))
+                    self.assertTrue(scripts, f"no demo scripts in {trainer_demos(rel)}")
+                    for f in scripts:
+                        self.assertRegex(text, re.compile(rf"^## Demo \d+: {re.escape(f)}", re.M), f"no section for demo script {f}")
+                    self.assertNotRegex(text, re.compile(r"^## Demo \d+: \d{2}_\S+\.py", re.M), "Demo sections name the script (.md), not the answer key")
                 # minutes table sums into the day band
                 glance = text.split("## Day at a glance", 1)[1].split("\n## ", 1)[0]
                 mins = [int(m) for m in re.findall(r"^\|[^|]*\|\s*(\d+)\s*\|", glance, re.M)]

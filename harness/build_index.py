@@ -150,7 +150,9 @@ def render(cur: dict | None = None) -> str:
                 entry = {"t": d["title"], "s": d.get("subtitle", ""), "id": d["id"], "date": s["date"].isoformat()}
                 if d.get("status") == "live":
                     entry["href"] = p["page"]
-                    entry["demo"] = f"{repo_url}/tree/{branch}/demos/{p['rel']}"
+                    # D-0030: answer keys are public only once the day is taught (and the day has code demos at all)
+                    if d.get("taught") and d.get("demoFormat") != "none":
+                        entry["demo"] = f"{repo_url}/tree/{branch}/demos/{p['rel']}"
                     entry["ex"] = f"{repo_url}/tree/{branch}/exercises/{p['rel']}"
                 if d.get("kind") == "review":
                     entry["review"] = True

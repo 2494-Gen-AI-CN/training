@@ -9,8 +9,10 @@ harness/
   config.json          site title, repo URL, feedback form, LLM provider defaults
   build_index.py       curriculum.json -> CAL/WEEKS block in docs/index.html (--check in tests); owns all calendar arithmetic
   args_for.py          prints the Workflow args for <week> <day...> (day = weekday slot; holiday slots refused)
+  demo_check.py        format + both-ways check for one day's demo scripts and answer keys (critic and tests call it; D-0030)
+  publish_demos.py     copies trainer/<rel>/demos/key/ to demos/<rel>/ and flips the notes demo card once the day is taught (D-0030)
   workflows/day-fanout.js   the Workflow-tool script
-  templates/           day.exemplar.html, research.md, runbook.md, demo-README.md, exercise-README.md, conftest.py
+  templates/           day.exemplar.html, research.md, runbook.md, demo-script.md, demo-README.md, exercise-README.md, conftest.py
   critics/             PASS criteria each critic agent reads: research, demos, notes, runbook, exercise
   research/<week>/<day>.md   research briefs (committed; the audit trail for every claim)
 ```
@@ -22,10 +24,10 @@ Decisions that shaped any of this (and every later schedule/scope change) are lo
 | Stage | Author writes | Critic checks (spec) | Gate |
 |---|---|---|---|
 | Research | `harness/research/<week>/<day>.md` | `critics/research.md` | `full`: URLs fetched; `light`: structure + stamps |
-| Demos | `demos/<week>/<day>/` | `critics/demos.md` | compiles, runs, README order, STEP markers |
-| Notes ∥ Exercise | `docs/weeks/<week>/<day>.html`, `exercises/<week>/<day>/` + `trainer/.../solutions/` | `critics/notes.md`, `critics/exercise.md` | metrics bands; starter fails / solution passes |
-| Runbook | `trainer/<week>/<day>/runbook.md` | `critics/runbook.md` | headings, minutes, one section per demo |
-| Wire (serial) | glossary.js append, `status: live`, `build_index.py`, NEXT links | — | — |
+| Demos | `trainer/<week>/<day>/demos/NN_<slug>.md` scripts + `key/` answer keys (skipped on `demoFormat: none`) | `critics/demos.md` | `demo_check.py` OK (format, both-ways), every key runs, pre-flight walk |
+| Notes ∥ Exercise | `docs/weeks/<week>/<day>.html`, `exercises/<week>/<day>/` + `trainer/.../solutions/` | `critics/notes.md`, `critics/exercise.md` | metrics bands; demo card pending; starter fails / solution passes |
+| Runbook | `trainer/<week>/<day>/runbook.md` | `critics/runbook.md` | headings, minutes, one pointer section per script + a Facilitation block per concept subtopic |
+| Wire (serial) | glossary.js append, `status: live`, `build_index.py`, NEXT links, `publish_demos.py` (no-op until `taught`) | — | — |
 | Verify | — | `python -m unittest discover -s tests` | ≤2 fix loops |
 
 Each gated artifact: author → critic → up to 3 repair passes → else **flagged** (reported, never blocks the run).
@@ -39,7 +41,7 @@ Paste the JSON as `args`:
 ```
 Workflow({ scriptPath: "harness/workflows/day-fanout.js", args: { ...json... } })
 ```
-Then `python -m unittest discover -s tests -v`, open `docs/weeks/<week>/<day>.html` via `cd docs && python -m http.server 8000`, and rehearse `trainer/<week>/<day>/runbook.md` against the demo files.
+Then `python -m unittest discover -s tests -v`, open `docs/weeks/<week>/<day>.html` via `cd docs && python -m http.server 8000`, and rehearse `trainer/<week>/<day>/runbook.md` with the demo scripts in `trainer/<week>/<day>/demos/`. After the session, the delivery-day close sets `taught` on the day and runs `python harness/publish_demos.py <week> <day>` so the answer keys reach `demos/<week>/<day>/` and the notes page links them.
 
 Agent budget: ~12 agents on a clean pass per day, ~27 worst case. Run one day per invocation. To re-run after editing prompts/critics, pass `resumeFromRunId` so finished stages are cached.
 

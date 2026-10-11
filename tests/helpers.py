@@ -58,6 +58,16 @@ def live_days():
             yield w, d, rel
 
 
+def trainer_demos(rel: str) -> Path:
+    """Where a day's demo scripts + key/ are authored (private trainer repo, D-0030)."""
+    return TRAINER / rel / "demos"
+
+
+def public_demos(rel: str) -> Path:
+    """Where a day's answer keys land once the day is taught (publish_demos.py, D-0030)."""
+    return ROOT / "demos" / rel
+
+
 def node_exe() -> str | None:
     found = shutil.which("node")
     if found:

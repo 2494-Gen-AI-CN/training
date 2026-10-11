@@ -104,14 +104,26 @@ git commit -m "greet from feature"</code></pre>
       </div>
 
       <div class="side-cards">
-        <div class="activity-card demo-card">
+        <!-- Demo card (D-0030). Authors write variant A exactly; harness/publish_demos.py turns it into variant B once
+             curriculum.json carries taught:<date>. On a demoFormat "none" day omit the card entirely (variant C). -->
+        <!-- A: pending (what every fresh page carries) -->
+        <div class="activity-card demo-card" data-demo="pending">
+          <div class="ac-k">⌨ Code-along files</div>
+          <div class="ac-t">Published after class</div>
+          <div class="ac-meta">typed live in the session · the answer key lands in demos/ afterwards</div>
+        </div>
+        <!-- B: published (written by publish_demos.py, never by an author)
+        <div class="activity-card demo-card" data-demo="published">
           <div class="ac-k">⌨ Code-along files</div>
           <div class="ac-t">
             <a href="https://github.com/2494-Gen-AI-CN/training/tree/main/demos/week-00/day-0-example/01_example.py" target="_blank" rel="noopener">01_example.py</a> ·
-            <a href="https://github.com/2494-Gen-AI-CN/training/tree/main/demos/week-00/day-0-example/02_example.py" target="_blank" rel="noopener">02_example.py</a>
+            <a href="https://github.com/2494-Gen-AI-CN/training/tree/main/demos/week-00/day-0-example/02_example.md" target="_blank" rel="noopener">02_example.md</a>
           </div>
-          <div class="ac-meta">run in order · README has the steps</div>
+          <div class="ac-meta">answer keys from the session · README has the run order</div>
         </div>
+        -->
+        <!-- C: demoFormat "none" day: no demo card -->
+
         <button class="activity-card" type="button" data-modal="deep-modal">
           <div class="ac-k">⌖ Deep dive</div>
           <div class="ac-t">Optional extra material</div>
@@ -170,10 +182,10 @@ git commit -m "greet from feature"</code></pre>
     <ul class="deliv-list check">
       <li><a href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-00/day-0-example" target="_blank" rel="noopener">exercises/week-00/day-0-example</a> — one line on the task. Run <code>python -m pytest -q</code> until green.</li>
     </ul>
-    <div class="ma-k">Demo files in order</div>
+    <div class="ma-k">Demos today</div>
     <ul class="deliv-list">
-      <li><code>01_example.py</code> — what it shows</li>
-      <li><code>02_example.py</code> — what it shows</li>
+      <li>Demo 1 — the objective of the first demo, phrased as what you can do after it</li>
+      <li>Demo 2 — the objective of the second demo</li>
     </ul>
     <p class="goals-foot">Tomorrow builds on this. Finish the check to unlock the next page.</p>
   </div>

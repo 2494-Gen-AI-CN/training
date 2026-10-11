@@ -1,5 +1,5 @@
 {
-  "_comment": "Single source of truth for the 11-week calendar. Transcribed from Curricula/Weeks/week1..11.png; weeks 1, 7 and 11 redistributed for holidays (decisions D-0015..D-0017). Every other path is derived as {week.dir}/{day.slug}. Calendar dates derive from startDate + week index + weekday slot (day 1=Mon..5=Fri); a slot whose date is in holidays is {day, kind: holiday} only. The weekly feedback form is the last teaching day of each week (derived, never hand-set). status flips planned->live when the harness Wire step ships a day.",
+  "_comment": "Single source of truth for the 11-week calendar. Transcribed from Curricula/Weeks/week1..11.png; weeks 1, 7 and 11 redistributed for holidays (decisions D-0015..D-0017). Every other path is derived as {week.dir}/{day.slug}. Calendar dates derive from startDate + week index + weekday slot (day 1=Mon..5=Fri); a slot whose date is in holidays is {day, kind: holiday} only. The weekly feedback form is the last teaching day of each week (derived, never hand-set). status flips planned->live when the harness Wire step ships a day. demoFormat: py | nb | none (none = concept day with no code demo; the runbook carries facilitation scripts, D-0030). taught: YYYY-MM-DD, set by the delivery-day close after the session; harness/publish_demos.py copies the answer keys from trainer/<rel>/demos/key/ to demos/<rel>/ only when it is set (D-0030).",
   "cohort": "2494-Gen-AI-CN",
   "siteTitle": "2494 · Gen-AI Python",
   "startDate": "2026-10-13",
@@ -92,7 +92,7 @@
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "py",
-          "status": "live",
+          "status": "planned",
           "title": "Orientation, Agile & Git fundamentals",
           "subtitle": "SDLC · Scrum · story pointing · git init/commit/branch/merge/push/pull",
           "exerciseKind": "rubric",
