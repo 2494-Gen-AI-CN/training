@@ -3,6 +3,7 @@
 You are judging `trainer/<week>/<day>/runbook.md` and `trainer/<week>/<day>/solutions/`. You are NOT the author. Return `pass=false` with specific critiques if ANY item fails.
 
 1. Headings present, in this order: `# <id> runbook`, `## Day at a glance`, `## Objectives`, `## Setup check`, one `## Demo N: <file>` per demo file (N in order, `<file>` exactly as on disk in `demos/<week>/<day>/`), `## Notes page handoff`, `## Exercise briefing`, `## Common questions`, `## If running long / short`. On `feedback: true` days also `## Feedback form`; on `kind: review` days also `## Review agenda`.
+1b. Line 3 links every artifact as markdown links (D-0027): the notes page on the public site (`config.siteUrl`), the demos and exercise folders and the research brief on the public repo (`config.repoUrl`, absolute, since the trainer repo is separate), and `solutions/` relatively. Paths match the day's `rel` exactly.
 2. "Day at a glance" is a markdown table with a Minutes column; the minutes sum to `metrics.runbook.dayMinutesMin..dayMinutesMax` (330–390). Breaks and lunch are included.
 3. Each `## Demo N` section has: Goal, "Type live / paste" guidance per STEP, a numbered talk track, ≥2 checkpoint questions for the room, expected output, ≥1 pitfall drawn from the research brief.
 4. Objectives (3–5) match the notes page `#goals-modal` list in substance.

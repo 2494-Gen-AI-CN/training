@@ -8,6 +8,7 @@
   },
   "repoUrl": "https://github.com/2494-Gen-AI-CN/training",
   "repoBranch": "main",
+  "siteUrl": "https://2494-gen-ai-cn.github.io/training/",
   "feedbackFormUrl": "https://forms.cloud.microsoft/pages/responsepage.aspx?id=iuJja_motUeqQJfiMSFRZMU3bOO2vNdAiSFsti9sgKVUQkhYWEhIRzJSWjNOVVM5REFOU0tWT0JXQyQlQCN0PWcu&route=shorturl",
   "python": "3.12",
   "audience": {

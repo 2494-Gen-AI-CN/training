@@ -5,8 +5,9 @@ from __future__ import annotations
 import re
 import unittest
 
-from helpers import ROOT, TRAINER, live_days, metrics
+from helpers import HARNESS, ROOT, TRAINER, live_days, load_json, metrics
 
+CONFIG = load_json(HARNESS / "config.json")
 REQUIRED = ["## Day at a glance", "## Objectives", "## Setup check", "## Notes page handoff",
             "## Exercise briefing", "## Common questions", "## If running long / short"]
 
@@ -23,6 +24,11 @@ class TrainerTests(unittest.TestCase):
                 self.assertTrue(text.startswith(f"# {d['id']} runbook"), "first line must be '# <id> runbook'")
                 for h in REQUIRED:
                     self.assertIn(h, text, f"missing heading {h}")
+                # D-0027: header links every public artifact absolutely (trainer repo is separate) and solutions/ relatively
+                head = "\n".join(text.splitlines()[:4])
+                self.assertIn(f"{CONFIG['siteUrl']}weeks/{rel}.html", head, "runbook header must link the notes page on the site")
+                self.assertIn(f"{CONFIG['repoUrl']}/tree/main/demos/{rel}", head, "runbook header must link the demos folder")
+                self.assertIn("](solutions/)", head, "runbook header must link solutions/")
                 if d.get("feedback"):
                     self.assertIn("## Feedback form", text)
                 if d["kind"] == "review":

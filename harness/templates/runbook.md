@@ -1,7 +1,7 @@
 # {{id}} runbook — {{title}}
 
 Week {{week}} · Day {{day}} · {{dateLabel}} · {{theme}}
-Notes page: docs/weeks/{{rel}}.html · Demos: demos/{{rel}}/ · Exercise: exercises/{{rel}}/
+Notes page: [{{rel}}.html]({{siteUrl}}weeks/{{rel}}.html) · Demos: [demos/{{rel}}]({{repoUrl}}/tree/main/demos/{{rel}}) · Exercise: [exercises/{{rel}}]({{repoUrl}}/tree/main/exercises/{{rel}}) · Brief: [research/{{rel}}.md]({{repoUrl}}/blob/main/harness/research/{{rel}}.md) · Solutions / marking guide: [solutions/](solutions/)
 
 ## Day at a glance
 

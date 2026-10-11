@@ -89,7 +89,7 @@ def main(argv: list[str]) -> int:
         "metrics": metrics,
         "llm": llm,
         "models": config.get("models", {}),
-        "config": {k: config[k] for k in ("cohort", "siteTitle", "brand", "repoUrl", "repoBranch", "feedbackFormUrl", "python", "audience")},
+        "config": {k: config[k] for k in ("cohort", "siteTitle", "brand", "repoUrl", "repoBranch", "siteUrl", "feedbackFormUrl", "python", "audience")},
     }
     print(json.dumps(args, indent=2, ensure_ascii=False))
     return 0
