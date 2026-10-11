@@ -35,6 +35,9 @@ class TrainerTests(unittest.TestCase):
                 mins = [int(m) for m in re.findall(r"^\|[^|]*\|\s*(\d+)\s*\|", glance, re.M)]
                 total = sum(mins[:-1]) if len(mins) > 1 and mins[-1] == sum(mins[:-1]) else sum(mins)
                 self.assertTrue(M["dayMinutesMin"] <= total <= M["dayMinutesMax"], f"day sums to {total} min")
+                if d.get("exerciseKind", "pytest") == "rubric":
+                    self.assertTrue((TRAINER / rel / "solutions" / "RUBRIC.md").exists(), "rubric day needs solutions/RUBRIC.md (D-0025)")
+                    continue
                 sols = list((TRAINER / rel / "solutions").glob("*.py"))
                 self.assertTrue(sols, "solutions/ must contain the module")
                 starters = [p.stem for p in (ROOT / "exercises" / rel / "starter").glob("*.py")]

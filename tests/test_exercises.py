@@ -27,6 +27,14 @@ class ExerciseTests(unittest.TestCase):
             edir = ROOT / "exercises" / rel
             with self.subTest(rel=rel):
                 self.assertTrue((edir / "README.md").exists())
+                if d.get("exerciseKind", "pytest") == "rubric":
+                    # D-0025: hands-on deliverable marked against a rubric; no starter, no pytest
+                    text = (edir / "README.md").read_text(encoding="utf-8")
+                    for h in ("## Deliverable", "## Acceptance criteria", "## Rubric", "## Getting started"):
+                        self.assertIn(h, text, f"rubric README missing {h}")
+                    self.assertFalse((edir / "starter").exists(), "rubric exercise must not have starter/")
+                    self.assertFalse((edir / "tests").exists(), "rubric exercise must not have tests/")
+                    continue
                 self.assertTrue((edir / "tests" / "conftest.py").exists())
                 starters = [p for p in (edir / "starter").glob("*.py") if p.name != "__init__.py"]
                 self.assertEqual(1, len(starters), "exactly one starter module")

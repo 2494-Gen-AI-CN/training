@@ -79,6 +79,7 @@
       "phase": "py",
       "project": "P0",
       "theme": "Agile for developers, Git & Python fundamentals",
+      "notes": "WEEK ARC (D-0024): Tue = how software teams work (SDLC, Scrum, story pointing, Git as the team's workflow). Wed-Fri = Python the way a team writes it. The audience already knows Python syntax and basic git from university, so: Wed assumes the Tue tooling check passed and teaches conventions (PEP 8, naming, I/O, comments that earn their place) rather than syntax from zero; Thu assumes Wed and goes deep on data types through idioms and pitfalls; Fri assumes Thu and treats control flow, functions and classes as design choices (when a function, when a class, scope). Every notes page opens by naming in one sentence what it assumes from the previous day.",
       "days": [
         {
           "day": 1,
@@ -91,26 +92,29 @@
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "py",
-          "status": "live",
+          "status": "planned",
           "title": "Orientation, Agile & Git fundamentals",
           "subtitle": "SDLC · Scrum · story pointing · git init/commit/branch/merge/push/pull",
+          "exerciseKind": "rubric",
           "subtopics": [
-            "Python orientation",
-            "Full stack overview",
+            "What is Python, why Python",
+            "Professionalism at Revature",
+            "Python orientation (tooling check)",
             "Interpreter vs compiler",
             "REPL and Jupyter",
+            "Full stack overview",
             "SDLC and introduction to SDLC",
             "Agile vs waterfall",
-            "Story pointing",
             "Scrum ceremonies",
+            "Story pointing",
+            "Source control management (git, vcs, cvcs, dvcs)",
             "Git fundamentals",
             "Initializing a repository",
-            "Pushing to a remote repository",
             "Commit, branch, merge, push, pull",
-            "Source control management (git, vcs, cvcs, dvcs)",
+            "Pushing to a remote repository",
             "Git exercise"
           ],
-          "notes": "EXERCISE SHAPE (D-0021): today's pytest exercise is a tiny Python-orientation exercise (variables, arithmetic, strings, simple functions; stdlib only; no git, no subprocess, no classes, no comprehensions, no file I/O) that proves the script/REPL workflow and the pytest loop. The 'Git exercise' subtopic is practised live in the demos (init, commit, branch, merge, push, pull), not in pytest. Exercise author and critic: this replaces 'exercises this day's subtopics'; do not demand a git-based exercise and do not flag the Python-orientation scope as pre-teaching day 3."
+          "notes": "DAY SHAPE (D-0024): the first 30 minutes are an on-ramp, not a lesson: orientation (what/why Python, professionalism at Revature) and a tooling check (interpreter vs compiler, REPL, Jupyter, where Python sits in the full stack) at the depth a CS graduate needs to confirm their setup and nothing more. The day's real content is how software teams work: SDLC -> Agile vs waterfall -> Scrum -> story pointing -> Git as the team's workflow -> Git exercise. Notes page: at most ONE step on the on-ramp, every other step on team practice; do not teach Python syntax or pytest (that is Wed-Fri). Demos: at most one on the on-ramp. EXERCISE (D-0025, exerciseKind rubric): the Git exercise IS the exercise: a real repository on GitHub with a feature branch, a merge, one resolved conflict and well-written commit messages, marked against a rubric. No pytest, no starter module."
         },
         {
           "day": 3,
@@ -127,9 +131,7 @@
             "Comments",
             "Variables and datatypes",
             "Operators",
-            "User input and output",
-            "What is Python, why Python",
-            "Professionalism at Revature"
+            "User input and output"
           ]
         },
         {

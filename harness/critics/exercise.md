@@ -13,3 +13,16 @@ You are judging `exercises/<week>/<day>/` together with `trainer/<week>/<day>/so
 9. Solution file is clean, idiomatic, ≤ ~120 lines, and would itself pass `python -m py_compile`.
 
 Return a one-sentence summary plus critiques as concrete fixes.
+
+## Rubric kind (day carries `exerciseKind: rubric`, D-0025)
+
+Items 1–6 and 9 above do not apply. Judge `exercises/<week>/<day>/README.md` and `trainer/<week>/<day>/solutions/RUBRIC.md` instead:
+
+1. Layout: `README.md` only; NO `starter/` and NO `tests/` directory (check with Bash).
+2. README headings in this order: `## Task`, `## Deliverable`, `## Acceptance criteria`, `## Rubric`, `## Getting started`, `## Hints`.
+3. Deliverable is one concrete, observable thing (a repository URL, a file, a screenshot of specific output), not "understand X".
+4. Acceptance criteria: 5–8 checklist items, each observable by a trainer in under two minutes without reading the trainee's mind.
+5. Rubric: a markdown table with one row per acceptance criterion and meets / partial / missing columns whose cells describe evidence, not adjectives.
+6. `solutions/RUBRIC.md`: for every acceptance criterion, the exact command(s) to run against a trainee's work, the expected output, and what distinguishes meets from partial; plus ≥2 common failure modes.
+7. The task exercises THIS day's subtopics (and the Day note), uses only tools the demos introduced, and is sized for 60–90 minutes.
+8. Getting-started commands are in a fenced block, one per line, no prompt characters, and actually run on Windows PowerShell and bash.

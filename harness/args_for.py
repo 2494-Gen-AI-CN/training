@@ -72,6 +72,7 @@ def main(argv: list[str]) -> int:
             "dateLabel": bi.date_label(s["date"], year=True),
             "feedback": bi.is_feedback(week, d),
             "notes": d.get("notes", ""),
+            "exerciseKind": d.get("exerciseKind", "pytest"),
             "rel": f"{week['dir']}/{d['slug']}",
             "nextHref": f"{nxt['slug']}.html" if nxt else "../../index.html",
             "nextLabel": f"Day {nxt['day']} — {nxt['title']} →" if nxt else "Back to program →",
@@ -87,7 +88,7 @@ def main(argv: list[str]) -> int:
         "days": days,
         "metrics": metrics,
         "llm": llm,
-        "config": {k: config[k] for k in ("cohort", "siteTitle", "brand", "repoUrl", "repoBranch", "feedbackFormUrl", "python")},
+        "config": {k: config[k] for k in ("cohort", "siteTitle", "brand", "repoUrl", "repoBranch", "feedbackFormUrl", "python", "audience")},
     }
     print(json.dumps(args, indent=2, ensure_ascii=False))
     return 0

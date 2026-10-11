@@ -92,6 +92,8 @@ const dayHeader = (d) =>
   `Subtopics (teach in this order, nothing from later days): ${J(d.subtopics)}\n` +
   (A.weekNotes ? `Week note: ${A.weekNotes}\n` : '') +
   (d.notes ? `Day note: ${d.notes}\n` : '') +
+  (CFG.audience ? `Audience: ${CFG.audience.summary} Assume already known: ${(CFG.audience.assumeKnown || []).join('; ')}. Emphasise: ${(CFG.audience.emphasise || []).join('; ')}.\n` : '') +
+  `Exercise kind: ${d.exerciseKind || 'pytest'}.\n` +
   `Today's date for stamps: ${A.today}. Python ${CFG.python}. LLM config for this week: ${J(LLM)}.\n` +
   `Root: ${ROOT}. Metrics: ${J(M)}.\n`
 
@@ -164,7 +166,20 @@ async function materialsStage(d, demo) {
       `Return pass, critiques (concrete fixes), one-sentence summary.`,
       { schema: VERDICT, label:`${d.id}:notes-crit`, phase:'Materials' }))
 
-  const exercise = () => gated(`${d.id} exercise`,
+  const rubric = d.exerciseKind === 'rubric'
+  const exercise = () => rubric ? gated(`${d.id} exercise`,
+    (cr) => agent(
+      `You are the EXERCISE author (RUBRIC kind: a hands-on deliverable marked against a rubric; NO starter module, NO pytest). ${dayHeader(d)}` +
+      `Read ${d.researchFile} and the demos in ${d.demoDir} (${J(fileNames)}). Read ${H}/templates/exercise-rubric-README.md and follow its headings.\n` +
+      `Write ${d.exDir}/README.md: the task (what trainees build on their own machine/GitHub, drawn from this day's subtopics and the Day note), "## Deliverable" (exactly what they hand in or show), "## Acceptance criteria" (5–8 observable checklist items), "## Rubric" (markdown table criterion | meets | partial | missing), "## Getting started" (commands in a fenced block), "## Hints" (≥2); sized for 60–90 min. Do NOT create starter/ or tests/.\n` +
+      `ALSO write ${d.trDir}/solutions/RUBRIC.md (private trainer marking guide; create dirs): for every acceptance criterion, the exact command(s) a trainer runs against a trainee's repo to check it in under two minutes, the expected output, and what "meets" vs "partial" looks like; plus common failure modes.\n` +
+      `Return module="rubric", testCount=<number of acceptance criteria>, starterFailed=false, solutionPassed=<true iff RUBRIC.md covers every criterion>, summary.` + fix(cr),
+      { schema: EXERCISE_SCHEMA, label:`${d.id}:exercise`, phase:'Materials' }),
+    (_r) => agent(
+      `EXERCISE CRITIC (RUBRIC kind). Read the "Rubric kind" section of ${H}/critics/exercise.md and apply it to ${d.exDir}/README.md and ${d.trDir}/solutions/RUBRIC.md. Confirm with Bash that ${d.exDir} contains no starter/ or tests/. Day context: ${dayHeader(d)}` +
+      `Return pass, critiques (concrete fixes), one-sentence summary.`,
+      { schema: VERDICT, label:`${d.id}:exercise-crit`, phase:'Materials' }))
+  : gated(`${d.id} exercise`,
     (cr) => agent(
       `You are the EXERCISE author. ${dayHeader(d)}` +
       `Read ${d.researchFile} and the demos in ${d.demoDir} (${J(fileNames)}). Read ${H}/templates/exercise-README.md and ${H}/templates/conftest.py.\n` +
@@ -182,11 +197,11 @@ async function materialsStage(d, demo) {
     (cr) => agent(
       `You are the RUNBOOK author (trainer-only talk track). ${dayHeader(d)}` +
       `Read ${d.researchFile}, ${d.demoDir}/README.md and every demo file ${J(fileNames)}, ${d.pageFile} if it exists (for objectives), and the exercise README at ${d.exDir}/README.md if it exists. Read the template ${H}/templates/runbook.md.\n` +
-      `Write ${d.trDir}/runbook.md: first line "# ${d.id} runbook — ${d.title}"; second line "Week ${A.week} · Day ${d.day} · ${d.dateLabel} · ${A.theme}"; headings in template order; "Day at a glance" table whose Minutes sum to ${M.runbook.dayMinutesMin}–${M.runbook.dayMinutesMax} incl. breaks/lunch; one "## Demo N: <exact filename>" per demo file with Goal, type-live/paste per STEP, numbered talk track, ≥2 checkpoint questions, expected output, ≥1 pitfall from the brief; Notes page handoff; Exercise briefing (module, acceptance, ≥2 stuck points, solutions path ${d.trDir}/solutions); Common questions; If running long / short${d.feedback ? '; "## Feedback form" with ' + CFG.feedbackFormUrl : ''}${d.kind === 'review' ? '; "## Review agenda"' : ''}.\n` +
+      `Write ${d.trDir}/runbook.md: first line "# ${d.id} runbook — ${d.title}"; second line "Week ${A.week} · Day ${d.day} · ${d.dateLabel} · ${A.theme}"; headings in template order; "Day at a glance" table whose Minutes sum to ${M.runbook.dayMinutesMin}–${M.runbook.dayMinutesMax} incl. breaks/lunch; one "## Demo N: <exact filename>" per demo file with Goal, type-live/paste per STEP, numbered talk track, ≥2 checkpoint questions, expected output, ≥1 pitfall from the brief; Notes page handoff; Exercise briefing (${rubric ? 'deliverable, acceptance criteria, ≥2 stuck points, how to mark in the room, marking guide ' + d.trDir + '/solutions/RUBRIC.md' : 'module, acceptance, ≥2 stuck points, solutions path ' + d.trDir + '/solutions'}); Common questions; If running long / short${d.feedback ? '; "## Feedback form" with ' + CFG.feedbackFormUrl : ''}${d.kind === 'review' ? '; "## Review agenda"' : ''}.\n` +
       `Return totalMinutes, demoSections, solutionFiles (what exists under solutions/), summary.` + fix(cr),
       { schema: RUNBOOK_SCHEMA, label:`${d.id}:runbook`, phase:'Materials' }),
     (_r) => agent(
-      `RUNBOOK CRITIC. Read ${H}/critics/runbook.md and apply it to ${d.trDir}/runbook.md with demos in ${d.demoDir}, exercise in ${d.exDir}, solutions in ${d.trDir}/solutions, brief ${d.researchFile}. Run the solutions pytest check with Bash. Day context: ${dayHeader(d)}` +
+      `RUNBOOK CRITIC. Read ${H}/critics/runbook.md and apply it to ${d.trDir}/runbook.md with demos in ${d.demoDir}, exercise in ${d.exDir}, solutions in ${d.trDir}/solutions, brief ${d.researchFile}. ${rubric ? 'Rubric-kind day: check solutions/RUBRIC.md exists and the briefing matches it; no pytest.' : 'Run the solutions pytest check with Bash.'} Day context: ${dayHeader(d)}` +
       `Return pass, critiques (concrete fixes), one-sentence summary.`,
       { schema: VERDICT, label:`${d.id}:runbook-crit`, phase:'Materials' }))
 

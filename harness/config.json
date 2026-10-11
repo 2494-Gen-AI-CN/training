@@ -10,6 +10,21 @@
   "repoBranch": "main",
   "feedbackFormUrl": "https://forms.cloud.microsoft/pages/responsepage.aspx?id=iuJja_motUeqQJfiMSFRZMU3bOO2vNdAiSFsti9sgKVUQkhYWEhIRzJSWjNOVVM5REFOU0tWT0JXQyQlQCN0PWcu&route=shorturl",
   "python": "3.12",
+  "audience": {
+    "_comment": "Learner persona (D-0023). Reaches every author/critic prompt as 'Audience'. Change via a decision entry.",
+    "summary": "Recent computer-science graduates (University of Toronto cohort) with no industry experience.",
+    "assumeKnown": [
+      "Python syntax and the standard data types from coursework",
+      "basic git commands from coursework (clone, add, commit, push)",
+      "general CS theory: compilers vs interpreters, data structures, OOP"
+    ],
+    "emphasise": [
+      "how professional teams actually work: SDLC, Scrum, code review, written communication",
+      "idioms, conventions and pitfalls rather than syntax from zero",
+      "team Git workflow: branches, merges, conflicts, remotes, commit hygiene",
+      "theory they already know gets a two-minute recap, then practice"
+    ]
+  },
   "llm": {
     "default": {
       "provider": "anthropic",
