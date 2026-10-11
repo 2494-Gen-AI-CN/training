@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w01d2">
+<title>W1·D2 — Orientation, Agile &amp; Git fundamentals | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261011">
+<script src="../../assets/js/theme.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises" target="_blank" rel="noopener">Exercises</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>Orientation, Agile &amp; Git fundamentals: how a team turns code into a story</h1>
+        <div class="meta">
+          <span><b>Week 1</b> · Day 2</span>
+          <span>Tue Oct 13, 2026</span>
+          <span>Agile for developers, Git &amp; Python fundamentals</span>
+          <span><b>~12 min</b> · notes @150 wpm + diagram + check</span>
+        </div>
+        <p class="summary">Monday was a holiday, so this page assumes nothing from yesterday: only what you brought from
+        university, which is Python syntax, the basic <code>clone</code>/<code>add</code>/<code>commit</code>/<code>push</code>
+        loop, and the compiler-versus-interpreter distinction. Today spent thirty minutes confirming your tooling and the rest
+        of the day on how a software team actually works: SDLC, Scrum and story points, then Git as the team's shared
+        workflow. Run <code>01_tooling_check.py</code> through <code>05_git_remote_round_trip.py</code> in order; this page is
+        the reference behind them.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="0">
+        <div class="tag">On-ramp</div>
+        <h2>Thirty minutes to confirm your setup, not to learn Python</h2>
+        <p>Python is general-purpose; python.org lists web development, scientific and numeric work, software tooling,
+        business applications, education and desktop GUIs. In the full stack (browser front end, server back end, database,
+        infrastructure) Python's seat in this course is the back end and the data/ML layer, and
+        <code>01_tooling_check.py</code> prints that map with both seats marked. "Professionalism at Revature" is house rules
+        about attendance, communication, written updates and conduct; there is no external source for it, so treat it as
+        policy rather than theory.</p>
+        <p>You know the compiler-versus-interpreter distinction; here is the part that matters in practice.
+        <code>python hello.py</code> runs the source with no separate build step, which is what "interpreted" means day to
+        day; under the hood CPython compiles each module to bytecode and caches it in <code>__pycache__/*.pyc</code>. That
+        folder is build output, not source, and it belongs in <code>.gitignore</code>; STEP 2 of the demo shows the bytecode
+        with <code>dis</code>.</p>
+        <p>The tooling check is one line: <code>py --version</code> proves the shell runs the interpreter you think it does.
+        Running <code>python</code> with no arguments opens the REPL at the <code>&gt;&gt;&gt;</code> prompt, where the last
+        printed value is kept in the read-only name <code>_</code> and you leave with <code>exit()</code>. A Jupyter
+        Notebook is a REPL with a memory: each cell's output appears underneath it, in execution order rather than top to
+        bottom. The pitfall is typing <code>git status</code> at the <code>&gt;&gt;&gt;</code> prompt, getting a
+        <code>SyntaxError</code>, and deciding Python is broken. Tell the PowerShell prompt, the REPL prompt and a running
+        script apart, and the on-ramp is done.</p>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">Process</div>
+        <h2>SDLC: the same six phases, walked once or walked in loops</h2>
+        <p>Every piece of software passes through the same phases regardless of methodology: requirements and planning,
+        design, implementation, testing, deployment and maintenance. That is the software development life cycle, and
+        methodologies differ only in how they schedule it. Waterfall signs off each phase before the next begins, so
+        requirements are frozen early and working software appears only at the end. Agile repeats all the phases in short
+        cycles; the Agile principles call for delivering working software frequently, "from a couple of weeks to a couple of
+        months", and for welcoming changing requirements even late in development.</p>
+        <p><code>02_sdlc_waterfall_vs_agile.py</code> schedules one small backlog both ways. The waterfall timeline runs ten
+        weeks with requirements signed off in week 2, so when the customer asks for GitHub login in week 6 the change is
+        queued until after release. The Agile schedule runs five two-week Sprints that each pass through every phase and ship
+        an Increment; the same change goes into the next Sprint's backlog.</p>
+        <div class="ix-predict" data-q="Before you run demo 02: in the waterfall schedule, which week delivers the first software the customer can touch, and which week in the Agile schedule?" data-a="Week 10 under waterfall (the end of deployment) and week 2 under Agile (the end of Sprint 1)."></div>
+        <p>The Manifesto itself (2001) is four lines: individuals and interactions over processes and tools, working
+        software over comprehensive documentation, customer collaboration over contract negotiation, and responding to change
+        over following a plan. The demo prints them with "over" in the middle for a reason: the items on the right still have
+        value, the ones on the left are valued more.</p>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">Scrum</div>
+        <h2>Scrum and story points: what the Guide defines, and what teams layer on</h2>
+        <p>Scrum is founded on empiricism (transparency, inspection, adaptation) and runs every SDLC phase inside every
+        Sprint. The 2020 Scrum Guide defines three accountabilities (Product Owner, Scrum Master, Developers), five events
+        (the Sprint, Sprint Planning, Daily Scrum, Sprint Review, Sprint Retrospective) and three artifacts (Product Backlog,
+        Sprint Backlog, Increment). It also sets time-boxes: a Sprint is one month or less, the Daily Scrum is fifteen
+        minutes, and for a one-month Sprint, Planning is capped at eight hours, the Review at four and the Retrospective at
+        three, with shorter caps for shorter Sprints; <code>03_scrum_and_story_points.py</code> prints them beside a two-week
+        budget.</p>
+        <p>The Guide says Developers are accountable for sizing backlog items and nothing more: story points and hours
+        appear nowhere in it. Story pointing is a practice layered on top: the team assigns relative effort on a
+        Fibonacci-like scale (1, 2, 3, 5, 8, 13) by comparing each item with the others and with a reference item. Velocity,
+        points completed per Sprint, is meaningful only within one team compared with its own past Sprints.</p>
+        <p>The demo's planning-poker round shows the mechanics. On item A ("add a hello script") the votes are 1, 2, 2, 1,
+        adjacent on the scale, and the majority settles it at 2. On item B ("set up the team's shared repo with branch
+        protection") the votes are 3, 8, 5, 13, far too wide, so the 3 and the 13 explain themselves, everyone re-votes
+        5, 5, 8, 5, and the item is a 5. The pitfalls: reading "5 points" as five hours, comparing points between teams,
+        letting the loudest voice set the number. Today's Git exercise is exactly the kind of item that sits in a Sprint
+        Backlog.</p>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="3">
+        <div class="tag">Git</div>
+        <h2>Git as the team's workflow: three states and a log that tells a story</h2>
+        <p>Version control comes in three generations: local (RCS) on one machine, centralised (CVS, Subversion) on one
+        server that clients check a working copy out of, and distributed (Git, Mercurial), where every clone holds the full
+        repository, so <code>log</code>, <code>commit</code> and <code>branch</code> work offline and only <code>push</code>,
+        <code>pull</code> and <code>fetch</code> touch the network. Git stores each commit as a snapshot of the whole tree,
+        not as per-file diffs.</p>
+        <p>A file is in one of three states, modified, staged or committed, matching three areas: the working tree, the
+        staging area (the index) and the <code>.git</code> directory. <code>git status</code> reports which, and
+        <code>04_git_local_loop.py</code> runs it after every command so the states stay visible. <code>git init</code> creates
+        <code>.git</code> and tracks nothing until you <code>git add</code>, which both starts tracking new files and stages
+        modified ones; skip it and <code>git commit -m</code> reports "no changes added to commit". On a fresh Windows machine
+        the first commit fails with "Author identity unknown" until <code>user.name</code> and <code>user.email</code> are set,
+        and <code>init.defaultBranch</code> (Git 2.28+) names the first branch, <code>master</code> unless set to
+        <code>main</code>. The demo passes these with <code>-c</code>; you set them once:</p>
+<pre><code>git config --global user.name "Your Name"
+git config --global user.email "you@example.com"
+git config --global init.defaultBranch main</code></pre>
+        <p>The demo's first commit adds <code>hello.py</code> alongside a <code>.gitignore</code> listing
+        <code>__pycache__/</code>, <code>*.pyc</code> and <code>.venv/</code>, the minimum for any Python project. Then
+        <code>git log --oneline</code> shows one commit per line and only the first line of each message. That is why message
+        shape matters: a summary of about fifty characters in the imperative mood ("Add login form", not "Added" or "fix"),
+        a blank line, then a body explaining what and why rather than how. <code>git commit</code> without <code>-m</code>
+        opens the configured editor.</p>
+        <div class="ix-spot" data-snippet="$ git log --oneline&#10;3f2a1c9 final2&#10;8b7d0e4 update&#10;1a2b3c4 fix" data-q="Git accepted all three commits. Why does the exercise rubric mark this log down?" data-a="None of the summary lines says what changed or why, and the log is supposed to read as the story of the work. Imperative mood, about fifty characters: 'Add greet function to hello.py'."></div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">Branching</div>
+        <h2>Branch, merge, and the one conflict you resolve by hand</h2>
+        <p><code>git branch feature</code> creates a branch but does not switch to it, so your next commits still land on
+        <code>main</code>; when you later merge, Git says "Already up to date" and the feature branch looks empty.
+        <code>git switch feature</code> (Git 2.23+) or <code>git checkout feature</code> moves <code>HEAD</code>, and
+        <code>git switch -c feature</code> creates and switches in one step, the form the demo uses.</p>
+        <p>STEP 3 of <code>04_git_local_loop.py</code> commits a <code>greet</code> function on <code>feature</code>, switches
+        back to <code>main</code> and merges. Because <code>main</code> had no new commits since the branch diverged, Git simply
+        moves the pointer and reports "Fast-forward"; no merge commit is created. STEP 4 forces the other case: a
+        <code>greeting</code> branch and <code>main</code> both change line 1 of <code>hello.py</code>, and the merge stops with
+        "CONFLICT (content)". Git has written three markers into the file: <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code> above your
+        side, <code>=======</code> between, <code>&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code> below theirs. Read both sides, keep the
+        right lines, delete all three marker lines, then <code>git add</code> and <code>git commit</code>; the result is a
+        merge commit with two parents, visible in <code>git log --oneline --graph</code>. <code>git merge --abort</code> backs
+        out entirely: right when you are lost, wrong if you then submit without resolving anything.</p>
+        <p>The pitfalls the rubric is written against: deleting the markers blindly and committing with
+        <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code> still in the file. After the demo, repeat the loop by hand in a fresh folder,
+        never inside one that is already a repository such as all of Documents, because nested repositories confuse every
+        later command:</p>
+<pre><code>mkdir w01d2-git
+cd w01d2-git
+git init
+git add .
+git commit -m "Add hello script and Python .gitignore"
+git switch -c feature</code></pre>
+        <button class="code-cta" type="button" data-modal="code-w01d2-conflict"><span class="cc-ico">&lt;/&gt;</span> See the demo code <span class="cc-meta">· 04_git_local_loop.py</span></button>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
+        <div class="tag">Remote &amp; exercise</div>
+        <h2>Push, pull, and what the rubric reads</h2>
+        <p><code>05_git_remote_round_trip.py</code> starts by running <code>git push</code> with no remote so you recognise
+        "No configured push destination" when you meet it later. <code>git remote add origin &lt;url&gt;</code> names the
+        remote and <code>git push -u origin main</code> uploads the branch and sets its upstream, so plain
+        <code>git push</code> and <code>git pull</code> need no arguments afterwards. The demo
+        uses a bare repository as a stand-in for GitHub; your version uses an empty repository created on github.com, and the
+        only extra step is the Git Credential Manager browser sign-in on first push. Over HTTPS, GitHub accepts a personal
+        access token or that credential helper, never your account password.</p>
+        <p>STEP 3 has a teammate clone and push a commit, the same event as editing the README in the GitHub web UI. STEP 4
+        separates the two halves of <code>git pull</code>: <code>git fetch</code> downloads the new history without touching
+        the working tree, so <code>git status</code> says "Your branch is behind 'origin/main' by 1 commit" while the file on
+        disk is unchanged. <code>git pull</code> is fetch followed by a merge of the upstream branch (or a rebase, when
+        <code>pull.rebase</code> is set), which is why a pull can produce a merge you did not expect or refuse with "Your
+        local changes would be overwritten by merge": it is not a download.</p>
+        <button class="code-cta" type="button" data-modal="code-w01d2-remote"><span class="cc-ico">&lt;/&gt;</span> See the demo code <span class="cc-meta">· 05_git_remote_round_trip.py</span></button>
+        <p>The Git exercise is today's deliverable, marked against a rubric rather than tests: a real repository on GitHub
+        with a feature branch, a merge, one resolved conflict and commit messages that read as the story of the work. STEP 5
+        puts "fix" beside "Add greeting function to hello.py" and states the rule the rubric applies. Tomorrow assumes your
+        tooling check passed and starts on how a team writes Python: PEP 8, naming, I/O and comments that earn their place.</p>
+      </section>
+
+      <section class="reading-sources" aria-label="Sources and deeper dive">
+        <h2>Sources &amp; deeper dive</h2>
+        <ul>
+          <li><a href="https://docs.python.org/3/tutorial/interpreter.html" target="_blank" rel="noopener">Python tutorial — Using the Python Interpreter</a> — the REPL, <code>python -i</code> and how to leave.</li>
+          <li><a href="https://docs.python.org/3/glossary.html" target="_blank" rel="noopener">Python glossary — interpreted, bytecode, CPython</a> — why <code>__pycache__</code> appears and what "interpreted" means.</li>
+          <li><a href="https://www.python.org/about/apps/" target="_blank" rel="noopener">python.org — Applications for Python</a> — the official list of what Python is used for.</li>
+          <li><a href="https://agilemanifesto.org/principles.html" target="_blank" rel="noopener">Principles behind the Agile Manifesto</a> — the twelve principles, including frequent delivery and welcoming change.</li>
+          <li><a href="https://scrumguides.org/scrum-guide.html" target="_blank" rel="noopener">The 2020 Scrum Guide</a> — the accountabilities, events, artifacts and time-boxes; note what it does not say about points.</li>
+          <li><a href="https://git-scm.com/book/en/v2/Getting-Started-What-is-Git%3F" target="_blank" rel="noopener">Pro Git — What is Git?</a> — snapshots, the three states and the three areas.</li>
+          <li><a href="https://git-scm.com/book/en/v2/Git-Branching-Basic-Branching-and-Merging" target="_blank" rel="noopener">Pro Git — Basic Branching and Merging</a> — fast-forward, merge commits and conflict markers.</li>
+          <li><a href="https://git-scm.com/docs/git-commit#_discussion" target="_blank" rel="noopener">git-commit — Discussion</a> — the summary-line-plus-body shape the rubric marks.</li>
+          <li><a href="https://git-scm.com/docs/git-pull" target="_blank" rel="noopener">git-pull reference</a> — pull as fetch plus merge or rebase.</li>
+          <li><a href="https://docs.github.com/en/get-started/getting-started-with-git/about-remote-repositories" target="_blank" rel="noopener">GitHub Docs — About remote repositories</a> — HTTPS versus SSH and why the password is refused.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+        <div class="activity-card demo-card">
+          <div class="ac-k">⌨ Code-along files</div>
+          <div class="ac-t">
+            <a href="https://github.com/2494-Gen-AI-CN/training/tree/main/demos/week-01/day-2-orientation-agile-and-git/01_tooling_check.py" target="_blank" rel="noopener">01_tooling_check.py</a> ·
+            <a href="https://github.com/2494-Gen-AI-CN/training/tree/main/demos/week-01/day-2-orientation-agile-and-git/02_sdlc_waterfall_vs_agile.py" target="_blank" rel="noopener">02_sdlc_waterfall_vs_agile.py</a> ·
+            <a href="https://github.com/2494-Gen-AI-CN/training/tree/main/demos/week-01/day-2-orientation-agile-and-git/03_scrum_and_story_points.py" target="_blank" rel="noopener">03_scrum_and_story_points.py</a> ·
+            <a href="https://github.com/2494-Gen-AI-CN/training/tree/main/demos/week-01/day-2-orientation-agile-and-git/04_git_local_loop.py" target="_blank" rel="noopener">04_git_local_loop.py</a> ·
+            <a href="https://github.com/2494-Gen-AI-CN/training/tree/main/demos/week-01/day-2-orientation-agile-and-git/05_git_remote_round_trip.py" target="_blank" rel="noopener">05_git_remote_round_trip.py</a>
+          </div>
+          <div class="ac-meta">run in order · README has the steps</div>
+        </div>
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · practice, not graded</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 1 Day 2</footer>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 2 — goals &amp; exercise</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Confirm your interpreter with <code>py --version</code>, tell the PowerShell prompt, the <code>&gt;&gt;&gt;</code> REPL and a running script apart, and leave the REPL with <code>exit()</code></li>
+      <li>Name the six SDLC phases and explain how waterfall and Agile schedule them differently when a requirement changes mid-project</li>
+      <li>List Scrum's three accountabilities, five events and three artifacts, and size a backlog item by comparison on the 1-2-3-5-8-13 scale instead of in hours</li>
+      <li>Run the local Git loop (<code>init</code>, <code>add</code>, <code>commit</code>, <code>switch -c</code>, <code>merge</code>) with <code>git status</code> at every step, and resolve a conflict by reading both sides and removing all three markers</li>
+      <li>Connect a repository to GitHub with <code>remote add</code> and <code>push -u</code>, and explain <code>git pull</code> as fetch plus merge</li>
+    </ul>
+    <div class="ma-k">Today's exercise</div>
+    <ul class="deliv-list check">
+      <li><a href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-01/day-2-orientation-agile-and-git" target="_blank" rel="noopener">exercises/week-01/day-2-orientation-agile-and-git</a> — a real repository on GitHub with a feature branch, a merge, one resolved conflict and commit messages that tell the story. Marked against the rubric in the exercise README, not by tests.</li>
+    </ul>
+    <div class="ma-k">Demo files in order</div>
+    <ul class="deliv-list">
+      <li><code>01_tooling_check.py</code> — which interpreter runs, bytecode and <code>__pycache__</code>, the full-stack map, REPL / script / Jupyter</li>
+      <li><code>02_sdlc_waterfall_vs_agile.py</code> — six phases; one backlog scheduled waterfall and Agile with a week-6 change; the four Manifesto values</li>
+      <li><code>03_scrum_and_story_points.py</code> — what the Scrum Guide defines, its time-boxes, the point scale and two planning-poker rounds</li>
+      <li><code>04_git_local_loop.py</code> — init, the three states, add, commit, log, a fast-forward merge and a conflict resolved by hand</li>
+      <li><code>05_git_remote_round_trip.py</code> — push with no remote, remote add, push -u, a teammate's push, fetch versus pull, the commit-message rule</li>
+    </ul>
+    <p class="goals-foot">Tomorrow assumes the tooling check passed and teaches how a team writes Python. Finish the check to unlock the next page.</p>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Back to program →", href: "../../index.html" };
+window.DIAGRAM = {
+  title: "From process to repository · how the day connects",
+  width: 500, height: 420,
+  nodes: [
+    { id:"seat",      step:0, kind:"example", x:14, y:14, w:472, h:56, label:"PYTHON'S SEAT, YOUR SETUP\n  back end + data/ML · py --version · REPL vs script vs notebook", detail:"CPython compiles to bytecode in __pycache__ and then interprets it. That folder is build output and belongs in .gitignore." },
+    { id:"sdlc",      step:1, x:24,  y:96,  w:140, h:44, label:"SDLC\n  six phases", detail:"Requirements/planning, design, implementation, testing, deployment, maintenance: every methodology walks them." },
+    { id:"waterfall", step:1, x:180, y:96,  w:140, h:44, label:"Waterfall\n  once, in order", detail:"Each phase signed off before the next; requirements frozen early; software at the end (week 10 in demo 02)." },
+    { id:"agile",     step:1, x:336, y:96,  w:140, h:44, label:"Agile\n  every phase, every cycle", detail:"Working software every couple of weeks; changes welcomed late (week-6 change goes into the next Sprint)." },
+    { id:"scrum",     step:2, x:24,  y:176, w:220, h:44, label:"Scrum: 3 roles · 5 events · 3 artifacts", detail:"Sprint of one month or less, Daily Scrum 15 minutes; Planning, Review and Retrospective capped at 8, 4 and 3 hours for a one-month Sprint." },
+    { id:"points",    step:2, x:276, y:176, w:200, h:44, label:"Story points\n  relative · 1 2 3 5 8 13", detail:"Not in the Scrum Guide. Sized by comparison with a reference item; velocity means something only inside one team." },
+    { id:"local",     step:3, x:24,  y:256, w:220, h:44, label:"Local loop\n  init · add · commit · log", detail:"Three states: modified, staged, committed. git status after every step. Summary line, blank line, body." },
+    { id:"branch",    step:4, x:276, y:256, w:200, h:44, label:"Branch · merge · conflict", detail:"switch -c creates and switches. Fast-forward when main has no new commits; otherwise a two-parent merge commit, or markers to resolve by hand." },
+    { id:"remote",    step:5, x:24,  y:336, w:452, h:50, label:"Remote: remote add · push -u · fetch · pull\n  the exercise repository on GitHub", detail:"push -u sets the upstream; pull is fetch plus merge; HTTPS wants a token or credential manager, never the password." }
+  ],
+  edges: [
+    { id:"e1", step:1, from:"sdlc", to:"waterfall", dir:"-" },
+    { id:"e2", step:1, from:"sdlc", to:"agile", dir:"-" },
+    { id:"e3", step:2, from:"agile", to:"scrum", label:"one way to do it" },
+    { id:"e4", step:2, from:"scrum", to:"points", label:"sizing" },
+    { id:"e5", step:3, from:"points", to:"local", label:"the Sprint's work" },
+    { id:"e6", step:4, from:"local", to:"branch", label:"two lines of work" },
+    { id:"e7", step:5, from:"branch", to:"remote", label:"share it" }
+  ],
+  captions: [
+    "The on-ramp: where Python sits in the stack and the one-line check that your shell runs it. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "The six SDLC phases are constant; waterfall walks them once, Agile walks them every cycle.",
+    "Scrum defines roles, events, artifacts and time-boxes; story points are layered on top as relative sizes.",
+    "The local Git loop: a file moves modified → staged → committed, and the log should read as the story of the work.",
+    "Branches let two lines of work diverge; a merge fast-forwards, creates a two-parent commit, or stops with markers for you.",
+    "The remote round trip connects the local repository to GitHub, and the exercise is marked on exactly this shape."
+  ]
+};
+window.QUIZ = {
+  id: "w01-d2",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "After running demo 01 a __pycache__ folder appears next to the script. What is in it, and what should you do about it?",
+      options: ["Compiled bytecode (.pyc files): build output, so list __pycache__/ in .gitignore", "A backup of your source, so commit it with the rest", "A native executable produced by a separate build step", "The Jupyter kernel's saved cell outputs"], answer: 0,
+      explain: "CPython compiles each module to bytecode before interpreting it and caches the result in __pycache__/*.pyc. It is generated, not source, so it belongs in .gitignore alongside *.pyc and .venv/." },
+    { type: "scq", stem: "Four Developers vote 3, 8, 5 and 13 on a backlog item. What does the planning-poker round in demo 03 do next?",
+      options: ["Average the votes to 7.25 and round up to 8", "The 3 and the 13 explain their reasoning, then everyone re-votes", "The Scrum Master picks the number", "Convert each vote to hours and take the median"], answer: 1,
+      explain: "The spread is too wide for a majority to mean anything. The lowest and highest voters explain what they know (one had done it before, one feared GitHub permissions), the team re-votes 5, 5, 8, 5 and the item is a 5. Points are relative effort agreed by comparison, never hours." },
+    { type: "tf", stem: "git branch feature creates the branch and moves you onto it, so your next commit lands on feature.", answer: false,
+      explain: "git branch only creates the branch. Until you git switch feature (or git switch -c feature to create and switch in one step), commits keep landing on main, and a later merge reports 'Already up to date'." },
+    { type: "mcq", stem: "With an upstream configured, which of these happen when you run git pull? Select all that apply.",
+      options: ["Git fetches the new history from the remote", "Git merges (or rebases, if pull.rebase is set) the upstream branch into your branch", "Git pushes your local commits to the remote", "Git can stop with a conflict if both sides changed the same lines"], answer: [0, 1, 3],
+      explain: "pull is fetch followed by merge (or rebase). A merge can conflict like any other, which is why 'Your local changes would be overwritten' or an unexpected merge commit can appear. Nothing is pushed." },
+    { type: "match", stem: "Match each Git term to what it means.",
+      pairs: [
+        { l: "Fast-forward", r: "The target branch had no new commits, so Git just moves the pointer" },
+        { l: "Merge commit", r: "Both branches advanced; the new commit has two parents" },
+        { l: "Conflict", r: "Both sides changed the same lines; Git writes three markers and waits for you" },
+        { l: "Upstream", r: "The remote branch set by push -u, so plain push and pull know where to go" }
+      ],
+      explain: "Fast-forward: no merge commit at all. Merge commit: two parents, visible in log --graph. Conflict: edit, remove all three markers, add, commit. Upstream: set once with git push -u origin main." },
+    { type: "open", stem: "In one or two sentences: why does the exercise rubric mark down a log that reads fix / update / final2, and what shape should each message have?",
+      hint: "Think about what git log --oneline shows and what a teammate reading it next Sprint needs.",
+      model: "git log --oneline shows only the first line of each message, and the log is supposed to read as the story of the work; 'fix' says nothing about what changed or why. Each message should have a summary line of about fifty characters in the imperative mood ('Add greet function to hello.py'), a blank line, then a body explaining what and why." }
+  ]
+};
+</script>
+
+<!-- code popup: the forced conflict in demo 04 -->
+<div id="code-w01d2-conflict" class="modal-overlay" hidden>
+  <div class="modal-card code-modal">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Demo code: 04_git_local_loop.py</h2>
+    <p class="cv-cap">STEPs 3 and 4: a feature branch that fast-forwards, then two branches editing the same line so the merge stops with markers and is resolved by hand.</p>
+    <div class="cv" data-file="04_git_local_loop.py" data-lang="python"><pre class="cv-raw"># --- STEP 3: a feature branch and a fast-forward merge ---
+git(&quot;switch&quot;, &quot;-c&quot;, &quot;feature&quot;)     # creates AND switches (git branch alone does not)
+write(&quot;hello.py&quot;, 'print(&quot;Hello, team&quot;)\n\n\ndef greet(name):\n    return f&quot;Hello, {name}&quot;\n')
+git(&quot;commit&quot;, &quot;-am&quot;, &quot;Add greet function to hello.py&quot;)
+git(&quot;switch&quot;, &quot;main&quot;)
+git(&quot;merge&quot;, &quot;feature&quot;)             # main had no new commits -&gt; pointer just moves
+git(&quot;log&quot;, &quot;--oneline&quot;)
+
+# --- STEP 4: force a real conflict on the same line, resolve it, commit ---
+git(&quot;switch&quot;, &quot;-c&quot;, &quot;greeting&quot;)
+write(&quot;hello.py&quot;, 'print(&quot;Hello, Toronto&quot;)\n\n\ndef greet(name):\n    return f&quot;Hello, {name}&quot;\n')
+git(&quot;commit&quot;, &quot;-am&quot;, &quot;Greet Toronto instead of the team&quot;)
+git(&quot;switch&quot;, &quot;main&quot;)
+write(&quot;hello.py&quot;, 'print(&quot;Hello, cohort 2494&quot;)\n\n\ndef greet(name):\n    return f&quot;Hello, {name}&quot;\n')
+git(&quot;commit&quot;, &quot;-am&quot;, &quot;Greet the cohort by number&quot;)
+git(&quot;merge&quot;, &quot;greeting&quot;)            # both sides changed line 1 -&gt; Git stops
+with open(os.path.join(REPO, &quot;hello.py&quot;), encoding=&quot;utf-8&quot;) as f:
+    print(&quot;\n(cat) hello.py with conflict markers:\n  &quot; + f.read().rstrip().replace(&quot;\n&quot;, &quot;\n  &quot;))
+print(&quot;\n(edit) keep the right lines, delete ALL THREE marker lines, then add + commit&quot;)
+write(&quot;hello.py&quot;, 'print(&quot;Hello, cohort 2494 in Toronto&quot;)\n\n\ndef greet(name):\n    return f&quot;Hello, {name}&quot;\n')
+git(&quot;add&quot;, &quot;hello.py&quot;)
+git(&quot;commit&quot;, &quot;-m&quot;, &quot;Merge branch 'greeting': combine both greetings on line 1&quot;)
+git(&quot;log&quot;, &quot;--oneline&quot;, &quot;--graph&quot;)</pre></div>
+    <p class="cv-foot">Notice that the resolution is a plain edit followed by add and commit: there is no special "resolve" command, and the merge commit's message says what was combined.</p>
+  </div>
+</div>
+
+<!-- code popup: fetch versus pull in demo 05 -->
+<div id="code-w01d2-remote" class="modal-overlay" hidden>
+  <div class="modal-card code-modal">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Demo code: 05_git_remote_round_trip.py</h2>
+    <p class="cv-cap">STEPs 2 to 4: name the remote, push with -u, let a teammate push, then watch fetch leave the working tree alone before pull merges.</p>
+    <div class="cv" data-file="05_git_remote_round_trip.py" data-lang="python"><pre class="cv-raw"># --- STEP 2: name a remote, push with -u so later push/pull need no arguments ---
+git(&quot;init&quot;, &quot;--bare&quot;, HUB, cwd=BASE)  # stands in for the empty repo you create on github.com
+git(&quot;remote&quot;, &quot;add&quot;, &quot;origin&quot;, HUB)
+git(&quot;remote&quot;, &quot;-v&quot;)
+git(&quot;push&quot;, &quot;-u&quot;, &quot;origin&quot;, &quot;main&quot;)
+
+# --- STEP 3: a teammate clones and pushes (same as editing on the GitHub web UI) ---
+git(&quot;clone&quot;, HUB, &quot;teammate&quot;, cwd=BASE)
+write(os.path.join(MATE, &quot;README.md&quot;), &quot;# Team repo\n\nStand-up at 9:15 daily.\n&quot;)
+git(&quot;commit&quot;, &quot;-am&quot;, &quot;Add stand-up time to README&quot;, cwd=MATE)
+git(&quot;push&quot;, cwd=MATE)
+
+# --- STEP 4: fetch downloads history only; pull is fetch + merge ---
+git(&quot;fetch&quot;)
+git(&quot;status&quot;)                       # behind by 1, but README.md on disk is unchanged
+git(&quot;log&quot;, &quot;--oneline&quot;, &quot;HEAD..origin/main&quot;)   # what origin has that we do not
+git(&quot;pull&quot;)
+git(&quot;log&quot;, &quot;--oneline&quot;)</pre></div>
+    <p class="cv-foot">The bare repository is the only stand-in; every command is the one you type against GitHub, plus the credential-manager sign-in on the first push.</p>
+  </div>
+</div>
+
+<script src="../../assets/js/diagram.js?v=20261011"></script>
+<script src="../../assets/js/scrolly.js?v=20261011"></script>
+<script src="../../assets/js/modals.js?v=20261011"></script>
+<script src="../../assets/js/quiz.js?v=20261011"></script>
+<script src="../../assets/js/widgets.js?v=20261011"></script>
+<script src="../../assets/js/glossary.js?v=20261011"></script>
+<script src="../../assets/js/codeviewer.js?v=20261011"></script>
+</body>
+</html>

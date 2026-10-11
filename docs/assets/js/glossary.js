@@ -90,7 +90,15 @@
     { term: "Scrum", def: "An Agile framework that delivers work in short fixed-length Sprints with defined roles, events and artifacts.", aka: ["scrum framework"] },
     { term: "sprint", def: "A fixed time-box of one month or less in which a Scrum team turns backlog items into a usable increment." },
     { term: "story point", def: "A relative, unit-less estimate of how much effort a backlog item takes compared with other items, not a number of hours." },
-    { term: "Jupyter notebook", def: "A browser document of code and text cells where each code cell runs in a live kernel and shows its output underneath.", aka: ["notebook", "Jupyter", ".ipynb"] }
+    { term: "Jupyter notebook", def: "A browser document of code and text cells where each code cell runs in a live kernel and shows its output underneath.", aka: ["notebook", "Jupyter", ".ipynb"] },
+    { term: "Agile", def: "A way of building software in short iterations that each deliver working software and welcome changing requirements, as set out in the 2001 Agile Manifesto.", aka: ["Agile Manifesto", "agile methodology"] },
+    { term: "waterfall", def: "A sequential delivery model where each SDLC phase is finished and signed off before the next begins, so working software appears only at the end.", aka: ["waterfall model"] },
+    { term: "backlog", def: "The ordered list of everything the product might need, owned by the Product Owner; the Sprint Backlog is the slice the team commits to for one Sprint.", aka: ["product backlog", "sprint backlog"] },
+    { term: "Daily Scrum", def: "A 15-minute event where the Developers inspect progress toward the Sprint Goal and plan the next day's work.", aka: ["stand-up", "standup", "daily stand-up"] },
+    { term: "DVCS", def: "Distributed Version Control System — every clone holds the full history, so commits, branches and logs work offline and only push, pull and fetch touch the network.", aka: ["distributed version control", "distributed version control system"] },
+    { term: "merge conflict", def: "What Git reports when both branches changed the same lines; it writes the three conflict markers into the file so you can edit, stage and commit the version you want.", aka: ["conflict markers"] },
+    { term: "fast-forward", def: "A merge where the target branch has no new commits of its own, so Git simply moves the branch pointer forward and creates no merge commit.", aka: ["fast-forward merge", "ff merge"] },
+    { term: "upstream", def: "The remote branch a local branch tracks, set by git push -u, so that plain git push and git pull know where to go.", aka: ["upstream branch", "tracking branch"] }
     // GLOSSARY:END
   ];
 

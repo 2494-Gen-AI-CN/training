@@ -38,4 +38,5 @@ Single "what's next" surface for this repo. Read it at session start together wi
 
 - 2026-10-11 — scaffold, decision log, dates, theme landed; STATUS.md created.
 - 2026-10-11 — W1D2 pilot run (D-0021): 20 agents, 4/5 artifacts passed the critic, runbook hand-fixed; `tests/test_trainer.py` regex gained `re.M` (was unpassable); `args_for.py` NEXT-only-if-live; Mocha diagram text fix; page screenshots checked in Mocha and Latte.
+- 2026-10-11 — D-0023/D-0024/D-0025: learner persona (config.json audience), week-1 arc + W1D2 reshape (30-min on-ramp, then SDLC → Agile → Scrum → story points → Git), rubric exercise kind (Git exercise is the exercise). W1D2 re-run `wf_ce312ce5-ce9`: 20 agents, 40.5 min, 0 flagged, tests green; page is 1 on-ramp step + 5 team-practice steps, 1766 words.
 - 2026-10-11 — D-0022: Markdown-style code on notes pages (inline chips, fenced `<pre><code>` command blocks); CSS, exemplar example, notes author prompt line, W1D2 retrofitted with 6 blocks (1779 words, still in band).
