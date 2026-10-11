@@ -10,6 +10,7 @@ Newest first.
 
 | ID | Date | Status | Decision | Affects | Supersedes |
 |---|---|---|---|---|---|
+| D-0019 | 2026-10-11 | accepted | Site theme: cool slate neutrals with self-hosted Inter (body) and JetBrains Mono (code); Revature orange accent kept | docs/assets/css/style.css (:root and dark tokens, @font-face), docs/assets/fonts/, every page via ?v= cache-bust | — |
 | D-0018 | 2026-10-11 | accepted | Phase palette: Gen AI foundations colour changes from violet #7048e8 to amber #c98500; other four phase colours unchanged | harness/curriculum.json phases.genai.c, docs/index.html generated block, every page that reads window.PHASES | — |
 | D-0017 | 2026-10-11 | accepted | Week 11 redistribution (Fri 12-25 holiday): Fri MLOps orientation and program wrap-up merge into Thu SageMaker Pipelines day, which becomes kind review with the feedback form; last teaching day is Thu 12-24 | harness/curriculum.json week 11 day 4 (slug renamed, kind review), Curricula/Weeks/week11.png mapping | — |
 | D-0016 | 2026-10-11 | accepted | Week 7 redistribution (Thu 11-26 and Fri 11-27 holidays): Mon MLP/backprop/digit classifier/TensorBoard, Tue RBM/autoencoders/Keras Sequential API, Wed functional API/layers/batch norm/saving/custom training; feedback Wed 11-25 | harness/curriculum.json week 7 (all slugs renamed), Curricula/Weeks/week7.png mapping | — |

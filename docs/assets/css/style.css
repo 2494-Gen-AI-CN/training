@@ -1,27 +1,45 @@
 /* 2494 Gen-AI training site — notes + scrollytelling + quiz (forked from a prior cohort site)
-   Self-contained, no external deps. */
+   Self-contained, no external deps: fonts are self-hosted in ../fonts (theme "cool slate", D-0019). */
+
+/* Self-hosted variable fonts (latin subset, SIL OFL). Weights are axes, so one file each. */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("../fonts/inter-latin-wght.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400 500;
+  font-display: swap;
+  src: url("../fonts/jetbrains-mono-latin-wght.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
 
 :root {
-  --bg: #fbfaf7;
-  --ink: #1f2329;
-  --ink-soft: #4a525c;
-  --line: #e4e0d8;
+  --bg: #f3f5f8;            /* cool slate */
+  --ink: #0f172a;
+  --ink-soft: #475569;
+  --line: #d9dfe7;
   --accent: #e8590c;        /* Revature-ish orange */
   --accent-soft: #fff1e8;
   --node: var(--surface);
   --node-stroke: #2b2f36;
-  --dim: #b7bcc4;
+  --dim: #9aa4b2;
   --good: #2f9e44;
   --bad: #e03131;
   --maxprose: 780px;
-  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --mono: "SF Mono", ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
+  --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
   /* semantic surfaces (themeable) */
   --surface: #ffffff;       /* cards, panels, stage */
-  --surface-2: #f6f8f6;     /* subtle raised panels, run output */
-  --code-bg: #f1efe9;       /* inline code */
-  --bar-bg: rgba(251,250,247,.92);  /* sticky topbar */
-  --shadow: rgba(40,30,10,.06);
+  --surface-2: #eef1f5;     /* subtle raised panels, run output */
+  --code-bg: #e8edf3;       /* inline code */
+  --bar-bg: rgba(243,245,248,.92);  /* sticky topbar */
+  --shadow: rgba(15,23,42,.08);
   /* semantic tints (themeable) — used by page-specific panels/pills/badges */
   --good-soft: #ebfbee; --good-line: #cfe6cf; --good-ink: #2f7d32;
   --bad-soft: #fff5f5;  --bad-line: #ffc9c9;  --bad-ink: #c92a2a;
@@ -946,31 +964,31 @@ html[data-theme="dark"] .cd-repo { background:#2b313a; }
 /* ===================== Dark mode ===================== */
 html[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #15171b;
-  --ink: #e9e7e2;
-  --ink-soft: #a6adb8;
-  --line: #2b3038;
-  --accent: #ff7a33;            /* brighter orange for dark backgrounds */
+  --bg: #0b1220;                /* cool slate, dark */
+  --ink: #e6edf6;
+  --ink-soft: #9fb0c6;
+  --line: #243149;
+  --accent: #ff8a4c;            /* brighter orange for dark backgrounds */
   --accent-soft: #2a1a10;
-  --node: #1d2027;
-  --node-stroke: #4a515c;
-  --dim: #69707b;
+  --node: #111a2b;
+  --node-stroke: #4a5a74;
+  --dim: #5f7290;
   --good: #51cf66;
   --bad: #ff6b6b;
-  --surface: #1d2027;
-  --surface-2: #23272f;
-  --code-bg: #262b33;
-  --bar-bg: rgba(21,23,27,.92);
+  --surface: #111a2b;
+  --surface-2: #172238;
+  --code-bg: #1a2740;
+  --bar-bg: rgba(11,18,32,.92);
   --shadow: rgba(0,0,0,.45);
   --good-soft: rgba(81,207,102,.12); --good-line: rgba(81,207,102,.40); --good-ink: #69db7c;
   --bad-soft: rgba(255,107,107,.12); --bad-line: rgba(255,107,107,.40); --bad-ink: #ff8787;
   --info: #74c0fc; --info-soft: rgba(116,192,252,.10); --info-line: rgba(116,192,252,.35);
   --warn-soft: rgba(245,159,0,.12); --warn-line: rgba(245,159,0,.38); --warn-ink: #e6c980;
-  --accent-line: rgba(255,122,51,.38); --accent-ink: #ff9a5c;
+  --accent-line: rgba(255,138,76,.38); --accent-ink: #ffa273;
 }
 /* Tinted callouts / states -> translucent on dark so they read as accents, not slabs */
 html[data-theme="dark"] .callout.mindset,
-html[data-theme="dark"] .closing .card.mindset { background: rgba(255,122,51,.10); border-color: rgba(255,122,51,.32); }
+html[data-theme="dark"] .closing .card.mindset { background: rgba(255,138,76,.10); border-color: rgba(255,138,76,.32); }
 html[data-theme="dark"] .callout.warn { background: rgba(255,107,107,.10); border-color: rgba(255,107,107,.32); }
 html[data-theme="dark"] .quiz .opt.correct,
 html[data-theme="dark"] #quiz .opt.correct,
