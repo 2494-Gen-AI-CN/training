@@ -1,37 +1,83 @@
 # 2494 · Gen-AI Python Developer Training
 
-Prep repo for an 11-week Python / Gen-AI developer training. Two things ship per training day:
+Welcome. This repo holds everything you need for the 11-week program: the code we type together in class, the notes site, and the daily exercises.
 
-1. **Live code-along demos** (`demos/`) the trainer types in front of the room.
-2. **A GitHub Pages site** (`docs/`) with notes, a live diagram, a 6-question self-check and an exercise with pytest checks.
+**This repo:** https://github.com/2494-Gen-AI-CN/training
+**Notes site:** https://2494-gen-ai-cn.github.io/training/
+**Weekly feedback form (Fridays):** [Microsoft Forms](https://forms.cloud.microsoft/pages/responsepage.aspx?id=iuJja_motUeqQJfiMSFRZMU3bOO2vNdAiSFsti9sgKVUQkhYWEhIRzJSWjNOVVM5REFOU0tWT0JXQyQlQCN0PWcu&route=shorturl)
 
-Trainer runbooks and exercise solutions live in a separate private repo cloned at `trainer/`.
+## How each day works
 
-## Layout
+1. **Code-along demos** — the trainer builds the day's examples live. Follow along in `demos/<week>/<day>/`. Each file is split into `# --- STEP n ---` checkpoints so you can catch up if you fall behind.
+2. **Notes page** — on the site, one page per day: the ideas behind the demo, a live diagram, and a 6-question self-check. Finishing the check unlocks the next day's page.
+3. **Exercise** — in `exercises/<week>/<day>/`. Implement the starter file until the tests pass.
 
-```
-docs/                  GitHub Pages root (zero build): index.html, weeks/<week>/<day>.html, assets/
-demos/<week>/<day>/    code-along scripts or notebooks + README (run order)
-exercises/<week>/<day>/  README, starter/, tests/   (python -m pytest)
-trainer/<week>/<day>/  runbook.md, solutions/       (private repo, gitignored)
-harness/               curriculum.json (source of truth), metrics, config, workflow, templates, critics, research briefs
-tests/                 contract tests: python -m unittest discover -s tests -v
-Curricula/             official topic grid (input)
-```
+## Setup (once)
 
-Day folders are named `week-01/day-1-orientation-agile-and-git` — see `harness/curriculum.json`.
-
-## Producing a day
+You need Python 3.12 and Git.
 
 ```
-python harness/args_for.py 1 1 > /tmp/args.json      # week 1, day 1
-# then in Claude Code:
-Workflow({ scriptPath: "harness/workflows/day-fanout.js", args: <contents of args.json> })
-python -m unittest discover -s tests -v
+git clone https://github.com/2494-Gen-AI-CN/training.git
+cd training
+python -m venv .venv
+.venv\Scripts\activate          # Windows
+# source .venv/bin/activate     # macOS / Linux
+pip install -r requirements-dev.txt
 ```
 
-The workflow runs research → demos → (notes ∥ runbook ∥ exercise) → wire → verify, each artifact gated by an independent critic with up to three repair passes. See `harness/README.md`.
+Each morning: `git pull` to get the day's material.
 
-## Site
+Some weeks need extra packages or an API key. The demo folder for that day has a `requirements.txt` and/or `.env.example` with instructions.
 
-Pages serves `docs/` from `main`. After editing CSS/JS run `docs/bump-css.sh --all` so browsers pick up the change. Preview locally with `cd docs && python -m http.server 8000`.
+## Running a demo
+
+```
+cd demos/week-01/day-2-python-basics
+python 01_<name>.py
+```
+
+The README in each demo folder lists the files in run order and what each one shows.
+
+## Doing an exercise
+
+```
+cd exercises/week-01/day-2-python-basics
+python -m pytest -q
+```
+
+Everything fails at first. Open `starter/<module>.py`, implement the functions (each has a docstring telling you what it should do), and re-run until the tests are green. The exercise README has the acceptance criteria and hints.
+
+Keep your work on your own branch or fork; do not push to `main`.
+
+## Where things are
+
+```
+docs/        the notes site (served by GitHub Pages)
+demos/       code-along files, one folder per day
+exercises/   daily exercises: README, starter/, tests/
+Curricula/   the official topic grid for all 11 weeks
+```
+
+Folders are named `week-01/day-1-orientation-agile-and-git`, so the path tells you the week, the day and the topic.
+
+## The 11 weeks
+
+| Weeks | Theme |
+|---|---|
+| 1–2 | Agile, Git, Python fundamentals and advanced Python |
+| 3–4 | SQL with MySQL; cloud, big data, warehousing, ETL |
+| 5 | Gen AI introduction and prompt engineering |
+| 6–7 | ML fundamentals, deep learning, TensorFlow |
+| 8 | Feature engineering, model evaluation, vector databases |
+| 9–10 | LangChain, LangGraph and agentic AI |
+| 11 | AWS SageMaker and MLOps |
+
+Projects: Project 0 (weeks 1–5), Project 1 (weeks 6–8), Project 2 (weeks 9–11).
+
+## Stuck?
+
+Ask in class. Trainees are welcome to self-organize on Discord for study groups and peer help. If something in the materials is wrong or confusing, say so in the Friday feedback form — it gets read.
+
+---
+
+*Maintainers: the content pipeline lives in `harness/` (see `harness/README.md` and `AGENTS.md`). Contract tests: `python -m unittest discover -s tests -v`.*
