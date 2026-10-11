@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="tc-day" content="w01d2">
 <title>W1·D2 — Orientation, Agile &amp; Git fundamentals | 2494 · Gen-AI Python</title>
-<link rel="stylesheet" href="../../assets/css/style.css?v=20261011">
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261011-4">
 <script src="../../assets/js/theme.js"></script>
 </head>
 <body>
@@ -41,7 +41,7 @@
         <p class="summary">Monday was a holiday, so this page assumes nothing from yesterday: only what you brought from
         university, which is Python syntax, the basic <code>clone</code>/<code>add</code>/<code>commit</code>/<code>push</code>
         loop, and the compiler-versus-interpreter distinction. Today spends thirty minutes confirming your tooling and the rest
-        of the day on how a software team actually works: SDLC, Scrum and story points, then Git as the team's shared
+        of the day on how a software team works: SDLC, Scrum and story points, then Git as the team's shared
         workflow. Run <code>01_tooling_check.py</code> through <code>05_git_remote_round_trip.py</code> in order; this page is
         the reference behind them.</p>
         <div class="ix-legend"></div>
@@ -56,7 +56,7 @@
         <code>01_tooling_check.py</code> prints that map with both seats marked. "Professionalism at Revature" is house rules
         about attendance, communication, written updates and conduct; there is no external source for it, so treat it as
         policy rather than theory.</p>
-        <p>You know the compiler-versus-interpreter distinction; here is the part that matters in practice.
+        <p>You know the compiler-versus-interpreter distinction from university. In practice,
         <code>python hello.py</code> runs the source with no separate build step, which is what "interpreted" means day to
         day; under the hood CPython compiles each module to bytecode and caches it in <code>__pycache__/*.pyc</code>. That
         folder is build output, not source, and it belongs in <code>.gitignore</code>; STEP 2 of the demo shows the bytecode
@@ -86,8 +86,8 @@
         <div class="ix-predict" data-q="Before you run demo 02: in the waterfall schedule, which week delivers the first software the customer can touch, and which week in the Agile schedule?" data-a="Week 10 under waterfall (the end of deployment) and week 2 under Agile (the end of Sprint 1)."></div>
         <p>The Manifesto itself (2001) is four lines: individuals and interactions over processes and tools, working
         software over comprehensive documentation, customer collaboration over contract negotiation, and responding to change
-        over following a plan. The demo prints them with "over" in the middle for a reason: the items on the right still have
-        value, the ones on the left are valued more.</p>
+        over following a plan. The demo prints them with "over" in the middle because the items on the right still have
+        value; the ones on the left are valued more.</p>
       </section>
 
       <section class="step" data-diagram="0" data-step="2">
@@ -108,7 +108,7 @@
         adjacent on the scale, and the majority settles it at 2. On item B ("set up the team's shared repo with branch
         protection") the votes are 3, 8, 5, 13, far too wide, so the 3 and the 13 explain themselves, everyone re-votes
         5, 5, 8, 5, and the item is a 5. The pitfalls: reading "5 points" as five hours, comparing points between teams,
-        letting the loudest voice set the number. Today's Git exercise is exactly the kind of item that sits in a Sprint
+        letting the loudest voice set the number. Today's Git exercise is the kind of item that sits in a Sprint
         Backlog.</p>
       </section>
 
@@ -184,7 +184,7 @@ git switch -c feature</code></pre>
         the working tree, so <code>git status</code> says "Your branch is behind 'origin/main' by 1 commit" while the file on
         disk is unchanged. <code>git pull</code> is fetch followed by a merge of the upstream branch (or a rebase, when
         <code>pull.rebase</code> is set), which is why a pull can produce a merge you did not expect or refuse with "Your
-        local changes would be overwritten by merge": it is not a download.</p>
+        local changes would be overwritten by merge". A pull changes your working tree, which a plain download would not.</p>
         <button class="code-cta" type="button" data-modal="code-w01d2-remote"><span class="cc-ico">&lt;/&gt;</span> See the demo code <span class="cc-meta">· 05_git_remote_round_trip.py</span></button>
         <p>The Git exercise is today's deliverable, marked against a rubric rather than tests: a real repository on GitHub
         with a feature branch, a merge, one resolved conflict and commit messages that read as the story of the work. STEP 5

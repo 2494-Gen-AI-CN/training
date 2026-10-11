@@ -152,6 +152,15 @@ async function demosStage(d) {
       { schema: VERDICT, label:`${d.id}:demos-crit`, phase:'Demos', ...tier('critic') }))
 }
 
+// Humanizer pass (D-0029): runs after the notes author and before the notes critic. Prose only.
+const humanize = (d) => agent(
+  `HUMANIZE pass for ${d.pageFile}. Load the humanizer skill with the Skill tool ("humanizer:humanizer") and apply it in FILE MODE to that page.\n` +
+  `Rewrite prose only: text inside article.reading-col (the .lede, paragraphs, list items), the window.QUIZ question/option/explain strings, and window.DIAGRAM captions and node detail strings. Reference voice: neutral, plain, technical.\n` +
+  `Leave untouched: every HTML tag and attribute, <pre>/<code> blocks, inline <code>, filenames, URLs, numbers, versions, dates, quiz answer indices and question count, section.step count, window.NEXT, script tags.\n` +
+  `Do not add or remove a fact. After writing, run the verification snippet from ${H}/critics/notes.md with Bash and confirm the prose count is still within ${WORD_MIN}–${WORD_MAX} and steps/captions/quiz counts are unchanged; if the rewrite pushed the count under ${WORD_MIN}, restore cut sentences rather than inventing new ones.\n` +
+  `Return one short paragraph: patterns found (by humanizer section number), sentences changed, final word count.`,
+  { label:`${d.id}:notes-humanize`, phase:'Materials', ...tier('humanize') })
+
 async function materialsStage(d, demo) {
   const files = (demo && demo.result && demo.result.files) ? demo.result.files : []
   const fileNames = files.map(f => f.name)
@@ -174,8 +183,10 @@ async function materialsStage(d, demo) {
       `- section.reading-sources with ≥${MN.sourcesMin} URLs from the brief.\n` +
       `- window.NEXT = { label: ${J(d.nextLabel)}, href: ${J(d.nextHref)} }.\n` +
       `- Scripts: theme.js in head; bottom exactly diagram, scrolly, modals, quiz, widgets, glossary, codeviewer${d.feedback ? ', survey (+ a #survey section with window.SURVEY and a link to ' + CFG.feedbackFormUrl + ')' : ''}; relative ../../assets/... paths. Widgets allowed: .ix-legend, .ix-predict, .ix-spot only.\n` +
+      `- Prose voice (D-0029): write plainly, as a person explaining to a colleague. No "not X but Y" contrasts, no one-line closers that restate the paragraph, no forced triads, no em-dashes as the default joiner, no bold labels at the start of items, no stock AI words (delve, crucial, robust, seamless, leverage, landscape, navigate, journey, foster, testament, underscore). A humanizer pass runs after you; give it little to do.\n` +
       `- Count words with a Python one-liner before returning. Return wordCount, declaredMinutes, steps, quizCount, demoLinks, codePopups, summary.` + fix(cr),
-      { schema: NOTES_SCHEMA, label:`${d.id}:notes`, phase:'Materials', ...tier('notes', pass) }),
+      { schema: NOTES_SCHEMA, label:`${d.id}:notes`, phase:'Materials', ...tier('notes', pass) })
+      .then(async (r) => { if (r) await humanize(d); return r }),
     (_r) => agent(
       `NOTES CRITIC. Read ${H}/critics/notes.md and apply it to ${d.pageFile} against ${d.researchFile} (allowed facts), ${TEMPLATE} (structure), demo files ${J(fileNames)} in ${d.demoDir}. Word band ${WORD_MIN}–${WORD_MAX}. Run the verification snippet in the critic spec with Bash. Day context: ${dayHeader(d)}` +
       `Return pass, critiques (concrete fixes), one-sentence summary.`,
@@ -229,7 +240,7 @@ async function materialsStage(d, demo) {
 // =====================================================================
 // Run
 // =====================================================================
-log(`Model tiers: ${['research-light','research-full','demos','notes','exercise','runbook','critic','wire','verify','fix'].map(tierLabel).join(' · ')}; escalate on pass ≥ ${TIERS.escalateOn || '—'} → ${TIERS.escalate ? (TIERS.escalate.model || 'inherit') + '/' + (TIERS.escalate.effort || 'inherit') : 'off'}`)
+log(`Model tiers: ${['research-light','research-full','demos','notes','humanize','exercise','runbook','critic','wire','verify','fix'].map(tierLabel).join(' · ')}; escalate on pass ≥ ${TIERS.escalateOn || '—'} → ${TIERS.escalate ? (TIERS.escalate.model || 'inherit') + '/' + (TIERS.escalate.effort || 'inherit') : 'off'}`)
 phase('Research')
 const perDay = await parallel(DAYS.map(d => async () => {
   const research = await researchStage(d)

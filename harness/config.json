@@ -53,6 +53,7 @@
       "research-full": { "model": null, "effort": "high" },
       "demos": { "model": "sonnet", "effort": "medium" },
       "notes": { "model": null, "effort": "high" },
+      "humanize": { "model": "sonnet", "effort": "medium" },
       "exercise": { "model": "sonnet", "effort": "medium" },
       "runbook": { "model": "sonnet", "effort": "medium" },
       "critic": { "model": null, "effort": "medium" },

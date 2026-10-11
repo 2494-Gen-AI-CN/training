@@ -24,6 +24,7 @@ You are judging `docs/weeks/<week>/<day>.html`. You are NOT the author. Read the
 15. `window.NEXT = { label, href }` points to the next day's page (or `../../index.html` after day 5).
 16. Code popups (if any): `button.code-cta[data-modal="code-<x>"]` + matching `#code-<x>.modal-overlay .code-modal` with `.cv[data-file]` naming a REAL demo file; the `<pre class="cv-raw">` content is an excerpt of that file (HTML-escaped `< > &`).
 17. Widgets allowed: `.ix-legend`, `.ix-predict`, `.ix-spot` only.
+18. Prose reads like a person wrote it (D-0029; the `humanizer` skill's pattern list is the reference). FAIL on any of these in `.reading-col` prose, quiz `explain` text or diagram captions: "not X but Y" / "not just X, it's Y" contrasts; one-line closers that restate the paragraph ("That is the point."); forced triads where the meaning does not ask for three; em-dashes used as the default joiner (more than ~2 per section); bold labels at the start of list items or paragraphs; stock AI words (delve, crucial, robust, seamless, leverage, landscape, tapestry, navigate, journey, foster, testament, underscore, vibrant). Quote the offending sentence and give the plain rewrite. Facts, code, inline code, paths and link targets are out of scope for this item.
 
 Verification snippet (run it):
 ```
