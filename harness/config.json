@@ -43,6 +43,23 @@
     },
     "rule": "Model ids are resolved in the research brief from current docs, never from memory."
   },
+  "models": {
+    "_comment": "Per-stage model and effort for harness/workflows/day-fanout.js (D-0026). model: sonnet | haiku | opus | null (null = inherit the session model). effort: low | medium | high | xhigh | max | null. A repass numbered >= escalateOn uses escalate instead of the stage tier, so a cheap first pass that fails its critic is retried on the strong tier.",
+    "escalateOn": 2,
+    "escalate": { "model": null, "effort": "high" },
+    "stages": {
+      "research-light": { "model": "sonnet", "effort": "medium" },
+      "research-full": { "model": null, "effort": "high" },
+      "demos": { "model": "sonnet", "effort": "medium" },
+      "notes": { "model": null, "effort": "high" },
+      "exercise": { "model": "sonnet", "effort": "medium" },
+      "runbook": { "model": "sonnet", "effort": "medium" },
+      "critic": { "model": null, "effort": "medium" },
+      "wire": { "model": "haiku", "effort": "low" },
+      "verify": { "model": "haiku", "effort": "low" },
+      "fix": { "model": "sonnet", "effort": "medium" }
+    }
+  },
   "trainerRepo": {
     "path": "trainer",
     "note": "Separate private git repo cloned at ./trainer and gitignored by this repo."

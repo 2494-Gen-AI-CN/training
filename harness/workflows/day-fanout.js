@@ -37,6 +37,21 @@ const WORD_MAX = A.wordMax || MN.wordMax || 1800
 const TEMPLATE = A.template || `${H}/templates/day.exemplar.html`
 const CFG = A.config || {}
 const LLM = A.llm || {}
+// Per-stage model/effort tiers (D-0026). Comes from config.json "models" via args_for.py.
+// tier(stage, pass): the stage's {model, effort}; on a repass numbered >= escalateOn, the
+// escalate tier instead (so a cheap first pass that fails its critic retries on the strong tier).
+// A null model/effort is omitted, which means "inherit the session default".
+const TIERS = A.models || {}
+function tier(stage, pass) {
+  const st = (TIERS.stages || {})[stage] || {}
+  const esc = (pass && TIERS.escalateOn && pass >= TIERS.escalateOn && TIERS.escalate) ? TIERS.escalate : null
+  const t = esc || st
+  const o = {}
+  if (t.model) o.model = t.model
+  if (t.effort) o.effort = t.effort
+  return o
+}
+const tierLabel = (s) => { const t = tier(s); return `${s}=${t.model || 'inherit'}/${t.effort || 'inherit'}` }
 const DAYS = A.days.map(d => ({
   ...d,
   researchFile: `${H}/research/${d.rel}.md`,
@@ -73,12 +88,12 @@ const VERIFY_SCHEMA = { type:'object', additionalProperties:false, properties:{ 
 
 // ---------- helpers ----------
 async function gated(label, gen, crit) {
-  let result = await gen(null)
+  let result = await gen(null, 1)
   for (let pass = 1; pass <= 3; pass++) {
     const v = await crit(result, pass)
     if (v && v.pass) return { task: label, status:'done', passes: pass, summary: (v.summary || (result && result.summary) || ''), result }
     if (pass === 3) return { task: label, status:'flagged', passes: 3, flags: (v ? v.critiques : ['critic returned null']), summary: (result && result.summary) || (v && v.summary) || '', result }
-    result = await gen(v ? v.critiques : ['prior critic hard-failed (returned null) — regenerate from scratch, full quality bar'])
+    result = await gen(v ? v.critiques : ['prior critic hard-failed (returned null) — regenerate from scratch, full quality bar'], pass + 1)
   }
 }
 const fix = (cr) => cr && cr.length ? ('\n\nThis is a REPASS. A critic flagged these issues — fix every one, keep what was good:\n- ' + cr.join('\n- ')) : ''
@@ -103,7 +118,7 @@ const dayHeader = (d) =>
 async function researchStage(d) {
   const full = d.gate === 'full'
   return gated(`${d.id} research`,
-    (cr) => agent(
+    (cr, pass) => agent(
       `You are the RESEARCH agent. ${dayHeader(d)}` +
       `Write the research brief to ${d.researchFile} following the template ${H}/templates/research.md exactly (headings and line formats).\n` +
       (full
@@ -112,17 +127,17 @@ async function researchStage(d) {
       `Glossary terms: 3–8, each "- term | one sentence | aka: a, b"; first read ${ROOT}/docs/assets/js/glossary.js and do NOT repeat an existing term or aka.\n` +
       `Pitfalls 3–6 (what learners actually get wrong). Demo plan hints 2–4 (what must be shown live).\n` +
       `Return versionStamps, sourceCount, glossaryTerms (aka may be empty array), pitfalls, 2-sentence summary.` + fix(cr),
-      { schema: RESEARCH_SCHEMA, label:`${d.id}:research`, phase:'Research' }),
+      { schema: RESEARCH_SCHEMA, label:`${d.id}:research`, phase:'Research', ...tier(full ? 'research-full' : 'research-light', pass) }),
     (_r) => agent(
       `RESEARCH CRITIC. Read ${H}/critics/research.md and apply it to ${d.researchFile}. Gate=${d.gate}. Also read ${ROOT}/docs/assets/js/glossary.js to check glossary collisions. ${full ? 'Load WebFetch (ToolSearch: select:WebFetch) and spot-check ≥3 URLs.' : 'No WebFetch needed.'}\n` +
       `Day context: ${dayHeader(d)}` +
       `Return pass, critiques (specific fixes), one-sentence summary.`,
-      { schema: VERDICT, label:`${d.id}:research-crit`, phase:'Research' }))
+      { schema: VERDICT, label:`${d.id}:research-crit`, phase:'Research', ...tier('critic') }))
 }
 
 async function demosStage(d) {
   return gated(`${d.id} demos`,
-    (cr) => agent(
+    (cr, pass) => agent(
       `You are the DEMO author. ${dayHeader(d)}` +
       `Read the research brief ${d.researchFile} — your only source of facts and version/API shapes. Read ${H}/templates/demo-README.md.\n` +
       `Write ${d.demoDir}/: README.md (title, prerequisites, run-order table file|shows|run|needs key?, STEP explanation), ${M.demos.filesMin}–${M.demos.filesMax} code files named NN_<slug>.${d.demoFormat === 'nb' ? 'ipynb (notebooks for exploratory parts; .py allowed for setup)' : 'py'} in teaching order.\n` +
@@ -130,11 +145,11 @@ async function demosStage(d) {
       `Anything needing a key: guard with an env check that prints a clear message and exits 0 when absent; add .env.example (names only). requirements.txt only if non-stdlib, pinned to the brief's stamps.\n` +
       `LLM calls (if this day has any) use exactly ${J(LLM)}; model id from the brief. No secrets. Use Bash to run every key-free script and confirm its output matches its docstring before returning.\n` +
       `Return files[] (name, shows, runnable, needsKey), requirements[], summary.` + fix(cr),
-      { schema: DEMO_SCHEMA, label:`${d.id}:demos`, phase:'Demos' }),
+      { schema: DEMO_SCHEMA, label:`${d.id}:demos`, phase:'Demos', ...tier('demos', pass) }),
     (_r) => agent(
       `DEMOS CRITIC. Read ${H}/critics/demos.md and apply it to ${d.demoDir}/ against the brief ${d.researchFile}. Use Bash: py_compile every .py, nbformat.validate every .ipynb, RUN every key-free script (60 s timeout) and compare to its docstring, run key-gated scripts without the key. Day context: ${dayHeader(d)}` +
       `Return pass, critiques (file + concrete fix), one-sentence summary.`,
-      { schema: VERDICT, label:`${d.id}:demos-crit`, phase:'Demos' }))
+      { schema: VERDICT, label:`${d.id}:demos-crit`, phase:'Demos', ...tier('critic') }))
 }
 
 async function materialsStage(d, demo) {
@@ -143,7 +158,7 @@ async function materialsStage(d, demo) {
   const demoUrl = `${CFG.repoUrl}/tree/${CFG.repoBranch || 'main'}/demos/${d.rel}`
   const exUrl = `${CFG.repoUrl}/tree/${CFG.repoBranch || 'main'}/exercises/${d.rel}`
   const notes = () => gated(`${d.id} notes page`,
-    (cr) => agent(
+    (cr, pass) => agent(
       `You are the NOTES-PAGE author. ${dayHeader(d)}` +
       `Read (1) ${TEMPLATE} — copy its FULL structure (head+meta tc-day, topbar, nav.toc, article.reading-col with .lede + section.step blocks + section.reading-sources, aside.side with diagram + .demo-card + quiz card + side-nav, #quiz-modal, #goals-modal, optional #deep-modal, 0–2 #code-* popups, inline window.NEXT/DIAGRAM/QUIZ, the exact script tags). (2) ${d.researchFile} — your ONLY source of facts. (3) ${d.demoDir}/README.md and the demo files ${J(fileNames)}.\n` +
       `Write ${d.pageFile}:\n` +
@@ -160,50 +175,50 @@ async function materialsStage(d, demo) {
       `- window.NEXT = { label: ${J(d.nextLabel)}, href: ${J(d.nextHref)} }.\n` +
       `- Scripts: theme.js in head; bottom exactly diagram, scrolly, modals, quiz, widgets, glossary, codeviewer${d.feedback ? ', survey (+ a #survey section with window.SURVEY and a link to ' + CFG.feedbackFormUrl + ')' : ''}; relative ../../assets/... paths. Widgets allowed: .ix-legend, .ix-predict, .ix-spot only.\n` +
       `- Count words with a Python one-liner before returning. Return wordCount, declaredMinutes, steps, quizCount, demoLinks, codePopups, summary.` + fix(cr),
-      { schema: NOTES_SCHEMA, label:`${d.id}:notes`, phase:'Materials' }),
+      { schema: NOTES_SCHEMA, label:`${d.id}:notes`, phase:'Materials', ...tier('notes', pass) }),
     (_r) => agent(
       `NOTES CRITIC. Read ${H}/critics/notes.md and apply it to ${d.pageFile} against ${d.researchFile} (allowed facts), ${TEMPLATE} (structure), demo files ${J(fileNames)} in ${d.demoDir}. Word band ${WORD_MIN}–${WORD_MAX}. Run the verification snippet in the critic spec with Bash. Day context: ${dayHeader(d)}` +
       `Return pass, critiques (concrete fixes), one-sentence summary.`,
-      { schema: VERDICT, label:`${d.id}:notes-crit`, phase:'Materials' }))
+      { schema: VERDICT, label:`${d.id}:notes-crit`, phase:'Materials', ...tier('critic') }))
 
   const rubric = d.exerciseKind === 'rubric'
   const exercise = () => rubric ? gated(`${d.id} exercise`,
-    (cr) => agent(
+    (cr, pass) => agent(
       `You are the EXERCISE author (RUBRIC kind: a hands-on deliverable marked against a rubric; NO starter module, NO pytest). ${dayHeader(d)}` +
       `Read ${d.researchFile} and the demos in ${d.demoDir} (${J(fileNames)}). Read ${H}/templates/exercise-rubric-README.md and follow its headings.\n` +
       `Write ${d.exDir}/README.md: the task (what trainees build on their own machine/GitHub, drawn from this day's subtopics and the Day note), "## Deliverable" (exactly what they hand in or show), "## Acceptance criteria" (5–8 observable checklist items), "## Rubric" (markdown table criterion | meets | partial | missing), "## Getting started" (commands in a fenced block), "## Hints" (≥2); sized for 60–90 min. Do NOT create starter/ or tests/.\n` +
       `ALSO write ${d.trDir}/solutions/RUBRIC.md (private trainer marking guide; create dirs): for every acceptance criterion, the exact command(s) a trainer runs against a trainee's repo to check it in under two minutes, the expected output, and what "meets" vs "partial" looks like; plus common failure modes.\n` +
       `Return module="rubric", testCount=<number of acceptance criteria>, starterFailed=false, solutionPassed=<true iff RUBRIC.md covers every criterion>, summary.` + fix(cr),
-      { schema: EXERCISE_SCHEMA, label:`${d.id}:exercise`, phase:'Materials' }),
+      { schema: EXERCISE_SCHEMA, label:`${d.id}:exercise`, phase:'Materials', ...tier('exercise', pass) }),
     (_r) => agent(
       `EXERCISE CRITIC (RUBRIC kind). Read the "Rubric kind" section of ${H}/critics/exercise.md and apply it to ${d.exDir}/README.md and ${d.trDir}/solutions/RUBRIC.md. Confirm with Bash that ${d.exDir} contains no starter/ or tests/. Day context: ${dayHeader(d)}` +
       `Return pass, critiques (concrete fixes), one-sentence summary.`,
-      { schema: VERDICT, label:`${d.id}:exercise-crit`, phase:'Materials' }))
+      { schema: VERDICT, label:`${d.id}:exercise-crit`, phase:'Materials', ...tier('critic') }))
   : gated(`${d.id} exercise`,
-    (cr) => agent(
+    (cr, pass) => agent(
       `You are the EXERCISE author. ${dayHeader(d)}` +
       `Read ${d.researchFile} and the demos in ${d.demoDir} (${J(fileNames)}). Read ${H}/templates/exercise-README.md and ${H}/templates/conftest.py.\n` +
       `Write ${d.exDir}/: README.md (task, acceptance checklist mapping 1:1 to test names, getting started, ≥2 hints; 60–90 min), starter/<module>.py (signatures + docstrings + raise NotImplementedError only), tests/conftest.py (copy the template verbatim), tests/test_<module>.py with ${M.exercise.testsMin}–${M.exercise.testsMax} deterministic, network-free tests.\n` +
       `ALSO write the reference solution to ${d.trDir}/solutions/<module>.py (private trainer repo path; create dirs).\n` +
       `Use Bash from ${d.exDir}: "python -m pytest -q" MUST fail; "EXERCISE_SRC=${d.trDir}/solutions python -m pytest -q" MUST pass. Confirm both before returning.\n` +
       `Return module, testCount, starterFailed, solutionPassed, summary.` + fix(cr),
-      { schema: EXERCISE_SCHEMA, label:`${d.id}:exercise`, phase:'Materials' }),
+      { schema: EXERCISE_SCHEMA, label:`${d.id}:exercise`, phase:'Materials', ...tier('exercise', pass) }),
     (_r) => agent(
       `EXERCISE CRITIC. Read ${H}/critics/exercise.md and apply it to ${d.exDir}/ with solutions at ${d.trDir}/solutions. Actually run both pytest invocations with Bash. Day context: ${dayHeader(d)}` +
       `Return pass, critiques (concrete fixes), one-sentence summary.`,
-      { schema: VERDICT, label:`${d.id}:exercise-crit`, phase:'Materials' }))
+      { schema: VERDICT, label:`${d.id}:exercise-crit`, phase:'Materials', ...tier('critic') }))
 
   const runbook = () => gated(`${d.id} runbook`,
-    (cr) => agent(
+    (cr, pass) => agent(
       `You are the RUNBOOK author (trainer-only talk track). ${dayHeader(d)}` +
       `Read ${d.researchFile}, ${d.demoDir}/README.md and every demo file ${J(fileNames)}, ${d.pageFile} if it exists (for objectives), and the exercise README at ${d.exDir}/README.md if it exists. Read the template ${H}/templates/runbook.md.\n` +
       `Write ${d.trDir}/runbook.md: first line "# ${d.id} runbook — ${d.title}"; second line "Week ${A.week} · Day ${d.day} · ${d.dateLabel} · ${A.theme}"; headings in template order; "Day at a glance" table whose Minutes sum to ${M.runbook.dayMinutesMin}–${M.runbook.dayMinutesMax} incl. breaks/lunch; one "## Demo N: <exact filename>" per demo file with Goal, type-live/paste per STEP, numbered talk track, ≥2 checkpoint questions, expected output, ≥1 pitfall from the brief; Notes page handoff; Exercise briefing (${rubric ? 'deliverable, acceptance criteria, ≥2 stuck points, how to mark in the room, marking guide ' + d.trDir + '/solutions/RUBRIC.md' : 'module, acceptance, ≥2 stuck points, solutions path ' + d.trDir + '/solutions'}); Common questions; If running long / short${d.feedback ? '; "## Feedback form" with ' + CFG.feedbackFormUrl : ''}${d.kind === 'review' ? '; "## Review agenda"' : ''}.\n` +
       `Return totalMinutes, demoSections, solutionFiles (what exists under solutions/), summary.` + fix(cr),
-      { schema: RUNBOOK_SCHEMA, label:`${d.id}:runbook`, phase:'Materials' }),
+      { schema: RUNBOOK_SCHEMA, label:`${d.id}:runbook`, phase:'Materials', ...tier('runbook', pass) }),
     (_r) => agent(
       `RUNBOOK CRITIC. Read ${H}/critics/runbook.md and apply it to ${d.trDir}/runbook.md with demos in ${d.demoDir}, exercise in ${d.exDir}, solutions in ${d.trDir}/solutions, brief ${d.researchFile}. ${rubric ? 'Rubric-kind day: check solutions/RUBRIC.md exists and the briefing matches it; no pytest.' : 'Run the solutions pytest check with Bash.'} Day context: ${dayHeader(d)}` +
       `Return pass, critiques (concrete fixes), one-sentence summary.`,
-      { schema: VERDICT, label:`${d.id}:runbook-crit`, phase:'Materials' }))
+      { schema: VERDICT, label:`${d.id}:runbook-crit`, phase:'Materials', ...tier('critic') }))
 
   // notes + exercise first (runbook reads both for objectives / stuck points), then runbook
   const [n, e] = await parallel([notes, exercise])
@@ -214,6 +229,7 @@ async function materialsStage(d, demo) {
 // =====================================================================
 // Run
 // =====================================================================
+log(`Model tiers: ${['research-light','research-full','demos','notes','exercise','runbook','critic','wire','verify','fix'].map(tierLabel).join(' · ')}; escalate on pass ≥ ${TIERS.escalateOn || '—'} → ${TIERS.escalate ? (TIERS.escalate.model || 'inherit') + '/' + (TIERS.escalate.effort || 'inherit') : 'off'}`)
 phase('Research')
 const perDay = await parallel(DAYS.map(d => async () => {
   const research = await researchStage(d)
@@ -234,7 +250,7 @@ const wire = await agent(
   `4. For each shipped day whose previous day page exists, confirm the previous page's window.NEXT.href points at this day's filename; fix if not.\n` +
   `5. Run ${ROOT}/docs/bump-css.sh --all if you changed glossary.js.\n` +
   `Return a one-paragraph summary of what changed.`,
-  { label:'wire', phase:'Wire' })
+  { label:'wire', phase:'Wire', ...tier('wire') })
 
 // ---------- VERIFY ----------
 phase('Verify')
@@ -242,11 +258,11 @@ let verify = null
 for (let attempt = 1; attempt <= 3; attempt++) {
   verify = await agent(
     `VERIFY step. From ${ROOT} run: python -m unittest discover -s tests -v   (and python ${H}/build_index.py --check). Report passed=true only if everything passes. List each failure as "<test>: <one-line cause>".`,
-    { schema: VERIFY_SCHEMA, label:`verify:${attempt}`, phase:'Verify' })
+    { schema: VERIFY_SCHEMA, label:`verify:${attempt}`, phase:'Verify', ...tier('verify') })
   if (!verify || verify.passed || attempt === 3) break
   await agent(
     `FIX step (attempt ${attempt}). These contract tests failed: ${J(verify.failures)}. Fix the underlying artifact(s) for days ${J(DAYS.map(d => d.rel))} — never weaken the tests or metrics. Re-run the failing tests with Bash until they pass. Return a short summary.`,
-    { label:`fix:${attempt}`, phase:'Verify' })
+    { label:`fix:${attempt}`, phase:'Verify', ...tier('fix') })
 }
 
 // ---------- report ----------
