@@ -30,7 +30,7 @@ test result, anything left undone and why.
 
 | Order | Stage | Why first | Size |
 |---|---|---|---|
-| 1 | Stage 1 Demo contract | Everything downstream (W1D2 re-author, W1D3–5) depends on what a demo is | 1 session, no agents |
+| ~~1~~ | ~~Stage 1 Demo contract~~ | ~~Everything downstream (W1D2 re-author, W1D3–5) depends on what a demo is~~ | ~~1 session, no agents~~ done 2026-10-11, D-0030 |
 | 2 | Stage 3 Re-author W1D2 demos + promote page | Tue 2026-10-13 is W1D2; must be taught from the new contract | 1 session, ~20 agents |
 | 3 | Run W1D3 (milestone 6, not a stage here) | Wed 2026-10-14 | 1 session, ~20 agents |
 | 4 | Stage 4 Delivery-day close + drift check | Needed Tue evening after the first delivery | 1 session, no agents |
