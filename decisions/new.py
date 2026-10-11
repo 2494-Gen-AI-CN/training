@@ -65,7 +65,7 @@ def set_field(path: Path, field: str, value: str) -> None:
     new, n = re.subn(rf"^- {re.escape(field)}: .*$", f"- {field}: {value}", text, count=1, flags=re.M)
     if n != 1:
         sys.exit(f"{path.name}: field '{field}' not found")
-    path.write_text(new, encoding="utf-8")
+    path.write_text(new, encoding="utf-8", newline="\n")
 
 
 def add_row(eid: str, a: argparse.Namespace) -> None:
@@ -75,7 +75,7 @@ def add_row(eid: str, a: argparse.Namespace) -> None:
         sys.exit(f"{INDEX.name}: table separator row not found")
     cell = lambda s: s.replace("|", "\\|")
     row = f"| {eid} | {a.date} | {a.status} | {cell(a.decision)} | {cell(a.affects)} | {a.supersedes or NONE} |"
-    INDEX.write_text(text[:m.end()] + "\n" + row + text[m.end():], encoding="utf-8")
+    INDEX.write_text(text[:m.end()] + "\n" + row + text[m.end():], encoding="utf-8", newline="\n")
 
 
 def main(argv: list[str]) -> int:
@@ -96,7 +96,7 @@ def main(argv: list[str]) -> int:
             sys.exit(f"{a.supersedes} does not exist")
     eid = next_id()
     path = HERE / f"{eid}-{slugify(a.decision)}.md"
-    path.write_text(render_entry(eid, a), encoding="utf-8")
+    path.write_text(render_entry(eid, a), encoding="utf-8", newline="\n")
     add_row(eid, a)
     if a.supersedes:
         old = entries()[a.supersedes]
@@ -105,7 +105,7 @@ def main(argv: list[str]) -> int:
         # keep the index row in step with the entry file
         text = INDEX.read_text(encoding="utf-8")
         text = re.sub(rf"^(\| {a.supersedes} \| [^|]* \| )(proposed|accepted)( \|)", r"\1superseded\3", text, count=1, flags=re.M)
-        INDEX.write_text(text, encoding="utf-8")
+        INDEX.write_text(text, encoding="utf-8", newline="\n")
     print(eid)
     return 0
 
