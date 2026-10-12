@@ -33,7 +33,7 @@ test result, anything left undone and why.
 |---|---|---|---|
 | ~~1~~ | ~~Stage 1 Demo contract~~ | ~~Everything downstream (W1D2 re-author, W1D3–5) depends on what a demo is~~ | ~~1 session, no agents~~ done 2026-10-11, D-0030 |
 | ~~2~~ | ~~Stage 3 Re-author W1D2 demos + promote page~~ | ~~Tue 2026-10-13 is W1D2; must be taught from the new contract~~ | ~~1 session, ~20 agents~~ done 2026-10-12, D-0031 |
-| 3 | Stage 2 Week plan artifact | W1D3–W1D5 are still unauthored: plan week 1 (demo ladder, anti-spoiler ledger, coverage map, stop points) before any of them is written. Must land before Wed 2026-10-14 morning; if it cannot, run W1D3 first and Stage 2 before W1D4 | 1 session, ~3 agents |
+| 3 | Stage 2 Week plan artifact + demo threads | W1D3–W1D5 are still unauthored: plan week 1 (demo ladder, anti-spoiler ledger, coverage map, stop points) and make the demos one growing thread (rungs that extend the previous rung's key) before any of them is written. Must land before Wed 2026-10-14 morning; if it cannot, run W1D3 first and Stage 2 before W1D4 | 1 long session, ~3 agents; amends the demo contract (`demo_check.py`, demos critic, demo-script template, metrics) |
 | 4 | Run W1D3 (milestone 6, not a stage here) | Wed 2026-10-14; after Stage 2 `args_for.py` needs `harness/plans/week-01.md` to emit its args | 1 session, ~20 agents |
 | 5 | Stage 4 Delivery-day close + drift check | Needed Tue evening after the first delivery; independent of Stage 2 and W1D3, so run it Tue evening wherever they stand | 1 session, no agents |
 | 6 | Stage 7 Notes depth (interview sections) | Fits the persona; touches critic + template | 1 session |
@@ -88,12 +88,26 @@ Exit criteria: decision minted and cited in the commit; tests green with the W1D
 if its old-shape demos no longer satisfy the new tests (say so in STATUS.md); STATUS.md O-10 updated; pushed.
 ```
 
-## Stage 2 — Week plan artifact (catalog A13, A16, A24, A25, A27, D4, F1, F7)
+## Stage 2 — Week plan artifact and demo threads (catalog A7, A10, A12, A13, A16, A23, A24, A25, A27, D4, F1, F7)
 
 ```
-STAGE 2 — Week plan before any day.
-Read catalog rows A13, A16, A24, A25, A27, D4, F1, F7. Read harness/workflows/day-fanout.js, harness/args_for.py,
-harness/curriculum.json week 1 (notes field), docs/process/mined-rules-catalog.md section H.
+STAGE 2 — Week plan before any day, with demo threads.
+Read catalog rows A7, A10, A12, A13, A16, A23, A24, A25, A27, D4, F1, F7 and the "Old-repo vocabulary" line (thread,
+rung, ladder). Read harness/workflows/day-fanout.js, harness/args_for.py, harness/demo_check.py, harness/critics/demos.md,
+harness/templates/demo-script.md, tests/test_demos.py, harness/curriculum.json (projects, week 1 notes), the three W1D2
+demo scripts and keys in trainer/week-01/day-2-orientation-agile-and-git/demos/, and catalog section H.
+
+BEFORE any edit, ask me these with AskUserQuestion (one call), recommended answers in parentheses:
+1. Thread scope: one thread per project block, P0 weeks 1-5, P1 weeks 6-8, P2 weeks 9-11, planned one week at a time
+   (A24: recommended), one thread per week, or one thread per phase.
+2. Demo domain for the first thread (A10): propose three candidates that survive every week of the thread's scope
+   (records that live in Python structures, then MySQL, then an ETL job, then go to an LLM), each with one line on where
+   it strains; I pick one or name my own.
+3. Week 1 start: Tuesday's `team-repo` is rung 0 and Wed-Fri continue in it, every rung ending in a commit whose message
+   is the rung name (A7: recommended), or the thread starts in a fresh folder on Wednesday.
+4. Enforcement: mechanical carried-lines check in demo_check.py in this stage (recommended), or plan + prompts only now
+   and the mechanical check after W1D3 has shipped.
+
 Build a week-level planning stage that runs ONCE per week before the first day-fanout:
 - New workflow harness/workflows/week-plan.js (one author agent + one critic, <=4 agents): writes
   harness/plans/week-WW.md with: Weekly Epic (one paragraph: what the learner can do by Friday), what the week assumes
@@ -104,14 +118,45 @@ Build a week-level planning stage that runs ONCE per week before the first day-f
   (curriculum subtopic -> day -> demo -> notes step). Template: harness/templates/week-plan.md.
   Model tiers already exist in config.json models.stages (D-0032): `week-plan` (author) and `week-plan-critic`,
   both inherit the session model at high effort; the workflow reads them through args like day-fanout's tier().
+- Threads (A7, A10, A12, A23, A24): a thread is one demo codebase that grows rung by rung across days and weeks; a
+  rung is one demo; nothing is re-scaffolded. The plan gets a "## Threads" section: thread id, domain, scope, and one
+  row per rung (day, demo NN_<slug>, starts from <previous rung's key or "cold">, what it adds, end state, commit
+  message). The ladder's dependency guarantees are derived from those rows. A subtopic that fits no thread is a
+  standalone demo and the plan says why (A23). The plan for week N+1 reads week N's last rung as its start state.
+- Demo contract amendment (new decision that amends D-0030; do NOT pass --supersedes, the rest of D-0030 stands):
+  demo-script.md header gains `Thread:` (thread id or "standalone") and `Starts from:` ("cold" or the path of the
+  previous rung's key). Each rung's key stays ONE file under that day's key/ and is the full runnable end state of the
+  thread at that rung (A12: that file is the canonical copy). Both-ways check becomes: every typed line is in the key;
+  every key line is typed in this script OR present in the `Starts from` key; a carried line that this rung deletes or
+  rewrites is shown in a ```python replaced block. Transcript keys: the `$` sequence continues the previous rung's
+  repo state. demos critic: item 2 replays a rung from its `Starts from` state, item 5 counts earlier rungs of the
+  thread as introduced, item 6 keeps tool install/version/config at the thread's first rung only, item 11 unchanged;
+  a new item fails a rung that re-types or re-scaffolds what an earlier rung built. metrics.demos: raise or split
+  maxLinesPerFile for cumulative keys (propose the number from the week 1 plan) and add a typed-lines-per-rung cap.
+  Known limit, write it into the decision: single-file keys only; folder/package keys and publish_demos.py changes
+  are a later stage (needed by week 5 at the latest). Exercises are untouched (A10's "learners mirror in their own
+  domain" and the learner-repo convention C4 are not part of this stage).
+- W1D2 is live and taught Tue 2026-10-13: do NOT re-author it. Its three scripts get the two header bullets by hand
+  (metadata only, no step changes) and must still pass demo_check; tests stay green for it at every commit.
 - python harness/args_for.py refuses to emit day args when harness/plans/week-WW.md is missing (blocking, like R-013),
-  and passes the plan path + the day's rows from the coverage map into args (`weekPlan`, `weekPlanRows`).
-- day-fanout.js dayHeader includes the day's rows from the plan; the research and notes critics check the day
-  teaches exactly those rows; the runbook critic checks minutes against the plan's budgets.
+  and passes the plan path + the day's rows from the coverage map and the Threads table into args (`weekPlan`,
+  `weekPlanRows`, `threadRows` with each rung's `startsFrom` path). Give it an explicit, logged escape
+  (`--no-plan`) so a gate bug cannot block a day that must ship; the escape prints a warning and STATUS.md records
+  its use.
+- day-fanout.js dayHeader includes the day's rows from the plan; the demo author reads the `Starts from` key before
+  writing and extends it; the research and notes critics check the day teaches exactly those rows; the runbook critic
+  checks minutes against the plan's budgets and that each Demo section's "room state before" names the start rung.
 - Run week-plan for week 1 now (W1D2 is already authored and live: the plan records it as-is and plans D3–D5,
   none of which is authored yet). Do not run W1D3 in this stage.
-- tests/test_plans.py: every live day's week has a plan; plan lists every subtopic of every teaching day.
-Decision entry. Exit: plan for week 1 exists and passes its critic; args_for gated; tests green; pushed.
+- tests: tests/test_plans.py (every live day's week has a plan; plan lists every subtopic of every teaching day; every
+  rung's `Starts from` resolves); tests/test_demos.py self-tests for carried and replaced lines, and a chain test:
+  for every live day, each rung's key still contains its `Starts from` key's surviving lines, so re-authoring an
+  earlier day fails the later ones loudly instead of silently staling them.
+- AGENTS.md: authoring order inside a thread is strictly rung order; re-authoring day N means re-checking every later
+  rung; a delivery-day close that changes a key (classroom reality wins) must run before the next rung is authored.
+Decision entries (week plan; demo-thread amendment). Exit: plan for week 1 with its Threads section exists and passes
+its critic; args_for gated with the escape; demo_check enforces carried lines; W1D2 still live and green; tests green;
+pushed.
 ```
 
 ## Stage 3 — Re-author W1D2 demos under the new contract; promote the page (catalog A1, A21, A22, A29; milestone 6)
