@@ -5,17 +5,17 @@ Notes: [docs/weeks/week-01/day-2-orientation-agile-and-git.html](../../../docs/w
 
 ## Task
 
-Build the first repository you would be proud to show a teammate. On your own machine, start a Git repository for a tiny Python project (`hello.py`, a Python `.gitignore`, a `README.md`), put it on GitHub, and then work on it the way a Scrum team does: a backlog in the README with story points, a feature branch merged back into `main`, a second branch that **collides** with `main` on the same line so you resolve one real merge conflict by hand, a one-line edit made on the GitHub web UI and pulled back down, and commit messages that read as the story of the work. Nothing here is about Python: `hello.py` stays trivial. The point is the workflow, because from Wednesday on every exercise in this course is handed in through a repository like this one, and the first thing a reviewer reads is `git log --oneline`.
+Build the first repository you would be proud to show a teammate. On your own machine, start a Git repository for a tiny Python project (`hello.py`, a Python `.gitignore`, a `README.md`), put it on GitHub, and then work on it the way a Scrum team does: a backlog in the README with story points, a feature branch merged back into `main`, a second branch that **collides** with `main` on the same line so you resolve one real merge conflict by hand, a one-line edit made on the GitHub web UI and pulled back down, and commit messages that read as the story of the work. Nothing here is about Python: `hello.py` stays trivial. The point is the workflow, because this repository stays yours for the whole course: from Wednesday on every exercise is handed in through it, your code-along copies and explorations live in it, and the first thing a reviewer reads is `git log --oneline`.
 
 Suggested time-box: 10 min set-up and first push · 15 min backlog and feature branch · 25 min the conflict · 10 min the web-UI round trip · 10 min read your own log and tidy the messages.
 
 ## Deliverable
 
-The HTTPS URL of a **public** GitHub repository named `w01d2-team-repo` (your account, default branch `main`), submitted the way your trainer announces. Its history, as cloned by the trainer, must show every acceptance criterion below; nothing on your laptop counts unless it was pushed. Be ready to open the repository on screen and walk through `git log --oneline --graph --all` in under two minutes.
+The HTTPS URL of a **private** GitHub repository named `<FirstnameLastname>` (your first and last name as on the class roster, run together, plain letters only, for example `GraceHopper`), owned by the `2494-Gen-AI-CN` organisation and not by your personal account, default branch `main`, submitted the way your trainer announces. Its history, as cloned by the trainer at the end of today, must show every acceptance criterion below; nothing on your laptop counts unless it was pushed. Be ready to open the repository on screen and walk through `git log --oneline --graph --all` in under two minutes.
 
 ## Acceptance criteria
 
-- [ ] **AC1 Remote.** The repository is public on GitHub as `w01d2-team-repo`, its default branch is `main`, and your local `origin` points at it (`git remote -v`).
+- [ ] **AC1 Remote.** The repository is private, lives in the `2494-Gen-AI-CN` organisation as `<FirstnameLastname>`, its default branch is `main`, and your local `origin` points at it (`git remote -v` shows `https://github.com/2494-Gen-AI-CN/<FirstnameLastname>.git`).
 - [ ] **AC2 Clean first commit.** The first commit contains `hello.py` and a `.gitignore` listing at least `__pycache__/`, `*.pyc` and `.venv/`; no `.pyc` file or `__pycache__/` folder is tracked anywhere in the history.
 - [ ] **AC3 Backlog with points.** `README.md` on `main` contains a Sprint Backlog table of 3–5 items, each sized with a story point from the 1-2-3-5-8-13 scale; one row is "this exercise" and one sentence names which item was the reference item everything else was compared against.
 - [ ] **AC4 Feature branch, fast-forwarded.** A branch named `feature/<something>` with at least one commit was merged into `main` as a fast-forward (no merge commit) and was pushed, so it appears under `origin/` too.
@@ -28,7 +28,7 @@ The HTTPS URL of a **public** GitHub repository named `w01d2-team-repo` (your ac
 
 | Criterion | Meets | Partial | Missing |
 |---|---|---|---|
-| AC1 Remote | Public repo `w01d2-team-repo`, default branch `main`, `origin` set, local `main` fully pushed | Repo exists but is private, wrongly named, default branch is `master`, or local has unpushed commits | No repository on GitHub, or URL does not open |
+| AC1 Remote | Private repo `2494-Gen-AI-CN/<FirstnameLastname>`, default branch `main`, `origin` set, local `main` fully pushed | Repo exists but sits under your personal account, is public, is wrongly named, has default branch `master`, or local has unpushed commits | No repository on GitHub, or the trainer cannot open the URL |
 | AC2 Clean first commit | First commit = `hello.py` + `.gitignore` with all three patterns; nothing in `__pycache__/` ever tracked | `.gitignore` added in a later commit, or missing one pattern, but no `.pyc` tracked | `.pyc`/`__pycache__/` committed at any point, or no `.gitignore` |
 | AC3 Backlog with points | 3–5 rows, every row sized from the 1-2-3-5-8-13 scale, "this exercise" present, reference item named | Table present but a row uses hours/days or an off-scale number, or the reference item is not named | No backlog table in `README.md` |
 | AC4 Feature branch, fast-forwarded | `feature/*` branch pushed, merged into `main`, exactly one *feature* merge commit in the whole history (the AC5 one; a `Merge branch 'main' of github.com/...` commit created by `git pull` in AC6 does not count against you) | Branch exists and is merged but was not pushed, or the feature merge created an unneeded merge commit, or the branch is named `feature` with no `/<something>` | No feature branch; all work committed straight onto `main` |
@@ -41,7 +41,7 @@ Overall: **Meets** on all eight = full marks. Any **Missing** on AC4, AC5 or AC7
 
 ## Getting started
 
-Run these in PowerShell. Set identity once (skip if `git config --global --list` already shows your name, e-mail and `init.defaultbranch=main`), and create the folder somewhere that is **not** already inside a Git repository.
+Run these in PowerShell. Set identity once (skip if `git config --global --list` already shows your name, e-mail and `init.defaultbranch=main`), and create the folder somewhere that is **not** already inside a Git repository (so not inside `w01d2-scratch/` from the demos). Type your own name wherever you see `<FirstnameLastname>`.
 
 ```
 py --version
@@ -50,16 +50,16 @@ git config --global user.name "Your Name"
 git config --global user.email "you@example.com"
 git config --global init.defaultBranch main
 
-mkdir w01d2-team-repo
-cd w01d2-team-repo
+mkdir <FirstnameLastname>
+cd <FirstnameLastname>
 git init
 git status
 
 # first commit: hello.py + .gitignore, then push to an EMPTY repo you create on github.com
-# (New repository -> name w01d2-team-repo -> Public -> no README/.gitignore/licence)
+# (New repository -> Owner 2494-Gen-AI-CN -> name <FirstnameLastname> -> Private -> no README/.gitignore/licence)
 git add .
 git commit -m "Add hello script and Python .gitignore"
-git remote add origin https://github.com/<you>/w01d2-team-repo.git
+git remote add origin https://github.com/2494-Gen-AI-CN/<FirstnameLastname>.git
 git push -u origin main
 
 # backlog in README.md on main, then a feature branch
@@ -90,6 +90,8 @@ git status                       # expect: nothing to commit, up to date with 'o
 
 ## Hints
 
+- On GitHub's "New repository" page the **Owner** dropdown starts on your personal account. Change it to `2494-Gen-AI-CN` before you click Create, and choose Private. If the organisation is not in the list, you have not accepted the invitation e-mail yet: accept it, then reload the page. A repository created under your own account can be moved afterwards (Settings → Transfer ownership), but it is quicker to get it right the first time.
+- This repository outlives today. It is marked as it stands at the end of today, and from Wednesday on each day's work goes in its own folder inside it, so leave `hello.py`, `.gitignore` and `README.md` where they are at the top level.
 - `git status` before every commit. The two silent mistakes of the day are `git branch x` without `git switch x` (your "feature" commits land on `main`) and `git commit -m` without `git add` ("no changes added to commit"). `git switch -c` does both steps at once; `git commit -am` stages *modified* files only, never new ones.
 - A conflict only happens when **both** branches changed the **same** lines after they diverged. If `git merge` says "Fast-forward" or "Merge made by the 'ort' strategy" with no CONFLICT, `main` did not change that line: make a commit on `main` that touches the same line and merge again. Changing the same line of `hello.py` on both sides, as Demo 2 does with the `print(greet(...))` line, is the simplest shape; copy the shape, not the names or the identity: your branches must be `feature/<something>` (AC4) and your commits must carry your own name and e-mail, not the demo's (AC8).
 - When the conflict appears, open the file in your editor and read both sides. Keep the lines you want, delete the `<<<<<<<`, `=======` and `>>>>>>>` lines, then `git add` and `git commit`. `git grep -n "<<<<<<<"` must print nothing before you commit. If you panic, `git merge --abort` returns you to before the merge, but an aborted merge does not count: do it again.

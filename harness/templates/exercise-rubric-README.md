@@ -9,7 +9,7 @@ Notes: [docs/weeks/{{rel}}.html](../../../docs/weeks/{{rel}}.html) · Demos: [de
 
 ## Deliverable
 
-<Exactly what you hand in or show: e.g. the URL of a public GitHub repository whose history shows ...>
+<Exactly what you hand in or show, inside your own `<FirstnameLastname>` repository in the cohort organisation (D-0037): e.g. the folder `{{rel}}/` pushed to `main`, whose files or history show ... Never a new repository, a personal-account repository or a public one. Only the day that creates the repository (the Week 1 Git exercise) makes the repository itself the deliverable.>
 
 ## Acceptance criteria
 

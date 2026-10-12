@@ -6,7 +6,7 @@ Agent-driven pipeline that turns one curriculum day into five reviewed artifacts
 harness/
   curriculum.json      source of truth: weeks, days, slugs, gate, demoFormat, status
   metrics.json         quality bars (word band, steps, quiz count, test counts, day minutes)
-  config.json          site title, repo URL, feedback form, LLM provider defaults
+  config.json          site title, repo URL, feedback form, LLM provider defaults, learner repo convention (D-0037)
   build_index.py       curriculum.json -> CAL/WEEKS block in docs/index.html (--check in tests); owns all calendar arithmetic
   args_for.py          prints the Workflow args for <week> <day...> (day = weekday slot; holiday slots refused; BLOCKED until the
                        week's plan exists, escape --no-plan) or, with <week> --plan, the args for the week-plan workflow (D-0034)

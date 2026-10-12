@@ -28,6 +28,21 @@
       "theory they already know gets a two-minute recap, then practice"
     ]
   },
+  "learnerRepo": {
+    "_comment": "Learner repo convention (D-0037): one private repository per trainee inside the cohort organisation, created in the W1D2 Git exercise and kept for the whole course. Reaches every exercise and runbook author/critic prompt through args_for.py and day-fanout.js (learnerCtx). The trainer's demo-thread repo (threads.*.repo) is a different repository and keeps its own name. Change via a decision entry.",
+    "org": "2494-Gen-AI-CN",
+    "name": "FirstnameLastname",
+    "nameRule": "the trainee's first and last name as on the class roster, run together in PascalCase, ASCII letters and digits only; a clash gets a trailing digit",
+    "visibility": "private",
+    "createdIn": "w01d2",
+    "layout": {
+      "root": "hello.py, .gitignore and README.md from the W1D2 Git exercise stay at the top level",
+      "exercises": "<week-dir>/<day-slug>/, the same relative path the exercise has under exercises/ in the training repo",
+      "codeAlong": "one folder per demo thread at the top level, named after the thread id without its project prefix (p0-ticket-desk -> ticket-desk/)",
+      "scratch": "scratch/ for explorations; never marked"
+    },
+    "handIn": "commit and push to main; the trainer reads the day's folder in the trainee's repository"
+  },
   "llm": {
     "default": {
       "provider": "anthropic",

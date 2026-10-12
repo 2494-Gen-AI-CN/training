@@ -33,7 +33,7 @@ import demo_check  # noqa: E402
 import plan_check  # noqa: E402
 
 ROOT = bi.ROOT
-CONFIG_KEYS = ("cohort", "siteTitle", "brand", "repoUrl", "repoBranch", "siteUrl", "feedbackFormUrl", "python", "audience")
+CONFIG_KEYS = ("cohort", "siteTitle", "brand", "repoUrl", "repoBranch", "siteUrl", "feedbackFormUrl", "python", "audience", "learnerRepo")
 
 
 def plan_path(week_no: int) -> Path:
