@@ -2,7 +2,8 @@
 
 Companion to `mined-rules-catalog.md` (D-0028). Row IDs below (A1, D16, F5 ...) point at that catalog.
 Each stage is sized for one Claude Code session. Run them in the recommended order; each stage's exit criteria
-are the next stage's entry conditions. Training starts Tue 2026-10-13, so stages 1, 3 and 4 come first.
+are the next stage's entry conditions. Training starts Tue 2026-10-13, so stages 1 and 3 came first; Stage 2 (week
+plan) now runs before W1D3 so the three unauthored days of week 1 are written against a plan (reordered 2026-10-12).
 
 ## Kickoff prompt (paste at the top of every clean session, then the stage block)
 
@@ -31,10 +32,10 @@ test result, anything left undone and why.
 | Order | Stage | Why first | Size |
 |---|---|---|---|
 | ~~1~~ | ~~Stage 1 Demo contract~~ | ~~Everything downstream (W1D2 re-author, W1D3–5) depends on what a demo is~~ | ~~1 session, no agents~~ done 2026-10-11, D-0030 |
-| 2 | Stage 3 Re-author W1D2 demos + promote page | Tue 2026-10-13 is W1D2; must be taught from the new contract | 1 session, ~20 agents |
-| 3 | Run W1D3 (milestone 6, not a stage here) | Wed 2026-10-14 | 1 session, ~20 agents |
-| 4 | Stage 4 Delivery-day close + drift check | Needed Tue evening after the first delivery | 1 session, no agents |
-| 5 | Stage 2 Week plan artifact | Before week 2 is authored | 1 session, ~3 agents |
+| ~~2~~ | ~~Stage 3 Re-author W1D2 demos + promote page~~ | ~~Tue 2026-10-13 is W1D2; must be taught from the new contract~~ | ~~1 session, ~20 agents~~ done 2026-10-12, D-0031 |
+| 3 | Stage 2 Week plan artifact | W1D3–W1D5 are still unauthored: plan week 1 (demo ladder, anti-spoiler ledger, coverage map, stop points) before any of them is written. Must land before Wed 2026-10-14 morning; if it cannot, run W1D3 first and Stage 2 before W1D4 | 1 session, ~3 agents |
+| 4 | Run W1D3 (milestone 6, not a stage here) | Wed 2026-10-14; after Stage 2 `args_for.py` needs `harness/plans/week-01.md` to emit its args | 1 session, ~20 agents |
+| 5 | Stage 4 Delivery-day close + drift check | Needed Tue evening after the first delivery; independent of Stage 2 and W1D3, so run it Tue evening wherever they stand | 1 session, no agents |
 | 6 | Stage 7 Notes depth (interview sections) | Fits the persona; touches critic + template | 1 session |
 | 7 | Stage 5 Rules registry + OVERRIDE state | Governance; no delivery dependency | 1 session |
 | 8 | Stage 6 Skills | After the processes have run at least once by hand | 1–2 sessions |
@@ -105,7 +106,8 @@ Build a week-level planning stage that runs ONCE per week before the first day-f
   and passes the plan path + the day's rows from the coverage map into args (`weekPlan`, `weekPlanRows`).
 - day-fanout.js dayHeader includes the day's rows from the plan; the research and notes critics check the day
   teaches exactly those rows; the runbook critic checks minutes against the plan's budgets.
-- Run week-plan for week 1 now (W1D2 is already taught/authored: the plan records it as-is and plans D3–D5).
+- Run week-plan for week 1 now (W1D2 is already authored and live: the plan records it as-is and plans D3–D5,
+  none of which is authored yet). Do not run W1D3 in this stage.
 - tests/test_plans.py: every live day's week has a plan; plan lists every subtopic of every teaching day.
 Decision entry. Exit: plan for week 1 exists and passes its critic; args_for gated; tests green; pushed.
 ```
