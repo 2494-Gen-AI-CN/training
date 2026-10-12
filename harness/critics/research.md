@@ -10,7 +10,7 @@ You are judging `harness/research/<week>/<day>.md`. You are NOT the author. Retu
 4. `## Glossary terms` has 3–8 lines in the form `- term | one sentence | aka: ...`; definitions are one plain sentence; no term duplicates an existing `docs/assets/js/glossary.js` entry (case-insensitive, check term and aka).
 5. `## Common pitfalls` has 3–6 concrete pitfalls (what a learner actually does wrong).
 6. `## Demo plan hints` has 2–4 hints naming what must be shown live.
-7. Content is scoped to THIS day's subtopics from the curriculum; it does not pre-teach a later day.
+7. Content is scoped to THIS day's subtopics from the curriculum; it does not pre-teach a later day. When the prompt carries week-plan rows (D-0034), the brief covers exactly the day's coverage rows, its `## Demo plan hints` name the plan's demos for the day (the thread rows, in ladder order), and nothing the anti-spoiler rows defer to a later day appears as content.
 
 ## Full gate only (weeks 5, 8, 9, 10, 11)
 

@@ -1,0 +1,28 @@
+# Week-plan critic — PASS criteria
+
+You are judging `harness/plans/week-WW.md` (template `harness/templates/week-plan.md`; D-0034). You are NOT the author. Read the plan, `harness/curriculum.json` (that week's days, subtopics, week `notes` and day `notes`), `harness/config.json` `audience`, `harness/metrics.json` (`demos`, `runbook`), `harness/templates/demo-script.md` and `harness/critics/demos.md` (the demo-thread contract, D-0033), the previous week's plan if the prompt names one, and, for every `status: live` day of the week, its scripts under `trainer/<rel>/demos/`. Use Bash to run the checks. Return `pass=false` with specific critiques if ANY item fails.
+
+## Mechanical (run it)
+
+1. `python harness/plan_check.py harness/plans/week-WW.md` exits 0. It checks the headings, the Threads rung chain (rungs 1..n, `Starts from` = the previous rung's key path, first rung cold or an existing key), the Standalone table, the Demo ladder (every rung and standalone demo once, numbered in teaching order, minutes within `metrics.demos.minutesPerScriptMin..Max`, scripts per day within `scriptsMin..Max`, demo numbers 01.. contiguous per day, `Must follow` cites the previous rung), the Coverage map (every curriculum subtopic of every teaching day exactly once, mapped to a demo of that day or `facilitation` / `notes`), the ledgers, and that a live day's rows equal its scripts on disk. Quote its output verbatim.
+
+## Threads and ladder (A7, A10, A12, A24, A25)
+
+2. One codebase, growing: every rung's "Adds" is new work on top of the previous rung's "End state" (no re-scaffolding, no second file standing in for the first; a rung that "rewrites" names what it replaces). The end state of each rung is runnable and demonstrable on its own. The thread's "End state this week" names the last rung's key and estimates its size under `metrics.demos.maxLinesPerThreadKey`; every rung's "Adds" fits `metrics.demos.maxTypedLinesPerRung` typed lines in its ladder minutes (about 1.5 typed lines per minute, less when the talking points are dense).
+3. The domain holds across the thread's scope: the Domain line says how the same records survive every week of the scope (for P0: Python structures, then modules/files/tests, then MySQL tables, then an ETL job, then LLM calls). A domain that only works this week fails.
+4. Dependency guarantees are real: each ladder row's "Guarantees" names a state (a file, a function, a table, a repo branch) a later row's "Must follow" relies on, and nothing in a later rung assumes a state no earlier row guarantees. Standalone demos say why they fit no thread (A23), and a standalone demo that could have been a rung is a FAIL.
+5. Live days are recorded as-is: for every `status: live` day the rows match its scripts on disk in name, minutes, Thread and Starts from, and the plan does not ask to change them (the delivery-day close owns changes to a taught day).
+6. Mirrors the learner project (A24): the Weekly Epic states a capability in the thread's domain that the learner project of this block (curriculum `projects`) will need, and the week's rungs build it from technology the curriculum has taught by that day (no library, tool or API from a later day or week; the week `notes` and day `notes` in curriculum.json are binding).
+
+## Day shape and budgets (A13, A16, D4)
+
+7. Per-day shape: AM/PM blocks name every demo of the day (ladder order), every facilitation subtopic, the notes handoff, the exercise briefing and the exercise; a day's demo minutes plus facilitation, breaks, lunch (60), notes handoff, exercise and wrap-up can fit `metrics.runbook.dayMinutesMin..Max`. Stop points name a step of a named demo and say where the remainder lands (later today, or tomorrow's first demo). "Never cut" includes every rung a later day starts from; "Cut first" never names such a rung.
+8. Anti-spoiler ledger: every subtopic the curriculum places on a later day of this week (or a later week) that a demo could tempt the author to show early is listed with the day it lands on, and the per-day shape does not contradict it. For week 1 the week note is binding (no pytest, no syntax-from-zero; Wednesday conventions, Thursday idioms and pitfalls, Friday design choices).
+9. Real-world framing and deliberate deviations (A16): the framing paragraph maps the domain to a workplace; every "nobody builds it this way" shape in the rungs (one file for a package, in-memory lists for a database, a bare folder standing in for GitHub, hard-coded data, no tests yet) is a ledger row with the workplace reality and the pedagogical reason. An unledgered shape fails.
+10. Coverage map (D4): every subtopic maps to the day the curriculum puts it on; a subtopic whose objective is fluency (the room must become able to type it) maps to a demo, a concept subtopic maps to `facilitation`, and `notes` is used only with a reason in the per-day shape. Notes steps are plausible against `metrics.notes.stepsMin..Max` (5–7 per page) and group subtopics the way a page would.
+
+## Writing
+
+11. The plan reads as instructions to the trainer and the day authors: present tense, concrete names (files, functions, commands, commit messages), no filler, no "not X but Y" or stock AI words (D-0029 applies to the Epic and framing paragraphs). Dates come from the args, never invented.
+
+Return a one-sentence summary plus critiques as concrete fixes (section + row + what to change).

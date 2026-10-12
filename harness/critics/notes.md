@@ -18,7 +18,7 @@ You are judging `docs/weeks/<week>/<day>.html`. You are NOT the author. Read the
 
 10. Prose word count (text inside `.reading-col` excluding `.reading-sources`, code and buttons) within `wordMin..wordMax` from args (default 1,200–1,800).
 11. Every factual claim traces to the research brief. Flag invented numbers, versions, API names.
-12. The page teaches THIS day's subtopics; where the reader should go and do what the trainer typed it names the demo by its objective ("the Git local-loop demo"), not by a file path that is not public yet.
+12. The page teaches THIS day's subtopics; where the reader should go and do what the trainer typed it names the demo by its objective ("the Git local-loop demo"), not by a file path that is not public yet. When the prompt carries week-plan rows (D-0034): every coverage row's subtopic is taught, in the step the row names (Notes step, 1-based), nothing the anti-spoiler rows defer to a later day is taught, and the "Demos today" list names the plan's demos for the day in ladder order.
 13. `window.DIAGRAM` present: `captions.length == step count`; every node has `step, x, y, w, h, label`; edges reference existing node ids; each step reveals something that matters for that section (not decoration).
 14. `window.QUIZ.questions.length == 6`; type mix ≥1 `scq`, ≥1 `tf`, ≥1 `mcq` or `match`, ≤1 `open`; `answer` indices in range; every `explain` present; questions test the brief's content.
 15. `window.NEXT = { label, href }` points to the next day's page (or `../../index.html` after day 5).

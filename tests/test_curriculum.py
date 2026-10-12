@@ -160,11 +160,14 @@ class CurriculumTests(unittest.TestCase):
         self.assertIsNone(re.search(r"\b20\d\d-\d\d-\d\d\b", outside), "hand-typed ISO date outside the generated block")
 
     def test_args_for_runs_for_every_teaching_day_and_refuses_holidays(self):
+        # Calendar/day-args machinery only; the week-plan gate (D-0034) is tested in test_plans.py, so weeks
+        # without a plan use the logged --no-plan escape here.
         for w in self.cur["weeks"]:
             slots = [str(d["day"]) for d in build_index.teaching_days(w)]
-            res = subprocess.run([sys.executable, str(HARNESS / "args_for.py"), str(w["week"]), *slots, "--today", "2026-01-01"],
+            res = subprocess.run([sys.executable, str(HARNESS / "args_for.py"), str(w["week"]), *slots, "--today", "2026-01-01", "--no-plan"],
                                  capture_output=True, text=True, encoding="utf-8")
             self.assertEqual(0, res.returncode, res.stderr)
+            self.assertIn("--no-plan escape used", res.stderr)
             self.assertIn('"days"', res.stdout)
             self.assertIn('"date"', res.stdout)
             self.assertIn('"dateLabel"', res.stdout)

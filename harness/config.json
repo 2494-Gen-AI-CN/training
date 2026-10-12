@@ -66,6 +66,15 @@
       "week-plan-critic": { "model": null, "effort": "high" }
     }
   },
+  "threads": {
+    "_comment": "Demo threads (D-0033, D-0034): one demo codebase per project block that grows rung by rung across days and weeks. args_for.py --plan passes the threads whose week range covers the week; the week-plan author may not invent a thread. Add P1/P2 threads via a decision entry before their first week is planned.",
+    "p0-ticket-desk": {
+      "domain": "A support-ticket desk for a small software team: tickets with a title, priority, status and history, filed by customers and triaged by agents. Week 1 keeps tickets in Python variables, lists, dicts and classes; week 2 splits the desk into modules with logging, JSON files, regex on ticket text and pytest; week 3 moves tickets, customers and agents into MySQL tables with joins and transactions on assignment; week 4 loads ticket events into a BigQuery star schema through an ETL job; week 5 sends tickets to an LLM for triage, summaries and draft replies.",
+      "project": "P0",
+      "weeks": [1, 5],
+      "repo": "team-repo (created in W1D2 demo 02_local_git_loop; every rung ends in a commit whose message is the rung's commit message)"
+    }
+  },
   "trainerRepo": {
     "path": "trainer",
     "note": "Separate private git repo cloned at ./trainer and gitignored by this repo."
