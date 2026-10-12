@@ -107,7 +107,24 @@ def main(argv: list[str]) -> int:
         text = re.sub(rf"^(\| {a.supersedes} \| [^|]* \| )(proposed|accepted)( \|)", r"\1superseded\3", text, count=1, flags=re.M)
         INDEX.write_text(text, encoding="utf-8", newline="\n")
     print(eid)
+    rebuild_tracker()
     return 0
+
+
+def rebuild_tracker() -> None:
+    """The work tracker lists the decisions (D-0035). Rebuild it; the entry is minted either way.
+    Messages go to stderr so stdout stays the bare ID. Only the real repo is touched (tests run this
+    module against a temp folder)."""
+    root = HERE.parent
+    if not (root / "tracker.html").is_file():
+        return
+    try:
+        sys.path.insert(0, str(root / "harness"))
+        import build_tracker
+        if build_tracker.ROOT.resolve() == root.resolve() and build_tracker.build(quiet=True):
+            print("tracker.html updated", file=sys.stderr)
+    except Exception as e:  # noqa: BLE001 - never fail a decision over the tracker
+        print(f"tracker.html not rebuilt: {e}", file=sys.stderr)
 
 
 if __name__ == "__main__":

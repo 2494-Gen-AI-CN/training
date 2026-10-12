@@ -20,7 +20,10 @@ config.json models (D-0026); every notes page gets a humanizer pass before its c
 
 Rules for this session: use Edit/Write for code (no sed, no heredocs with escapes). Any change to curriculum.json,
 metrics.json, config.json, critics/*.md, templates or the calendar needs `python decisions/new.py ...` and the ID in
-the commit message. Update STATUS.md in the same commit. Ask before any action that costs more than ~30 agents.
+the commit message. Update STATUS.md in the same commit, then run `python harness/build_tracker.py` and commit
+tracker.html with it (D-0035; the staleness test fails otherwise). After any Workflow run, complete its run record:
+`python harness/log_run.py amend --last --run-id <wf_...> --minutes M --tokens T --tiers-verified yes|no`.
+Ask before any action that costs more than ~30 agents.
 Push only if tests are green; otherwise stop and report. Do not run any training day the stage does not name.
 
 Execute ONLY the stage below. Stop at its exit criteria and report: what changed (paths), decision IDs minted,
@@ -204,12 +207,16 @@ Build:
   the taught shape (classroom reality wins, A15) with a maintenance commit; taught artifacts are then FROZEN
   (curriculum.json day gains `taught: "YYYY-MM-DD"`); later defects are fixed forward, never rewritten;
   (3) every untracked file gets a disposition (commit / ignore / delete / defer with reason);
-  (4) run the drift check; every WARN gets a disposition; (5) STATUS.md Log line; (6) commit both repos.
+  (4) run the drift check; every WARN gets a disposition; (5) STATUS.md Log line; (6) work tracker (D-0035): record
+  the close as a run-log line (`python harness/log_run.py add <report.json>` with kind `manual`, the day, a note
+  naming what changed) and let it rebuild tracker.html, so the day shows `taught` / `published` and its
+  "delivery close missing" alarm clears; (7) commit both repos.
   Catch-up clause: one close per missed day.
 - harness/drift_check.py (port of F5, read-only, exit 1 on hard findings): decisions index rows match files and IDs are
   sequential (reuse tests/test_decisions.py logic); stale markers in live docs (TBD, OWED, pending, blocked until)
   outside decisions/ and docs/process/*catalog*; untracked files and unstaged deletions in both repos; live days
-  whose `taught` date has passed with no Delivery record in the runbook; curriculum days `taught` but status != live.
+  whose `taught` date has passed with no Delivery record in the runbook; curriculum days `taught` but status != live;
+  `python harness/build_tracker.py --check` (a stale tracker.html is a hard finding).
   Wire into tests as tests/test_drift.py (skips the git checks when not in a repo).
 - A `delivery-close` slash-command skill is Stage 6; here only the checklist + script.
 Decision entry (curriculum.json gains `taught`). Exit: script runs clean on the current tree; checklist committed; pushed.
@@ -274,5 +281,7 @@ Decision entry. Exit: W1D2 page has both sections and passes; tests green; pushe
 ## After every stage
 
 - STATUS.md: milestone/open-item row + Log line in the same commit (O-10 tracks this plan).
+- Strike the stage's row in the order table above (the tracker reads it), then `python harness/build_tracker.py`;
+  finish with `python harness/log_run.py tests` so tracker.html carries the test result (D-0035).
 - Decision ID in the commit subject.
 - `git status` clean in both repos after push.

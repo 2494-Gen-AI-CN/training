@@ -51,7 +51,11 @@ THREAD_HEAD_RE = re.compile(r"^### ([a-z0-9]+(?:-[a-z0-9]+)*)\s*$", re.M)
 
 
 def _cell(s: str) -> str:
-    return s.strip().strip("`").strip()
+    """Cell text; a cell that is ONE code span (`02_x.py`) is unwrapped, any other backtick is content."""
+    s = s.strip()
+    if len(s) >= 2 and s.startswith("`") and s.endswith("`") and s.count("`") == 2:
+        return s[1:-1].strip()
+    return s
 
 
 def _tables(text: str) -> list[list[dict[str, str]]]:

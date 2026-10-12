@@ -5,7 +5,8 @@
 //   Workflow({ scriptPath: "harness/workflows/day-fanout.js", args: <that JSON> })
 //
 // Pipeline per day:  Research (gate-tiered) -> Demos -> Materials (notes ∥ runbook ∥ exercise)
-// then, once every day is through:  Wire (serial, shared files) -> Verify (unittest, ≤2 fix loops).
+// then, once every day is through:  Wire (serial, shared files) -> Record (run log + work tracker, D-0035)
+// -> Verify (unittest, ≤2 fix loops).
 // Demos (D-0030): walkthrough scripts + answer keys are authored to trainer/<rel>/demos/ (private) and
 // published to demos/<rel>/ by harness/publish_demos.py only once curriculum.json carries taught:<date>.
 // A demoFormat "none" day skips the Demos stage; its runbook carries facilitation scripts instead.
@@ -23,6 +24,7 @@ export const meta = {
     { title: 'Demos' },
     { title: 'Materials' },
     { title: 'Wire' },
+    { title: 'Record' },
     { title: 'Verify' },
   ],
 }
@@ -45,7 +47,10 @@ const LLM = A.llm || {}
 // escalate tier instead (so a cheap first pass that fails its critic retries on the strong tier).
 // A null model/effort is omitted, which means "inherit the session default".
 const TIERS = A.models || {}
-function tier(stage, pass) {
+// Every agent() call spreads tier() exactly once, so counting the calls counts the agents (run record, D-0035).
+let AGENTS = 0
+function tier(stage, pass, quiet) {
+  if (!quiet) AGENTS++
   const st = (TIERS.stages || {})[stage] || {}
   const esc = (pass && TIERS.escalateOn && pass >= TIERS.escalateOn && TIERS.escalate) ? TIERS.escalate : null
   const t = esc || st
@@ -54,7 +59,8 @@ function tier(stage, pass) {
   if (t.effort) o.effort = t.effort
   return o
 }
-const tierLabel = (s) => { const t = tier(s); return `${s}=${t.model || 'inherit'}/${t.effort || 'inherit'}` }
+const tierLabel = (s) => { const t = tier(s, 0, true); return `${s}=${t.model || 'inherit'}/${t.effort || 'inherit'}` }
+const TIER_LABELS = ['research-light','research-full','demos','notes','humanize','exercise','runbook','critic','wire','verify','fix'].map(tierLabel).join(' · ')
 const DAYS = A.days.map(d => ({
   ...d,
   researchFile: `${H}/research/${d.rel}.md`,
@@ -270,7 +276,7 @@ async function materialsStage(d, demo) {
 // =====================================================================
 // Run
 // =====================================================================
-log(`Model tiers: ${['research-light','research-full','demos','notes','humanize','exercise','runbook','critic','wire','verify','fix'].map(tierLabel).join(' · ')}; escalate on pass ≥ ${TIERS.escalateOn || '—'} → ${TIERS.escalate ? (TIERS.escalate.model || 'inherit') + '/' + (TIERS.escalate.effort || 'inherit') : 'off'}`)
+log(`Model tiers: ${TIER_LABELS}; escalate on pass ≥ ${TIERS.escalateOn || '—'} → ${TIERS.escalate ? (TIERS.escalate.model || 'inherit') + '/' + (TIERS.escalate.effort || 'inherit') : 'off'}`)
 if (A.noPlan) log(`WARNING: running WITHOUT a week plan (--no-plan escape); record it in STATUS.md`)
 else log(`Week plan: ${A.weekPlan}`)
 phase('Research')
@@ -289,25 +295,13 @@ const wire = await agent(
   `WIRE step (serial, shared files). Days shipped this run: ${J(DAYS.map(d => ({ id:d.id, rel:d.rel, page:d.pageRel })))}.\n` +
   `1. Open ${ROOT}/docs/assets/js/glossary.js. Between "// GLOSSARY:BEGIN" and "// GLOSSARY:END" append these entries as { term, def, aka } lines, SKIPPING any whose term or aka already exists (case-insensitive, check both term and aka of existing entries): ${J(glossaryAdds)}. Keep the file valid JS (node --check).\n` +
   `2. In ${H}/curriculum.json set "status": "live" for ${J(DAYS.map(d => d.id))} ONLY if that day's page ${'`'}docs/weeks/<rel>.html${'`'}, exercises/<rel>/README.md and (unless demoFormat is "none") ${TRAINER}/<rel>/demos/key/README.md all exist on disk. Never touch the "taught" field.\n` +
-  `3. Run: python ${H}/build_index.py\n` +
+  `3. Run: python ${H}/build_index.py   (it also rebuilds tracker.html, the work tracker, D-0035)\n` +
   `4. For each shipped day whose previous day page exists, confirm the previous page's window.NEXT.href points at this day's filename; fix if not.\n` +
   `5. Publish step (D-0030): for each shipped day run "python ${H}/publish_demos.py <week> <day>" (${J(DAYS.map(d => `${A.week} ${d.day}`))}). It copies the answer keys to demos/<rel>/ and flips the notes demo card ONLY if curriculum.json carries taught:<date> for that day (set by the delivery-day close); otherwise it prints "not taught yet" and that is the expected outcome on an authoring run. Never copy demo files by hand.\n` +
   `6. Run ${ROOT}/docs/bump-css.sh --all if you changed glossary.js.\n` +
+  `7. Last, run: python ${H}/build_tracker.py   so tracker.html matches the state you just changed (never edit tracker.html by hand).\n` +
   `Return a one-paragraph summary of what changed.`,
   { label:'wire', phase:'Wire', ...tier('wire') })
-
-// ---------- VERIFY ----------
-phase('Verify')
-let verify = null
-for (let attempt = 1; attempt <= 3; attempt++) {
-  verify = await agent(
-    `VERIFY step. From ${ROOT} run: python -m unittest discover -s tests -v   (and python ${H}/build_index.py --check). Report passed=true only if everything passes. List each failure as "<test>: <one-line cause>".`,
-    { schema: VERIFY_SCHEMA, label:`verify:${attempt}`, phase:'Verify', ...tier('verify') })
-  if (!verify || verify.passed || attempt === 3) break
-  await agent(
-    `FIX step (attempt ${attempt}). These contract tests failed: ${J(verify.failures)}. Fix the underlying artifact(s) for days ${J(DAYS.map(d => d.rel))} — never weaken the tests or metrics. Re-run the failing tests with Bash until they pass. Return a short summary.`,
-    { label:`fix:${attempt}`, phase:'Verify', ...tier('fix') })
-}
 
 // ---------- report ----------
 const report = perDay.map((x, i) => {
@@ -323,5 +317,46 @@ const report = perDay.map((x, i) => {
 })
 const flagged = []
 report.forEach(r => ['research','demos','notes','exercise','runbook'].forEach(k => { if (r[k] && r[k].status === 'flagged') flagged.push({ day:r.day, artifact:k, flags:r[k].flags }) }))
-log(`Run complete: ${DAYS.length} day(s), ${flagged.length} flagged item(s), tests ${verify && verify.passed ? 'PASS' : 'FAIL'}`)
-return { week: A.week, days: DAYS.map(d => d.id), flaggedCount: flagged.length, flagged, verify, wire, report, glossaryAdded: glossaryAdds.length }
+
+// ---------- RECORD (work tracker, D-0035) ----------
+// One record per run in harness/runs.jsonl, written before Verify so the run-log contract test sees it; the
+// Verify agent then amends the test result. Run id, tokens and minutes are invisible to a script: the session
+// adds them afterwards with `python harness/log_run.py amend --last --run-id wf_... --minutes M --tokens T`.
+phase('Record')
+const REPORT_FILE = `${H}/run-report.tmp.json`
+const DAY_IDS = DAYS.map(d => d.id).join(',')
+const runRecord = {
+  kind: 'day-fanout', date: A.today, week: A.week, days: DAYS.map(d => d.id), runId: null,
+  agents: AGENTS + 1, minutes: null, tokens: null,
+  tiers: { labels: TIER_LABELS, verified: null },
+  artifacts: report.flatMap(r => ['research','demos','notes','exercise','runbook'].map(k => ({ day: r.day, name: k, status: (r[k] && r[k].status) || 'flagged', passes: r[k] ? r[k].passes : 0 }))),
+  flagged: flagged.length,
+  flags: flagged.map(f => ({ day: f.day, artifact: f.artifact, flags: (f.flags || []).slice(0, 6).map(x => String(x).slice(0, 300)) })),
+  tests: null, resolved: false, note: A.noPlan ? 'run with the --no-plan escape' : '',
+}
+const recorded = await agent(
+  `RECORD step (work tracker, D-0035).\n` +
+  `1. With the Write tool (not echo, not a heredoc) create ${REPORT_FILE} containing EXACTLY this JSON:\n${JSON.stringify(runRecord)}\n` +
+  `2. From ${ROOT} run: python harness/log_run.py add harness/run-report.tmp.json\n` +
+  `   It validates the record, appends it to harness/runs.jsonl, deletes the temp file and rebuilds tracker.html. If it rejects the record, fix only what its message names in the temp file and retry. Never edit harness/runs.jsonl or tracker.html by hand.\n` +
+  `3. Run: python harness/build_tracker.py --check   and return its one-line output.`,
+  { label:'record', phase:'Record', ...tier('wire') })
+
+// ---------- VERIFY ----------
+phase('Verify')
+let verify = null
+for (let attempt = 1; attempt <= 3; attempt++) {
+  verify = await agent(
+    `VERIFY step. From ${ROOT}: first run python harness/build_tracker.py (work tracker, D-0035), then run: python -m unittest discover -s tests -v   (and python ${H}/build_index.py --check). Report passed=true only if everything passes. List each failure as "<test>: <one-line cause>".\n` +
+    (recorded
+      ? `Then record the result: python harness/log_run.py amend --last --match-days ${DAY_IDS} --agents ${AGENTS + 1} --tests pass   (use --tests fail when anything failed). If it refuses because the last record is not this run's, skip it and say so.`
+      : `The Record step did not complete; do not amend the run log.`),
+    { schema: VERIFY_SCHEMA, label:`verify:${attempt}`, phase:'Verify', ...tier('verify') })
+  if (!verify || verify.passed || attempt === 3) break
+  await agent(
+    `FIX step (attempt ${attempt}). These contract tests failed: ${J(verify.failures)}. Fix the underlying artifact(s) for days ${J(DAYS.map(d => d.rel))} — never weaken the tests or metrics. If a failure is the tracker staleness test (tests/test_tracker.py, "stale"), running python harness/build_tracker.py is the whole fix. Re-run the failing tests with Bash until they pass. Return a short summary.`,
+    { label:`fix:${attempt}`, phase:'Verify', ...tier('fix') })
+}
+
+log(`Run complete: ${DAYS.length} day(s), ${flagged.length} flagged item(s), tests ${verify && verify.passed ? 'PASS' : 'FAIL'}; run log ${recorded ? 'recorded' : 'NOT recorded'} (add the run id with: python harness/log_run.py amend --last --run-id <wf_...>)`)
+return { week: A.week, days: DAYS.map(d => d.id), flaggedCount: flagged.length, flagged, verify, wire, report, recorded, glossaryAdded: glossaryAdds.length }

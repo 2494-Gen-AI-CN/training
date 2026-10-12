@@ -4,7 +4,8 @@
 //   python harness/args_for.py <week> --plan --today YYYY-MM-DD   -> paste as args (the ONLY source of these args)
 //   Workflow({ scriptPath: "harness/workflows/week-plan.js", args: <that JSON> })
 //
-// One author agent + one critic (harness/critics/week-plan.md); one repass at most, so <= 4 agents.
+// One author agent + one critic (harness/critics/week-plan.md); one repass at most; then one Record agent that
+// appends the run to harness/runs.jsonl and rebuilds tracker.html (D-0035). So <= 5 agents.
 // The plan carries the Weekly Epic, the demo THREADS (one codebase growing rung by rung, D-0033), the ordered
 // demo ladder with minutes and dependency guarantees, per-day AM/PM shape with stop points and squeeze
 // priorities, the anti-spoiler and deliberate-deviation ledgers and the coverage map; args_for.py reads it to
@@ -19,6 +20,7 @@ export const meta = {
   description: 'Week plan before any day: epic, demo threads and ladder, per-day shape, ledgers, coverage map (author + critic, one repass)',
   phases: [
     { title: 'Plan' },
+    { title: 'Record' },
   ],
 }
 
@@ -32,7 +34,10 @@ const CFG = A.config || {}
 // Per-stage model/effort tiers (D-0026, D-0032). Copied from day-fanout.js: the stage's {model, effort}; on a
 // repass numbered >= escalateOn, the escalate tier instead. A null model/effort is omitted (inherit the session).
 const TIERS = A.models || {}
-function tier(stage, pass) {
+// Every agent call spreads tier() exactly once, so counting the calls counts the agents (run record, D-0035).
+let AGENTS = 0
+function tier(stage, pass, quiet) {
+  if (!quiet) AGENTS++
   const st = (TIERS.stages || {})[stage] || {}
   const esc = (pass && TIERS.escalateOn && pass >= TIERS.escalateOn && TIERS.escalate) ? TIERS.escalate : null
   const t = esc || st
@@ -41,7 +46,8 @@ function tier(stage, pass) {
   if (t.effort) o.effort = t.effort
   return o
 }
-const tierLabel = (s) => { const t = tier(s); return `${s}=${t.model || 'inherit'}/${t.effort || 'inherit'}` }
+const tierLabel = (s) => { const t = tier(s, 0, true); return `${s}=${t.model || 'inherit'}/${t.effort || 'inherit'}` }
+const TIER_LABELS = ['week-plan', 'week-plan-critic', 'wire'].map(tierLabel).join(' · ')
 const J = (x) => JSON.stringify(x, null, 1)
 const WW = String(A.week).padStart(2, '0')
 
@@ -74,7 +80,7 @@ async function gated(gen, crit) {
   }
 }
 
-log(`Model tiers: ${['week-plan', 'week-plan-critic'].map(tierLabel).join(' · ')}; escalate on pass ≥ ${TIERS.escalateOn || '—'} → ${TIERS.escalate ? (TIERS.escalate.model || 'inherit') + '/' + (TIERS.escalate.effort || 'inherit') : 'off'}`)
+log(`Model tiers: ${TIER_LABELS}; escalate on pass ≥ ${TIERS.escalateOn || '—'} → ${TIERS.escalate ? (TIERS.escalate.model || 'inherit') + '/' + (TIERS.escalate.effort || 'inherit') : 'off'}`)
 phase('Plan')
 const plan = await gated(
   (cr, pass) => agent(
@@ -98,5 +104,27 @@ const plan = await gated(
     `Return pass, critiques (section + row + concrete fix), one-sentence summary.`,
     { schema: VERDICT, label:`week-${WW}:plan-crit`, phase:'Plan', ...tier('week-plan-critic') }))
 
-log(`Week ${A.week} plan ${plan ? plan.status : 'hard-failed'} after ${plan ? plan.passes : 0} pass(es)${plan && plan.flags ? ': ' + plan.flags.length + ' open critique(s)' : ''}`)
-return { week: A.week, planFile: A.planFile, status: plan ? plan.status : 'flagged', passes: plan ? plan.passes : 0, flags: plan && plan.flags ? plan.flags : [], summary: plan ? plan.summary : 'author hard-failed', result: plan ? plan.result : null }
+// ---------- RECORD (work tracker, D-0035) ----------
+// The plan file changes what the tracker shows for the whole week, and the run itself is recorded in
+// harness/runs.jsonl. Run id, tokens and minutes are invisible to a script: the session adds them afterwards
+// with `python harness/log_run.py amend --last --run-id wf_... --minutes M --tokens T --tiers-verified yes`.
+phase('Record')
+const planFlags = plan && plan.flags ? plan.flags : []
+const runRecord = {
+  kind: 'week-plan', date: A.today, week: A.week, days: [], runId: null, agents: AGENTS + 1, minutes: null, tokens: null,
+  tiers: { labels: TIER_LABELS, verified: null },
+  artifacts: [{ day: null, name: 'plan', status: plan ? plan.status : 'flagged', passes: plan ? plan.passes : 0 }],
+  flagged: (!plan || plan.status === 'flagged') ? 1 : 0,
+  flags: (!plan || plan.status === 'flagged') ? [{ day: null, artifact: 'plan', flags: (planFlags.length ? planFlags : ['author or critic hard-failed']).slice(0, 6).map(x => String(x).slice(0, 300)) }] : [],
+  tests: null, resolved: false, note: '',
+}
+const recorded = await agent(
+  `RECORD step (work tracker, D-0035).\n` +
+  `1. With the Write tool (not echo, not a heredoc) create ${H}/run-report.tmp.json containing EXACTLY this JSON:\n${JSON.stringify(runRecord)}\n` +
+  `2. From ${ROOT} run: python harness/log_run.py add harness/run-report.tmp.json\n` +
+  `   It validates the record, appends it to harness/runs.jsonl, deletes the temp file and rebuilds tracker.html. If it rejects the record, fix only what its message names in the temp file and retry. Never edit harness/runs.jsonl or tracker.html by hand.\n` +
+  `3. Run: python harness/build_tracker.py --check   and return its one-line output.`,
+  { label:`week-${WW}:record`, phase:'Record', ...tier('wire') })
+
+log(`Week ${A.week} plan ${plan ? plan.status : 'hard-failed'} after ${plan ? plan.passes : 0} pass(es)${plan && plan.flags ? ': ' + plan.flags.length + ' open critique(s)' : ''}; run log ${recorded ? 'recorded' : 'NOT recorded'} (add the run id with: python harness/log_run.py amend --last --run-id <wf_...>)`)
+return { week: A.week, recorded, planFile: A.planFile, status: plan ? plan.status : 'flagged', passes: plan ? plan.passes : 0, flags: plan && plan.flags ? plan.flags : [], summary: plan ? plan.summary : 'author hard-failed', result: plan ? plan.result : null }

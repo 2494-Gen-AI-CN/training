@@ -165,6 +165,11 @@ def main(argv: list[str]) -> int:
     msgs = publish(nums[0], nums[1], dry=dry)
     for m in msgs:
         print(m)
+    if not dry:
+        # Publishing changes what the work tracker shows for the day (D-0035).
+        import build_tracker
+        if build_tracker.build(quiet=True):
+            print("tracker.html updated")
     return 1 if (dry and msgs) else 0
 
 

@@ -192,6 +192,10 @@ def main(argv: list[str]) -> int:
         print("docs/index.html updated")
     else:
         print("docs/index.html already up to date")
+    # The work tracker reads the same curriculum (D-0035): whoever rebuilds the index rebuilds it too.
+    import build_tracker  # late import: build_tracker imports this module
+    if build_tracker.build(quiet=True):
+        print("tracker.html updated")
     return 0
 
 

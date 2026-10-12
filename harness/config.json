@@ -75,6 +75,16 @@
       "repo": "team-repo (created in W1D2 demo 02_local_git_loop; every rung ends in a commit whose message is the rung's commit message)"
     }
   },
+  "tracker": {
+    "_comment": "Alarm thresholds for tracker.html (D-0035), in calendar days. Readiness follows the previous-Friday rule: a day that is not live turns amber dayAmberDaysBeforeWeek days before its week's Monday (the Wednesday before) and red dayRedDaysBeforeWeek days before (the Friday before). The browser applies these to today's date; harness/build_tracker.py only embeds them.",
+    "dayAmberDaysBeforeWeek": 5,
+    "dayRedDaysBeforeWeek": 3,
+    "planAmberDaysBeforeWeek": 7,
+    "planRedDaysBeforeWeek": 5,
+    "closeAmberDays": 1,
+    "closeRedDays": 2,
+    "itemAmberDays": 2
+  },
   "trainerRepo": {
     "path": "trainer",
     "note": "Separate private git repo cloned at ./trainer and gitignored by this repo."

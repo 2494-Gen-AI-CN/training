@@ -9,6 +9,8 @@ __pycache__/
 .venv/
 venv/
 .ipynb_checkpoints/
+# Workflow run report, consumed and deleted by harness/log_run.py add (D-0035)
+harness/run-report.tmp.json
 # Secrets
 .env
 *.env

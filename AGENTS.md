@@ -8,7 +8,8 @@ Prep repo for the 11-week **2494 Gen-AI Python** training. Two deliverables per 
 
 ## Status and decision log (read first)
 
-- `STATUS.md` is the single "what's next" surface: phase, milestones, open items. **Read it at session start** and update it in the same commit as any milestone or open-item change.
+- `STATUS.md` is the single "what's next" surface: phase, milestones, open items. **Read it at session start** and update it in the same commit as any milestone or open-item change. Its Phase line and its Milestones and Open items tables are parsed by the work tracker; `tests/test_status.py` pins their shape (5-column open-item rows, IDs O-1..O-n, a readable date in "Needed by" wherever one exists).
+- `tracker.html` (repo root, open it from disk; D-0035) is the at-a-glance view of all of it: every teaching day by artifact, week plans, alarms, milestones, open items, codify stages, demo threads, workflow runs, decisions. It is generated, never hand-edited.
 - `decisions/README.md` is the newest-first index of every on-the-fly decision (schedule, scope, API currency, naming). **Read it at session start.** Never redo or undo a logged decision; supersede it with a new entry.
 - Any change to `harness/curriculum.json`, `harness/metrics.json`, `harness/config.json`, `harness/critics/*.md`, or the calendar (dates, holidays) requires an entry: `python decisions/new.py "Decision" --why "..." --affects "..."` and the printed ID (`D-NNNN`) goes in the commit message. `tests/test_decisions.py` enforces the format.
 
@@ -27,14 +28,18 @@ Prep repo for the 11-week **2494 Gen-AI Python** training. Two deliverables per 
 - `exerciseKind` per day: `pytest` (default: starter fails, solution passes) or `rubric` (D-0025: hands-on deliverable, acceptance checklist and rubric in `exercises/<rel>/README.md`, trainer marking guide at `trainer/<rel>/solutions/RUBRIC.md`, no starter/ or tests/).
 - Every notes page gets a `humanizer` pass (plugin skill `humanizer:humanizer`, file mode) after the author and before the critic (D-0029); critic item 18 in `harness/critics/notes.md` fails AI-sounding prose. Hand-edited notes prose gets the same pass before commit.
 - Quality bars live in `harness/metrics.json`; critic PASS criteria live in `harness/critics/*.md`. Change those files, not the prompts, when the bar moves.
-- Workflow scripts cannot read files or call `Date()`. Generate args with `python harness/args_for.py <week> <day...>` and pass them to `Workflow({ scriptPath: "harness/workflows/day-fanout.js", args })`. Run one day per invocation. The week plan runs once per week before its first day: `python harness/args_for.py <week> --plan --today <date>` then `Workflow({ scriptPath: "harness/workflows/week-plan.js", args })` (≤4 agents).
+- Workflow scripts cannot read files or call `Date()`. Generate args with `python harness/args_for.py <week> <day...>` and pass them to `Workflow({ scriptPath: "harness/workflows/day-fanout.js", args })`. Run one day per invocation. The week plan runs once per week before its first day: `python harness/args_for.py <week> --plan --today <date>` then `Workflow({ scriptPath: "harness/workflows/week-plan.js", args })` (≤5 agents: author, critic, one repass of each, Record).
+- Work tracker (D-0035): `python harness/build_tracker.py` rewrites the data block of `tracker.html` from disk (curriculum, plans, briefs, `trainer/`, notes pages, `STATUS.md`, `docs/process/codify-plan.md`, `decisions/`, `harness/runs.jsonl`, `harness/last-tests.json`). Run it after ANY change to those and commit `tracker.html` with the change; `tests/test_tracker.py` fails while it is stale. `build_index.py`, `publish_demos.py`, `decisions/new.py` and `log_run.py` rebuild it themselves, and both workflows do it in their Wire/Record steps, so the hand case is mostly an edited `STATUS.md` or trainer file. It reads no clock: alarms (previous-Friday readiness, thresholds in `config.json` `tracker`) are computed in the browser. It needs `trainer/` present.
+- Run log (D-0035): every workflow run appends one record to `harness/runs.jsonl` through its own Record agent (`harness/log_run.py add`). The script cannot see its run id or usage, so after each run the session completes the record: `python harness/log_run.py amend --last --run-id wf_... --minutes M --tokens T --tiers-verified yes|no` (verify tiers from the agent transcripts, never from config), plus `--resolved yes --note "..."` when flagged items were fixed by hand. Never edit `runs.jsonl` by hand.
 - No backend. Quiz, survey and theme state are localStorage only. Any `FDE_`, `workers.dev` or `2463` string in `docs/` is a leak from the reference site and fails `tests/test_assets.py`.
 - `Reference-Example/` is read-only inspiration (nested git clones). Never `git add` it.
 
 ## Commands
 
 - Contract tests: `python -m unittest discover -s tests -v`
+- Contract tests, recorded for the tracker (use at the end of a session): `python harness/log_run.py tests`
 - Index sync check: `python harness/build_index.py --check`
+- Tracker rebuild / sync check: `python harness/build_tracker.py` / `python harness/build_tracker.py --check`; preview another day with `tracker.html?today=YYYY-MM-DD`, a day's detail with `?open=w01d3`
 - Exercise contract: `cd exercises/<week>/<day> && python -m pytest -q` must fail; with `EXERCISE_SRC=../../../trainer/<week>/<day>/solutions` must pass.
 - Preview site: `cd docs && python -m http.server 8000`
 - Cache-bust after CSS/JS edits: `docs/bump-css.sh [--all]`
