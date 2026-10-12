@@ -61,7 +61,9 @@
       "critic": { "model": null, "effort": "medium" },
       "wire": { "model": "haiku", "effort": "low" },
       "verify": { "model": "haiku", "effort": "low" },
-      "fix": { "model": "sonnet", "effort": "medium" }
+      "fix": { "model": "sonnet", "effort": "medium" },
+      "week-plan": { "model": null, "effort": "high" },
+      "week-plan-critic": { "model": null, "effort": "high" }
     }
   },
   "trainerRepo": {

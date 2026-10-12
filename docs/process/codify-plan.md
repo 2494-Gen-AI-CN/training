@@ -102,6 +102,8 @@ Build a week-level planning stage that runs ONCE per week before the first day-f
   ("cut first" / "never cut"), anti-spoiler ledger (what each day defers to which later day), real-world framing +
   deliberate-deviation ledger (deviation / workplace reality / pedagogical reason), coverage map
   (curriculum subtopic -> day -> demo -> notes step). Template: harness/templates/week-plan.md.
+  Model tiers already exist in config.json models.stages (D-0032): `week-plan` (author) and `week-plan-critic`,
+  both inherit the session model at high effort; the workflow reads them through args like day-fanout's tier().
 - python harness/args_for.py refuses to emit day args when harness/plans/week-WW.md is missing (blocking, like R-013),
   and passes the plan path + the day's rows from the coverage map into args (`weekPlan`, `weekPlanRows`).
 - day-fanout.js dayHeader includes the day's rows from the plan; the research and notes critics check the day
