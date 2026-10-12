@@ -74,6 +74,12 @@ Body rules:
 - Every token (keyword, method, flag, git subcommand) is introduced before its first use: walk the script as a learner
   who has read only the prerequisite reading. The first script of the day that uses a tool carries its install, version
   and config commands, proven by running them.
+- Wording (D-0039): the trainer says the talking points aloud while typing, so write sentences a person can say without
+  rephrasing them: short, plain, one idea each, no chain of clauses joined by semicolons or colons. A contrast that
+  corrects what the room really assumes ("review comments, not taste") is good spoken wording; keep it. A humanizer
+  pass runs after the author (prose only, guarded by harness/prose_guard.py); give it little to do.
+- "What we did NOT cover" bullets read "- <topic>: <where it goes or why it is out>. <the reason, as one sentence>."
+  with no dash between topic and note (checked by harness/demo_check.py).
 -->
 
 ## Step 2 — <next thing typed> (10 min)
@@ -115,7 +121,7 @@ Talking points while typing:
 
 ## What we did NOT cover (intentional)
 
-- <topic the room may ask about> — deferred to <day/demo> because <reason>.
+- <topic the room may ask about>: deferred to <day/demo>. <The reason, as one sentence>.
 
 ## Wrap-up questions
 

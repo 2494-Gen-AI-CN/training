@@ -12,7 +12,10 @@ harness/
                        week's plan exists, escape --no-plan) or, with <week> --plan, the args for the week-plan workflow (D-0034)
   plan_check.py        parses + checks one week plan (threads chain, ladder, coverage map, live days as-is); args_for and tests call it
   demo_check.py        format + both-ways check for one day's demo scripts and answer keys (critic and tests call it; D-0030);
-                       thread rungs carry lines from their Starts from key, replaced lines go in a python replaced block (D-0033)
+                       thread rungs carry lines from their Starts from key, replaced lines go in a python replaced block (D-0033);
+                       "What we did NOT cover" bullets take one format (D-0039)
+  prose_guard.py       prose-only guard for a humanizer pass on demo scripts and runbooks: compares a file with a snapshot or
+                       with HEAD and fails when code, headings, header bullets, tables, labels or bullet counts moved (D-0039)
   publish_demos.py     copies trainer/<rel>/demos/key/ to demos/<rel>/ and flips the notes demo card once the day is taught (D-0030)
   build_tracker.py     writes ../tracker.html (the work tracker; local, gitignored, D-0036) = templates/tracker.html + a data block
                        read from repo state; --check in tests (D-0035)
@@ -51,6 +54,8 @@ Decisions that shaped any of this (and every later schedule/scope change) are lo
 | Verify | test result amended onto the run record | `python -m unittest discover -s tests` (includes the tracker staleness test) | ≤2 fix loops |
 
 Each gated artifact: author → critic → up to 3 repair passes → else **flagged** (reported, never blocks the run).
+
+A humanizer agent (`humanizer:humanizer`, file mode, tier `humanize`) runs between author and critic on three artifacts: the notes page (D-0029) and the trainer's delivery wording, which is the day's demo scripts and the runbook (D-0039). On the trainer files it changes prose only and proves it: `python harness/prose_guard.py snapshot <files>` before, `python harness/prose_guard.py check <snapshot dir> <files>` after. No critic item judges the wording of trainer files, so the pass adds agents (two per day, more on a repass) without moving the bar. For a hand pass on committed files use `python harness/prose_guard.py git <files>`.
 
 ## Running a day
 

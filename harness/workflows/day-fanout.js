@@ -1,7 +1,7 @@
 // day-fanout.js — produce the full artifact set of one training day, or of several days of one week as a
 // batch (D-0038), critic-gated.
 //
-// Run (the days of one week in one invocation is the normal case; a single day stays valid; ~20 agents per day):
+// Run (the days of one week in one invocation is the normal case; a single day stays valid; ~24 agents per day):
 //   python harness/args_for.py <week> <day...> --today YYYY-MM-DD   -> paste as args
 //   Workflow({ scriptPath: "harness/workflows/day-fanout.js", args: <that JSON> })
 //
@@ -14,6 +14,8 @@
 // A demoFormat "none" day skips the Demos stage; its runbook carries facilitation scripts instead.
 // Every artifact is produced by an author agent and judged by a DIFFERENT critic agent
 // reading harness/critics/<artifact>.md; up to 3 passes, then the item is flagged (never blocks).
+// A humanizer agent runs between author and critic on the notes page (D-0029) and on the trainer's delivery
+// wording, the demo scripts and the runbook (D-0039; prose only, guarded by harness/prose_guard.py).
 //
 // Scripts cannot touch the filesystem or Date(); everything comes in through args.
 // Lifted from the reference week-fanout.js: gated(), fix(), VERDICT, repairNulls(), compact(), salvage.
@@ -187,8 +189,10 @@ async function demosStage(d) {
       `Write ${d.keyDir}/: one answer key per script with the same NN and slug: key/NN_<slug>.${d.demoFormat === 'nb' ? 'ipynb (nbformat v4, outputs cleared, one markdown cell per step; .py allowed for setup)' : 'py'} (≤${M.demos.maxLinesPerFile} lines for a standalone demo, ≤${M.demos.maxLinesPerThreadKey} for a thread rung; runnable with "python <file>" from key/; its lines EXACTLY the union of the script's \`\`\`python blocks plus the lines carried from the Starts from key — no elisions, no stubs; a line typed then replaced in the same rung goes in a \`\`\`python transient block) OR key/NN_<slug>.md for a terminal demo (a transcript: \`\`\`console blocks whose "$ " lines are exactly the script's \`\`\`bash commands in order, followed by the real output you captured by running them). Plus key/README.md (run-order table file|shows|run|needs key? listing every key file; template demo-README.md), key/requirements.txt only if non-stdlib (pinned to the brief's stamps), key/.env.example only if a key is needed (names only; such keys guard with an env check that prints a clear message and exits 0 when absent).\n` +
       `LLM calls (if this day has any) use exactly ${J(LLM)}; model id from the brief. No secrets. Do NOT write anything under ${d.pubDemoDir} (published later by harness/publish_demos.py).\n` +
       `Before returning, with Bash: run "python ${H}/demo_check.py ${d.demoDir}" until it prints OK; run every .py key from key/ and confirm the output matches the script's Check blocks; replay every transcript's commands in a scratch folder and confirm the output.\n` +
+      `Wording (D-0039): the trainer says the talking points aloud while typing, so write sentences a person can say without rephrasing them (short, plain, one idea each; no chain of clauses joined by semicolons or colons); a contrast that corrects what the room really assumes is good spoken wording. "What we did NOT cover" bullets read "- <topic>: <where it goes>. <reason>." with no dash between topic and note. A humanizer pass runs after you (prose only); give it little to do.\n` +
       `Return scripts[] (name, key, objective, minutes, mode, needsKey), facilitation[] (subtopics with no script), requirements[], summary.` + fix(cr),
-      { schema: DEMO_SCHEMA, label:`${d.id}:demos`, phase:'Demos', ...tier('demos', pass) }),
+      { schema: DEMO_SCHEMA, label:`${d.id}:demos`, phase:'Demos', ...tier('demos', pass) })
+      .then(async (r) => { if (r && (r.scripts || []).length) await humanizeTrainer(d, 'demos', r.scripts.map(s => `${d.demoDir}/${/\.md$/.test(s.name) ? s.name : s.name + '.md'}`), 'Demos'); return r }),
     (_r) => agent(
       `DEMOS CRITIC. Read ${H}/critics/demos.md and apply it to ${d.demoDir}/ (scripts + key/) against the brief ${d.researchFile}. Use Bash: run "python ${H}/demo_check.py ${d.demoDir}" and quote its output; RUN every .py key from key/ (60 s timeout) against the script's Check blocks; replay every transcript key's "$ " commands in a scratch folder in the rung's Starts from state; run key-gated keys without the key; nbformat.validate every .ipynb. Then walk every script as a learner (items 5–8), judge the CONSULT-vs-WRITE split (item 9), and check every rung against its thread row (item 13: Thread/Starts from match the row, only the row's "adds" is typed on top of the Starts from key, end state and commit message match; demo names and minutes match the ladder rows). Day context: ${dayHeader(d)}` +
       `Return pass, critiques (file + step + concrete fix), one-sentence summary.`,
@@ -203,6 +207,28 @@ const humanize = (d) => agent(
   `Do not add or remove a fact. After writing, run the verification snippet from ${H}/critics/notes.md with Bash and confirm the prose count is still within ${WORD_MIN}–${WORD_MAX} and steps/captions/quiz counts are unchanged; if the rewrite pushed the count under ${WORD_MIN}, restore cut sentences rather than inventing new ones.\n` +
   `Return one short paragraph: patterns found (by humanizer section number), sentences changed, final word count.`,
   { label:`${d.id}:notes-humanize`, phase:'Materials', ...tier('humanize') })
+
+// Humanizer pass on the trainer's delivery wording (D-0039): the day's demo scripts after the demo author and the
+// runbook after the runbook author, both before their critics. Prose only: harness/prose_guard.py compares every
+// file with a snapshot taken before the pass, so the pass cannot change what a demo types or what a checker reads.
+// kind is 'demos' (files = the day's NN_<slug>.md scripts) or 'runbook' (files = the runbook).
+const humanizeTrainer = (d, kind, files, phaseName) => agent(
+  `HUMANIZE pass on the trainer's delivery wording (D-0039) for ${d.id}: ${kind === 'demos' ? 'the demo scripts' : 'the runbook'}. Files, the ONLY ones you may change: ${J(files)}.\n` +
+  `The trainer reads these files in front of the room and says the ${kind === 'demos' ? 'talking points aloud while typing' : 'questions, framing lines and answers aloud'}. Wording that sounds machine-written has to be reworded live, which is clunky. Make it read like a person's own speaking notes and change nothing a demo depends on.\n` +
+  `1. FIRST, from ${ROOT}, run: python harness/prose_guard.py snapshot <the files>   and keep the snapshot directory it prints.\n` +
+  `2. Load the humanizer skill with the Skill tool ("humanizer:humanizer") and apply it in FILE MODE to each file; read the whole file before editing it. Reference voice: a trainer's delivery notes, plain and technical. Lines said to the room are sentences a person can say without rephrasing them; instructions to the trainer stay short imperatives. Light touch: leave a sentence that already sounds spoken. The edits that usually help: split a run-on or a chain of clauses joined by semicolons or colons into short sentences, cut a stock phrase, give a clipped fragment its subject.\n` +
+  `   Do NOT flatten good spoken wording: a contrast that corrects what the room really assumes ("review comments, not taste"; "conventions, not syntax from zero") stays, and so does a short line the trainer would say as it is. Add no joke, warmth, example or fact, and drop no fact. In a logistics sentence (a stop point, what moves where, what is pasted from which key, which commit waits) every fact survives in the same order; when unsure, leave the sentence.\n` +
+  `3. FROZEN, byte for byte: every fenced block and the section it sits in; every inline code span (same spans, same count); every heading line; ` +
+  (kind === 'demos'
+    ? `everything above the first "## " heading (title, date line, the header bullets: a checker parses them and other files quote the Objective); every line starting with "cwd:"; the lines that introduce a block ("Talking points while typing:", "Check (expected output):"); the header row, the separator row and the number of rows of every table; `
+    : `the title, the "Week ..." line and the "Notes page: ..." links line; every line starting with "|" (the "Day at a glance" table is read by a test); every bold label such as **Script:**, **Time:**, **Room state before:**, **Stop point if long:**, **Goal:** (the humanizer's rule about bold labels does not apply here: they are the template's structure); `) +
+  `URLs, file names, paths, commit messages, branch names, numbers, minutes, dates and ids. One bullet in, one bullet out: never add, remove, merge, split or reorder bullets or numbered items, and never move text between sections.` +
+  (kind === 'demos' ? ` The "What we did NOT cover" bullets keep the format "- <topic>: <where it goes>. <reason>." (demo_check.py checks it).` : '') + `\n` +
+  `4. Verify from ${ROOT}: python harness/prose_guard.py check <snapshot directory> <the files>   must print OK or UNCHANGED for every file with no WARN line (a WARN means a number changed: restore it)` +
+  (kind === 'demos' ? `, and python ${H}/demo_check.py ${d.demoDir}   must print OK` : '') +
+  `. Fix and re-run until that holds. Use the Edit tool (no sed, no heredocs). Touch no other file, nothing under key/ or solutions/.\n` +
+  `Return one short paragraph: sentences changed per file, humanizer sections found (by number), anything left alone on purpose.`,
+  { label:`${d.id}:${kind}-humanize`, phase: phaseName, ...tier('humanize') })
 
 async function materialsStage(d, demo) {
   const scripts = (demo && demo.result && demo.result.scripts) ? demo.result.scripts : []
@@ -273,8 +299,10 @@ async function materialsStage(d, demo) {
       `You are the RUNBOOK author (trainer-only talk track). ${dayHeader(d)}${learnerCtx(d)}` +
       `${demoCtx}Read ${d.researchFile}${d.noDemos ? '' : ', every demo script ' + J(scriptNames) + ' in ' + d.demoDir + ' (header + steps; you point at them, you do not copy them)'}, ${d.pageFile} if it exists (for objectives), and the exercise README at ${d.exDir}/README.md if it exists. Read the template ${H}/templates/runbook.md.\n` +
       `Write ${d.trDir}/runbook.md: first line "# ${d.id} runbook — ${d.title}"; second line "Week ${A.week} · Day ${d.day} · ${d.dateLabel} · ${A.theme}"; third line links every artifact exactly as the template does (the trainer repo is separate, so public links are absolute): notes page ${CFG.siteUrl}weeks/${d.rel}.html, demos ${demoUrl}, exercise ${exUrl}, brief ${CFG.repoUrl}/blob/${CFG.repoBranch || 'main'}/harness/research/${d.rel}.md, and the relative link solutions/; headings in template order; "Day at a glance" table whose Minutes sum to ${M.runbook.dayMinutesMin}–${M.runbook.dayMinutesMax} incl. breaks/lunch, demo rows using each script's Time; then the teaching blocks in the order the day runs them: ${d.noDemos ? '' : 'one "## Demo N: <script filename, e.g. 01_<slug>.md>" per script (script path demos/<file> relative to the runbook, answer key path, Time, room state before, stop point if long, ≥2 checkpoint questions, ≥1 pitfall from the brief; NO talk track, the script is the talk track) and '}one "## Facilitation N: <subtopic> (M min)" per subtopic with no demo (${J(d.noDemos ? d.subtopics : facilitation)}): Goal, numbered timed beats (board plan, ask the room, pairs, debrief), ≥2 "Ask the room" questions with the steering answer, ≥1 misconception from the brief, what the room writes down; Notes page handoff; Exercise briefing (${rubric ? 'deliverable, acceptance criteria, ≥2 stuck points, how to mark in the room, marking guide ' + d.trDir + '/solutions/RUBRIC.md' : 'module, acceptance, ≥2 stuck points, solutions path ' + d.trDir + '/solutions'}${LR ? ', where trainees work and hand in (the learner repo folder)' : ''}); Common questions; If running long / short${d.feedback ? '; "## Feedback form" with ' + CFG.feedbackFormUrl : ''}${d.kind === 'review' ? '; "## Review agenda"' : ''}.\n` +
+      `Wording (D-0039): the trainer delivers from this file, so questions, framing lines and answers are sentences a person can say without rephrasing them, and a stop point or an "if running long" line is a few short sentences in the order things happen, not one sentence chained with semicolons. A humanizer pass runs after you (prose only); give it little to do.\n` +
       `Return totalMinutes, demoSections (Demo + Facilitation blocks), solutionFiles (what exists under solutions/), summary.` + fix(cr),
-      { schema: RUNBOOK_SCHEMA, label:`${d.id}:runbook`, phase:'Materials', ...tier('runbook', pass) }),
+      { schema: RUNBOOK_SCHEMA, label:`${d.id}:runbook`, phase:'Materials', ...tier('runbook', pass) })
+      .then(async (r) => { if (r) await humanizeTrainer(d, 'runbook', [`${d.trDir}/runbook.md`], 'Materials'); return r }),
     (_r) => agent(
       `RUNBOOK CRITIC. Read ${H}/critics/runbook.md and apply it to ${d.trDir}/runbook.md with ${d.noDemos ? 'no demo scripts (demoFormat none: every teaching block is a Facilitation block)' : 'demo scripts ' + J(scriptNames) + ' in ' + d.demoDir + ' and facilitation subtopics ' + J(facilitation)}, exercise in ${d.exDir}, solutions in ${d.trDir}/solutions, brief ${d.researchFile}. ${rubric ? 'Rubric-kind day: check solutions/RUBRIC.md exists and the briefing matches it; no pytest.' : 'Run the solutions pytest check with Bash.'} Items 2 and 3 against the week plan: demo minutes equal the ladder rows, the glance table follows the day shape, stop points match the plan's, and each Demo section's "room state before" names the rung it starts from (the thread row's startsFrom key, or "cold"). Day context: ${dayHeader(d)}${learnerCtx(d)}` +
       `Return pass, critiques (concrete fixes), one-sentence summary.`,

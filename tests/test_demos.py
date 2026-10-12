@@ -130,7 +130,7 @@ class DemoCheckSelfTests(unittest.TestCase):
             f"- Answer key: key/{key_name}\n- Hand-typed files: {key_name}\n- Tool-generated files: none\n"
             f"- Thread: {thread}\n- Starts from: {starts}\n\n"
             + script_blocks
-            + "\n## Common pitfalls\n\n| a | b |\n\n## What we did NOT cover (intentional)\n\n- x\n\n## Wrap-up questions\n\n1. q\n\n## Sequence pointer\n\nnext\n"
+            + "\n## Common pitfalls\n\n| a | b |\n\n## What we did NOT cover (intentional)\n\n- x: deferred to later. It is not needed today.\n\n## Wrap-up questions\n\n1. q\n\n## Sequence pointer\n\nnext\n"
             + extra_sections
         )
         (tmp / "01_demo.md").write_text(script, encoding="utf-8")
@@ -245,6 +245,35 @@ class DemoCheckSelfTests(unittest.TestCase):
         steps = demo_check._steps(text)
         self.assertEqual([1, 2, 3], [s[0] for s in steps])
         self.assertEqual(30, sum(s[1] for s in steps))
+        self.assertEqual([], demo_check.not_covered_problems(text), "the template's own bullet follows the one format")
+
+    def test_not_covered_bullets_take_one_format(self):
+        """D-0039: '- <topic>: <where it goes>. <reason>.' on every script, no dash between topic and note."""
+        head = "## What we did NOT cover (intentional)\n\n"
+        tail = "\n\n## Wrap-up questions\n\n- not a bullet of that section — ignored\n"
+        good = [
+            "- Lists and tuples: deferred to Thursday (w01d4). The ticket stays six flat variables.",
+            '- `if __name__ == "__main__":` around the script body: deferred to week 2 day 1, when the file splits into modules.',
+            "- `for` over `ticket.items()`: deferred to Friday. The items print as a list here.",
+        ]
+        self.assertEqual([], demo_check.not_covered_problems(head + "\n".join(good) + tail))
+        for bad in (
+            "- Lists and tuples — deferred to Thursday (w01d4); the ticket stays flat.",
+            "- Lists and tuples are deferred to Thursday (w01d4); the ticket stays flat.",
+            "- Lists and tuples. Deferred to Thursday (w01d4); the ticket stays flat.",
+            "- `datetime` for `hours_open` -- deferred to Demo 4.",
+        ):
+            with self.subTest(bullet=bad):
+                self.assertEqual([bad], demo_check.not_covered_problems(head + bad + tail))
+        with tempfile.TemporaryDirectory() as t:
+            tmp = Path(t)
+            self._fixture(tmp, 'x = 1\nprint(x)\n',
+                          "## Step 1 — set (10 min)\n\ncwd: `s/`\n\n```python\nx = 1\n```\n\n## Step 2 — print (10 min)\n\ncwd: `s/`\n\n```python\nprint(x)\n```\n")
+            self.assertEqual([], demo_check.check_dir(tmp, self.M))
+            script = tmp / "01_demo.md"
+            script.write_text(script.read_text(encoding="utf-8").replace("- x: deferred to later. It is not needed today.", "- x — deferred to later because it is not needed today."), encoding="utf-8")
+            probs = demo_check.check_dir(tmp, self.M)
+            self.assertTrue(any("NOT cover" in p for p in probs), probs)
 
 
 class FlipCardTests(unittest.TestCase):

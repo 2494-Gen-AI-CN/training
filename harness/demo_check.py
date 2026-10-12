@@ -142,6 +142,23 @@ def carried_lines(start: Path | None) -> set[str]:
     return set(_lines(start.read_text(encoding="utf-8")))
 
 
+def not_covered_problems(text: str) -> list[str]:
+    """Bullets under 'What we did NOT cover (intentional)' that are not '- <topic>: <sentence>' (D-0039).
+
+    One format on every script, so the list reads the same from day to day: the topic, a colon, where it goes or
+    why it is out, then the reason as its own sentence. A dash between topic and note is the old format.
+    """
+    m = re.search(r"^## What we did NOT cover \(intentional\)\s*$(.*?)(?=^## |\Z)", text, re.M | re.S)
+    bad = []
+    for ln in (m.group(1).splitlines() if m else []):
+        if not ln.startswith("- "):
+            continue
+        bare = re.sub(r"`[^`\n]*`", "`c`", ln)  # a colon or a dash inside code is not a separator
+        if re.search(r" (—|–|--) ", bare) or not re.match(r"^- [^:]+: \S", bare):
+            bad.append(ln)
+    return bad
+
+
 def check_script(path: Path, key_dir: Path, metrics: dict, root: Path = ROOT) -> list[str]:
     p: list[str] = []
     name = path.name
@@ -177,6 +194,8 @@ def check_script(path: Path, key_dir: Path, metrics: dict, root: Path = ROOT) ->
     for s in REQUIRED_SECTIONS:
         if s not in text:
             p.append(f"{name}: missing section '{s}'")
+    for ln in not_covered_problems(text):
+        p.append(f"{name}: 'What we did NOT cover' bullet must read '- <topic>: <where it goes>. <reason>.' with no dash as the separator (D-0039): {ln[:80]}")
     # thread + starts from (demo-thread amendment to D-0030)
     thread = hdr.get("Thread", "")
     starts = hdr.get("Starts from", "")
