@@ -43,8 +43,8 @@ Workflow({ scriptPath: "harness/workflows/day-fanout.js", args: { ...json... } }
 ```
 Then `python -m unittest discover -s tests -v`, open `docs/weeks/<week>/<day>.html` via `cd docs && python -m http.server 8000`, and rehearse `trainer/<week>/<day>/runbook.md` with the demo scripts in `trainer/<week>/<day>/demos/`. After the session, the delivery-day close sets `taught` on the day and runs `python harness/publish_demos.py <week> <day>` so the answer keys reach `demos/<week>/<day>/` and the notes page links them.
 
-Agent budget: ~12 agents on a clean pass per day, ~27 worst case. Run one day per invocation. To re-run after editing prompts/critics, pass `resumeFromRunId` so finished stages are cached.
+Agent budget: ~12 agents on a clean pass per day, ~27 worst case. Run one day per invocation. To re-run after editing prompts/critics, pass `resumeFromRunId` so finished stages are cached (same session only). From a new session, `python harness/args_for.py <week> <day> --skip-research` reuses the committed brief and runs demos onward live.
 
 ## Changing the bar
 
-Edit `metrics.json` (numbers) or `critics/*.md` (PASS rules). The workflow prompts reference both; the tests read `metrics.json`. After the week-1 pilot, point `TEMPLATE` (args `template`) at the real `docs/weeks/week-01/day-1-*.html` instead of the exemplar.
+Edit `metrics.json` (numbers) or `critics/*.md` (PASS rules). The workflow prompts reference both; the tests read `metrics.json`. The notes-page template the authors copy is `config.json` `template` (D-0031: the promoted `docs/weeks/week-01/day-2-orientation-agile-and-git.html`); `args_for.py` passes it as args `template` and falls back to `templates/day.exemplar.html` when the file is missing. To promote a better page, change `template` via a decision entry; the exemplar stays the structure gold standard for `tests/test_pages.py`.

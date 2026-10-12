@@ -10,6 +10,7 @@ Usage:
     python harness/args_for.py 1 2            # week 1, day 2 (slot 2 = Tue)
     python harness/args_for.py 1 2 3          # week 1, days 2 and 3 (pipelined)
     python harness/args_for.py 1 2 --today 2026-10-13
+    python harness/args_for.py 1 2 --skip-research   # reuse the committed brief; demos onward run live
 """
 from __future__ import annotations
 
@@ -35,6 +36,9 @@ def main(argv: list[str]) -> int:
         i = argv.index("--today")
         today = argv[i + 1]
         del argv[i:i + 2]
+    skip_research = "--skip-research" in argv
+    if skip_research:
+        argv.remove("--skip-research")
     nums = [int(a) for a in argv]
     if len(nums) < 2:
         print(__doc__, file=sys.stderr)
@@ -77,7 +81,18 @@ def main(argv: list[str]) -> int:
             "nextHref": f"{nxt['slug']}.html" if nxt else "../../index.html",
             "nextLabel": f"Day {nxt['day']} — {nxt['title']} →" if nxt else "Back to program →",
         })
+        if skip_research:
+            brief = ROOT / "harness" / "research" / f"{week['dir']}/{d['slug']}.md"
+            if not brief.is_file():
+                print(f"--skip-research needs an existing brief at {brief}", file=sys.stderr)
+                return 2
     llm = config["llm"]["byWeek"].get(str(week_no), config["llm"]["default"])
+    # Notes-page template (D-0031): the promoted page named in config.json, else the exemplar.
+    exemplar = ROOT / "harness" / "templates" / "day.exemplar.html"
+    template = ROOT / config["template"] if config.get("template") else exemplar
+    if not template.is_file():
+        print(f"config.json template {template} missing; falling back to {exemplar}", file=sys.stderr)
+        template = exemplar
     args = {
         "root": str(ROOT).replace("\\", "/"),
         "today": today or dt.date.today().isoformat(),
@@ -86,6 +101,8 @@ def main(argv: list[str]) -> int:
         "weekStart": ew["start"].isoformat(), "weekEnd": ew["end"].isoformat(),
         "weekNotes": week.get("notes", ""),
         "days": days,
+        "skipResearch": skip_research,
+        "template": str(template).replace("\\", "/"),
         "metrics": metrics,
         "llm": llm,
         "models": config.get("models", {}),

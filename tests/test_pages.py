@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import re
 import sys
 import unittest
 from pathlib import Path
 
-from helpers import DOCS, FORBIDDEN_RE, HARNESS, PAGE_SCRIPT_ORDER, TRAINER, ParsedPage, live_days, metrics, node_exe, public_demos, trainer_demos
+from helpers import DOCS, FORBIDDEN_RE, HARNESS, PAGE_SCRIPT_ORDER, ROOT, TRAINER, ParsedPage, live_days, metrics, node_exe, public_demos, trainer_demos
 
 sys.path.insert(0, str(HARNESS))
 import build_index  # noqa: E402
@@ -60,6 +61,17 @@ def _structure_checks(tc: unittest.TestCase, page: ParsedPage, day_id: str | Non
 
 
 class ExemplarTests(unittest.TestCase):
+    def test_configured_template_exists(self):
+        """config.json template (D-0031) names a real page under docs/weeks/ or harness/templates/."""
+        cfg = json.loads((HARNESS / "config.json").read_text(encoding="utf-8"))
+        tpl = cfg.get("template")
+        if not tpl:
+            return
+        path = ROOT / tpl
+        self.assertTrue(path.is_file(), f"config.json template {tpl} missing")
+        self.assertTrue(tpl.startswith("docs/weeks/") or tpl.startswith("harness/templates/"), tpl)
+        _structure_checks(self, ParsedPage(path), None, feedback="survey.js" in path.read_text(encoding="utf-8"))
+
     def test_exemplar_structure(self):
         self.assertTrue(EXEMPLAR.exists())
         page = ParsedPage(EXEMPLAR)

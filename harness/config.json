@@ -11,6 +11,8 @@
   "siteUrl": "https://2494-gen-ai-cn.github.io/training/",
   "feedbackFormUrl": "https://forms.cloud.microsoft/pages/responsepage.aspx?id=iuJja_motUeqQJfiMSFRZMU3bOO2vNdAiSFsti9sgKVUQkhYWEhIRzJSWjNOVVM5REFOU0tWT0JXQyQlQCN0PWcu&route=shorturl",
   "python": "3.12",
+  "template": "docs/weeks/week-01/day-2-orientation-agile-and-git.html",
+  "_templateComment": "Notes-page template the authors copy (D-0031): the promoted W1D2 page. args_for.py passes it as args.template; when the file is missing it falls back to harness/templates/day.exemplar.html, which stays the structure gold standard for the tests.",
   "audience": {
     "_comment": "Learner persona (D-0023). Reaches every author/critic prompt as 'Audience'. Change via a decision entry.",
     "summary": "Recent computer-science graduates (University of Toronto cohort) with no industry experience.",

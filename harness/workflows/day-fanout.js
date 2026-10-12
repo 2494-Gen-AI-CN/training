@@ -123,6 +123,9 @@ const dayHeader = (d) =>
 // Per-day stages (run as one sequential chain per day; days run in parallel)
 // =====================================================================
 async function researchStage(d) {
+  // args_for.py --skip-research: the committed brief is reused as-is (it checked the file exists); glossary
+  // terms were wired when that brief was first produced, so none are added again.
+  if (A.skipResearch) return { task: `${d.id} research`, status:'cached', passes:0, summary:`reused the committed brief ${d.researchFile}`, result:{ versionStamps:[], sourceCount:0, glossaryTerms:[], pitfalls:[], summary:'' } }
   const full = d.gate === 'full'
   return gated(`${d.id} research`,
     (cr, pass) => agent(

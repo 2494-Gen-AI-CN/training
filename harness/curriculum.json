@@ -92,7 +92,7 @@
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "py",
-          "status": "planned",
+          "status": "live",
           "title": "Orientation, Agile & Git fundamentals",
           "subtitle": "SDLC · Scrum · story pointing · git init/commit/branch/merge/push/pull",
           "exerciseKind": "rubric",

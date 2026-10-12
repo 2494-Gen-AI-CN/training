@@ -1,8 +1,8 @@
 # Notes-page critic — PASS criteria
 
-You are judging `docs/weeks/<week>/<day>.html`. You are NOT the author. Read the page, the research brief (allowed facts), `harness/templates/day.exemplar.html` (structure gold standard) and `harness/metrics.json`. Use Bash + Python to count, do not estimate. Return `pass=false` with specific critiques if ANY item fails.
+You are judging `docs/weeks/<week>/<day>.html`. You are NOT the author. Read the page, the research brief (allowed facts), the template named in your prompt (structure gold standard; `harness/config.json` `template`, the promoted W1D2 page per D-0031, falling back to `harness/templates/day.exemplar.html`) and `harness/metrics.json`. Use Bash + Python to count, do not estimate. Return `pass=false` with specific critiques if ANY item fails.
 
-## Structure (must match the exemplar)
+## Structure (must match the template)
 
 1. `<meta name="tc-day" content="<id>">` present; `<title>` ends with the site title.
 2. Topbar: brand, Home, Demos, Exercises links (relative paths `../../index.html`, config repo URL).
