@@ -7,12 +7,20 @@ The committed code is the ANSWER KEY (trainer/<week>/<day>/demos/key/NN_<slug>.p
 or .md transcript), published to demos/<week>/<day>/ only after the day is taught.
 
 Checks (stdlib only; the demos critic and tests/test_demos.py both call this):
-  header   - the nine header bullets, Time = sum of step minutes, Delivery mode enum, Answer key path
+  header   - the eleven header bullets, Time = sum of step minutes, Delivery mode enum, Answer key path,
+             Thread (thread id or "standalone"), Starts from ("cold" or the previous rung's key path)
   steps    - "## Step n ... (M min)" numbered 1..n, >= 2, every step with a key block states its cwd
   sections - Common pitfalls / What we did NOT cover (intentional) / Wrap-up questions / Sequence pointer
-  key      - exists, same NN + slug; .py compiles and fits the line cap; key/README.md names every key file
-  both-ways- .py key: every ```python line is in the key and every key line is in a ```python block (A5);
-             .md key: the ```bash command sequence equals the transcript's "$ " command sequence, in order
+  key      - exists, same NN + slug; .py compiles and fits the line cap (maxLinesPerFile for a standalone
+             demo, maxLinesPerThreadKey for a thread rung, whose key is the thread's whole end state);
+             key/README.md names every key file
+  both-ways- .py key: every ```python line is in the key; every key line is typed in a ```python block OR
+             carried from the `Starts from` key (A5, A12); a carried line this rung deletes or rewrites is
+             shown in a ```python replaced block; a carried line that is neither replaced nor in the key fails
+             (so re-authoring an earlier rung breaks the later ones loudly).
+             .md key: the ```bash command sequence equals the transcript's "$ " command sequence, in order.
+             A transcript's end state is a repository, not a file: a .py rung that starts from one carries nothing.
+  typed cap- python lines + bash commands typed in one rung <= maxTypedLinesPerRung
   bands    - scripts per day and minutes per script within harness/metrics.json demos
 
 Usage:
@@ -33,8 +41,11 @@ METRICS = ROOT / "harness" / "metrics.json"
 SCRIPT_RE = re.compile(r"^(\d{2})_([a-z0-9]+(?:[-_][a-z0-9]+)*)\.md$")
 KEY_RE = re.compile(r"^(\d{2})_([a-z0-9]+(?:[-_][a-z0-9]+)*)\.(py|md|ipynb)$")
 HEADER_FIELDS = ["Objective", "Time", "Before the room arrives", "Delivery mode", "Audience",
-                 "Prerequisite reading", "Answer key", "Hand-typed files", "Tool-generated files"]
+                 "Prerequisite reading", "Answer key", "Hand-typed files", "Tool-generated files",
+                 "Thread", "Starts from"]
 DELIVERY_MODES = ("typed", "lecture-over-file")
+THREAD_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+STARTS_RE = re.compile(r"^trainer/week-\d{2}/day-\d-[a-z0-9-]+/demos/key/\d{2}_[a-z0-9]+(?:[-_][a-z0-9]+)*\.(py|md|ipynb)$")
 STEP_RE = re.compile(r"^## Step (\d+)\b.*\((\d+) min\)\s*$", re.M)
 REQUIRED_SECTIONS = ["## Common pitfalls", "## What we did NOT cover (intentional)", "## Wrap-up questions", "## Sequence pointer"]
 FENCE_RE = re.compile(r"^```([^\n`]*)\n(.*?)^```\s*$", re.M | re.S)
@@ -91,17 +102,47 @@ def script_commands(text: str) -> list[str]:
 
 
 def script_python_lines(text: str) -> tuple[set[str], set[str]]:
-    """(lines in ```python blocks, lines in ```python transient blocks)."""
+    """(lines in ```python blocks, lines in ```python transient blocks). Replaced blocks are excluded from both."""
     keep, transient = set(), set()
     for info, body in _fences(text):
         parts = info.split()
-        if parts[:1] != ["python"]:
+        if parts[:1] != ["python"] or "replaced" in parts[1:]:
             continue
         (transient if "transient" in parts[1:] else keep).update(_lines(body))
     return keep, transient
 
 
-def check_script(path: Path, key_dir: Path, metrics: dict) -> list[str]:
+def script_replaced_lines(text: str) -> set[str]:
+    """Lines in ```python replaced blocks: carried lines this rung deletes or rewrites."""
+    out: set[str] = set()
+    for info, body in _fences(text):
+        parts = info.split()
+        if parts[:1] == ["python"] and "replaced" in parts[1:]:
+            out.update(_lines(body))
+    return out
+
+
+def typed_line_count(text: str) -> int:
+    """Lines the trainer types in one rung: python (kept + transient) plus bash commands."""
+    n = 0
+    for info, body in _fences(text):
+        parts = info.split()
+        if parts[:1] == ["python"] and "replaced" not in parts[1:]:
+            n += len(_lines(body))
+        elif parts[:1] == ["bash"]:
+            n += len([ln for ln in _lines(body) if not ln.startswith("#")])
+    return n
+
+
+def carried_lines(start: Path | None) -> set[str]:
+    """Lines a rung inherits from its `Starts from` key. Only a .py key carries lines; a transcript's end
+    state is a repository, so a rung that starts from one types its file from the first line."""
+    if start is None or not start.is_file() or start.suffix != ".py":
+        return set()
+    return set(_lines(start.read_text(encoding="utf-8")))
+
+
+def check_script(path: Path, key_dir: Path, metrics: dict, root: Path = ROOT) -> list[str]:
     p: list[str] = []
     name = path.name
     m = SCRIPT_RE.match(name)
@@ -136,6 +177,29 @@ def check_script(path: Path, key_dir: Path, metrics: dict) -> list[str]:
     for s in REQUIRED_SECTIONS:
         if s not in text:
             p.append(f"{name}: missing section '{s}'")
+    # thread + starts from (demo-thread amendment to D-0030)
+    thread = hdr.get("Thread", "")
+    starts = hdr.get("Starts from", "")
+    start_path: Path | None = None
+    if thread and thread != "standalone" and not THREAD_RE.match(thread):
+        p.append(f"{name}: Thread must be a kebab-case thread id or 'standalone', got '{thread}'")
+    if starts and starts != "cold":
+        if not STARTS_RE.match(starts):
+            p.append(f"{name}: Starts from must be 'cold' or trainer/<week>/<day>/demos/key/NN_<slug>.py|.md, got '{starts}'")
+        elif thread == "standalone":
+            p.append(f"{name}: a standalone demo must start cold, not from '{starts}'")
+        else:
+            start_path = root / starts
+            if not start_path.is_file():
+                p.append(f"{name}: Starts from key {starts} does not exist (author rungs in ladder order)")
+                start_path = None
+    carried = carried_lines(start_path)
+    replaced = script_replaced_lines(text)
+    for ln in sorted(replaced - carried):
+        p.append(f"{name}: ```python replaced line is not in the Starts from key: {ln}")
+    cap_typed = metrics.get("maxTypedLinesPerRung")
+    if cap_typed and typed_line_count(text) > cap_typed:
+        p.append(f"{name}: {typed_line_count(text)} typed lines > maxTypedLinesPerRung {cap_typed}; split the rung")
     # answer key
     key_field = hdr.get("Answer key", "")
     km = re.fullmatch(r"key/(\d{2})_([a-z0-9]+(?:[-_][a-z0-9]+)*)\.(py|md|ipynb)", key_field)
@@ -150,9 +214,12 @@ def check_script(path: Path, key_dir: Path, metrics: dict) -> list[str]:
         return p
     ktext = key.read_text(encoding="utf-8")
     if key.suffix == ".py":
-        cap = metrics.get("maxLinesPerFile", 90)
+        if thread and thread != "standalone":
+            cap_name, cap = "maxLinesPerThreadKey", metrics.get("maxLinesPerThreadKey", metrics.get("maxLinesPerFile", 90))
+        else:
+            cap_name, cap = "maxLinesPerFile", metrics.get("maxLinesPerFile", 90)
         if len(ktext.splitlines()) > cap:
-            p.append(f"{key.name}: {len(ktext.splitlines())} lines > maxLinesPerFile {cap}; split the demo")
+            p.append(f"{key.name}: {len(ktext.splitlines())} lines > {cap_name} {cap}; split the demo")
         try:
             py_compile.compile(str(key), doraise=True)
         except py_compile.PyCompileError as e:
@@ -163,8 +230,11 @@ def check_script(path: Path, key_dir: Path, metrics: dict) -> list[str]:
             p.append(f"{name}: a .py answer key needs at least one ```python block in the script")
         for ln in sorted(keep - klines):
             p.append(f"{name}: typed line not in the answer key (mark it ```python transient if it is replaced later): {ln}")
-        for ln in sorted(klines - keep - transient):
-            p.append(f"{key.name}: answer-key line never typed in the script (no elisions, A5): {ln}")
+        surviving = carried - replaced
+        for ln in sorted(klines - keep - transient - surviving):
+            p.append(f"{key.name}: answer-key line never typed in the script and not carried from the Starts from key (no elisions, A5): {ln}")
+        for ln in sorted(surviving - klines):
+            p.append(f"{key.name}: carried line from {starts} missing (show it in a ```python replaced block if this rung removes or rewrites it): {ln}")
     elif key.suffix == ".md":
         want, have = script_commands(text), transcript_commands(ktext)
         if not want:
@@ -179,8 +249,9 @@ def check_script(path: Path, key_dir: Path, metrics: dict) -> list[str]:
     return p
 
 
-def check_dir(demo_dir: Path, metrics: dict | None = None) -> list[str]:
-    """All problems for one trainer demo folder (scripts + key/). Empty list = OK."""
+def check_dir(demo_dir: Path, metrics: dict | None = None, root: Path = ROOT) -> list[str]:
+    """All problems for one trainer demo folder (scripts + key/). Empty list = OK.
+    `root` resolves `Starts from` paths (repo root by default; tests pass a scratch root)."""
     if metrics is None:
         metrics = json.loads(METRICS.read_text(encoding="utf-8"))["demos"]
     p: list[str] = []
@@ -198,7 +269,7 @@ def check_dir(demo_dir: Path, metrics: dict | None = None) -> list[str]:
         p.append(f"{demo_dir.name}: key/ folder missing")
         return p
     for s in scripts:
-        p += check_script(s, key_dir, metrics)
+        p += check_script(s, key_dir, metrics, root)
     stems = {s.stem for s in scripts}
     keys = sorted(f for f in key_dir.iterdir() if f.is_file() and KEY_RE.match(f.name))
     for k in keys:

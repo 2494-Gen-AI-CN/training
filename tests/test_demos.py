@@ -62,6 +62,39 @@ class DemoScriptTests(unittest.TestCase):
                             self.assertFalse(line.split("=", 1)[1].strip(), f".env.example must not contain values: {line}")
 
 
+class ThreadChainTests(unittest.TestCase):
+    """Every live rung's `Starts from` key exists and its surviving lines are still in the rung's key, so
+    re-authoring an earlier day fails the later ones loudly instead of silently staling them (A7, A12)."""
+
+    def test_every_live_rung_chains(self):
+        if not TRAINER.exists():
+            self.skipTest("trainer/ private repo not cloned here")
+        seen = 0
+        for w, d, rel in live_days():
+            if d["demoFormat"] == "none":
+                continue
+            ddir = trainer_demos(rel)
+            for script in sorted(ddir.glob("*.md")):
+                if not KEY_RE.match(script.name):
+                    continue
+                with self.subTest(script=f"{rel}/{script.name}"):
+                    hdr = demo_check._header(script.read_text(encoding="utf-8"))
+                    self.assertIn("Thread", hdr, "header needs '- Thread:'")
+                    self.assertIn("Starts from", hdr, "header needs '- Starts from:'")
+                    starts = hdr["Starts from"]
+                    if starts == "cold":
+                        continue
+                    seen += 1
+                    start = ROOT / starts
+                    self.assertTrue(start.is_file(), f"Starts from key {starts} missing")
+                    key = ddir / "key" / Path(hdr["Answer key"]).name
+                    if start.suffix == ".py" and key.suffix == ".py":
+                        surviving = demo_check.carried_lines(start) - demo_check.script_replaced_lines(script.read_text(encoding="utf-8"))
+                        klines = set(demo_check._lines(key.read_text(encoding="utf-8")))
+                        self.assertEqual(set(), surviving - klines, f"{key.name} lost carried lines from {starts}")
+        self.assertGreaterEqual(seen, 1, "at least one live rung should start from an earlier rung (W1D2 demo 3)")
+
+
 class PublishStateTests(unittest.TestCase):
     """Public demos/<rel>/ exists iff the day is taught, and mirrors key/ when the private repo is present."""
 
@@ -82,17 +115,20 @@ class PublishStateTests(unittest.TestCase):
 class DemoCheckSelfTests(unittest.TestCase):
     """harness/demo_check.py itself: the template passes once filled; the both-ways check catches drift."""
 
-    M = {"scriptsMin": 1, "scriptsMax": 5, "minutesPerScriptMin": 15, "minutesPerScriptMax": 45, "maxLinesPerFile": 90}
+    M = {"scriptsMin": 1, "scriptsMax": 5, "minutesPerScriptMin": 15, "minutesPerScriptMax": 45, "maxLinesPerFile": 90,
+         "maxLinesPerThreadKey": 200, "maxTypedLinesPerRung": 60}
 
-    def _fixture(self, tmp: Path, key_lines: str, script_blocks: str, key_name: str = "01_demo.py", extra_sections: str = ""):
-        (tmp / "key").mkdir()
+    def _fixture(self, tmp: Path, key_lines: str, script_blocks: str, key_name: str = "01_demo.py", extra_sections: str = "",
+                 thread: str = "standalone", starts: str = "cold"):
+        (tmp / "key").mkdir(exist_ok=True)
         (tmp / "key" / key_name).write_text(key_lines, encoding="utf-8")
         (tmp / "key" / "README.md").write_text(f"| 1 | `{key_name}` | x | run | no |\n", encoding="utf-8")
         script = (
             "# 01 — Demo\n\n"
             "- Objective: do a thing\n- Time: 20 min\n- Before the room arrives: terminal open\n- Delivery mode: typed\n"
             "- Audience: grads\n- Prerequisite reading: none\n"
-            f"- Answer key: key/{key_name}\n- Hand-typed files: {key_name}\n- Tool-generated files: none\n\n"
+            f"- Answer key: key/{key_name}\n- Hand-typed files: {key_name}\n- Tool-generated files: none\n"
+            f"- Thread: {thread}\n- Starts from: {starts}\n\n"
             + script_blocks
             + "\n## Common pitfalls\n\n| a | b |\n\n## What we did NOT cover (intentional)\n\n- x\n\n## Wrap-up questions\n\n1. q\n\n## Sequence pointer\n\nnext\n"
             + extra_sections
@@ -123,6 +159,74 @@ class DemoCheckSelfTests(unittest.TestCase):
             (tmp / "key" / "01_demo.md").write_text("```console\n$ git init\n$ git log\n```\n", encoding="utf-8")
             probs = demo_check.check_dir(tmp, self.M)
             self.assertTrue(any("command sequences differ" in p for p in probs), probs)
+
+    START = "trainer/week-00/day-1-start/demos/key/01_start.py"
+    TWO_STEPS = ("## Step 1 — add (10 min)\n\ncwd: `team-repo/`\n\n```python\ny = 2\n```\n\n"
+                 "## Step 2 — print (10 min)\n\ncwd: `team-repo/`\n\n```python\nprint(y)\n```\n")
+
+    def _thread_root(self, root: Path) -> Path:
+        """A scratch repo root with a previous rung's .py key at START; returns this rung's demo dir."""
+        start = root / self.START
+        start.parent.mkdir(parents=True)
+        start.write_text("x = 1\nprint(x)\n", encoding="utf-8")
+        rung = root / "trainer/week-00/day-2-rung/demos"
+        rung.mkdir(parents=True)
+        return rung
+
+    def test_thread_rung_carries_lines_from_starts_from_key(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            rung = self._thread_root(root)
+            # the key is the whole end state: carried lines + this rung's typed lines
+            self._fixture(rung, "x = 1\nprint(x)\ny = 2\nprint(y)\n", self.TWO_STEPS, thread="p0-demo", starts=self.START)
+            self.assertEqual([], demo_check.check_dir(rung, self.M, root=root))
+            # a carried line silently dropped from the key fails (chain breaks loudly)
+            (rung / "key" / "01_demo.py").write_text("x = 1\ny = 2\nprint(y)\n", encoding="utf-8")
+            probs = demo_check.check_dir(rung, self.M, root=root)
+            self.assertTrue(any("carried line" in p and "print(x)" in p for p in probs), probs)
+            # ... unless the rung shows it in a ```python replaced block
+            self._fixture(rung, "x = 1\ny = 2\nprint(y)\n",
+                          "## Step 1 — drop (10 min)\n\ncwd: `team-repo/`\n\n```python replaced\nprint(x)\n```\n\n```python\ny = 2\n```\n\n"
+                          "## Step 2 — print (10 min)\n\ncwd: `team-repo/`\n\n```python\nprint(y)\n```\n",
+                          thread="p0-demo", starts=self.START)
+            self.assertEqual([], demo_check.check_dir(rung, self.M, root=root))
+            # a replaced line that the start key never had fails
+            self._fixture(rung, "x = 1\nprint(x)\ny = 2\nprint(y)\n",
+                          "## Step 1 — bogus (10 min)\n\ncwd: `team-repo/`\n\n```python replaced\nz = 9\n```\n\n```python\ny = 2\n```\n\n"
+                          "## Step 2 — print (10 min)\n\ncwd: `team-repo/`\n\n```python\nprint(y)\n```\n",
+                          thread="p0-demo", starts=self.START)
+            probs = demo_check.check_dir(rung, self.M, root=root)
+            self.assertTrue(any("replaced line is not in the Starts from key" in p for p in probs), probs)
+            # a key line that is neither typed nor carried still fails
+            self._fixture(rung, "x = 1\nprint(x)\ny = 2\nprint(y)\nw = 0\n", self.TWO_STEPS, thread="p0-demo", starts=self.START)
+            probs = demo_check.check_dir(rung, self.M, root=root)
+            self.assertTrue(any("never typed" in p and "w = 0" in p for p in probs), probs)
+
+    def test_thread_header_rules(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            rung = self._thread_root(root)
+            # a standalone demo must start cold
+            self._fixture(rung, "y = 2\nprint(y)\n", self.TWO_STEPS, thread="standalone", starts=self.START)
+            probs = demo_check.check_dir(rung, self.M, root=root)
+            self.assertTrue(any("must start cold" in p for p in probs), probs)
+            # a Starts from key that is not on disk fails (rungs are authored in ladder order)
+            self._fixture(rung, "y = 2\nprint(y)\n", self.TWO_STEPS, thread="p0-demo", starts="trainer/week-00/day-1-start/demos/key/02_missing.py")
+            probs = demo_check.check_dir(rung, self.M, root=root)
+            self.assertTrue(any("does not exist" in p for p in probs), probs)
+            # a transcript start carries nothing: the .py rung types its file from the first line
+            tstart = root / "trainer/week-00/day-1-start/demos/key/02_transcript.md"
+            tstart.write_text("```console\n$ git init\n```\n", encoding="utf-8")
+            self._fixture(rung, "y = 2\nprint(y)\n", self.TWO_STEPS, thread="p0-demo", starts="trainer/week-00/day-1-start/demos/key/02_transcript.md")
+            self.assertEqual([], demo_check.check_dir(rung, self.M, root=root))
+            # the typed-lines cap applies per rung
+            probs = demo_check.check_dir(rung, {**self.M, "maxTypedLinesPerRung": 1}, root=root)
+            self.assertTrue(any("maxTypedLinesPerRung" in p for p in probs), probs)
+            # thread keys get the larger cap, standalone keys the smaller one
+            probs = demo_check.check_dir(rung, {**self.M, "maxLinesPerFile": 1}, root=root)
+            self.assertEqual([], probs, probs)
+            probs = demo_check.check_dir(rung, {**self.M, "maxLinesPerThreadKey": 1}, root=root)
+            self.assertTrue(any("maxLinesPerThreadKey" in p for p in probs), probs)
 
     def test_header_and_steps_enforced(self):
         with tempfile.TemporaryDirectory() as t:

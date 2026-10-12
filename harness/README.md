@@ -9,7 +9,8 @@ harness/
   config.json          site title, repo URL, feedback form, LLM provider defaults
   build_index.py       curriculum.json -> CAL/WEEKS block in docs/index.html (--check in tests); owns all calendar arithmetic
   args_for.py          prints the Workflow args for <week> <day...> (day = weekday slot; holiday slots refused)
-  demo_check.py        format + both-ways check for one day's demo scripts and answer keys (critic and tests call it; D-0030)
+  demo_check.py        format + both-ways check for one day's demo scripts and answer keys (critic and tests call it; D-0030);
+                       thread rungs carry lines from their Starts from key, replaced lines go in a python replaced block (D-0033)
   publish_demos.py     copies trainer/<rel>/demos/key/ to demos/<rel>/ and flips the notes demo card once the day is taught (D-0030)
   workflows/day-fanout.js   the Workflow-tool script
   templates/           day.exemplar.html, research.md, runbook.md, demo-script.md, demo-README.md, exercise-README.md, conftest.py
