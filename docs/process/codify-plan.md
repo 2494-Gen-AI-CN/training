@@ -20,8 +20,9 @@ config.json models (D-0026); every notes page gets a humanizer pass before its c
 
 Rules for this session: use Edit/Write for code (no sed, no heredocs with escapes). Any change to curriculum.json,
 metrics.json, config.json, critics/*.md, templates or the calendar needs `python decisions/new.py ...` and the ID in
-the commit message. Update STATUS.md in the same commit, then run `python harness/build_tracker.py` and commit
-tracker.html with it (D-0035; the staleness test fails otherwise). After any Workflow run, complete its run record:
+the commit message. Update STATUS.md in the same commit, then run `python harness/build_tracker.py` (D-0035; the
+staleness test fails otherwise). tracker.html is a local, gitignored file (D-0036): never commit it. After any
+Workflow run, complete its run record:
 `python harness/log_run.py amend --last --run-id <wf_...> --minutes M --tokens T --tiers-verified yes|no`.
 Ask before any action that costs more than ~30 agents.
 Push only if tests are green; otherwise stop and report. Do not run any training day the stage does not name.

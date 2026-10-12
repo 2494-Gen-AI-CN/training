@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Generate the data block of tracker.html (the project work tracker, D-0035) from repo state.
+"""Generate tracker.html (the project work tracker, D-0035) from repo state.
 
-Same pattern as build_index.py: this script rewrites ONLY the region between
-<!-- TRACKER:BEGIN --> and <!-- TRACKER:END --> in tracker.html and the result is committed.
-tests/test_tracker.py asserts the committed block equals render(), so any change to tracked
-state without a rebuild fails the suite.
+tracker.html at the repo root is a LOCAL file: it is gitignored and never committed (D-0036), so
+trainees browsing the public repo do not see it. Its hand-written shell (CSS + JS, no data) is the
+committed template harness/templates/tracker.html; this script copies the shell and fills the region
+between <!-- TRACKER:BEGIN --> and <!-- TRACKER:END --> with the data block. Edit the template, never
+the generated page. When tracker.html exists, tests/test_tracker.py asserts it equals template + render(),
+so any change to tracked state without a rebuild fails the suite on the machine that uses the tracker.
 
 Nothing here reads a clock: the block is a pure function of the files below. Everything
 relative to today's date (next up, overdue, readiness alarms) is computed in the browser.
@@ -24,8 +26,8 @@ trainer/ is a separate private repo. Half of the tracked state lives there, so t
 to write when it is absent (and the staleness test skips), rather than recording "nothing authored".
 
 Usage:
-    python harness/build_tracker.py          # rewrite tracker.html in place
-    python harness/build_tracker.py --check  # exit 1 if tracker.html is stale
+    python harness/build_tracker.py          # write tracker.html (creates it on a fresh clone)
+    python harness/build_tracker.py --check  # exit 1 if tracker.html is missing or stale
     python harness/build_tracker.py --json   # print the data block's JSON
 """
 from __future__ import annotations
@@ -43,7 +45,8 @@ import plan_check  # noqa: E402
 ROOT = bi.ROOT
 HARNESS = ROOT / "harness"
 TRAINER = ROOT / "trainer"
-TRACKER = ROOT / "tracker.html"
+TRACKER = ROOT / "tracker.html"                       # generated, gitignored (D-0036)
+TEMPLATE = HARNESS / "templates" / "tracker.html"     # committed shell, empty data block
 STATUS = ROOT / "STATUS.md"
 CODIFY = ROOT / "docs" / "process" / "codify-plan.md"
 DECISIONS = ROOT / "decisions"
@@ -356,15 +359,20 @@ def splice(html: str, block: str) -> str:
     return html[:start] + block + html[end:]
 
 
+def expected(data: dict | None = None) -> str:
+    """What tracker.html must contain: the committed shell with the data block filled in."""
+    return splice(TEMPLATE.read_text(encoding="utf-8"), render(data))
+
+
 def build(quiet: bool = False) -> bool:
-    """Rewrite tracker.html if stale. Returns True when the file changed. No-op (False) without trainer/ or the page."""
-    if not TRACKER.is_file() or not TRAINER.is_dir():
+    """Write tracker.html if it is missing or stale. Returns True when the file changed.
+    No-op (False) without trainer/ or the template."""
+    if not TEMPLATE.is_file() or not TRAINER.is_dir():
         if not quiet:
-            print("tracker.html not rebuilt (page or trainer/ missing)", file=sys.stderr)
+            print("tracker.html not rebuilt (template or trainer/ missing)", file=sys.stderr)
         return False
-    html = TRACKER.read_text(encoding="utf-8")
-    new_html = splice(html, render())
-    if new_html == html:
+    new_html = expected()
+    if TRACKER.is_file() and TRACKER.read_text(encoding="utf-8") == new_html:
         return False
     TRACKER.write_text(new_html, encoding="utf-8", newline="\n")
     return True
@@ -384,15 +392,19 @@ def main(argv: list[str]) -> int:
     if "--json" in argv:
         print(data_json(data))
         return 0
-    if not TRACKER.is_file():
-        print(f"{TRACKER} missing", file=sys.stderr)
+    if not TEMPLATE.is_file():
+        print(f"{TEMPLATE} missing", file=sys.stderr)
         return 2
-    html = TRACKER.read_text(encoding="utf-8")
-    if BEGIN not in html or END not in html:
-        print(f"markers missing in {TRACKER}", file=sys.stderr)
+    shell = TEMPLATE.read_text(encoding="utf-8")
+    if BEGIN not in shell or END not in shell:
+        print(f"markers missing in {TEMPLATE}", file=sys.stderr)
         return 2
-    new_html = splice(html, render(data))
+    new_html = expected(data)
+    html = TRACKER.read_text(encoding="utf-8") if TRACKER.is_file() else None
     if "--check" in argv:
+        if html is None:
+            print("tracker.html is missing (it is a local, gitignored file) — run: python harness/build_tracker.py", file=sys.stderr)
+            return 1
         if new_html != html:
             print("tracker.html is stale — run: python harness/build_tracker.py", file=sys.stderr)
             return 1
@@ -400,7 +412,7 @@ def main(argv: list[str]) -> int:
         return 0
     if new_html != html:
         TRACKER.write_text(new_html, encoding="utf-8", newline="\n")
-        print("tracker.html updated")
+        print("tracker.html created" if html is None else "tracker.html updated")
     else:
         print("tracker.html already up to date")
     return 0

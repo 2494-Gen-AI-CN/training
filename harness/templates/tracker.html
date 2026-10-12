@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Work tracker | 2494 Gen-AI</title>
+<!--
+Project work tracker (D-0035, D-0036).
+The page shell is hand-authored in harness/templates/tracker.html (committed, carries no data).
+`python harness/build_tracker.py` copies that shell to tracker.html at the repo root and fills the data block
+between TRACKER:BEGIN and TRACKER:END from repo state. tracker.html is gitignored: it is a local file for the
+trainer, never committed and never part of the trainee site (docs/). Edit the template, not the generated page.
+Everything relative to today's date is computed here in the browser; add ?today=YYYY-MM-DD to preview another day.
+-->
+<script>
+(function () {
+  if (typeof document === "undefined") return;
+  var t = null;
+  try { t = localStorage.getItem("tc_theme"); } catch (e) { /* no storage on some file:// setups */ }
+  var q = /[?&]theme=(light|dark)/.exec(window.location.search);   // ?theme=light previews without storing
+  if (q) t = q[1];
+  document.documentElement.setAttribute("data-theme", t === "light" ? "light" : "dark");
+})();
+</script>
+<style>
+@font-face { font-family: "IBM Plex Sans"; font-style: normal; font-weight: 400 700; font-display: swap;
+  src: url("docs/assets/fonts/ibm-plex-sans-latin-wght.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url("docs/assets/fonts/ibm-plex-mono-400-latin.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 500; font-display: swap;
+  src: url("docs/assets/fonts/ibm-plex-mono-500-latin.woff2") format("woff2"); }
+
+/* Catppuccin Mocha (default) and Latte, same tokens as docs/assets/css/style.css (D-0020).
+   Status colours (good / warn / bad) are reserved for alarms and always ship with a glyph and a label. */
+:root, html[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #1e1e2e; --ink: #cdd6f4; --ink-soft: #a6adc8; --dim: #7f849c; --line: #45475a;
+  --surface: #272739; --surface-2: #313244; --accent: #89b4fa; --accent-soft: #2b3250;
+  --good: #a6e3a1; --warn: #f9e2af; --bad: #f38ba8;
+  --warn-soft: rgba(249,226,175,.10); --bad-soft: rgba(243,139,168,.12); --good-soft: rgba(166,227,161,.10);
+  --mark-on: #cdd6f4; --mark-on-ink: #1e1e2e; --shadow: rgba(0,0,0,.45);
+}
+html[data-theme="light"] {
+  color-scheme: light;
+  --bg: #eff1f5; --ink: #4c4f69; --ink-soft: #6c6f85; --dim: #8c8fa1; --line: #ccd0da;
+  --surface: #ffffff; --surface-2: #e6e9ef; --accent: #1a56cc; --accent-soft: #e2ebfd;
+  --good: #2f7d32; --warn: #b45309; --bad: #d20f39;
+  --warn-soft: #fff4e6; --bad-soft: #fff0f2; --good-soft: #ebfbee;
+  --mark-on: #4c4f69; --mark-on-ink: #ffffff; --shadow: rgba(76,79,105,.14);
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 14px/1.45 "IBM Plex Sans", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+code, .mono { font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace; font-size: .92em; }
+td.mono, td.nw { white-space: nowrap; }
+code { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: underline; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+button { font: inherit; color: inherit; }
+h1 { font-size: 20px; margin: 0; } h2 { font-size: 15px; margin: 0 0 10px; letter-spacing: .01em; }
+.wrap { max-width: 1480px; margin: 0 auto; padding: 0 20px 80px; }
+
+.topbar { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; gap: 16px; padding: 10px 20px; flex-wrap: wrap; }
+.topbar .brand b { color: var(--accent); }
+.topbar .meta { color: var(--ink-soft); font-size: 13px; display: flex; gap: 14px; flex-wrap: wrap; margin-left: auto; align-items: center; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 5px 11px; cursor: pointer; font-size: 13px; }
+.btn:hover { border-color: var(--accent); } .btn[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.phase { color: var(--ink-soft); margin: 14px 0 16px; max-width: 1100px; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.row2 { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 14px; }
+.cols2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 14px; }
+@media (max-width: 1000px) { .row2, .cols2 { grid-template-columns: 1fr; } }
+.kicker { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--dim); font-weight: 700; margin-bottom: 4px; }
+.muted { color: var(--ink-soft); } .dim { color: var(--dim); } .small { font-size: 12.5px; }
+
+/* status = glyph + label; the label stays in text ink */
+.st { display: inline-flex; align-items: baseline; gap: 5px; white-space: nowrap; }
+.plan .st { white-space: normal; }
+ul.plain .st { margin-right: 4px; }
+.st-g { font-weight: 700; font-size: 12px; width: 13px; text-align: center; }
+.st-red .st-g { color: var(--bad); } .st-amber .st-g { color: var(--warn); } .st-good .st-g { color: var(--good); } .st-none .st-g { color: var(--dim); }
+
+.next h3 { margin: 0 0 2px; font-size: 18px; }
+.next .cmd { margin-top: 10px; }
+.next ul { margin: 8px 0 0; padding-left: 18px; }
+.attn { max-height: 250px; overflow: auto; margin: 0; padding: 0; list-style: none; }
+.attn li { display: flex; gap: 8px; padding: 5px 0; border-top: 1px solid var(--line); align-items: baseline; }
+.attn li:first-child { border-top: 0; }
+.attn .when { margin-left: auto; color: var(--dim); font-size: 12px; white-space: nowrap; }
+.attn button { background: none; border: 0; padding: 0; text-align: left; cursor: pointer; color: var(--ink); }
+.attn button:hover { color: var(--accent); }
+
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(138px, 1fr)); gap: 10px; margin: 14px 0; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 11px 13px; }
+.tile .v { font-size: 24px; font-weight: 600; line-height: 1.15; } .tile .v small { font-size: 14px; color: var(--ink-soft); font-weight: 400; }
+.tile .s { color: var(--ink-soft); font-size: 12.5px; margin-top: 3px; }
+.meter { height: 6px; border-radius: 3px; background: var(--surface-2); margin-top: 7px; overflow: hidden; }
+.meter > i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+
+.gridbar { display: flex; align-items: center; gap: 12px; margin: 18px 0 8px; flex-wrap: wrap; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; color: var(--ink-soft); font-size: 12.5px; margin-left: auto; align-items: center; }
+.scroll { overflow-x: auto; }
+.cal { display: grid; grid-template-columns: 190px repeat(5, minmax(150px, 1fr)) 124px; gap: 6px; min-width: 1110px; }
+.cal .hd { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--dim); font-weight: 700; padding: 2px 4px; }
+.wk { background: var(--surface); border: 1px solid var(--line); border-left: 5px solid var(--dim); border-radius: 10px; padding: 8px 10px; }
+.wk b { font-size: 14px; } .wk .t { color: var(--ink-soft); font-size: 12.5px; line-height: 1.3; margin-top: 2px; }
+.cell { display: flex; flex-direction: column; gap: 4px; text-align: left; background: var(--surface); border: 1px solid var(--line);
+  border-radius: 10px; padding: 7px 9px; min-height: 92px; cursor: pointer; width: 100%; }
+.cell:hover { border-color: var(--accent); }
+.cell.is-today { box-shadow: 0 0 0 2px var(--accent); }
+.cell.past { opacity: .78; }
+.cell.lvl-red { border-left: 4px solid var(--bad); background: linear-gradient(var(--bad-soft), var(--bad-soft)), var(--surface); }
+.cell.lvl-amber { border-left: 4px solid var(--warn); background: linear-gradient(var(--warn-soft), var(--warn-soft)), var(--surface); }
+.cell.hol { cursor: default; color: var(--dim); align-items: center; justify-content: center; text-align: center;
+  background: repeating-linear-gradient(135deg, transparent 0 8px, var(--surface-2) 8px 9px); }
+.c-top { display: flex; justify-content: space-between; gap: 6px; font-size: 12px; color: var(--ink-soft); }
+.c-title { font-weight: 600; font-size: 13px; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.c-marks { display: flex; gap: 3px; margin-top: auto; }
+.mk { font-style: normal; font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace; font-size: 10.5px; font-weight: 500; min-width: 19px; height: 18px; padding: 0 3px;
+  display: inline-flex; align-items: center; justify-content: center; border-radius: 4px; border: 1.5px dashed var(--dim); color: var(--dim); }
+.mk.on { background: var(--mark-on); color: var(--mark-on-ink); border: 1.5px solid var(--mark-on); }
+.mk.part { border: 1.5px solid var(--mark-on); color: var(--ink); background: linear-gradient(90deg, var(--surface-2) 50%, transparent 50%); }
+.mk.na { border-style: dotted; opacity: .5; }
+.badge { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; font-weight: 700; border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; color: var(--ink-soft); }
+.badge.live { border-color: var(--accent); color: var(--accent); }
+.c-alarm { font-size: 12px; }
+.plan { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px; font-size: 12.5px; display: flex; flex-direction: column; gap: 4px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); padding: 4px 8px 6px 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 6px 8px 6px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.closed td { color: var(--dim); }
+.tablewrap { overflow-x: auto; }
+ul.plain { list-style: none; margin: 0; padding: 0; } ul.plain li { padding: 5px 0; border-top: 1px solid var(--line); } ul.plain li:first-child { border-top: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-size: 12.5px; background: var(--surface-2); }
+.ladder { display: flex; gap: 12px; flex-wrap: wrap; margin: 8px 0; }
+.lgroup { display: flex; flex-direction: column; gap: 3px; } .lgroup > span { font-size: 11px; color: var(--dim); }
+.rungs { display: flex; gap: 3px; }
+.rung { width: 26px; height: 24px; border-radius: 5px; border: 1.5px dashed var(--dim); color: var(--dim); font-size: 11px; display: inline-flex; align-items: center; justify-content: center; font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace; }
+.rung.on { background: var(--mark-on); color: var(--mark-on-ink); border: 1.5px solid var(--mark-on); }
+.rung.taught { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent); }
+.rung.break { border: 2px solid var(--bad); color: var(--ink); background: var(--bad-soft); }
+
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(520px, 100vw); background: var(--surface); border-left: 1px solid var(--line);
+  box-shadow: -12px 0 40px var(--shadow); padding: 18px 20px 40px; overflow: auto; z-index: 20; transform: translateX(105%); transition: transform .16s ease; }
+.drawer.open { transform: none; }
+.drawer h3 { margin: 0 0 2px; font-size: 18px; } .drawer h4 { margin: 18px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); }
+.drawer .x { position: absolute; top: 12px; right: 14px; }
+@media (prefers-reduced-motion: reduce) { .drawer { transition: none; } html { scroll-behavior: auto; } }
+[hidden] { display: none !important; }
+noscript p { padding: 20px; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <h1 class="brand"><b>2494</b>·Gen-AI <span class="muted">work tracker</span></h1>
+  <div class="meta">
+    <span id="m-today"></span>
+    <span id="m-updated"></span>
+    <button class="btn" id="theme" type="button" aria-label="Switch colour theme">Light / dark</button>
+  </div>
+</div>
+<noscript><p>This tracker needs JavaScript to draw its data block. The same facts are in STATUS.md and harness/curriculum.json.</p></noscript>
+<main class="wrap">
+  <p class="phase" id="phase"></p>
+
+  <div class="row2">
+    <section class="card next" aria-labelledby="h-next">
+      <div class="kicker" id="h-next">Next up</div>
+      <div id="next"></div>
+    </section>
+    <section class="card" aria-labelledby="h-attn">
+      <div class="kicker" id="h-attn">Needs attention</div>
+      <ul class="attn" id="attn"></ul>
+    </section>
+  </div>
+
+  <div class="tiles" id="tiles"></div>
+
+  <div class="gridbar">
+    <h2 style="margin:0">Day pipeline</h2>
+    <button class="btn" id="v-grid" type="button" aria-pressed="true">Calendar</button>
+    <button class="btn" id="v-list" type="button" aria-pressed="false">Table</button>
+    <div class="legend" aria-label="Legend">
+      <span><i class="mk on">R</i> present</span>
+      <span><i class="mk part">1/3</i> partial</span>
+      <span><i class="mk">R</i> missing</span>
+      <span class="muted">R research · D demos · N notes · E exercise · B runbook</span>
+      <span class="st st-amber"><span class="st-g" aria-hidden="true">▲</span>due soon</span>
+      <span class="st st-red"><span class="st-g" aria-hidden="true">✕</span>late</span>
+    </div>
+  </div>
+  <div class="scroll" id="view-grid"><div class="cal" id="cal"></div></div>
+  <div class="card tablewrap" id="view-list" hidden></div>
+
+  <div class="cols2">
+    <section class="card" aria-labelledby="h-items"><h2 id="h-items">Open items</h2><div class="tablewrap" id="items"></div></section>
+    <section class="card" aria-labelledby="h-ms"><h2 id="h-ms">Milestones</h2><div class="tablewrap" id="milestones"></div>
+      <h2 style="margin-top:18px">Codify stages</h2><div id="stages"></div></section>
+  </div>
+  <div class="cols2">
+    <section class="card" aria-labelledby="h-th"><h2 id="h-th">Demo threads</h2><div id="threads"></div></section>
+    <section class="card" aria-labelledby="h-dec"><h2 id="h-dec">Decisions</h2><div id="decisions"></div>
+      <h2 style="margin-top:18px">Latest log</h2><ul class="plain small" id="log"></ul></section>
+  </div>
+  <section class="card" style="margin-top:14px" aria-labelledby="h-runs"><h2 id="h-runs">Workflow runs</h2><div class="tablewrap" id="runs"></div></section>
+  <p class="dim small" style="margin-top:18px">Generated by <code>harness/build_tracker.py</code> from repo state (D-0035). Local file, gitignored (D-0036). Stale after any change to STATUS.md, the curriculum, plans, decisions or trainer artifacts until that command runs again; <code>tests/test_tracker.py</code> fails while it is stale. Alarms use today's date in this browser; add <code>?today=YYYY-MM-DD</code> to preview another day.</p>
+</main>
+
+<aside class="drawer" id="drawer" aria-labelledby="d-title" aria-hidden="true">
+  <button class="btn x" id="d-close" type="button">Close</button>
+  <div id="d-body"></div>
+</aside>
+
+<!-- TRACKER:BEGIN -->
+<script>
+window.TRACKER = null;
+</script>
+<!-- TRACKER:END -->
+
+<script>
+(function () {
+  "use strict";
+  var TR = {};
+  var DAYMS = 86400000;
+  var WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  var MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  var ARTS = [["research", "R", "research brief"], ["demos", "D", "demo scripts and keys"], ["notes", "N", "notes page"],
+              ["exercise", "E", "exercise"], ["runbook", "B", "runbook"]];
+  var GLYPH = { red: "✕", amber: "▲", good: "✓", none: "○" };
+
+  // ---------- pure helpers (also run under node in tests/test_tracker.py) ----------
+  TR.ms = function (iso) { var p = iso.split("-"); return Date.UTC(+p[0], +p[1] - 1, +p[2]); };
+  TR.diff = function (a, b) { return Math.round((TR.ms(b) - TR.ms(a)) / DAYMS); };   // days from a to b
+  TR.fmt = function (iso) { var d = new Date(TR.ms(iso)); return WD[d.getUTCDay()] + " " + MON[d.getUTCMonth()] + " " + d.getUTCDate(); };
+  TR.teaching = function (data) {
+    var out = [];
+    data.weeks.forEach(function (w) { w.days.forEach(function (d) { if (d.kind !== "holiday") out.push({ w: w, d: d }); }); });
+    return out;
+  };
+  TR.demosState = function (d) {
+    if (d.demoFormat === "none") return "na";
+    var a = d.a.demos;
+    if (!a.scripts) return "none";
+    if ((a.planned != null && a.scripts < a.planned) || a.keys < a.scripts) return "partial";
+    return "full";
+  };
+  TR.has = function (d, name) { return name === "demos" ? TR.demosState(d) === "full" || TR.demosState(d) === "na" : !!d.a[name]; };
+  TR.missing = function (d) { return ARTS.filter(function (a) { return !TR.has(d, a[0]); }).map(function (a) { return a[0]; }); };
+  TR.dayAlarm = function (w, d, today, rules) {
+    if (d.kind === "holiday") return null;
+    if (d.status !== "live") {
+      var toWeek = TR.diff(today, w.start);
+      if (toWeek <= rules.dayRedDaysBeforeWeek) return { level: "red", text: TR.diff(today, d.date) < 0 ? "date passed, never live" : "not live" };
+      if (toWeek <= rules.dayAmberDaysBeforeWeek) return { level: "amber", text: "not live, due Friday" };
+      return null;
+    }
+    if (!d.taught) {
+      var since = TR.diff(d.date, today);
+      if (since >= rules.closeRedDays) return { level: "red", text: "delivery close missing" };
+      if (since >= rules.closeAmberDays) return { level: "amber", text: "delivery close due" };
+    }
+    return null;
+  };
+  TR.planAlarm = function (w, today, rules) {
+    if (!w.days.some(function (d) { return d.kind !== "holiday" && d.status !== "live"; })) return null;
+    if (w.plan.exists && !w.plan.ok) return { level: "red", text: "plan fails plan_check (" + w.plan.problems + ")" };
+    if (w.plan.exists) return null;
+    var toWeek = TR.diff(today, w.start);
+    if (toWeek <= rules.planRedDaysBeforeWeek) return { level: "red", text: "no week plan" };
+    if (toWeek <= rules.planAmberDaysBeforeWeek) return { level: "amber", text: "week plan due" };
+    return null;
+  };
+  TR.itemAlarm = function (it, today, rules) {
+    if (it.closed || !it.due) return null;
+    var left = TR.diff(today, it.due);
+    if (left < 0) return { level: "red", text: "overdue by " + (-left) + " day" + (left === -1 ? "" : "s") };
+    if (left <= rules.itemAmberDays) return { level: "amber", text: left === 0 ? "due today" : "due in " + left + " day" + (left === 1 ? "" : "s") };
+    return null;
+  };
+  TR.latestRuns = function (data) {            // the newest record per (kind, week, days)
+    var seen = {};
+    data.runs.forEach(function (r, i) { seen[r.kind + "|" + r.week + "|" + r.days.join(",")] = i; });
+    return Object.keys(seen).map(function (k) { return data.runs[seen[k]]; });
+  };
+  TR.alerts = function (data, today) {
+    var out = [], rules = data.rules;
+    data.weeks.forEach(function (w) {
+      var pa = TR.planAlarm(w, today, rules);
+      if (pa) out.push({ level: pa.level, kind: "plan", id: "week " + w.week, date: w.start, text: "Week " + w.week + ": " + pa.text });
+      w.days.forEach(function (d) {
+        var a = TR.dayAlarm(w, d, today, rules);
+        if (a) out.push({ level: a.level, kind: d.status === "live" ? "close" : "day", id: d.id, ref: d.id, date: d.date, text: d.id + " " + d.title + ": " + a.text });
+      });
+    });
+    data.status.openItems.forEach(function (it) {
+      var a = TR.itemAlarm(it, today, rules);
+      if (a) out.push({ level: a.level, kind: "item", id: it.id, date: it.due, text: it.id + ": " + a.text });
+    });
+    data.threads.forEach(function (t) {
+      if (!t.chainOk) out.push({ level: "red", kind: "thread", id: t.id, date: today, text: "Thread " + t.id + ": a rung no longer extends its start key" });
+    });
+    TR.latestRuns(data).forEach(function (r) {
+      if (r.flagged > 0 && !r.resolved) out.push({ level: "red", kind: "run", id: r.runId || r.kind, date: r.date,
+        text: (r.days.join(" ") || "week " + r.week + " plan") + ": " + r.flagged + " flagged item" + (r.flagged === 1 ? "" : "s") + " unresolved" });
+    });
+    out.sort(function (a, b) { return (a.level === b.level ? 0 : a.level === "red" ? -1 : 1) || (a.date < b.date ? -1 : a.date > b.date ? 1 : 0); });
+    return out;
+  };
+  TR.nextUp = function (data, today) {
+    var all = TR.teaching(data);
+    for (var i = 0; i < all.length; i++) if (all[i].d.date >= today) return all[i];
+    return null;
+  };
+  TR.counts = function (data, today) {
+    var days = TR.teaching(data).map(function (x) { return x.d; });
+    var items = data.status.openItems.filter(function (i) { return !i.closed; });
+    var ms = data.status.milestones;
+    var c = function (arr, f) { return arr.filter(f).length; };
+    return {
+      days: days.length, live: c(days, function (d) { return d.status === "live"; }), taught: c(days, function (d) { return !!d.taught; }),
+      published: c(days, function (d) { return d.a.published; }),
+      weeks: data.weeks.length, plans: c(data.weeks, function (w) { return w.plan.ok; }),
+      msDone: c(ms, function (m) { return m.state === "done"; }), msPartial: c(ms, function (m) { return m.state === "partial"; }), ms: ms.length,
+      open: items.length, overdue: c(items, function (i) { return i.due && i.due < today; }),
+      soon: c(items, function (i) { return i.due && i.due >= today && TR.diff(today, i.due) <= 7; }), undated: c(items, function (i) { return !i.due; }),
+      stagesDone: c(data.stages, function (s) { return s.done; }), stages: data.stages.length
+    };
+  };
+  if (typeof window !== "undefined") window.TR = TR;
+  if (typeof document === "undefined") return;
+
+  // ---------- rendering ----------
+  var D = window.TRACKER;
+  function h(tag, attrs, kids) {
+    var e = document.createElement(tag);
+    Object.keys(attrs || {}).forEach(function (k) {
+      if (attrs[k] == null || attrs[k] === false) return;
+      if (k === "class") e.className = attrs[k]; else if (k === "text") e.textContent = attrs[k]; else e.setAttribute(k, attrs[k]);
+    });
+    (kids || []).forEach(function (k) { if (k != null) e.appendChild(typeof k === "string" ? document.createTextNode(k) : k); });
+    return e;
+  }
+  function rich(text) {                       // `code` spans only; everything else is text
+    var f = document.createDocumentFragment();
+    String(text || "").split("`").forEach(function (part, i) { f.appendChild(i % 2 ? h("code", { text: part }) : document.createTextNode(part)); });
+    return f;
+  }
+  function st(level, label) {
+    return h("span", { class: "st st-" + level }, [h("span", { class: "st-g", "aria-hidden": "true", text: GLYPH[level] }), label]);
+  }
+  function $(id) { return document.getElementById(id); }
+  function fill(id, kids) { var e = $(id); e.textContent = ""; kids.forEach(function (k) { if (k) e.appendChild(typeof k === "string" ? document.createTextNode(k) : k); }); return e; }
+  function table(heads, rows) {
+    return h("table", {}, [h("thead", {}, [h("tr", {}, heads.map(function (x) {
+      return h("th", { class: x.num ? "num" : null, scope: "col", text: x.t || x });
+    }))]), h("tbody", {}, rows)]);
+  }
+  function localToday() {
+    var q = /[?&]today=(\d{4}-\d{2}-\d{2})/.exec(window.location.search);
+    if (q) return q[1];
+    var n = new Date(), p = function (x) { return (x < 10 ? "0" : "") + x; };
+    return n.getFullYear() + "-" + p(n.getMonth() + 1) + "-" + p(n.getDate());
+  }
+  function marks(d) {
+    return h("span", { class: "c-marks" }, ARTS.map(function (a) {
+      var cls = "mk", label = a[1], state = "missing";
+      if (a[0] === "demos") {
+        var ds = TR.demosState(d), dm = d.a.demos;
+        if (ds === "na") { cls += " na"; label = "–"; state = "not applicable (no code demo)"; }
+        else if (ds === "full") { cls += " on"; state = dm.scripts + " of " + (dm.planned == null ? dm.scripts : dm.planned) + " authored"; }
+        else if (ds === "partial") { cls += " part"; label = dm.scripts + "/" + (dm.planned == null ? "?" : dm.planned); state = "partial"; }
+        else if (dm.planned != null) { label = "0/" + dm.planned; state = "0 of " + dm.planned + " planned demos authored"; }
+      } else if (d.a[a[0]]) { cls += " on"; state = "present"; }
+      return h("i", { class: cls, title: a[2] + ": " + state, text: label });
+    }));
+  }
+  function badge(d) {
+    if (d.a.published) return h("span", { class: "badge live", text: "published" });
+    if (d.taught) return h("span", { class: "badge live", text: "taught" });
+    if (d.status === "live") return h("span", { class: "badge live", text: "live" });
+    return h("span", { class: "badge", text: d.kind === "review" ? "review" : "planned" });
+  }
+  function links(w, d) {
+    return { research: "harness/research/" + d.rel + ".md", notes: "docs/weeks/" + d.rel + ".html", exercise: "exercises/" + d.rel + "/README.md",
+             runbook: "trainer/" + d.rel + "/runbook.md", demos: "trainer/" + d.rel + "/demos/", plan: w.plan.path };
+  }
+
+  var today = localToday();
+  var byId = {};
+  TR.teaching(D).forEach(function (x) { byId[x.d.id] = x; });
+
+  function renderTop() {
+    $("m-today").textContent = "Today " + TR.fmt(today) + ", " + today.slice(0, 4);
+    $("m-updated").textContent = "STATUS.md updated " + (D.status.updated || "unknown");
+    fill("phase", [rich(D.status.phase)]);
+  }
+
+  function renderNext() {
+    var n = TR.nextUp(D, today);
+    if (!n) { fill("next", ["Training has ended: no teaching day on or after today."]); return; }
+    var d = n.d, w = n.w, miss = TR.missing(d), away = TR.diff(today, d.date), alarm = TR.dayAlarm(w, d, today, D.rules);
+    var ready = d.status === "live";
+    fill("next", [
+      h("h3", { text: d.id.toUpperCase().replace("W0", "W").replace("D", "D") + " · " + d.title }),
+      h("div", { class: "muted" }, [TR.fmt(d.date) + (away === 0 ? " (today)" : away === 1 ? " (tomorrow)" : " (in " + away + " days)") + " · week " + w.week + " · " + d.subtopics + " subtopics" +
+        (d.demoMinutes ? " · " + d.demoMinutes + " demo min planned" : "")]),
+      h("div", { style: "margin-top:8px" }, [ready ? st("good", "live") : alarm ? st(alarm.level, alarm.text) : st("none", "not live yet"),
+        "  ", w.plan.ok ? st("good", "week plan ok") : st(w.plan.exists ? "red" : "none", w.plan.exists ? "week plan fails its check" : "no week plan")]),
+      miss.length ? h("div", { style: "margin-top:8px" }, ["Missing: " + miss.join(", ") + "."]) : h("div", { style: "margin-top:8px" }, ["All five artifacts are on disk."]),
+      ready ? null : h("div", { class: "cmd" }, [h("span", { class: "muted small", text: "Author it with one invocation: " }),
+        h("code", { text: "python harness/args_for.py " + w.week + " " + d.slot + " --today " + today })]),
+      h("div", { style: "margin-top:10px" }, [h("button", { class: "btn", type: "button", "data-open": d.id, text: "Open day detail" })])
+    ]);
+  }
+
+  function renderAttn() {
+    var al = TR.alerts(D, today);
+    if (!al.length) { fill("attn", [h("li", {}, [st("good", "Nothing is late or due soon.")])]); return al; }
+    fill("attn", al.map(function (a) {
+      var body = a.ref ? h("button", { type: "button", "data-open": a.ref, text: a.text }) : h("span", { text: a.text });
+      return h("li", {}, [st(a.level, ""), body, h("span", { class: "when", text: a.date ? TR.fmt(a.date) : "" })]);
+    }));
+    return al;
+  }
+
+  function renderTiles(al) {
+    var c = TR.counts(D, today), red = al.filter(function (a) { return a.level === "red"; }).length;
+    var t = D.threads, rp = t.reduce(function (s, x) { return s + x.planned; }, 0), ra = t.reduce(function (s, x) { return s + x.authored; }, 0);
+    var tests = D.tests;
+    function tile(k, v, of, s, frac) {
+      return h("div", { class: "tile" }, [h("div", { class: "kicker", text: k }), h("div", { class: "v" }, [String(v), of != null ? h("small", { text: " / " + of }) : null]),
+        frac != null ? h("div", { class: "meter", role: "img", "aria-label": k + " " + v + " of " + of }, [h("i", { style: "width:" + Math.round(frac * 100) + "%" })]) : null,
+        h("div", { class: "s" }, [s])]);
+    }
+    fill("tiles", [
+      tile("Days live", c.live, c.days, "taught " + c.taught + " · published " + c.published, c.live / c.days),
+      tile("Week plans", c.plans, c.weeks, "weeks with a passing plan", c.plans / c.weeks),
+      tile("Alarms", al.length, null, red + " late · " + (al.length - red) + " due soon"),
+      tile("Milestones", c.msDone, c.ms, c.msPartial + " in progress", c.msDone / c.ms),
+      tile("Open items", c.open, null, c.overdue + " overdue · " + c.soon + " due in 7 days · " + c.undated + " undated"),
+      tile("Codify stages", c.stagesDone, c.stages, "codify-plan.md order table", c.stages ? c.stagesDone / c.stages : 0),
+      tile("Thread rungs", ra, rp, "authored of planned" + (t.every(function (x) { return x.chainOk; }) ? " · chain ok" : " · chain broken"), rp ? ra / rp : 0),
+      tile("Tests", tests ? tests.ran : "–", null, tests ? (tests.ok ? "all pass" : (tests.failures + tests.errors) + " failing") + " · " + tests.skipped + " skipped · " + tests.date : "not recorded yet"),
+      tile("Decisions", D.decisions.count, null, "latest " + (D.decisions.latest[0] ? D.decisions.latest[0].id : "none"))
+    ]);
+  }
+
+  function renderCal() {
+    var kids = [h("div", { class: "hd", text: "Week" })];
+    ["Mon", "Tue", "Wed", "Thu", "Fri"].forEach(function (x) { kids.push(h("div", { class: "hd", text: x })); });
+    kids.push(h("div", { class: "hd", text: "Plan" }));
+    D.weeks.forEach(function (w) {
+      var ph = D.phases[w.phase] || {};
+      kids.push(h("div", { class: "wk", style: "border-left-color:" + (ph.c || "") }, [
+        h("b", { text: "Week " + w.week }), h("span", { class: "muted", text: "  " + TR.fmt(w.start).slice(4) + " to " + TR.fmt(w.end).slice(4) }),
+        h("div", { class: "t", text: w.theme }), h("div", { class: "dim small", text: (ph.label || w.phase) + " · " + w.project })]));
+      w.days.forEach(function (d) {
+        if (d.kind === "holiday") { kids.push(h("div", { class: "cell hol" + (d.date === today ? " is-today" : "") }, [h("span", { text: TR.fmt(d.date) }), h("span", { text: d.label })])); return; }
+        var a = TR.dayAlarm(w, d, today, D.rules);
+        kids.push(h("button", { type: "button", class: "cell" + (a ? " lvl-" + a.level : "") + (d.date === today ? " is-today" : "") + (d.date < today && !a ? " past" : ""), "data-open": d.id,
+          "aria-label": d.id + ", " + TR.fmt(d.date) + ", " + d.title + ", " + (d.status === "live" ? "live" : "not live") + (a ? ", " + a.text : "") }, [
+          h("span", { class: "c-top" }, [h("span", { text: TR.fmt(d.date) + (d.feedback ? " · fb" : "") }), badge(d)]),
+          h("span", { class: "c-title", text: d.title }), marks(d),
+          a ? h("span", { class: "c-alarm" }, [st(a.level, a.text)]) : null]));
+      });
+      var pa = TR.planAlarm(w, today, D.rules);
+      kids.push(h("div", { class: "plan" }, [
+        w.plan.ok ? st("good", "plan ok") : w.plan.exists ? st("red", "fails check") : pa ? st(pa.level, pa.text) : st("none", "no plan"),
+        w.plan.exists ? h("a", { href: w.plan.path, text: "week-" + (w.week < 10 ? "0" : "") + w.week + ".md" }) : null]));
+    });
+    fill("cal", kids);
+  }
+
+  function renderList() {
+    var rows = [];
+    D.weeks.forEach(function (w) {
+      w.days.forEach(function (d) {
+        if (d.kind === "holiday") return;
+        var a = TR.dayAlarm(w, d, today, D.rules), dm = d.a.demos, ds = TR.demosState(d);
+        var yn = function (v) { return h("td", {}, [st(v ? "good" : "none", v ? "yes" : "no")]); };
+        rows.push(h("tr", {}, [h("td", {}, [h("button", { class: "btn", type: "button", "data-open": d.id, text: d.id })]), h("td", { text: TR.fmt(d.date) }), h("td", { text: d.title }),
+          yn(w.plan.ok), yn(d.a.research), h("td", { text: ds === "na" ? "n/a" : dm.scripts + " / " + (dm.planned == null ? "?" : dm.planned) }), yn(d.a.notes), yn(d.a.exercise), yn(d.a.runbook),
+          h("td", { text: d.a.published ? "published" : d.taught ? "taught" : d.status }), h("td", {}, [a ? st(a.level, a.text) : ""])]));
+      });
+    });
+    fill("view-list", [table(["Day", "Date", "Title", "Plan", "Research", "Demos", "Notes", "Exercise", "Runbook", "State", "Alarm"], rows)]);
+  }
+
+  function renderItems() {
+    var its = D.status.openItems.slice().sort(function (a, b) { return (a.closed - b.closed) || ((a.due || "9999") < (b.due || "9999") ? -1 : 1); });
+    fill("items", [table(["ID", "Item", "Owner", "Due", "Status"], its.map(function (it) {
+      var a = TR.itemAlarm(it, today, D.rules);
+      return h("tr", { class: it.closed ? "closed" : null, title: it.notes }, [h("td", { class: "nw", text: it.id }), h("td", {}, [rich(it.item)]), h("td", { text: it.owner }),
+        h("td", { title: it.neededBy, text: it.closed ? "" : it.due ? TR.fmt(it.due) : "undated" }),
+        h("td", {}, [it.closed ? st("good", "closed") : a ? st(a.level, a.text) : st("none", "open")])]);
+    }))]);
+  }
+
+  function renderMilestones() {
+    fill("milestones", [table(["#", "Milestone", "State"], D.status.milestones.map(function (m) {
+      return h("tr", { title: m.notes }, [h("td", { class: "num", text: m.n }), h("td", {}, [rich(m.title)]),
+        h("td", {}, [m.state === "done" ? st("good", "done " + m.done) : m.state === "partial" ? st("amber", m.doneText) : st("none", "open")])]);
+    }))]);
+    fill("stages", [h("ul", { class: "plain" }, D.stages.map(function (s) {
+      return h("li", {}, [s.done ? st("good", "") : st("none", ""), h("span", { text: s.order + ". " + s.name + "  " }), h("span", { class: "dim small" }, [rich(s.done ? s.note : s.size)])]);
+    }))]);
+  }
+
+  function renderThreads() {
+    fill("threads", D.threads.map(function (t) {
+      var groups = [], cur = null;
+      t.rungs.forEach(function (r) { if (!cur || cur.day !== r.day) { cur = { day: r.day, rungs: [] }; groups.push(cur); } cur.rungs.push(r); });
+      return h("div", {}, [
+        h("div", {}, [h("b", { class: "mono", text: t.id }), h("span", { class: "muted", text: "  " + t.project + " · weeks " + t.weeks.join(" to ") })]),
+        h("div", { class: "muted small", text: t.domain }),
+        h("div", { class: "ladder" }, groups.map(function (g) {
+          return h("div", { class: "lgroup" }, [h("div", { class: "rungs" }, g.rungs.map(function (r) {
+            return h("span", { class: "rung" + (r.chain === "break" ? " break" : r.authored ? " on" : "") + (r.taught ? " taught" : ""),
+              title: "Rung " + r.rung + " " + r.demo + ": " + (r.chain === "break" ? "chain broken" : r.authored ? "authored" : "planned") + (r.taught ? ", taught" : "") + (r.lines ? ", " + r.lines + " lines" : "") + ". Commit: " + r.commit,
+              text: r.chain === "break" ? "✕" : r.rung });
+          })), h("span", { text: g.day })]);
+        })),
+        h("div", { class: "small" }, [t.authored + " of " + t.planned + " planned rungs authored · " + t.taught + " taught · end key " + (t.endKeyLines == null ? "not a .py yet" : t.endKeyLines + " of " + t.cap + " lines") + " · ",
+          t.chainOk ? st("good", "chain ok") : st("red", "chain broken")]),
+        h("div", { class: "dim small", style: "margin-top:4px", text: "Filled = authored, ringed = taught, dashed = planned." })
+      ]);
+    }));
+    if (!D.threads.length) fill("threads", ["No thread configured."]);
+  }
+
+  function renderDecisions() {
+    fill("decisions", [h("div", { class: "muted small", text: D.decisions.count + " entries · " + D.decisions.accepted + " accepted · " + D.decisions.superseded + " superseded" }),
+      h("ul", { class: "plain small" }, D.decisions.latest.map(function (x) {
+        return h("li", {}, [h("a", { class: "mono", href: "decisions/" + x.file, text: x.id }), h("span", { class: "dim", text: "  " + x.date + "  " }), rich(x.decision)]);
+      }))]);
+    fill("log", D.status.log.map(function (l) { return h("li", {}, [rich(l)]); }));
+  }
+
+  function runRow(r) {
+    var passes = r.artifacts.map(function (a) { return a.name + (a.passes == null ? "" : " " + a.passes) + (a.status === "flagged" ? " (flagged)" : a.status === "cached" ? " (cached)" : ""); }).join(" · ");
+    return h("tr", { title: r.note }, [h("td", { text: r.date }), h("td", { text: r.kind }), h("td", { text: r.days.join(" ") || "week " + r.week + " plan" }),
+      h("td", { class: "num", text: r.agents == null ? "–" : r.agents }), h("td", { class: "num", text: r.minutes == null ? "–" : r.minutes }), h("td", { text: passes }),
+      h("td", {}, [r.flagged ? st(r.resolved ? "amber" : "red", r.flagged + (r.resolved ? " fixed by hand" : " open")) : st("good", "0")]),
+      h("td", {}, [r.tests === "pass" ? st("good", "pass") : r.tests === "fail" ? st("red", "fail") : st("none", "not run")]),
+      h("td", {}, [r.tiers.verified === true ? st("good", "verified") : r.tiers.verified === false ? st("red", "mismatch") : st("none", "not checked")]),
+      h("td", { class: "mono small", text: r.runId || "–" })]);
+  }
+  function renderRuns() {
+    var rows = D.runs.slice().reverse().slice(0, 12).map(runRow);
+    fill("runs", [rows.length ? table(["Date", "Workflow", "Target", { t: "Agents", num: 1 }, { t: "Min", num: 1 }, "Passes per artifact", "Flagged", "Tests", "Tiers", "Run id"], rows) : "No run recorded yet."]);
+  }
+
+  // ---------- day detail drawer ----------
+  var lastFocus = null;
+  function openDay(id) {
+    var x = byId[id]; if (!x) return;
+    var d = x.d, w = x.w, L = links(w, d), a = TR.dayAlarm(w, d, today, D.rules), dm = d.a.demos;
+    var art = function (name, ok, href, extra) {
+      return h("tr", {}, [h("td", {}, [st(ok ? "good" : "none", name)]), h("td", {}, [ok && href ? h("a", { href: href, text: href }) : h("span", { class: "dim", text: extra || "not on disk" })])]);
+    };
+    var runs = D.runs.filter(function (r) { return r.days.indexOf(d.id) >= 0; }).reverse();
+    fill("d-body", [
+      h("h3", { id: "d-title", text: d.title }),
+      h("div", { class: "muted", text: d.id + " · " + TR.fmt(d.date) + " · week " + w.week + " · " + d.kind + " · gate " + d.gate + " · exercise " + d.exerciseKind + (d.feedback ? " · feedback form" : "") }),
+      h("div", { class: "small muted", style: "margin-top:4px", text: d.subtitle }),
+      h("div", { style: "margin-top:10px" }, [badge(d), "  ", a ? st(a.level, a.text) : st("good", "no alarm")]),
+      h("h4", { text: "Artifacts" }),
+      h("table", {}, [h("tbody", {}, [
+        art("week plan", w.plan.ok, L.plan, w.plan.exists ? "fails plan_check" : "no plan for this week"),
+        art("research brief", d.a.research, L.research),
+        d.demoFormat === "none" ? art("demos", true, null) : art("demos (" + dm.scripts + " of " + (dm.planned == null ? "?" : dm.planned) + " scripts, " + dm.keys + " keys)", TR.demosState(d) === "full", L.demos),
+        art("notes page", d.a.notes, L.notes), art("exercise", d.a.exercise, L.exercise), art("runbook", d.a.runbook, L.runbook),
+        art(d.exerciseKind === "rubric" ? "marking guide" : "solutions", d.a.solutions, "trainer/" + d.rel + "/solutions/"),
+        art("taught", !!d.taught, null, d.taught || "delivery close not run"), art("demos published", d.a.published, "demos/" + d.rel + "/", "published after the delivery close")])]),
+      h("h4", { text: "From the week plan" }),
+      d.coverage == null ? h("div", { class: "dim", text: "This week has no plan yet." }) :
+        h("div", { class: "small" }, [d.coverage + " of " + d.subtopics + " subtopics mapped" + (d.demoMinutes ? " · " + d.demoMinutes + " demo minutes" : "")]),
+      d.rows.length ? h("ul", { class: "plain" }, d.rows.map(function (r) {
+        return h("li", {}, [
+          h("div", {}, [st(r.authored ? "good" : "none", r.authored ? "authored" : "planned"), "  ", h("b", { class: "mono", text: r.demo }),
+            h("span", { class: "muted small", text: "  " + (r.thread === "standalone" ? "standalone" : r.thread + " rung " + r.rung) })]),
+          h("div", { class: "small muted", title: r.startsFrom }, ["starts from ", h("span", { class: "mono", text: r.startsFrom === "cold" ? "cold" : r.startsFrom.split("/").pop() })]),
+          h("div", { class: "small", style: "margin-top:3px" }, [rich(r.adds)])]);
+      })) : null,
+      h("h4", { text: "Runs" }),
+      runs.length ? h("ul", { class: "plain small" }, runs.map(function (r) {
+        return h("li", { title: r.note }, [h("span", { class: "mono", text: r.runId || r.kind }), "  " + r.date + " · " + (r.agents == null ? "?" : r.agents) + " agents · ",
+          r.flagged ? st(r.resolved ? "amber" : "red", r.flagged + " flagged") : st("good", "0 flagged"),
+          h("div", { class: "dim", text: r.artifacts.map(function (a2) { return a2.name + (a2.passes == null ? "" : " " + a2.passes); }).join(" · ") })]);
+      })) : h("div", { class: "dim", text: "No workflow run recorded for this day." }),
+      d.status === "live" ? null : h("div", { style: "margin-top:16px" }, [h("div", { class: "muted small", text: "Author with:" }),
+        h("code", { text: "python harness/args_for.py " + w.week + " " + d.slot + " --today " + today })])
+    ]);
+    lastFocus = document.activeElement;
+    var dr = $("drawer"); dr.classList.add("open"); dr.setAttribute("aria-hidden", "false"); $("d-close").focus();
+  }
+  function closeDay() {
+    var dr = $("drawer"); dr.classList.remove("open"); dr.setAttribute("aria-hidden", "true");
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+
+  function boot() {
+    if (!D) { fill("phase", ["No data block: run python harness/build_tracker.py"]); return; }
+    renderTop(); renderNext(); var al = renderAttn(); renderTiles(al); renderCal(); renderList();
+    renderItems(); renderMilestones(); renderThreads(); renderDecisions(); renderRuns();
+    document.addEventListener("click", function (e) {
+      var t = e.target.closest ? e.target.closest("[data-open]") : null;
+      if (t) openDay(t.getAttribute("data-open"));
+    });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeDay(); });
+    $("d-close").addEventListener("click", closeDay);
+    function view(grid) {
+      $("view-grid").hidden = !grid; $("view-list").hidden = grid;
+      $("v-grid").setAttribute("aria-pressed", String(grid)); $("v-list").setAttribute("aria-pressed", String(!grid));
+    }
+    $("v-grid").addEventListener("click", function () { view(true); });
+    $("v-list").addEventListener("click", function () { view(false); });
+    $("theme").addEventListener("click", function () {
+      var next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", next);
+      try { localStorage.setItem("tc_theme", next); } catch (e) { /* no storage */ }
+    });
+    var deep = /[?&]open=(w\d{2}d\d)/.exec(window.location.search);   // ?open=w01d3 links straight to a day's detail
+    if (deep) openDay(deep[1]);
+  }
+  boot();
+})();
+</script>
+</body>
+</html>

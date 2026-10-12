@@ -1,14 +1,18 @@
-"""Work tracker (D-0035): tracker.html is generated from repo state and must never go stale.
+"""Work tracker (D-0035, D-0036): tracker.html is generated from repo state and must never go stale.
 
-harness/build_tracker.py rewrites only the data block of tracker.html; harness/log_run.py appends one
-record per workflow run to harness/runs.jsonl. Every writer of tracked state (both workflows, build_index,
-publish_demos, decisions/new) rebuilds the tracker, and the staleness test below catches anything else.
+tracker.html is a local, gitignored file (trainees must not see it). harness/build_tracker.py builds it from
+the committed, data-free shell harness/templates/tracker.html plus a data block; harness/log_run.py appends
+one record per workflow run to harness/runs.jsonl. Every writer of tracked state (both workflows, build_index,
+publish_demos, decisions/new) rebuilds the tracker, and the staleness test below catches anything else on a
+machine where the tracker exists.
 """
 
 from __future__ import annotations
 
 import json
 import re
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -20,14 +24,15 @@ sys.path.insert(0, str(HARNESS))
 import build_tracker as bt  # noqa: E402
 import log_run  # noqa: E402
 
-TRACKER = ROOT / "tracker.html"
+TRACKER = ROOT / "tracker.html"                      # generated, gitignored
+TEMPLATE = HARNESS / "templates" / "tracker.html"    # committed shell
 WORKFLOWS = HARNESS / "workflows"
 INLINE_SCRIPT_RE = re.compile(r"<script>(.*?)</script>", re.S)
 
 
 def shell_html() -> str:
-    """tracker.html without its generated data block."""
-    html = TRACKER.read_text(encoding="utf-8")
+    """The committed page shell without its (empty) data block."""
+    html = TEMPLATE.read_text(encoding="utf-8")
     return html[:html.index(bt.BEGIN)] + html[html.index(bt.END) + len(bt.END):]
 
 
@@ -37,11 +42,10 @@ class TrackerDataTests(unittest.TestCase):
     def setUpClass(cls):
         cls.data = bt.collect()
 
-    def test_tracker_block_in_sync(self):
-        html = TRACKER.read_text(encoding="utf-8")
-        self.assertIn(bt.BEGIN, html)
-        self.assertIn(bt.END, html)
-        self.assertEqual(bt.splice(html, bt.render(self.data)), html,
+    def test_tracker_in_sync(self):
+        if not TRACKER.is_file():
+            self.skipTest("tracker.html is a local, gitignored file and has not been built here (python harness/build_tracker.py)")
+        self.assertEqual(bt.expected(self.data), TRACKER.read_text(encoding="utf-8"),
                          "tracker.html is stale — run: python harness/build_tracker.py")
 
     def test_render_is_deterministic_and_reads_no_clock(self):
@@ -173,10 +177,24 @@ class WiringTests(unittest.TestCase):
 
 
 class TrackerPageTests(unittest.TestCase):
-    def test_page_is_self_contained_and_off_the_site(self):
-        self.assertTrue(TRACKER.is_file())
+    def test_tracker_is_local_only(self):
+        """D-0036: trainees must not see the tracker. The generated page is gitignored and untracked, it is not
+        on the site, and the committed template carries no data."""
+        ignore = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
+        self.assertIn("/tracker.html", ignore, ".gitignore must ignore the generated tracker.html")
         self.assertFalse((ROOT / "docs" / "tracker.html").exists(), "the tracker is not part of the trainee site")
-        ParsedPage(TRACKER)  # raises on unclosed tags
+        template = TEMPLATE.read_text(encoding="utf-8")
+        block = template[template.index(bt.BEGIN):template.index(bt.END)]
+        self.assertIn("window.TRACKER = null;", block, "the committed template must have an empty data block")
+        self.assertLess(len(block), 200, "the committed template must not carry tracker data")
+        git = shutil.which("git")
+        if git and (ROOT / ".git").exists():
+            res = subprocess.run([git, "ls-files", "--", "tracker.html"], cwd=str(ROOT), capture_output=True, text=True)
+            self.assertEqual("", res.stdout.strip(), "tracker.html must not be tracked by git (git rm --cached tracker.html)")
+
+    def test_page_is_self_contained(self):
+        self.assertTrue(TEMPLATE.is_file())
+        ParsedPage(TEMPLATE)  # raises on unclosed tags
         shell = shell_html()
         for m in re.finditer(r"""(?:src|href)\s*=\s*["']([^"']+)["']|url\(\s*["']?([^"')]+)""", shell):
             target = m.group(1) or m.group(2)

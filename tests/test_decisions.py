@@ -18,8 +18,7 @@ REQUIRED = ("Date", "Status", "Decision", "Why", "Affects", "Supersedes", "Super
 STATUSES = ("proposed", "accepted", "superseded")
 NONE = "—"
 # Files/dirs where a D-NNNN mention must resolve to a real entry.
-CITATION_SCOPES = [HARNESS, DOCS, ROOT / "tests", ROOT / "AGENTS.md", ROOT / "README.md", ROOT / "harness-walkthrough.html",
-                   ROOT / "tracker.html"]
+CITATION_SCOPES = [HARNESS, DOCS, ROOT / "tests", ROOT / "AGENTS.md", ROOT / "README.md", ROOT / "harness-walkthrough.html"]
 TEXT_SUFFIXES = {".md", ".py", ".js", ".json", ".html", ".txt", ".css"}
 
 

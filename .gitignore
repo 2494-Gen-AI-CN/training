@@ -9,6 +9,8 @@ __pycache__/
 .venv/
 venv/
 .ipynb_checkpoints/
+# Work tracker: generated locally by harness/build_tracker.py from harness/templates/tracker.html; trainer-only, never committed (D-0036)
+/tracker.html
 # Workflow run report, consumed and deleted by harness/log_run.py add (D-0035)
 harness/run-report.tmp.json
 # Secrets

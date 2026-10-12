@@ -112,11 +112,11 @@ def main(argv: list[str]) -> int:
 
 
 def rebuild_tracker() -> None:
-    """The work tracker lists the decisions (D-0035). Rebuild it; the entry is minted either way.
-    Messages go to stderr so stdout stays the bare ID. Only the real repo is touched (tests run this
-    module against a temp folder)."""
+    """The work tracker lists the decisions (D-0035). Rebuild the local, gitignored tracker.html (D-0036);
+    the entry is minted either way. Messages go to stderr so stdout stays the bare ID. Only the real repo
+    is touched (tests run this module against a temp folder, which has no tracker template)."""
     root = HERE.parent
-    if not (root / "tracker.html").is_file():
+    if not (root / "harness" / "templates" / "tracker.html").is_file():
         return
     try:
         sys.path.insert(0, str(root / "harness"))
