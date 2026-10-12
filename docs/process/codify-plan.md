@@ -14,7 +14,7 @@ docs/process/codify-plan.md, then only the catalog rows the stage names in docs/
 Run `python -m unittest discover -s tests -v` before and after every change; keep it green.
 
 Facts already established (do not re-derive): dates derive from curriculum.json startDate + holidays (D-0013, D-0014);
-one Workflow invocation per training day, args only from `python harness/args_for.py <week> <day> --today <date>` (D-0008);
+one Workflow invocation per week batch or per single day, args only from `python harness/args_for.py <week> <day...> --today <date>` (D-0038);
 learner persona lives in config.json audience (D-0023); exerciseKind pytest|rubric (D-0025); per-stage model tiers in
 config.json models (D-0026); every notes page gets a humanizer pass before its critic (D-0029).
 

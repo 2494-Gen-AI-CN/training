@@ -1,11 +1,13 @@
-// day-fanout.js — produce one training day's full artifact set, critic-gated.
+// day-fanout.js — produce the full artifact set of one training day, or of several days of one week as a
+// batch (D-0038), critic-gated.
 //
-// Run (one day per invocation; two or three days pipeline fine but mind the agent budget):
+// Run (the days of one week in one invocation is the normal case; a single day stays valid; ~20 agents per day):
 //   python harness/args_for.py <week> <day...> --today YYYY-MM-DD   -> paste as args
 //   Workflow({ scriptPath: "harness/workflows/day-fanout.js", args: <that JSON> })
 //
-// Pipeline per day:  Research (gate-tiered) -> Demos -> Materials (notes ∥ runbook ∥ exercise)
-// then, once every day is through:  Wire (serial, shared files) -> Record (run log + work tracker, D-0035)
+// Pipeline:  Research (gate-tiered, all days in parallel) -> Demos (one day after the other, in day order:
+// each rung starts from the previous rung's key, D-0033) -> Materials (notes ∥ runbook ∥ exercise, all days
+// in parallel) -> Wire (serial, shared files) -> Record (run log + work tracker, D-0035)
 // -> Verify (unittest, ≤2 fix loops).
 // Demos (D-0030): walkthrough scripts + answer keys are authored to trainer/<rel>/demos/ (private) and
 // published to demos/<rel>/ by harness/publish_demos.py only once curriculum.json carries taught:<date>.
@@ -18,7 +20,7 @@
 
 export const meta = {
   name: 'day-fanout',
-  description: 'Research -> demos -> notes/runbook/exercise (critic-gated, 3-pass repass) -> wire -> verify, for one training day',
+  description: 'Research -> demos (in day order) -> notes/runbook/exercise (critic-gated, 3-pass repass) -> wire -> verify, for one training day or the days of one week',
   phases: [
     { title: 'Research' },
     { title: 'Demos' },
@@ -290,13 +292,37 @@ async function materialsStage(d, demo) {
 log(`Model tiers: ${TIER_LABELS}; escalate on pass ≥ ${TIERS.escalateOn || '—'} → ${TIERS.escalate ? (TIERS.escalate.model || 'inherit') + '/' + (TIERS.escalate.effort || 'inherit') : 'off'}`)
 if (A.noPlan) log(`WARNING: running WITHOUT a week plan (--no-plan escape); record it in STATUS.md`)
 else log(`Week plan: ${A.weekPlan}`)
+// Week batch (D-0038): research for every day in parallel, then demos STRICTLY in day order, then materials in
+// parallel again. A rung's Starts from key is the previous rung's key (D-0033), so a later day's demo author can
+// only start once the earlier day's keys are on disk. A day whose demos stage produced no scripts blocks the
+// later days of the run: they are reported flagged and nothing is authored on top of a missing key. A day the
+// critic flagged still has its keys and does not block.
+const blocked = (label, by) => ({ task: label, status:'flagged', passes:0, flags:[`blocked: ${by} produced no demo keys, so this day's rungs have no Starts from state; re-run from ${by}`], summary:`not attempted (blocked by ${by})` })
 phase('Research')
-const perDay = await parallel(DAYS.map(d => async () => {
-  const research = await researchStage(d)
-  const demos = await demosStage(d)
-  const mats = await materialsStage(d, demos)
-  return { d, research, demos, ...mats }
+const researched = await parallel(DAYS.map(d => () => researchStage(d)))
+phase('Demos')
+const demoed = []
+let blockedBy = null
+for (const d of DAYS) {
+  if (blockedBy) { demoed.push(blocked(`${d.id} demos`, blockedBy)); continue }
+  let r = null
+  try { r = await demosStage(d) } catch (e) { log(`${d.id} demos stage threw: ${e && e.message}`) }
+  demoed.push(r)
+  if (!d.noDemos && !(r && r.result && (r.result.scripts || []).length)) blockedBy = `${d.id} demos`
+}
+phase('Materials')
+const materials = await parallel(DAYS.map((d, i) => async () => {
+  const demos = demoed[i]
+  // No scripts on a demo day (blocked, or this day's own demos stage failed): notes, exercise and runbook all
+  // read the scripts, so they are not attempted either.
+  if (!d.noDemos && !(demos && demos.result && (demos.result.scripts || []).length)) {
+    const why = (demos && demos.passes === 0 && demos.flags) ? demos.flags[0] : `not attempted: ${d.id} demos produced no scripts; fix the demos and re-run this day`
+    const skip = (label) => ({ task: label, status:'flagged', passes:0, flags:[why], summary:'not attempted (no demo scripts)' })
+    return { notes: skip(`${d.id} notes page`), exercise: skip(`${d.id} exercise`), runbook: skip(`${d.id} runbook`) }
+  }
+  return materialsStage(d, demos)
 }))
+const perDay = DAYS.map((d, i) => ({ d, research: researched[i], demos: demoed[i], ...(materials[i] || {}) }))
 
 // ---------- WIRE (serial: shared files) ----------
 phase('Wire')
@@ -307,7 +333,7 @@ const wire = await agent(
   `1. Open ${ROOT}/docs/assets/js/glossary.js. Between "// GLOSSARY:BEGIN" and "// GLOSSARY:END" append these entries as { term, def, aka } lines, SKIPPING any whose term or aka already exists (case-insensitive, check both term and aka of existing entries): ${J(glossaryAdds)}. Keep the file valid JS (node --check).\n` +
   `2. In ${H}/curriculum.json set "status": "live" for ${J(DAYS.map(d => d.id))} ONLY if that day's page ${'`'}docs/weeks/<rel>.html${'`'}, exercises/<rel>/README.md and (unless demoFormat is "none") ${TRAINER}/<rel>/demos/key/README.md all exist on disk. Never touch the "taught" field.\n` +
   `3. Run: python ${H}/build_index.py   (it also rebuilds tracker.html, the work tracker, D-0035)\n` +
-  `4. For each shipped day whose previous day page exists, confirm the previous page's window.NEXT.href points at this day's filename; fix if not.\n` +
+  `4. For each shipped day whose previous day page exists, confirm the previous page's window.NEXT.href points at this day's filename; fix if not. And for each shipped day's own page: if its window.NEXT.href names a day page that does not exist on disk (a later day of this run was blocked or failed), set it to { label: "Back to program →", href: "../../index.html" }.\n` +
   `5. Publish step (D-0030): for each shipped day run "python ${H}/publish_demos.py <week> <day>" (${J(DAYS.map(d => `${A.week} ${d.day}`))}). It copies the answer keys to demos/<rel>/ and flips the notes demo card ONLY if curriculum.json carries taught:<date> for that day (set by the delivery-day close); otherwise it prints "not taught yet" and that is the expected outcome on an authoring run. Never copy demo files by hand.\n` +
   `6. Run ${ROOT}/docs/bump-css.sh --all if you changed glossary.js.\n` +
   `7. Last, run: python ${H}/build_tracker.py   so tracker.html matches the state you just changed (never edit tracker.html by hand).\n` +

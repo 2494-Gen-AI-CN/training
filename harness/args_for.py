@@ -200,8 +200,9 @@ def main(argv: list[str]) -> int:
         s = by_slot[d["day"]]
         idx = teaching.index(d)
         nxt = teaching[idx + 1] if idx + 1 < len(teaching) else None
-        # Only link forward to a page that exists; a planned day falls back to the program index.
-        if nxt is not None and nxt.get("status") != "live":
+        # Only link forward to a page that exists or that this same run writes (week batch, D-0038);
+        # any other planned day falls back to the program index.
+        if nxt is not None and nxt.get("status") != "live" and nxt["day"] not in day_nos:
             nxt = None
         rows = plan_check.day_rows(plan, d["id"]) if plan else {"weekPlanRows": [], "threadRows": [], "ladderRows": [], "dayShape": "", "spoilerRows": []}
         days.append({

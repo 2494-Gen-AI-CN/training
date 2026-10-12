@@ -159,5 +159,37 @@ class WeekPlanScriptTests(unittest.TestCase):
             self.assertIn(needle, src, f"day-fanout.js must use {needle} from args (D-0034)")
 
 
+class WeekBatchTests(unittest.TestCase):
+    """D-0038: one invocation authors the days of a week; demos in day order, the rest in parallel."""
+
+    def test_demos_run_in_day_order_never_in_parallel(self):
+        src = (HARNESS / "workflows" / "day-fanout.js").read_text(encoding="utf-8")
+        run = src[src.index("phase('Research')"):src.index("phase('Wire')")]
+        calls = [m.start() for m in re.finditer(r"\b(researchStage|demosStage|materialsStage)\(d", run)]
+        self.assertEqual(3, len(calls), "each stage is called once in the Run section")
+        self.assertLess(run.index("phase('Demos')"), run.index("demosStage(d"))
+        self.assertLess(run.index("demosStage(d"), run.index("phase('Materials')"), "every day's demos finish before any materials start")
+        demos_part = run[run.index("phase('Demos')"):run.index("phase('Materials')")]
+        self.assertNotIn("parallel(", demos_part, "a rung starts from the previous rung's key on disk (D-0033): demos are serial")
+        self.assertRegex(demos_part, r"for \(const d of DAYS\)")
+        self.assertIn("blockedBy", demos_part, "a day with no demo keys must block the later days of the run")
+
+    def test_pages_of_one_batch_link_forward(self):
+        wk = next(w for w in curriculum()["weeks"] if (PLANS / f"week-{w['week']:02d}.md").is_file())
+        days = [d for d in wk["days"] if d.get("kind") != "holiday"]
+        self.assertGreaterEqual(len(days), 2)
+        res = run_args(str(wk["week"]), *[str(d["day"]) for d in days], "--today", "2026-10-12")
+        self.assertEqual(0, res.returncode, res.stderr)
+        out = json.loads(res.stdout)["days"]
+        self.assertEqual([d["id"] for d in days], [d["id"] for d in out], "batch days come out in day order")
+        for cur, nxt in zip(out, out[1:]):
+            self.assertEqual(f"{nxt['slug']}.html", cur["nextHref"], f"{cur['id']} links to the next page of the same run")
+        self.assertEqual("../../index.html", out[-1]["nextHref"], "the last day of a week points back at the program")
+        # outside a batch, a day still only links to a page that is already live
+        alone = json.loads(run_args(str(wk["week"]), str(days[0]["day"]), "--today", "2026-10-12").stdout)["days"][0]
+        expect = f"{days[1]['slug']}.html" if days[1].get("status") == "live" else "../../index.html"
+        self.assertEqual(expect, alone["nextHref"])
+
+
 if __name__ == "__main__":
     unittest.main()
