@@ -117,7 +117,14 @@ Build a week-level planning stage that runs ONCE per week before the first day-f
   deliberate-deviation ledger (deviation / workplace reality / pedagogical reason), coverage map
   (curriculum subtopic -> day -> demo -> notes step). Template: harness/templates/week-plan.md.
   Model tiers already exist in config.json models.stages (D-0032): `week-plan` (author) and `week-plan-critic`,
-  both inherit the session model at high effort; the workflow reads them through args like day-fanout's tier().
+  both inherit the session model at high effort. Tiers reach a workflow ONLY through args, so:
+  (a) `python harness/args_for.py <week> --plan --today <date>` emits the week-plan args (root, today, week, every
+  teaching day with date and subtopics, weekNotes, the previous week's plan path if any, metrics, config, and
+  `models` exactly as day args carry it); it is the only source of week-plan args;
+  (b) week-plan.js copies day-fanout's tier(stage, pass) and spreads `...tier('week-plan', pass)` on the author call
+  and `...tier('week-plan-critic')` on the critic call, with the same escalateOn repass rule; no agent() call in the
+  script runs without a tier;
+  (c) the script logs the resolved tiers on its first line, as day-fanout does.
 - Threads (A7, A10, A12, A23, A24): a thread is one demo codebase that grows rung by rung across days and weeks; a
   rung is one demo; nothing is re-scaffolded. The plan gets a "## Threads" section: thread id, domain, scope, and one
   row per rung (day, demo NN_<slug>, starts from <previous rung's key or "cold">, what it adds, end state, commit
@@ -149,14 +156,18 @@ Build a week-level planning stage that runs ONCE per week before the first day-f
 - Run week-plan for week 1 now (W1D2 is already authored and live: the plan records it as-is and plans D3–D5,
   none of which is authored yet). Do not run W1D3 in this stage.
 - tests: tests/test_plans.py (every live day's week has a plan; plan lists every subtopic of every teaching day; every
-  rung's `Starts from` resolves); tests/test_demos.py self-tests for carried and replaced lines, and a chain test:
+  rung's `Starts from` resolves; `args_for.py <week> --plan` output carries `models.stages` with `week-plan` and
+  `week-plan-critic`; week-plan.js contains both tier names and every agent( call in it spreads a tier(...), checked
+  statically on the source); tests/test_demos.py self-tests for carried and replaced lines, and a chain test:
   for every live day, each rung's key still contains its `Starts from` key's surviving lines, so re-authoring an
   earlier day fails the later ones loudly instead of silently staling them.
 - AGENTS.md: authoring order inside a thread is strictly rung order; re-authoring day N means re-checking every later
   rung; a delivery-day close that changes a key (classroom reality wins) must run before the next rung is authored.
 Decision entries (week plan; demo-thread amendment). Exit: plan for week 1 with its Threads section exists and passes
 its critic; args_for gated with the escape; demo_check enforces carried lines; W1D2 still live and green; tests green;
-pushed.
+pushed. In the report, list every agent the week-plan run launched with its configured tier and the model and effort
+it actually ran on, read from the run's agent transcripts and .meta.json files (not from config); a mismatch is a
+defect to fix before exit.
 ```
 
 ## Stage 3 — Re-author W1D2 demos under the new contract; promote the page (catalog A1, A21, A22, A29; milestone 6)
