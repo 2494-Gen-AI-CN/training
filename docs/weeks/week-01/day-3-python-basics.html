@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w01d3">
+<title>W1·D3 — Python basics | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261012">
+<script src="../../assets/js/theme.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises" target="_blank" rel="noopener">Exercises</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>Python basics: writing Python the way a team reads it</h1>
+        <div class="meta">
+          <span><b>Week 1</b> · Day 3</span>
+          <span>Wed Oct 14, 2026</span>
+          <span>Agile for developers, Git &amp; Python fundamentals</span>
+          <span><b>~11 min</b> · notes @150 wpm + diagram + check</span>
+        </div>
+        <p class="summary">This page assumes Tuesday's tooling check passed and that <code>team-repo</code> exists with a
+        clean <code>git status</code>. You know Python syntax from coursework, so today covers the conventions a team
+        holds you to: PEP 8 names and layout, comments that earn their place, the operators that catch people out, and
+        input and output for a script that also runs with nobody at the keyboard. The three demos build one file,
+        <code>ticket_desk.py</code>, on a feature branch, and this page is the reference for what the trainer typed.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="0">
+        <div class="tag">Conventions</div>
+        <h2>Python syntax: PEP 8 is the team's contract</h2>
+        <p>The syntax itself takes one sentence: a line is a statement, a newline ends it, and indentation is the block
+        structure, four spaces per level under PEP 8. What is new today is the layout around that syntax, which a team
+        agrees in advance. PEP 8 is Python's official style guide, and a team adopts it as its shared contract for
+        names, layout and comments.</p>
+        <p>Five rules were on the board this morning. Four are PEP 8's own. Functions and variables are named in
+        <code>snake_case</code> and constants in <code>UPPER_CASE</code>. Two blank lines go around top-level
+        definitions. A line is at most 79 characters. Imports sit at the top of the file. The fifth is this course's
+        reading of PEP 8's section on comments: comments say why. Python runs a file that breaks any of these, so the
+        interpreter will never point them out. A reviewer will, and a review comment saying "rename to snake_case" is
+        the contract being applied.</p>
+        <p>The ticket-record demo starts <code>ticket_desk.py</code> in that shape from its first line. The first
+        statement is a string that says what the module is for. That is the module docstring, and PEP 257 defines its
+        conventions. The three constants follow.</p>
+<pre><code>"""Ticket desk: a small board for the support tickets the team tracks."""
+
+SLA_HOURS_HIGH = 4
+SLA_HOURS_NORMAL = 24
+SLA_HOURS_LOW = 72</code></pre>
+        <p>Python will not stop you reassigning <code>SLA_HOURS_HIGH</code>. The capitals tell the next reader
+        that nobody does. Habits from other languages tend to show up here first, usually as a camelCase variable or a
+        lowercase constant.</p>
+        <div class="ix-spot" data-snippet="slaHoursHigh = 4&#10;ticketId = 101&#10;import sys" data-q="Python runs these three lines without complaint. What does a reviewer who holds the file to PEP 8 write on each one?" data-a="Line 1 is a constant, so UPPER_CASE: SLA_HOURS_HIGH. Line 2 is a variable, so snake_case: ticket_id. Line 3 is an import, and imports go at the top of the file."></div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">Conventions</div>
+        <h2>Comments: keep the ones that say why</h2>
+        <p>PEP 8 makes two statements about comments that matter today. Comments that contradict the code are worse than
+        no comments, and inline comments are unnecessary and distracting if they state the obvious. This course draws one
+        working rule from those two: a comment records why the code is the way it is, and the code itself says what it
+        does. That wording is the course's own.</p>
+        <p>The ticket-record demo puts both kinds of comment on screen. The one above the constants stays:</p>
+<pre><code># Hours until a ticket breaches its SLA; the numbers come from the support
+# contract, so change them only when the contract changes.
+SLA_HOURS_HIGH = 4</code></pre>
+        <p>Nothing in the assignments can tell a reader that the numbers come from a support contract, or that the
+        contract is the only reason to change them, so the comment stays.</p>
+        <p>The second comment was <code># set the ticket id to 101</code>, typed above <code>ticket_id = 101</code> and
+        then deleted while you watched. It repeats the line below it, which is the "state the obvious" case. Its cost
+        arrives later: someone edits the value, forgets the comment, and the file now holds a comment that contradicts
+        the code. When you find a stale comment, fix it or delete it in the same commit as the code change.</p>
+        <div class="ix-predict" data-q="You change ticket_id = 101 to 102 and leave the line # set the ticket id to 101 above it. What does Python do when the file runs, and what does the next reader see?" data-a="Python ignores the comment, so the script runs and uses 102 with no warning. The reader sees a comment that contradicts the code, which PEP 8 calls worse than no comment."></div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">Mechanics</div>
+        <h2>Variables and datatypes: names bound to objects</h2>
+        <p>A Python variable is a name bound to an object. Nothing is declared, and the name has no type of its own.
+        <code>type()</code> reports the type of the object the name is bound to at that moment. The demo writes one
+        ticket as six flat variables:</p>
+<pre><code>ticket_id = 101
+title = "Login page returns 500"
+priority = "high"
+is_open = True
+hours_open = 5.5
+reporter = "Ada Lovelace"</code></pre>
+        <p>Those six lines hold four types: <code>int</code>, <code>str</code>, <code>float</code> and <code>bool</code>.
+        The trainer confirmed them with a temporary <code>print</code> of <code>type()</code> on four names and then
+        deleted the line, since a probe is not part of the program.</p>
+        <p>The ticket stays as six separate variables today, and <code>hours_open</code> is a number typed by hand.
+        Every later step reads these six names, so spell them exactly as shown.</p>
+        <p>The record prints with an f-string, a string literal prefixed with <code>f</code> whose braces hold
+        expressions that are evaluated when the line runs:</p>
+<pre><code>print(f"#{ticket_id} {title} [{priority}] {hours_open}h, {reporter}")</code></pre>
+        <p>Running <code>python ticket_desk.py</code> prints <code>#101 Login page returns 500 [high] 5.5h, Ada
+        Lovelace</code>. The leading <code>#</code> sits inside the string, so Python reads it as text.</p>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="3">
+        <div class="tag">Pitfall</div>
+        <h2>Operators: say the output before you run it</h2>
+        <p>You know the operators. The ticket-rules demo spends its time on the cases where a confident guess is wrong,
+        so say the output aloud before each line runs.</p>
+        <p>Start with division. <code>/</code> is true division and always returns a float, <code>//</code> is floor
+        division and <code>%</code> is the remainder. With <code>hours_open</code> at 5.5,
+        <code>hours_open / 24</code> is <code>0.22916666666666666</code> and <code>hours_open // 24</code> is
+        <code>0.0</code>, a float again because one operand is a float. <code>SLA_HOURS_HIGH - hours_open</code> gives
+        <code>-1.5</code>, which means the deadline has passed. For an every-third-ticket rule,
+        <code>ticket_id % 3 == 0</code> is false for ticket 101 because <code>101 % 3</code> is 2.</p>
+        <button class="code-cta" type="button" data-modal="code-w01d3-rules"><span class="cc-ico">&lt;/&gt;</span> See the ticket rules as typed <span class="cc-meta">· ticket-rules answer key</span></button>
+        <p>Comparisons bind tighter than <code>and</code>, so <code>is_breached = is_open and hours_left &lt; 0</code>
+        needs no parentheses. Comparisons can also be chained: <code>0 &lt;= hours_open &lt; 24</code> means
+        <code>0 &lt;= hours_open and hours_open &lt; 24</code>. <code>in</code> tests membership and returns a bool. For
+        two strings it is a substring test, so <code>"Login" in title</code> is true, while a lowercase
+        <code>"login"</code> would not be found.</p>
+        <p><code>and</code> and <code>or</code> short-circuit: they stop as soon as the result is known, and they return
+        one of their operands. <code>not</code> always returns <code>True</code> or <code>False</code>.</p>
+        <div class="ix-predict" data-q="With probe = &quot;low&quot;, what does print(probe == &quot;high&quot; or &quot;normal&quot;) print?" data-a="normal. The expression parses as (probe == &quot;high&quot;) or &quot;normal&quot;. The comparison is False, so or returns its right operand, the string &quot;normal&quot;, which is truthy because it is non-empty. Used as a check, it passes for every ticket."></div>
+        <p>The check has to be written as three full comparisons:</p>
+<pre><code>priority_ok = priority == "high" or priority == "normal" or priority == "low"</code></pre>
+        <p>Watch the <code>=</code> key while you type it. If the first <code>==</code> on that line becomes
+        <code>=</code>, Python raises nothing: the line is a legal assignment to two names, and <code>priority</code> is
+        rebound to <code>"high"</code>.</p>
+        <p>Four more results to predict. <code>hours_open += 0.5</code> is an augmented assignment: it evaluates the
+        target once, applies the operator and rebinds the name, so 5.5 becomes 6.0, while <code>hours_left</code> keeps
+        the value computed earlier. <code>-2 ** 2</code> is <code>-4</code>, because <code>**</code> binds tighter than a
+        unary minus on its left; write <code>(-2) ** 2</code> for the square of minus two. <code>round(2.5)</code> is 2
+        and <code>round(3.5)</code> is 4, because <code>round()</code> sends a tie to the even neighbour.
+        <code>round(2.675, 2)</code> is 2.67 for a separate reason: most decimal fractions cannot be stored exactly as a
+        binary float, and the value actually stored is slightly below 2.675.</p>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">Mechanics</div>
+        <h2>User input and output: a prompt, a board and two streams</h2>
+        <p><code>input(prompt)</code> writes the prompt, reads one line from standard input, strips the trailing newline
+        and always returns a <code>str</code>. Type 3 and you get the text <code>"3"</code>. Today's intake reads a title
+        and a priority as text; turning typed text into numbers is Thursday's topic.</p>
+        <p>A script that calls <code>input()</code> unconditionally breaks as soon as nobody is typing. With an empty
+        standard input it raises <code>EOFError: EOF when reading a line</code>, and under pytest's default capture it
+        raises <code>OSError: pytest: reading from stdin while output is captured</code>. The desk-intake demo avoids
+        both with a guard under the ticket variables, and with <code>import sys</code> at the top of the file:</p>
+<pre><code>if sys.stdin.isatty():
+    title = input("Title: ")
+    priority = input("Priority (high, normal, low): ")</code></pre>
+        <p><code>sys.stdin.isatty()</code> is true when standard input is a character device such as an interactive
+        terminal, and false when it is a pipe or a regular file. At a terminal the two assignments replace the sample
+        values, and anywhere else the sample ticket stays. This is the only <code>if</code> of the day. You know the
+        statement from coursework, and Friday comes back to <code>if</code> as a design choice.</p>
+        <p>Test both paths. The second command feeds an empty line through a pipe, and it works the same in PowerShell,
+        cmd and Git Bash:</p>
+<pre><code>python ticket_desk.py
+echo "" | python ticket_desk.py</code></pre>
+        <p>Avoid redirecting from the null device for the second test. On Windows it also reports a terminal, so the
+        guard is entered and <code>input()</code> crashes.</p>
+        <p>On the output side, <code>print()</code> takes <code>sep</code>, <code>end</code>, <code>file</code> and
+        <code>flush</code> keyword arguments. <code>sep</code> goes between the values and is a space by default.
+        <code>end</code> goes after the last one and is a newline by default. The board's columns come from the format
+        spec an f-string accepts after a colon: <code>&lt;</code> aligns left, <code>&gt;</code> aligns right, a number
+        sets the width and <code>.1f</code> gives one decimal place. So <code>{title:&lt;30}</code> pads the title to 30
+        columns and <code>{hours_open:&gt;6.1f}</code> right-aligns the float in 6.</p>
+        <button class="code-cta" type="button" data-modal="code-w01d3-board"><span class="cc-ico">&lt;/&gt;</span> See the board and the warning line <span class="cc-meta">· desk-intake answer key</span></button>
+        <p>Every process gets three standard streams: stdin for input, stdout for normal output and stderr for warnings
+        and errors. <code>print(..., file=sys.stderr)</code> sends a line to the error stream. At a terminal the two
+        output streams look alike. Adding <code>2&gt; err.txt</code> to the command splits them: the board stays on
+        screen and the warning goes to the file.</p>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
+        <div class="tag">Practice</div>
+        <h2>The merge, the exercise, and what to carry forward</h2>
+        <p>The day's work is three commits on <code>feature/ticket-record</code>, one for each demo. The desk-intake demo
+        closes by bringing them into <code>main</code>:</p>
+<pre><code>git switch main
+git merge feature/ticket-record
+git log --oneline</code></pre>
+        <p><code>main</code> had no new commits of its own, so this is the fast-forward you met on Tuesday: the pointer
+        moves and no merge commit is created. The log shows three imperative messages on top of Tuesday's history. If the
+        merge answers "Already up to date", you are still on the feature branch and need <code>git switch main</code>
+        first. Nothing is pushed today.</p>
+        <p>Today's exercise is a module that you write to PEP 8 and pytest checks: a ticket summary line built from given
+        variables, using the day's operators and f-string formats. pytest runs your code with nobody at the keyboard, so
+        an <code>input()</code> call without the guard fails there. Before you commit, read the file once as a reviewer
+        would, checking the names and asking of each comment whether it says why.</p>
+        <p>Four things to keep from today. Reviewers apply PEP 8 to your code. A comment that restates the code will
+        eventually contradict it. Because <code>or</code> returns an operand, each comparison needs writing out in full.
+        <code>input()</code> always returns a string and belongs behind the <code>isatty()</code> guard. Thursday
+        assumes <code>ticket_desk.py</code> is merged into <code>main</code> and goes deep on data types, starting from
+        this file.</p>
+      </section>
+
+      <section class="reading-sources" aria-label="Sources and deeper dive">
+        <h2>Sources &amp; deeper dive</h2>
+        <ul>
+          <li><a href="https://peps.python.org/pep-0008/" target="_blank" rel="noopener">PEP 8 – Style Guide for Python Code</a> — names, blank lines, line length, imports and the section on comments.</li>
+          <li><a href="https://peps.python.org/pep-0257/" target="_blank" rel="noopener">PEP 257 – Docstring Conventions</a> — what a module docstring is and how to write one.</li>
+          <li><a href="https://docs.python.org/3/tutorial/introduction.html" target="_blank" rel="noopener">Python tutorial — An Informal Introduction to Python</a> — names bound to objects, <code>/</code> against <code>//</code>, and <code>**</code> with a unary minus.</li>
+          <li><a href="https://docs.python.org/3/reference/expressions.html" target="_blank" rel="noopener">Python reference — Expressions</a> — chained comparisons, membership tests and what <code>and</code>, <code>or</code> and <code>not</code> return.</li>
+          <li><a href="https://docs.python.org/3/reference/simple_stmts.html#augmented-assignment-statements" target="_blank" rel="noopener">Python reference — Augmented assignment statements</a> — how <code>+=</code> evaluates and rebinds.</li>
+          <li><a href="https://docs.python.org/3/library/functions.html" target="_blank" rel="noopener">Python library — Built-in functions</a> — <code>print</code>, <code>input</code>, <code>round</code> and <code>type</code>.</li>
+          <li><a href="https://docs.python.org/3/library/string.html#format-specification-mini-language" target="_blank" rel="noopener">Format Specification Mini-Language</a> — alignment, width and precision in an f-string.</li>
+          <li><a href="https://docs.python.org/3/library/sys.html" target="_blank" rel="noopener">Python library — sys</a> — <code>sys.stdin</code> and <code>sys.stderr</code>.</li>
+          <li><a href="https://docs.python.org/3/library/io.html" target="_blank" rel="noopener">Python library — io</a> — <code>isatty()</code> and when it is true.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+        <div class="activity-card demo-card" data-demo="pending">
+          <div class="ac-k">⌨ Code-along files</div>
+          <div class="ac-t">Published after class</div>
+          <div class="ac-meta">typed live in the session · the answer key lands in demos/ afterwards</div>
+        </div>
+
+        <button class="activity-card" type="button" data-modal="deep-modal">
+          <div class="ac-k">⌖ Deep dive</div>
+          <div class="ac-t">Running a script with nobody at the keyboard</div>
+          <div class="ac-meta">optional · +5 min</div>
+        </button>
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · practice, not graded</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 1 Day 3</footer>
+
+<!-- deep-dive modal (optional) -->
+<div id="deep-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Deep dive: running a script with nobody at the keyboard</h2>
+    <p class="quiz-sub">Optional. ~5 minutes.</p>
+    <p>pytest runs your code with nobody typing, and so does anything that pipes input into your script. An unguarded
+    <code>input()</code> fails in two ways there. When standard input is at end of file it raises <code>EOFError: EOF
+    when reading a line</code>. Under pytest's default capture it raises <code>OSError: pytest: reading from stdin while
+    output is captured</code>. The guard asks one question first: <code>sys.stdin.isatty()</code> is true when standard
+    input is a character device such as an interactive terminal, and false when it is a pipe or a regular file.</p>
+    <p>Windows has one exception that matters when you test the unattended path. The NUL device, which is the null device
+    in every shell there including Git Bash, also reports true. A run redirected from it enters the guard and crashes on
+    <code>input()</code>. Use a pipe: <code>echo "" | python ticket_desk.py</code> works in PowerShell, cmd and Git Bash
+    and gives <code>isatty() == False</code>. In cmd or Git Bash a redirect from a real file,
+    <code>python ticket_desk.py &lt; sample.txt</code>, is the only safe redirect.</p>
+    <p>The output side has its own check. Add <code>2&gt; err.txt</code> to the command and stream number 2, stderr, goes
+    to the file. The board stays on screen because it was written to stdout, and the line printed with
+    <code>file=sys.stderr</code> is the only thing in <code>err.txt</code> that Python wrote.</p>
+  </div>
+</div>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 3 — goals &amp; exercise</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Lay out a module in PEP 8 shape: docstring first, imports at the top, UPPER_CASE constants, snake_case variables and lines within 79 columns</li>
+      <li>Decide which comments stay by asking whether each one records a reason the code cannot show</li>
+      <li>Describe a variable as a name bound to an object and say what <code>type()</code> reports about it</li>
+      <li>Predict what <code>/</code>, <code>//</code>, <code>%</code>, <code>**</code>, a chained comparison, <code>and</code>, <code>or</code>, <code>not</code> and <code>in</code> evaluate to, including the <code>== "high" or "normal"</code> pitfall</li>
+      <li>Read text with <code>input()</code> behind an <code>isatty()</code> guard, format output with <code>sep</code>, <code>end</code> and f-string specs, and send a warning to stderr</li>
+    </ul>
+    <div class="ma-k">Today's exercise</div>
+    <ul class="deliv-list check">
+      <li><a href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-01/day-3-python-basics" target="_blank" rel="noopener">exercises/week-01/day-3-python-basics</a> — a pytest-checked module you write to PEP 8: a ticket summary line from given variables, with the operators and the f-string formats of the day.</li>
+    </ul>
+    <div class="ma-k">Demos today</div>
+    <ul class="deliv-list">
+      <li>Demo 1 — start ticket_desk.py on a feature branch in PEP 8 shape (docstring, UPPER_CASE constants, snake_case variables), decide which comments to keep, and print one ticket record with an f-string</li>
+      <li>Demo 2 — compute a ticket's age, time left and breach flag with arithmetic, comparison and boolean operators, and predict what each one prints, including the <code>or</code> pitfall</li>
+      <li>Demo 3 — read a title and a priority from the prompt when a person is at the terminal, print an aligned board with print options and f-string formats, send a warning to the error stream, and merge the feature branch into main</li>
+    </ul>
+    <p class="goals-foot">Thursday assumes today's file is merged into main. Finish the check to unlock the next page.</p>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Day 4 — Python data types →", href: "day-4-python-data-types.html" };
+window.DIAGRAM = {
+  title: "Day 3 · one file, written to the team's contract",
+  width: 500, height: 420,
+  nodes: [
+    { id:"pep8", step:0, kind:"example", x:14, y:14, w:472, h:50, label:"ticket_desk.py IN PEP 8 SHAPE\n  docstring · imports · UPPER_CASE · snake_case", detail:"Module docstring first, imports at the top, UPPER_CASE constants, snake_case variables, four-space indents, lines of at most 79 characters. Python enforces none of it; reviewers do." },
+    { id:"comments", step:1, x:24, y:90, w:200, h:48, label:"Comments\n  keep the why, drop the what", detail:"The SLA comment records where the numbers come from, so it stays. '# set the ticket id to 101' restates the next line and was deleted." },
+    { id:"vars", step:2, x:276, y:90, w:200, h:48, label:"Six ticket variables\n  int · str · float · bool", detail:"ticket_id, title, priority, is_open, hours_open, reporter. Each is a name bound to an object; type() reports the object's type." },
+    { id:"ops", step:3, x:24, y:170, w:200, h:56, label:"Operators\n  / // % ** · and or not in\n  is_breached · priority_ok", detail:"/ always gives a float, // floors, -2 ** 2 is -4, round(2.5) is 2. or returns an operand, so priority == \"high\" or \"normal\" is always truthy." },
+    { id:"intake", step:4, x:276, y:170, w:200, h:56, label:"Intake\n  if sys.stdin.isatty():\n  input() returns str", detail:"At a terminal the guard reads title and priority. Through a pipe isatty() is false and the sample ticket stays." },
+    { id:"board", step:4, x:24, y:258, w:200, h:56, label:"stdout: the board\n  sep · end\n  aligned f-string columns", detail:"sep goes between values and end after the last. In an f-string, :<30 pads left-aligned to 30 columns and :>6.1f right-aligns a float with one decimal." },
+    { id:"warn", step:4, x:276, y:258, w:200, h:56, label:"stderr: the warning\n  file=sys.stderr\n  2> err.txt splits it off", detail:"print(..., file=sys.stderr) writes to the error stream. Redirecting stream 2 sends only that line to a file." },
+    { id:"main", step:5, x:24, y:346, w:452, h:50, label:"MERGE INTO main, THEN THE EXERCISE\n  fast-forward · three commits · a module pytest checks" }
+  ],
+  edges: [
+    { id:"e1", step:2, from:"comments", to:"vars", label:"then the ticket" },
+    { id:"e2", step:3, from:"vars", to:"ops", label:"computed from" },
+    { id:"e3", step:4, from:"intake", to:"vars", label:"replaces title, priority" },
+    { id:"e4", step:4, from:"ops", to:"board", label:"hours_open" },
+    { id:"e5", step:4, from:"ops", to:"warn", label:"is_breached" },
+    { id:"e6", step:5, from:"board", to:"main", dir:"-" },
+    { id:"e7", step:5, from:"warn", to:"main", dir:"-" }
+  ],
+  captions: [
+    "The file starts in PEP 8 shape: a docstring, then constants in capitals, with every name in the team's style. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "One comment stays because it records a reason. The other restated the code and was deleted.",
+    "One ticket as six flat variables, four types between them. Each name is bound to an object.",
+    "Operators compute the ticket's age, hours left, breach flag and priority check from those variables.",
+    "Input arrives through a guard and replaces two of the variables. Output splits into the board on stdout and a warning on stderr.",
+    "Three commits fast-forward into main, and the exercise asks for a module written to the same contract."
+  ]
+};
+window.QUIZ = {
+  id: "w01-d3",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "A reviewer comments on the line slaHoursHigh = 4, a module-level value that never changes. Which rename does PEP 8 ask for?",
+      options: ["sla_hours_high", "SLA_HOURS_HIGH", "SlaHoursHigh", "slahourshigh"], answer: 1,
+      explain: "Constants are written in UPPER_CASE. snake_case is for variables and functions. Python will still let you reassign the name, so the capitals are a signal to the reader." },
+    { type: "tf", stem: "type(hours_open) reports the type that was declared for the name hours_open.", answer: false,
+      explain: "Nothing is declared. A variable is a name bound to an object, and type() reports the type of the object currently bound, here a float." },
+    { type: "scq", stem: "With probe = \"low\", what does print(probe == \"high\" or \"normal\") print?",
+      options: ["True", "False", "normal", "It raises a TypeError"], answer: 2,
+      explain: "The expression parses as (probe == \"high\") or \"normal\". The comparison is False, so or returns its right operand, the string \"normal\". A non-empty string is truthy, so as a check it never fails." },
+    { type: "mcq", stem: "Which of these statements are true? Select all that apply.",
+      options: ["hours_open / 24 returns a float even when the division is exact", "-2 ** 2 evaluates to 4", "round(2.5) is 2 because a tie goes to the even neighbour", "round(2.675, 2) is 2.67 because of that same tie rule"], answer: [0, 2],
+      explain: "/ is true division and always returns a float. ** binds tighter than the unary minus on its left, so -2 ** 2 is -4. round(2.5) is 2 by the tie rule. round(2.675, 2) is 2.67 because 2.675 is stored as a binary float slightly below that value, which is a separate cause." },
+    { type: "match", stem: "Match each piece of input and output code to what it does.",
+      pairs: [
+        { l: "input(prompt)", r: "reads one line and always returns a str" },
+        { l: "sep", r: "what print puts between its values" },
+        { l: "end", r: "what print puts after the last value" },
+        { l: "file=sys.stderr", r: "sends the printed line to the error stream" },
+        { l: ":>6.1f", r: "right-aligns a float in six columns with one decimal" }
+      ],
+      explain: "input() returns text whatever you type. sep defaults to a space and end to a newline. file=sys.stderr moves a line off stdout. In an f-string format spec, > aligns right, 6 is the width and .1f the precision." },
+    { type: "open", stem: "In one or two sentences: why did the SLA comment above the constants stay in the file while # set the ticket id to 101 was deleted?",
+      hint: "Ask what each comment tells you that the line below it does not.",
+      model: "The SLA comment records a reason the code cannot show: the numbers come from the support contract and change only when it does. The other comment restated the assignment below it, which PEP 8 calls distracting, and it would contradict the code as soon as someone changed the value." }
+  ]
+};
+</script>
+
+<!-- code popup: an excerpt of the ticket-rules answer key -->
+<div id="code-w01d3-rules" class="modal-overlay" hidden>
+  <div class="modal-card code-modal">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Excerpt: the ticket rules</h2>
+    <p class="cv-cap">The arithmetic, comparison and boolean lines from the ticket-rules demo, as they stand after the or pitfall was deleted.</p>
+    <div class="cv" data-file="02_ticket_rules.py" data-lang="python"><pre class="cv-raw">age_days = hours_open // 24
+print(f&quot;exact days: {hours_open / 24}, whole days: {age_days}&quot;)
+hours_left = SLA_HOURS_HIGH - hours_open
+is_breached = is_open and hours_left &lt; 0
+print(f&quot;hours left: {hours_left}, breached: {is_breached}&quot;)
+
+priority_ok = priority == &quot;high&quot; or priority == &quot;normal&quot; or priority == &quot;low&quot;
+print(f&quot;priority ok: {priority_ok}&quot;)
+print(f&quot;under a day old: {0 &lt;= hours_open &lt; 24}&quot;)
+print(f&quot;still on time: {not is_breached}&quot;)
+mentions_login = &quot;Login&quot; in title
+print(f&quot;mentions login: {mentions_login}&quot;)</pre></div>
+    <p class="cv-foot">For the sample ticket these lines print 0.22916666666666666 and 0.0, then -1.5 and True, then True, True, False and True.</p>
+  </div>
+</div>
+
+<!-- code popup: an excerpt of the desk-intake answer key -->
+<div id="code-w01d3-board" class="modal-overlay" hidden>
+  <div class="modal-card code-modal">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Excerpt: the board and the warning line</h2>
+    <p class="cv-cap">The last four lines of the desk-intake demo: print options, a header and a row with matching widths, and one line sent to stderr.</p>
+    <div class="cv" data-file="03_desk_intake.py" data-lang="python"><pre class="cv-raw">print(&quot;Ticket&quot;, &quot;desk&quot;, &quot;board&quot;, sep=&quot;-&quot;, end=&quot; ready\n&quot;)
+print(f&quot;{'Title':&lt;30}{'Priority':&gt;8}{'Hours':&gt;6}&quot;)
+print(f&quot;{title:&lt;30}{priority:&gt;8}{hours_open:&gt;6.1f}&quot;)
+print(f&quot;warning: ticket {ticket_id} breached={is_breached}&quot;, file=sys.stderr)</pre></div>
+    <p class="cv-foot">The first line prints Ticket-desk-board ready. The row shows 6.0 hours because the earlier += 0.5 had already run.</p>
+  </div>
+</div>
+
+<script src="../../assets/js/diagram.js?v=20261011"></script>
+<script src="../../assets/js/scrolly.js?v=20261011"></script>
+<script src="../../assets/js/modals.js?v=20261011"></script>
+<script src="../../assets/js/quiz.js?v=20261012"></script>
+<script src="../../assets/js/widgets.js?v=20261012"></script>
+<script src="../../assets/js/glossary.js?v=20261012"></script>
+<script src="../../assets/js/codeviewer.js?v=20261011"></script>
+</body>
+</html>

@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w01d4">
+<title>W1·D4 — Python data types | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261012">
+<script src="../../assets/js/theme.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises" target="_blank" rel="noopener">Exercises</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>Python data types: the idioms a team expects and the pitfalls a review catches</h1>
+        <div class="meta">
+          <span><b>Week 1</b> · Day 4</span>
+          <span>Thu Oct 15, 2026</span>
+          <span>Agile for developers, Git &amp; Python fundamentals</span>
+          <span><b>~11 min</b> · notes @150 wpm + diagram + check</span>
+        </div>
+        <p class="summary">This page assumes Wednesday's work: the PEP 8 conventions, the ticket desk file with its flat
+        variables and three SLA constants, and the intake lines that read a title and a priority at the prompt. You know
+        every type on today's list from coursework, so the page covers the idioms a reviewer expects and the
+        mistakes that get past a first read. The four demos grow the same file, the trainer types each one live, and
+        this page is the reference for what you watched.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="0">
+        <div class="tag">Text</div>
+        <h2>Strings: every method hands back a new string</h2>
+        <p>Strings are immutable. <code>.strip()</code>, <code>.lower()</code> and <code>.replace()</code> each return a
+        new string and leave the original alone, so a line that calls <code>title.upper()</code> and does nothing with
+        the result changes nothing. Assign the result back to the name when you want to keep it.</p>
+        <p>Typed text arrives with stray spaces and capitals, and Wednesday's intake used it as typed. The
+        ticket-text demo normalises both fields once, directly after the input guard, so every later line sees clean
+        text:</p>
+<pre><code>title = title.strip()
+priority = priority.strip().lower()</code></pre>
+        <p>The chain reads left to right, so a priority typed with capitals and spaces around it becomes
+        <code>"high"</code>.</p>
+        <p><code>title[:40]</code> runs from the start up to index 40 without including it, and a stop past the end is
+        fine, so a short title comes back whole. Negative indexes count from the end, which makes
+        <code>title[-3:]</code> the last three characters. <code>len</code> counts the characters,
+        <code>.startswith()</code> answers with a bool, and <code>in</code> tests for a substring anywhere in the
+        text.</p>
+        <div class="ix-spot" data-snippet="title = &quot;  Login page returns 500  &quot;&#10;title.strip()&#10;print(len(title))" data-q="The author expected 22. What prints, and why?" data-a="26. strip() returned a new 22-character string and the second line threw it away, so title still carries its four spaces. Write title = title.strip()."></div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">Pitfall</div>
+        <h2>Casting typed text, and what bool really tests</h2>
+        <p><code>input()</code> always returns text. The ticket-text demo keeps the typed text in one variable and casts
+        it on the next line, inside the same guard Wednesday wrote:</p>
+<pre><code>ticket_id_text = input("Ticket id: ")
+ticket_id = int(ticket_id_text)</code></pre>
+        <p>With the cast on its own line, a typed <code>abc</code> gives a traceback that points straight at it, and
+        the program stops with a <code>ValueError</code>.</p>
+        <p>On text, <code>int</code> accepts only whole-number text, so <code>int("3.5")</code> raises that same error
+        even though <code>float("3.5")</code> works. On a float it truncates toward zero, so <code>int(3.9)</code> is
+        3. Use <code>round</code> when you mean rounding. <code>str(ticket_id)</code> goes the other way, which you
+        need before joining a number to a string with <code>+</code>.</p>
+        <p><code>bool(x)</code> follows truthiness. Empty sequences, zero, <code>None</code> and <code>False</code> are
+        false, and nearly everything else is true. That includes every non-empty string, whatever it says.</p>
+        <div class="ix-predict" data-q="What do bool(&quot;False&quot;), bool(&quot;&quot;) and bool(0) print?" data-a="True, False, False. &quot;False&quot; is a non-empty string, so it is truthy. This is why a typed yes or no is compared as text (answer == &quot;yes&quot;): casting it with bool() would call &quot;no&quot; true."></div>
+        <p>A related mistake is comparing with <code>== True</code>. A non-empty title is truthy, yet that comparison
+        gives <code>False</code> for it, because <code>==</code> compares values and a string never equals
+        <code>True</code>. Test the value itself. The demo keeps one truthiness line, <code>is_open and title</code>,
+        which prints the title because <code>and</code> returns one of its operands.</p>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">Collections</div>
+        <h2>A queue of tuples that sorts itself</h2>
+        <p>A tuple is immutable, which suits a record nobody should edit by accident. The ticket-queue demo holds three
+        tickets as a list of tuples, each one a rank, a ticket id and a title. They are appended out of order and each
+        is printed by its own line, which Friday's loop replaces.</p>
+        <p>Tuples compare element by element, left to right. Rank comes first, so <code>sorted(queue)</code> puts rank 1
+        at the front, and when two ranks tie the ticket id decides. Lay a tuple out so its natural order is the order
+        you want and no sort key is needed.</p>
+        <p><code>sorted()</code> returns a new list and leaves the original alone. <code>queue.sort()</code> sorts in
+        place and returns <code>None</code>.</p>
+        <div class="ix-spot" data-snippet="queue = [(2, 103), (1, 101)]&#10;queue = queue.sort()&#10;print(queue[0])" data-q="The last line crashes. Why?" data-a="sort() sorted the list in place and returned None, and the second line bound queue to that None, so there is no list left to index. Call queue.sort() on a line of its own, or write queue = sorted(queue)."></div>
+        <button class="code-cta" type="button" data-modal="code-w01d4-queue"><span class="cc-ico">&lt;/&gt;</span> See the queue and its copy <span class="cc-meta">· ticket-queue excerpt</span></button>
+        <p>Assigning a list to a second name binds the same object. After <code>backup = queue</code>, appending through
+        either name changes both, and the demo prints both lengths as 4. <code>queue.copy()</code> makes a new list,
+        and they print as 3 and 4. The copy is shallow, meaning the items inside are shared, so a copied list of lists
+        still shares its inner lists.</p>
+        <p>The comma is what makes a tuple. <code>(1)</code> is the number 1 in parentheses and <code>(1,)</code> is a
+        one-element tuple. <code>range(1, 4)</code> gives 1, 2 and 3, because the stop value is excluded as it is in a
+        slice. A range is an immutable sequence that computes its items on demand, so wrap it in <code>list()</code>
+        to see the numbers.</p>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="3">
+        <div class="tag">Collections</div>
+        <h2>Sets for membership, bytes for files and APIs</h2>
+        <p>A set holds each value once and has no order. The literal in the ticket-queue demo names dana twice and the
+        set keeps one, and <code>.add()</code> with a name already there changes nothing. Print
+        <code>sorted(reporters)</code> when you want the same output on every run.</p>
+        <p><code>in</code> asks whether a value is a member. <code>&amp;</code> gives the intersection, the names in
+        both sets, and <code>-</code> gives the difference, the names only in the left one.</p>
+        <p>Set elements must be hashable, which means the object has a fixed hash for its lifetime. Strings, numbers and
+        tuples qualify and a list does not. Dictionary keys follow the same rule. <code>{}</code> is an empty dict, so
+        an empty set is written <code>set()</code>.</p>
+        <p>Text is <code>str</code>. Files and APIs carry <code>bytes</code>, an immutable sequence of integers from 0
+        to 255. <code>.encode()</code> turns a string into bytes, UTF-8 by default, and <code>.decode()</code> reverses
+        it. The ticket-dict demo opens with that round trip on the ticket title.</p>
+        <p><code>len</code> counts code points for a string and bytes for a bytes object, so the two can disagree.</p>
+        <div class="ix-predict" data-q="What do len(&quot;café&quot;) and len(&quot;café&quot;.encode()) print?" data-a="4 and 5. The string has four characters, and é takes two bytes in UTF-8. The two types do not mix either: adding a str to bytes raises TypeError, so decode the bytes or encode the text first."></div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">Modelling</div>
+        <h2>None for "not yet", and the ticket as a dict</h2>
+        <p><code>None</code> is the only value of <code>NoneType</code>, and it means no value: the ticket exists and
+        nobody has been assigned. An empty string or a zero would say something different. Test for it with
+        <code>is None</code>, which asks whether this is the one such object. Other types can override
+        <code>==</code>, and reviewers flag that form.</p>
+        <p>A dict maps keys to values. The ticket-dict demo replaces Wednesday's three SLA constants with one table and
+        rewrites the line that used them:</p>
+<pre><code>SLA_HOURS = {"high": 4, "normal": 24, "low": 72}
+hours_left = SLA_HOURS[priority] - hours_open</code></pre>
+        <p>Adding a priority is now one entry in the table. The change also fixes a bug. Wednesday's line always
+        subtracted from the high-priority constant, so a ticket typed as low was measured against 4 hours, and with
+        the lookup it gets 72. The lookup works because the priority was stripped and lower-cased first.</p>
+        <p>The ticket itself becomes a dict of five fields. Its <code>assignee</code> starts as <code>None</code> and
+        its <code>history</code> as an empty list. <code>ticket["owner"]</code> raises <code>KeyError</code> because the
+        key is absent, and <code>ticket.get("owner", "unassigned")</code> returns the default instead. Use square
+        brackets for keys that must exist and <code>.get</code> for optional ones.</p>
+        <p><code>in</code> on a dict tests keys. Dicts keep insertion order, so <code>list(ticket.items())</code> gives
+        the key and value pairs as tuples in the order the fields were written. The demo's last line builds
+        <code>tickets_by_id</code>, a dict from each id to its ticket, so a ticket is found by id without scanning a
+        list.</p>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
+        <div class="tag">Numbers &amp; time</div>
+        <h2>Floats that almost match, and hours that come from a clock</h2>
+        <p>Binary floating point cannot represent 0.1 exactly, so adding 0.1 and 0.2 gives
+        <code>0.30000000000000004</code>, and comparing that to 0.3 with <code>==</code> gives <code>False</code>.
+        Compare floats by rounding to the precision you care about, or by checking that the difference is tiny:</p>
+<pre><code>round(0.1 + 0.2, 2) == 0.3
+abs((0.1 + 0.2) - 0.3) &lt; 1e-9</code></pre>
+        <p><code>/</code> is true division and <code>//</code> is floor division, so 10 divided by 4 is 2.5 with the
+        first and 2 with the second. <code>divmod</code> returns the quotient and the remainder together as a tuple.
+        A long literal can use <code>_</code> as a separator, as in <code>1_000_000</code>.</p>
+        <p>Until this point <code>hours_open</code> was a float someone typed. The ticket-clock demo computes it from two
+        datetimes:</p>
+<pre><code>opened_at = datetime(2026, 10, 15, 9, 30)
+NOW = datetime(2026, 10, 15, 14, 0)
+age = NOW - opened_at
+hours_open = age.total_seconds() / 3600</code></pre>
+        <p>Subtracting two datetimes gives a <code>timedelta</code>. <code>total_seconds()</code> converts it to a
+        float, and dividing by 3600 gives 4.5 hours. <code>NOW</code> is pinned because <code>datetime.now()</code>
+        returns a different value on every run, and a rule built on it cannot be checked. These are naive datetimes,
+        meaning they carry no time zone. Zones arrive in week 2.</p>
+        <div class="ix-predict" data-q="The sample ticket is high priority, opened at 09:30, and NOW is 14:00. What does hours_left print?" data-a="-0.5. hours_open is 4.5 and SLA_HOURS[&quot;high&quot;] is 4, so the ticket is half an hour past its SLA and is_breached stays True."></div>
+        <p>Adding a <code>timedelta</code> to a datetime gives another datetime, which is how the deadline is built from
+        the SLA table. The sample ticket opened at 09:30 with a 4-hour SLA, so its deadline is 13:30, and the pinned
+        clock is already past it. <code>.isoformat()</code> writes the deadline as <code>2026-10-15T13:30:00</code>,
+        and <code>.strftime()</code> formats it by a pattern you supply.</p>
+        <button class="code-cta" type="button" data-modal="code-w01d4-deadline"><span class="cc-ico">&lt;/&gt;</span> See the deadline lines <span class="cc-meta">· ticket-clock excerpt</span></button>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="6">
+        <div class="tag">Practice</div>
+        <h2>Namespaces, the merge, and what to carry forward</h2>
+        <p>A namespace is a mapping from names to objects. The top level of a file is one, and <code>dir()</code> lists
+        the names in it: your variables, the names you imported, and a few that Python adds itself. Every assignment
+        and every import binds a name, and a later binding replaces an earlier one.</p>
+        <p>The ticket-clock demo types a common import mistake and then deletes it:</p>
+<pre><code>from datetime import datetime
+import datetime
+print(datetime(2026, 10, 15))</code></pre>
+        <p>The first line binds the name <code>datetime</code> to the class. The second rebinds the same name to the
+        module, so the third fails with a <code>TypeError</code> saying that a module object is not callable. Keep one
+        import style per module, and do not reuse a standard-library name for a variable.</p>
+        <p><code>del</code> removes a name from the namespace, and the demo checks for <code>backup</code> in
+        <code>dir()</code> before and after. <code>__name__</code> is one of the names Python adds. It is
+        <code>"__main__"</code> when the file runs as a script.</p>
+        <p>The demo ends by merging the day's branch:</p>
+<pre><code>git switch main
+git merge feature/data-types</code></pre>
+        <p><code>main</code> has not moved since the branch started, so the merge is a fast-forward, and the log shows
+        the day's four commits, one per demo.</p>
+        <p>Today's exercise is a pytest-checked module with four jobs: normalise a ticket title, build the queue as
+        tuples, look up SLA hours from a dict, and compute a deadline with <code>timedelta</code>.</p>
+        <p>To remember from today: string methods return new strings; any non-empty string is truthy;
+        <code>.sort()</code> returns <code>None</code>; a second name for a list is the same list; <code>.get</code>
+        for optional keys and <code>is None</code> for missing values; no <code>==</code> on floats. Friday
+        assumes this file and asks when the repeated prints become a loop, when the inline deadline becomes a function,
+        and when the ticket dict becomes a class.</p>
+      </section>
+
+      <section class="reading-sources" aria-label="Sources and deeper dive">
+        <h2>Sources &amp; deeper dive</h2>
+        <ul>
+          <li><a href="https://docs.python.org/3/library/stdtypes.html" target="_blank" rel="noopener">Python 3.12 — Built-in Types</a> — strings, truth value testing, lists, tuples, ranges, sets, bytes, <code>None</code> and dicts in one reference.</li>
+          <li><a href="https://docs.python.org/3/library/functions.html" target="_blank" rel="noopener">Python 3.12 — Built-in Functions</a> — what <code>int</code>, <code>float</code>, <code>bool</code>, <code>round</code> and <code>sorted</code> accept and return.</li>
+          <li><a href="https://docs.python.org/3/tutorial/datastructures.html" target="_blank" rel="noopener">Python tutorial — Data Structures</a> — tuples and sequences, including the one-element tuple.</li>
+          <li><a href="https://docs.python.org/3/howto/sorting.html" target="_blank" rel="noopener">Sorting Techniques</a> — <code>sorted</code> against <code>list.sort</code>, and sorting tuples.</li>
+          <li><a href="https://docs.python.org/3/tutorial/floatingpoint.html" target="_blank" rel="noopener">Python tutorial — Floating-Point Arithmetic: Issues and Limitations</a> — why <code>0.1 + 0.2</code> is not <code>0.3</code>.</li>
+          <li><a href="https://docs.python.org/3/library/datetime.html" target="_blank" rel="noopener">datetime module</a> — <code>datetime</code>, <code>timedelta</code>, <code>isoformat</code> and the <code>strftime</code> codes.</li>
+          <li><a href="https://docs.python.org/3/tutorial/classes.html#python-scopes-and-namespaces" target="_blank" rel="noopener">Python tutorial — Scopes and Namespaces</a> — what a namespace is and how names are bound.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+        <div class="activity-card demo-card" data-demo="pending">
+          <div class="ac-k">⌨ Code-along files</div>
+          <div class="ac-t">Published after class</div>
+          <div class="ac-meta">typed live in the session · the answer key lands in demos/ afterwards</div>
+        </div>
+
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · practice, not graded</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 1 Day 4</footer>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 4 — goals &amp; exercise</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Normalise typed text with string methods and cast it to a number, predicting what <code>int</code> and <code>bool</code> do to common inputs</li>
+      <li>Hold several records as a list of tuples that sorts by tuple order, and avoid the <code>.sort()</code> and aliasing pitfalls</li>
+      <li>Choose a set for unique membership and a dict for lookup, with <code>.get</code> for optional keys and <code>is None</code> for missing values</li>
+      <li>Compare floats safely and compute an age and a deadline from <code>datetime</code> and <code>timedelta</code> values</li>
+      <li>Read a file's namespace with <code>dir()</code> and explain how a second import can rebind a name you already use</li>
+    </ul>
+    <div class="ma-k">Today's exercise</div>
+    <ul class="deliv-list check">
+      <li><a href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-01/day-4-python-data-types" target="_blank" rel="noopener">exercises/week-01/day-4-python-data-types</a> — a pytest-checked module: normalise a ticket title, build the queue as tuples, look up SLA hours from a dict, and compute a deadline with <code>timedelta</code>.</li>
+    </ul>
+    <div class="ma-k">Demos today</div>
+    <ul class="deliv-list">
+      <li>Demo 1 — clean typed ticket text with string methods, turn typed text into a number with int() and name what int and bool do to common inputs, and predict bool(x) for strings and numbers before running it</li>
+      <li>Demo 2 — hold several tickets as a list of (rank, ticket_id, title) tuples that sorts by tuple order, avoid the aliasing and .sort()-returns-None pitfalls, build ids from range, and track reporters as a set</li>
+      <li>Demo 3 — encode and decode a title as bytes, represent "not assigned yet" with None, and model a ticket as a dict whose SLA hours come from a lookup table, using .get for safe reads</li>
+      <li>Demo 4 — compare floats safely, compute a ticket's age and SLA deadline from datetime and timedelta values, inspect the module namespace, and merge the day's branch into main</li>
+    </ul>
+    <p class="goals-foot">Friday assumes today's file, merged into main. Finish the check to unlock the next page.</p>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Day 5 — Control flow, functions & classes →", href: "day-5-control-flow-functions-and-classes.html" };
+window.DIAGRAM = {
+  title: "Day 4 · one ticket file, type by type",
+  width: 500, height: 488,
+  nodes: [
+    { id:"text", step:0, kind:"example", x:14, y:14, w:472, h:50, label:"TYPED TEXT\n  title.strip() · priority.strip().lower()", detail:"String methods return new strings, so the result is assigned back to the name. Both fields are cleaned once, right after the input guard." },
+    { id:"cast", step:1, x:24, y:90, w:200, h:48, label:"int(ticket_id_text)\n  typed text → number", detail:"input() returns text. int(\"3.5\") raises ValueError; int(3.9) truncates to 3; str(ticket_id) goes back to text." },
+    { id:"truth", step:1, x:276, y:90, w:200, h:48, label:"bool(x)\n  \"\" · 0 · None → False", detail:"Empty sequences, zero, None and False are false. Every non-empty string is true, including \"False\". Do not compare with == True." },
+    { id:"queue", step:2, x:24, y:168, w:200, h:56, label:"queue · list of tuples\n  (rank, ticket_id, title)\n  sorted() by tuple order", detail:"Tuples compare element by element: rank, then id. sorted() returns a new list; .sort() returns None. backup = queue is one list with two names; queue.copy() is a shallow copy." },
+    { id:"reporters", step:3, x:276, y:168, w:200, h:56, label:"reporters · set\n  each name once\n  in · & · -", detail:"No order, no duplicates, members must be hashable. {} is an empty dict, so an empty set is set()." },
+    { id:"raw", step:3, x:276, y:254, w:200, h:56, label:"raw · bytes\n  title.encode(\"utf-8\")\n  raw.decode()", detail:"len counts code points for str and bytes for bytes: \"café\" is 4 characters and 5 bytes. bytes + str raises TypeError." },
+    { id:"ticket", step:4, x:24, y:254, w:200, h:56, label:"ticket · dict\n  assignee None · history []\n  SLA_HOURS[priority]", detail:"ticket[\"owner\"] raises KeyError; ticket.get(\"owner\", \"unassigned\") returns the default. Test assignee with is None. tickets_by_id maps each id to its ticket." },
+    { id:"clock", step:5, x:24, y:340, w:200, h:56, label:"opened_at · NOW\n  age → hours_open\n  deadline = opened_at + SLA", detail:"NOW - opened_at is a timedelta of 4:30:00; total_seconds() / 3600 gives 4.5. The deadline is opened_at plus timedelta(hours=SLA_HOURS[priority]). NOW is pinned so the output is the same on every run." },
+    { id:"ns", step:6, x:276, y:340, w:200, h:56, label:"the file's namespace\n  dir() · __name__\n  del backup", detail:"A namespace maps names to objects. A later import datetime rebinds a name bound by from datetime import datetime. __name__ is \"__main__\" when the file runs as a script." },
+    { id:"main", step:6, kind:"example", x:14, y:426, w:472, h:50, label:"MAIN AFTER THE MERGE\n  git merge feature/data-types · four commits, one per demo" }
+  ],
+  edges: [
+    { id:"e1", step:1, from:"text", to:"cast", label:"typed id" },
+    { id:"e2", step:1, from:"text", to:"truth", label:"is it empty?" },
+    { id:"e3", step:2, from:"cast", to:"queue", label:"id in each tuple" },
+    { id:"e4", step:3, from:"queue", to:"reporters", label:"who reported" },
+    { id:"e5", step:4, from:"queue", to:"ticket", label:"one record, named" },
+    { id:"e6", step:4, from:"ticket", to:"raw", label:"its title", dir:"-" },
+    { id:"e7", step:5, from:"ticket", to:"clock", label:"SLA hours" },
+    { id:"e8", step:6, from:"clock", to:"ns", label:"names bound" },
+    { id:"e9", step:6, from:"clock", to:"main", dir:"-" },
+    { id:"e10", step:6, from:"ns", to:"main", dir:"-" }
+  ],
+  captions: [
+    "Typed text is cleaned once with string methods, and each method returns a new string. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "The typed id is cast with int() on its own line, and bool() follows truthiness whatever a string happens to say.",
+    "Three tickets sit in a list of tuples, and sorted() orders them by rank and then id with no key.",
+    "Reporters go in a set, which keeps each name once; the title makes a round trip through bytes.",
+    "One ticket becomes a dict with None for the missing assignee, and its SLA hours come from a lookup table.",
+    "Two datetimes give the ticket's age, and adding the SLA as a timedelta gives its deadline.",
+    "Every line so far bound a name in the file's namespace; the day's branch then merges into main as four commits."
+  ]
+};
+window.QUIZ = {
+  id: "w01-d4",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "A file contains the line queue = queue.sort(). What is queue bound to afterwards?",
+      options: ["The same list, now sorted", "None", "A new sorted list, with the old one unchanged", "A tuple of the sorted items"], answer: 1,
+      explain: "list.sort() sorts in place and returns None, so the assignment replaces the list with None. Use sorted(queue) when you want a new list back." },
+    { type: "scq", stem: "queue holds three tuples. After backup = queue and one backup.append(...), what does print(len(queue), len(backup)) show?",
+      options: ["3 4", "4 4", "3 3", "4 3"], answer: 1,
+      explain: "Assignment binds a second name to the same list, so the append is visible through both names. queue.copy() would have given 3 4." },
+    { type: "tf", stem: "In Python, 0.1 + 0.2 == 0.3 evaluates to True.", answer: false,
+      explain: "Binary floating point cannot represent 0.1 exactly, so the sum is 0.30000000000000004. Round both sides or test that the absolute difference is below a small tolerance such as 1e-9." },
+    { type: "mcq", stem: "Which of these values are false when passed to bool()? Select all that apply.",
+      options: ["\"\" (an empty string)", "\"0\" (the text zero)", "0", "None"], answer: [0, 2, 3],
+      explain: "Empty sequences, zero and None are false. \"0\" is a non-empty string, so it is true, in the same way that \"False\" is." },
+    { type: "match", stem: "Match each expression to what it gives.",
+      pairs: [
+        { l: "int(\"3.5\")", r: "raises ValueError" },
+        { l: "int(3.9)", r: "3" },
+        { l: "ticket[\"owner\"] when the key is absent", r: "raises KeyError" },
+        { l: "ticket.get(\"owner\", \"unassigned\")", r: "\"unassigned\"" },
+        { l: "NOW - opened_at", r: "a timedelta" }
+      ],
+      explain: "int() of text accepts only whole-number text, and int() of a float truncates toward zero. Square brackets raise KeyError on a missing key while .get returns its default. Subtracting two datetimes gives a timedelta." },
+    { type: "open", stem: "In one or two sentences: why does the ticket-clock demo pin NOW to a fixed datetime, and how does hours_open come out of NOW and opened_at?",
+      hint: "Think about what datetime.now() prints on two different runs.",
+      model: "datetime.now() returns a different value on every run, so a breach rule built on it could not be checked; a pinned NOW gives the same output each time. NOW - opened_at is a timedelta, total_seconds() turns it into a float, and dividing by 3600 gives 4.5 hours." }
+  ]
+};
+</script>
+
+<!-- code popup: an excerpt of the ticket-queue answer key -->
+<div id="code-w01d4-queue" class="modal-overlay" hidden>
+  <div class="modal-card code-modal">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Excerpt: the queue of tuples and its copy</h2>
+    <p class="cv-cap">Steps 1 and 2 of the ticket-queue demo. Three tuples are appended out of order, printed one by one, sorted by tuple order, and then copied.</p>
+    <div class="cv" data-file="02_ticket_queue.py" data-lang="python"><pre class="cv-raw">queue = []
+queue.append((2, 103, &quot;Wi-Fi drops&quot;))
+queue.append((1, 101, &quot;Login page returns 500&quot;))
+queue.append((2, 102, &quot;Printer jams&quot;))
+print(queue[0])
+print(queue[1])
+print(queue[2])
+print(queue[-1])
+print(queue[1:])
+print(len(queue))
+print(sorted(queue))
+
+backup = queue.copy()
+backup.append((9, 999, &quot;oops&quot;))
+print(len(queue), len(backup))</pre></div>
+    <p class="cv-foot">sorted(queue) prints ticket 101 first, then 102, then 103: rank decides and the id breaks the tie. The last line prints 3 4 because backup is a copy.</p>
+  </div>
+</div>
+
+<!-- code popup: an excerpt of the ticket-clock answer key -->
+<div id="code-w01d4-deadline" class="modal-overlay" hidden>
+  <div class="modal-card code-modal">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Excerpt: the deadline from a timedelta</h2>
+    <p class="cv-cap">Step 2 of the ticket-clock demo. The age prints as a timedelta, and the deadline is the opening time plus the SLA hours from the table.</p>
+    <div class="cv" data-file="04_ticket_clock.py" data-lang="python"><pre class="cv-raw">print(age)
+deadline = opened_at + timedelta(hours=SLA_HOURS[priority])
+print(f&quot;opened {opened_at.isoformat()}, deadline {deadline.isoformat()}&quot;)
+print(f&quot;past deadline: {NOW &gt; deadline}&quot;)
+print(deadline.strftime(&quot;%a %H:%M&quot;))</pre></div>
+    <p class="cv-foot">For the sample ticket this prints 4:30:00, then the opening time and the 13:30 deadline in ISO form, then past deadline: True, then Thu 13:30.</p>
+  </div>
+</div>
+
+<script src="../../assets/js/diagram.js?v=20261011"></script>
+<script src="../../assets/js/scrolly.js?v=20261011"></script>
+<script src="../../assets/js/modals.js?v=20261011"></script>
+<script src="../../assets/js/quiz.js?v=20261012"></script>
+<script src="../../assets/js/widgets.js?v=20261012"></script>
+<script src="../../assets/js/glossary.js?v=20261012"></script>
+<script src="../../assets/js/codeviewer.js?v=20261011"></script>
+</body>
+</html>

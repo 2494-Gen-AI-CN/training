@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w01d5">
+<title>W1·D5 — Control flow, functions &amp; classes | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261012">
+<script src="../../assets/js/theme.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises" target="_blank" rel="noopener">Exercises</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>Control flow, functions &amp; classes: deciding where a rule lives</h1>
+        <div class="meta">
+          <span><b>Week 1</b> · Day 5</span>
+          <span>Fri Oct 16, 2026</span>
+          <span>Agile for developers, Git &amp; Python fundamentals</span>
+          <span><b>~11 min</b> · notes @150 wpm + diagram + check</span>
+        </div>
+        <p class="summary">This page assumes Thursday's work: the ticket is a dict, the queue is a list of tuples sorted by
+        tuple order, and the clock gives the ticket a deadline. You wrote <code>if</code> statements, loops, functions and
+        classes in coursework, so today treats them as design choices and asks one question of the ticket desk script:
+        where should this rule live? The trainer types four demos on one branch, <code>feature/design-choices</code>.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="0">
+        <div class="tag">Branching</div>
+        <h2>A three-word status replaces a boolean</h2>
+        <p>Thursday's breach flag was a boolean, which can only say yes or no. The board needs a third state, "at risk",
+        so the control-flow demo replaces the flag with a string named <code>status</code>. <code>if</code>,
+        <code>elif</code> and <code>else</code> pick exactly one branch: Python runs the first one whose test is true and
+        skips the rest, so the strictest test goes first.</p>
+<pre><code>if NOW &gt; deadline:
+    status = "breached"
+    print(f"warning: ticket {ticket_id} is past its deadline", file=sys.stderr)
+elif deadline - NOW &lt; timedelta(hours=2):
+    status = "at risk"
+else:
+    status = "on time"</code></pre>
+        <p>The warning to <code>sys.stderr</code> sits inside the breached branch, so it prints only for a breached ticket.
+        The sample ticket's deadline is 13:30 and <code>NOW</code> is 14:00, so the run prints
+        <code>status: breached</code>. The demo then pins <code>NOW</code> to 12:00 and to 09:00 so that the other two
+        branches run at least once.</p>
+        <div class="ix-predict" data-q="NOW is pinned to 12:00 and the deadline is still 13:30. Which status prints, and why does the else branch stay silent?" data-a="at risk. NOW is before the deadline, so the first test is false; ninety minutes is under two hours, so the elif runs. A chain runs exactly one branch, so the else is skipped."></div>
+        <p>A guard clause is an early <code>if</code> that handles a bad or special case and returns or continues at once,
+        so the main logic stays unnested below it. The demo first nests the checks in the queue loop, which puts the
+        <code>print</code> two levels deep, then flattens them. The flat version, shown in the next section, skips an empty
+        title and a rank above 2 first and leaves the <code>print</code> at the loop's own indentation. The output is the
+        same, and a reviewer who reaches the last line of the flat version knows every earlier condition has passed.</p>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">Loops</div>
+        <h2><code>for</code> walks a collection, <code>while</code> waits for a condition</h2>
+        <p><code>for</code> iterates over any iterable, one item per pass. Thursday printed the queue with one
+        <code>print</code> per tuple. One loop replaces those three lines, and a fourth ticket would need no new line. The
+        header unpacks each tuple into three names:</p>
+<pre><code>for rank, tid, text in sorted(queue):
+    if not text:
+        continue
+    if rank &gt; 2:
+        continue
+    print(f"#{tid} [{rank}] {text}")</code></pre>
+        <p><code>continue</code> ends the current pass and starts the next one. The same loop shape reads the ticket dict:
+        <code>for key, value in ticket.items()</code> prints one field per line.</p>
+        <p><code>while</code> re-tests its condition before each pass and stops once the condition is false, which suits a
+        prompt that may get any number of wrong answers. At intake the loop keeps asking until the cleaned priority is a key
+        of <code>SLA_HOURS</code>. <code>break</code> leaves the nearest enclosing loop at once. Here it is the exit for an
+        empty title, where the priority falls back to <code>normal</code>.</p>
+<pre><code>while priority.strip().lower() not in SLA_HOURS:
+    if not title.strip():
+        priority = "normal"
+        break
+    priority = input("Priority must be high, normal or low: ")</code></pre>
+        <p>The whole loop sits inside Wednesday's <code>if sys.stdin.isatty():</code> guard. A loop that waits for a keyboard
+        would hang a scheduled job, so when input is piped in, the guard is false, the loop is never reached and the sample
+        board prints.</p>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">Functions</div>
+        <h2>A function gives a rule one name</h2>
+        <p>Write a function when the same shape or rule would otherwise appear twice. The functions demo
+        extracts three: <code>make_ticket</code> builds every ticket dict, <code>deadline_for</code> holds the SLA
+        arithmetic, and <code>is_overdue</code> answers whether a ticket is late. Once a call has more than two arguments
+        of similar type, teams pass them by keyword, as in <code>priority="low"</code>, so the call documents itself.</p>
+        <p>A function with no <code>return</code> statement returns <code>None</code>. Nothing fails at the call; the
+        <code>None</code> fails later, in a comparison or a sort. Defaults hold a second trap: default argument values are
+        evaluated once, when <code>def</code> runs. A fixed constant such as <code>now=NOW</code> is safe. A mutable
+        default is one object shared by every call that omits the argument.</p>
+        <div class="ix-spot" data-snippet="def add_note(text, history=[]):&#10;    history.append(text)&#10;    return history&#10;&#10;print(add_note(&quot;called&quot;))&#10;print(add_note(&quot;again&quot;))" data-q="Each call wants a fresh list of notes. What does the second print show, and what is the fix?" data-a="['called', 'again']. The default list is created once, when def runs, and both calls append to it, so tickets would leak history into each other. Write history=None, then create the list inside the body when history is None."></div>
+        <p>A <code>lambda</code> is a single-expression anonymous function, most often passed as <code>key=</code> to
+        <code>sorted()</code> or <code>list.sort()</code>. Once the queue holds dicts, tuple order is gone and the sort needs
+        a function that maps each ticket to the value to sort by. A key of <code>t["priority"]</code> sorts the text
+        alphabetically, which puts "low" ahead of "normal". The demo maps the text through <code>PRIORITY_RANK</code> and
+        returns a tuple, so equal ranks fall through to the older ticket:</p>
+<pre><code>queue.sort(key=lambda t: (PRIORITY_RANK[t["priority"]], t["opened_at"]))</code></pre>
+        <p>Pass the function itself, as in <code>key=f</code>. Writing <code>key=f()</code> calls it before the sort
+        starts.</p>
+        <p>The demo ends on the standard library's <code>array</code> module. <code>array("d", [...])</code> stores values
+        of one numeric type code compactly, where a list holds any objects.
+        Most team code uses a list and reaches for an array when the numbers are many and uniform.</p>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="3">
+        <div class="tag">Design choice</div>
+        <h2>When data and its rules belong in a class</h2>
+        <p>After the functions demo the ticket's data sits in a dict and its rules sit in loose functions, and every caller
+        has to know both. A class keeps them together. You know the vocabulary: the class is the blueprint, an object is
+        one ticket built from it, attributes hold the data and methods are the rules that act on it.
+        <code>__init__</code> runs when you write <code>Ticket(...)</code>, and <code>self</code>, the first parameter
+        of every method, is the object being worked on.</p>
+        <p><code>Ticket</code> takes the four arguments <code>make_ticket</code> took, so each call changes its name and
+        nothing else. <code>deadline()</code> is the old <code>deadline_for</code> and needs no argument.
+        <code>assign(agent)</code> sets the assignee and appends to the history in one call, so nobody can update one and
+        forget the other. A dict suits data you pass through, and a class suits data that carries its own rules.</p>
+        <p>Every line that treated the ticket as a dict gets an attribute-style rewrite. <code>vars(ticket)</code> returns
+        the instance's <code>__dict__</code>, <code>hasattr(ticket, "ticket_id")</code> tests for an attribute, and
+        <code>ticket.assignee or "unassigned"</code> replaces the <code>.get</code> fallback.</p>
+        <p>Without <code>__repr__</code>, <code>print(ticket)</code> shows <code>&lt;__main__.Ticket object at
+        0x...&gt;</code>. <code>__repr__</code> supplies the string that <code>print()</code> and the REPL show when no
+        <code>__str__</code> exists, so one method makes every print and list display read <code>#101 Login page returns
+        500 [high]</code>. Watch for <code>ticket.deadline</code> without parentheses: that is the bound method, and
+        comparing it with a datetime fails.</p>
+        <p>The Desk demo applies the same idea to the collection. <code>Desk</code> owns a list in
+        <code>self._tickets</code>, where the leading <code>_</code> is a convention for "internal, use the methods" that
+        Python does not enforce. <code>add</code> is the only way in, so a later rule about rejecting a ticket changes one
+        method. <code>__len__</code> is what <code>len(desk)</code> calls.</p>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">Inheritance</div>
+        <h2>A subclass overrides one rule and keeps the rest</h2>
+        <p><code>class UrgentTicket(Ticket)</code> says that an urgent ticket is a ticket. It inherits
+        <code>__init__</code>, <code>assign</code>, <code>close</code> and <code>__repr__</code>. Defining <code>deadline</code> again in the subclass overrides it, so calls on an
+        <code>UrgentTicket</code> run the new version. <code>super().deadline()</code> reaches the parent's version, and
+        the override halves the window between <code>opened_at</code> and that deadline. Redefining the method without
+        <code>super()</code> would copy the SLA rule into a second place, and the next contract change would miss one of
+        them.</p>
+        <button class="code-cta" type="button" data-modal="code-w01d5-urgent"><span class="cc-ico">&lt;/&gt;</span> See the subclass and the function that accepts both <span class="cc-meta">· Ticket class demo</span></button>
+        <p><code>isinstance(t, Ticket)</code> is true for an <code>UrgentTicket</code>, so every function that takes a
+        <code>Ticket</code> takes an urgent one. <code>is_overdue</code> calls <code>ticket.deadline()</code> and gets the
+        right rule for each kind with no <code>if</code> on the type. In the demo the Printer ticket has a 24-hour SLA and,
+        as an urgent ticket, is due twelve hours after it was opened.</p>
+        <div class="ix-predict" data-q="UrgentTicket defines only deadline(). What does print(urgent) show for ticket 2, Printer jams, priority normal, and which class supplied the text?" data-a="#2 Printer jams [normal]. The text comes from Ticket.__repr__, which the subclass inherits unchanged."></div>
+        <p>A real desk would more likely keep urgency as data on the record, the way <code>priority</code> already is, and
+        save a subclass for a kind of ticket that needs behaviour of its own.</p>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
+        <div class="tag">Iteration</div>
+        <h2>What a <code>for</code> loop does underneath</h2>
+        <p>A <code>for</code> loop asks its object for an iterator and pulls items from it until none are left.
+        <code>iter(obj)</code> calls <code>obj.__iter__()</code>, <code>next(it)</code> advances the iterator, and
+        <code>StopIteration</code> signals that it is exhausted. The Desk demo steps the queue by hand before removing
+        it:</p>
+<pre><code>it = iter(queue)
+print(next(it))
+print(next(it))
+print(list(it))
+print(next(it))</code></pre>
+        <p>The first two calls print the first two tickets and <code>list(it)</code> drains the third. The last
+        <code>next(it)</code> has nothing to return, so the run ends in a <code>StopIteration</code> traceback.</p>
+        <p>An iterator is single use: after one pass, a second pass yields nothing. A class that defines
+        <code>__iter__</code> works in a <code>for</code> loop, and <code>Desk.__iter__</code> returns a fresh
+        <code>iter(self._tickets)</code> each time it is asked, so every loop over the desk starts from the first ticket.
+        <code>sorted()</code> accepts any iterable, which lets the sort move into the loop header:</p>
+<pre><code>for t in sorted(desk, key=lambda x: (PRIORITY_RANK[x.priority], x.opened_at)):</code></pre>
+        <p><code>sorted</code> returns a new list and leaves the desk's own order alone.</p>
+        <button class="code-cta" type="button" data-modal="code-w01d5-desk"><span class="cc-ico">&lt;/&gt;</span> See the whole Desk class <span class="cc-meta">· Desk demo</span></button>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="6">
+        <div class="tag">Scope</div>
+        <h2>Scope: where a name is found, and where state should sit</h2>
+        <p>Python searches for a name in four places, in order: local, enclosing, global, built-in (LEGB). Assigning to a
+        name inside a function makes it local unless it is declared <code>global</code> or <code>nonlocal</code>. The Desk
+        demo keeps a small function, <code>label()</code>, that assigns <code>title = "shadowed"</code>. The local name
+        hides the module's <code>title</code> inside the function and leaves it unchanged, so the run prints
+        <code>shadowed | Login page returns 500</code>. Enclosing is the scope of an outer function around an inner one,
+        and <code>nonlocal</code> does for it what <code>global</code> does for the module.</p>
+        <div class="ix-spot" data-snippet="next_id = 1&#10;&#10;def take_id():&#10;    next_id += 1&#10;    return next_id&#10;&#10;print(take_id())" data-q="A module-level next_id exists. What does this run print?" data-a="A traceback ending in UnboundLocalError. The assignment makes next_id local to the function, and the += reads that local before it has a value."></div>
+        <p>Inside a function, <code>next_id += 1</code> raises <code>UnboundLocalError</code>: the assignment makes the
+        name local, and it is read before it has a value. A plain <code>next_id = 1</code> raises nothing and silently
+        creates a local, leaving the module-level counter unchanged. <code>global next_id</code> makes the counter work
+        and leaves you with state that
+        any line in the file can change, so the demo deletes it and puts the counter on the class. A class attribute is
+        shared by all instances and is read as <code>Desk.next_id</code>, while <code>self._tickets</code>, set in
+        <code>__init__</code>, belongs to one desk. After tickets 1, 2 and 3 are added the run prints
+        <code>next id: 4</code>.</p>
+        <p>The day ends with four commits on the branch and a fast-forward merge into <code>main</code>, where week 2
+        picks the file up. Today's exercise is a pytest-checked module in your own repository:
+        a <code>Ticket</code> and an <code>UrgentTicket</code> with their deadline methods, a <code>Desk</code> you can
+        loop over, a sort with a lambda key, and a <code>status</code> function written with guard clauses. Before you
+        leave, fill in the
+        <a href="https://forms.cloud.microsoft/pages/responsepage.aspx?id=iuJja_motUeqQJfiMSFRZMU3bOO2vNdAiSFsti9sgKVUQkhYWEhIRzJSWjNOVVM5REFOU0tWT0JXQyQlQCN0PWcu&amp;route=shorturl" target="_blank" rel="noopener">week 1 feedback form</a>.</p>
+      </section>
+
+      <section class="reading-sources" aria-label="Sources and deeper dive">
+        <h2>Sources &amp; deeper dive</h2>
+        <ul>
+          <li><a href="https://docs.python.org/3/tutorial/controlflow.html" target="_blank" rel="noopener">Python tutorial — More Control Flow Tools</a> — <code>if</code>, <code>for</code>, <code>break</code>, default argument values and lambda expressions; its section on defining functions is where to read further once three plain parameters stop being enough.</li>
+          <li><a href="https://docs.python.org/3/tutorial/classes.html" target="_blank" rel="noopener">Python tutorial — Classes</a> — scopes and namespaces, class and instance variables, inheritance and iterators.</li>
+          <li><a href="https://docs.python.org/3/reference/datamodel.html#object.__repr__" target="_blank" rel="noopener">Data model — object.__repr__</a> — what <code>print()</code> shows for your own objects.</li>
+          <li><a href="https://docs.python.org/3/library/array.html" target="_blank" rel="noopener">array module</a> — type codes and when a typed array replaces a list.</li>
+          <li><a href="https://docs.python.org/3/library/functions.html" target="_blank" rel="noopener">Built-in functions</a> — <code>sorted</code>, <code>iter</code>, <code>next</code>, <code>isinstance</code>, <code>vars</code> and <code>hasattr</code>.</li>
+          <li><a href="https://docs.python.org/3/glossary.html" target="_blank" rel="noopener">Python glossary</a> — iterable, iterator, lambda and method in one sentence each.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+        <div class="activity-card demo-card" data-demo="pending">
+          <div class="ac-k">⌨ Code-along files</div>
+          <div class="ac-t">Published after class</div>
+          <div class="ac-meta">typed live in the session · the answer key lands in demos/ afterwards</div>
+        </div>
+
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · practice, not graded</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<!-- weekly feedback: the external form is the primary channel; the survey below is the offline fallback -->
+<div class="survey">
+  <p>Week 1 ends here. The feedback form takes about two minutes and is the one the trainer reads:
+  <a href="https://forms.cloud.microsoft/pages/responsepage.aspx?id=iuJja_motUeqQJfiMSFRZMU3bOO2vNdAiSFsti9sgKVUQkhYWEhIRzJSWjNOVVM5REFOU0tWT0JXQyQlQCN0PWcu&amp;route=shorturl" target="_blank" rel="noopener">open the week 1 feedback form</a>.
+  The table below saves the same numbers in this browser in case the form will not open.</p>
+  <section id="survey" aria-label="Weekly survey"></section>
+</div>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 1 Day 5</footer>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 5 — goals &amp; exercise</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Choose between an if/elif/else chain, a guard clause, a for loop and a while loop for a piece of logic, and say why the order of the tests in a chain matters</li>
+      <li>Pull a repeated rule into a named function and avoid a missing return and a mutable default argument</li>
+      <li>Sort records with a lambda key that maps a priority to a rank and breaks ties by time</li>
+      <li>Decide when a dict should become a class, write __init__, methods and __repr__, and override one method in a subclass through super()</li>
+      <li>Make a class work with len() and for through __len__ and __iter__, explain iter(), next() and StopIteration, and keep shared state in a class attribute where a global would otherwise go</li>
+    </ul>
+    <div class="ma-k">Today's exercise</div>
+    <ul class="deliv-list check">
+      <li><a href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-01/day-5-control-flow-functions-and-classes" target="_blank" rel="noopener">exercises/week-01/day-5-control-flow-functions-and-classes</a> — a pytest-checked module: a Ticket class with a deadline method, an UrgentTicket that overrides it, a Desk that iterates, a sort by lambda key and a status function written with guard clauses.</li>
+    </ul>
+    <div class="ma-k">Demos today</div>
+    <ul class="deliv-list">
+      <li>Demo 1 — replace a boolean flag with an if/elif/else status, flatten a nested if into guard clauses, print the queue and the ticket dict with one for loop each, and re-ask at the prompt with a while loop that breaks on an empty title</li>
+      <li>Demo 2 — pull a repeated rule out of a script into a named function, sort a list of dicts with a lambda key, and avoid the two function traps that ship bugs (a missing return and a mutable default)</li>
+      <li>Demo 3 — decide when data and its rules belong in a class, and turn a dict plus loose functions into a Ticket with methods, a readable __repr__ and a subclass that overrides one rule</li>
+      <li>Demo 4 — build a class that owns a collection and works in a for loop through __iter__, explain what iter() and next() do underneath, and place state in a class attribute instead of a global</li>
+    </ul>
+    <p class="goals-foot">This is the last page of week 1. Finish the check, then fill in the weekly feedback form.</p>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Back to program →", href: "../../index.html" };
+window.DIAGRAM = {
+  title: "Day 5 · where each ticket rule ends up",
+  width: 500, height: 484,
+  nodes: [
+    { id:"branch", step:0, x:24,  y:14,  w:200, h:56, label:"if / elif / else\n  status: breached,\n  at risk or on time", detail:"One branch runs, the first whose test is true, so the strictest test goes first. A guard clause handles the special case early and keeps the main line unnested." },
+    { id:"loops",  step:1, x:276, y:14,  w:200, h:56, label:"for · while\n  each ticket in the queue\n  re-ask until valid", detail:"for walks any iterable and unpacks each tuple in the header. while re-tests its condition each pass; break leaves the nearest loop. The intake loop sits inside the isatty() guard." },
+    { id:"funcs",  step:2, x:24,  y:106, w:200, h:56, label:"Functions\n  make_ticket · deadline_for\n  is_overdue", detail:"A rule written once and named. No return statement means the caller gets None. Defaults are evaluated once, when def runs, so history=[] is shared between calls." },
+    { id:"sortkey", step:2, x:276, y:106, w:200, h:56, label:"lambda sort key\n  PRIORITY_RANK, then\n  opened_at", detail:"key= takes a function that maps each item to the value to sort by. Priority text sorts alphabetically, so the key maps it to a rank first and returns a tuple to break ties." },
+    { id:"ticket", step:3, x:24,  y:198, w:200, h:72, label:"class Ticket\n  data + deadline()\n  assign() · close()\n  __repr__", detail:"The dict and its loose functions become one class. __init__ builds the object, methods carry the rules, and __repr__ supplies the text print() shows." },
+    { id:"urgent", step:4, x:276, y:198, w:200, h:72, label:"class UrgentTicket(Ticket)\n  deadline(): super(),\n  window halved", detail:"The subclass inherits everything and overrides one method. super().deadline() reaches the parent's rule, and isinstance(t, Ticket) is true for both kinds." },
+    { id:"desk",   step:5, x:24,  y:306, w:200, h:56, label:"class Desk\n  add · __len__ · __iter__\n  overdue(now)", detail:"The desk owns its list in self._tickets. __len__ answers len(desk), and __iter__ returns a fresh iter(self._tickets) for every loop." },
+    { id:"iter",   step:5, x:276, y:306, w:200, h:56, label:"for t in desk\n  iter() · next()\n  StopIteration", detail:"A for loop calls iter() once and next() until StopIteration. An iterator is single use; the desk hands out a new one each time." },
+    { id:"scope",  step:6, kind:"example", x:24, y:400, w:452, h:64, label:"SCOPE (LEGB)\n  local → enclosing → global → built-in\n  Desk.next_id: one counter, on the class", detail:"Assigning to a name inside a function makes it local unless declared global or nonlocal. The counter moves from a module global to the class attribute Desk.next_id, shared by every desk." }
+  ],
+  edges: [
+    { id:"e1", step:1, from:"branch", to:"loops", label:"per ticket" },
+    { id:"e2", step:2, from:"branch", to:"funcs", label:"name the rule" },
+    { id:"e3", step:2, from:"funcs", to:"sortkey", label:"key=" },
+    { id:"e4", step:3, from:"funcs", to:"ticket", label:"rules move in" },
+    { id:"e5", step:4, from:"urgent", to:"ticket", label:"is a" },
+    { id:"e6", step:5, from:"desk", to:"ticket", label:"owns" },
+    { id:"e7", step:5, from:"desk", to:"iter", label:"__iter__" },
+    { id:"e8", step:6, from:"desk", to:"scope", dir:"-" }
+  ],
+  captions: [
+    "One chain sets one status. The strictest test goes first because only the first true branch runs. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "for handles each ticket in a collection; while handles a prompt that repeats until the answer is valid.",
+    "Three functions give the ticket rules one name each, and a lambda tells the sort what to compare.",
+    "The dict and its loose functions become a Ticket: the data and the rules that act on it in one place.",
+    "UrgentTicket inherits everything from Ticket and overrides deadline() by calling super() and halving the window.",
+    "Desk owns the tickets. __iter__ hands a fresh iterator to every for loop, which calls next() until StopIteration.",
+    "Names resolve local, enclosing, global, built-in. The id counter sits on the class as Desk.next_id."
+  ]
+};
+window.QUIZ = {
+  id: "w01-d5",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "The deadline is 13:30 and NOW is pinned to 12:00. Which status does the if/elif/else chain from the control-flow demo set?",
+      options: ["breached", "at risk", "on time", "at risk, then on time, because the else always runs last"], answer: 1,
+      explain: "NOW is before the deadline, so the first test is false. Ninety minutes is less than two hours, so the elif runs and sets at risk. A chain runs exactly one branch, so the else is skipped." },
+    { type: "scq", stem: "add_note(text, history=[]) appends text to history and returns it. It is called twice with only the text: first \"called\", then \"again\". What does the second call return?",
+      options: ["['again']", "['called', 'again']", "None", "It raises TypeError because history was not passed"], answer: 1,
+      explain: "Default values are evaluated once, when def runs, so both calls append to the same list. The idiom is history=None plus a check in the body that creates a new list." },
+    { type: "tf", stem: "isinstance(t, Ticket) is False when t is an UrgentTicket, because UrgentTicket is a different class.", answer: false,
+      explain: "isinstance() is true for instances of subclasses. An UrgentTicket is a Ticket, which is why is_overdue accepts both kinds." },
+    { type: "mcq", stem: "Which statements about iteration are true? Select all that apply.",
+      options: ["iter(obj) calls obj.__iter__()", "next(it) raises StopIteration once the iterator is exhausted", "An exhausted iterator starts again from the first item on the next pass", "A class that defines __iter__ works in a for loop"], answer: [0, 1, 3],
+      explain: "An iterator is single use: after one pass, a second pass yields nothing. Desk.__iter__ returns a fresh iter(self._tickets) on every call, which is why the desk can be looped over repeatedly." },
+    { type: "match", stem: "Match each term to what it means.",
+      pairs: [
+        { l: "guard clause", r: "an early if that handles a special case and returns or continues at once" },
+        { l: "lambda", r: "a one-expression anonymous function, often passed as key= to sorted()" },
+        { l: "class attribute", r: "one value shared by every instance, such as Desk.next_id" },
+        { l: "method override", r: "a subclass redefining a method it inherited, optionally calling super()" }
+      ],
+      explain: "A guard clause keeps the main logic unnested. A lambda is how you write a sort key on the spot. A class attribute is shared, where self.x set in __init__ belongs to one object. An override replaces the inherited method for that subclass's objects." },
+    { type: "open", stem: "In one or two sentences: why does next_id += 1 inside a function fail when a module-level next_id exists, and where did the Desk demo put the counter?",
+      hint: "Think about what an assignment does to a name inside a function.",
+      model: "Assigning to next_id inside the function makes the name local, so the += reads a local that has no value yet and Python raises UnboundLocalError. The demo showed that global next_id makes it run, then moved the counter to the class attribute Desk.next_id, which add() updates." }
+  ]
+};
+window.SURVEY = {
+  week: "01",
+  title: "Week 1 — How did it go?",
+  topics: [
+    "Day 2 — Orientation, Agile & Git fundamentals",
+    "Day 3 — Python basics",
+    "Day 4 — Python data types",
+    "Day 5 — Control flow, functions & classes"
+  ]
+};
+</script>
+
+<!-- code popup: an excerpt of the Ticket class answer key -->
+<div id="code-w01d5-urgent" class="modal-overlay" hidden>
+  <div class="modal-card code-modal">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Excerpt: the subclass and the rule function</h2>
+    <p class="cv-cap">From the Ticket class demo. UrgentTicket writes one method; is_overdue never asks which kind of ticket it was given.</p>
+    <div class="cv" data-file="03_ticket_class.py" data-lang="python"><pre class="cv-raw">class UrgentTicket(Ticket):
+    &quot;&quot;&quot;A ticket that gets half the usual time.&quot;&quot;&quot;
+
+    def deadline(self):
+        return self.opened_at + (super().deadline() - self.opened_at) / 2
+
+
+def is_overdue(ticket, now=NOW):
+    &quot;&quot;&quot;Return True when the ticket is past its deadline.&quot;&quot;&quot;
+    return now &gt; ticket.deadline()</pre></div>
+    <p class="cv-foot">super().deadline() is the SLA deadline from Ticket. Subtracting opened_at gives the window as a timedelta, and a timedelta can be divided by a number.</p>
+  </div>
+</div>
+
+<!-- code popup: an excerpt of the Desk answer key -->
+<div id="code-w01d5-desk" class="modal-overlay" hidden>
+  <div class="modal-card code-modal">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Excerpt: the Desk class</h2>
+    <p class="cv-cap">From the Desk demo. One class attribute, one instance attribute, and the two special methods that make len() and for work.</p>
+    <div class="cv" data-file="04_desk_object.py" data-lang="python"><pre class="cv-raw">class Desk:
+    &quot;&quot;&quot;A desk owns its tickets and hands them out one at a time.&quot;&quot;&quot;
+
+    next_id = 1
+
+    def __init__(self):
+        self._tickets = []
+
+    def add(self, ticket):
+        self._tickets.append(ticket)
+        Desk.next_id = max(Desk.next_id, ticket.ticket_id + 1)
+
+    def __len__(self):
+        return len(self._tickets)
+
+    def __iter__(self):
+        return iter(self._tickets)
+
+    def overdue(self, now):
+        late = []
+        for t in self._tickets:
+            if is_overdue(t, now):
+                late.append(t)
+        return late</pre></div>
+    <p class="cv-foot">next_id sits in the class body, so every Desk shares it. _tickets is created in __init__, so each Desk has its own list.</p>
+  </div>
+</div>
+
+<script src="../../assets/js/diagram.js?v=20261011"></script>
+<script src="../../assets/js/scrolly.js?v=20261011"></script>
+<script src="../../assets/js/modals.js?v=20261011"></script>
+<script src="../../assets/js/quiz.js?v=20261012"></script>
+<script src="../../assets/js/widgets.js?v=20261012"></script>
+<script src="../../assets/js/glossary.js?v=20261012"></script>
+<script src="../../assets/js/codeviewer.js?v=20261011"></script>
+<script src="../../assets/js/survey.js?v=20261012"></script>
+</body>
+</html>

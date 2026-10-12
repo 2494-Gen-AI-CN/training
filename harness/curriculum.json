@@ -123,7 +123,7 @@
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "py",
-          "status": "planned",
+          "status": "live",
           "title": "Python basics",
           "subtitle": "syntax · comments · variables & datatypes · operators · input/output",
           "subtopics": [
@@ -141,7 +141,7 @@
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "py",
-          "status": "planned",
+          "status": "live",
           "title": "Python data types",
           "subtitle": "strings · casting · bool · list · tuple · range · set · dict · numbers · datetime",
           "subtopics": [
@@ -167,7 +167,7 @@
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "py",
-          "status": "planned",
+          "status": "live",
           "title": "Control flow, functions & classes",
           "subtitle": "if/else · loops · functions · lambda · arrays · OOP · inheritance · iterators · scope",
           "subtopics": [

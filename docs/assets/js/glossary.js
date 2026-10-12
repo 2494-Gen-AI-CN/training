@@ -98,7 +98,35 @@
     { term: "DVCS", def: "Distributed Version Control System — every clone holds the full history, so commits, branches and logs work offline and only push, pull and fetch touch the network.", aka: ["distributed version control", "distributed version control system"] },
     { term: "merge conflict", def: "What Git reports when both branches changed the same lines; it writes the three conflict markers into the file so you can edit, stage and commit the version you want.", aka: ["conflict markers"] },
     { term: "fast-forward", def: "A merge where the target branch has no new commits of its own, so Git simply moves the branch pointer forward and creates no merge commit.", aka: ["fast-forward merge", "ff merge"] },
-    { term: "upstream", def: "The remote branch a local branch tracks, set by git push -u, so that plain git push and git pull know where to go.", aka: ["upstream branch", "tracking branch"] }
+    { term: "upstream", def: "The remote branch a local branch tracks, set by git push -u, so that plain git push and git pull know where to go.", aka: ["upstream branch", "tracking branch"] },
+
+    // — w01d3: Python basics —
+    { term: "PEP 8", def: "The official Python style guide that a team adopts as its shared contract for names, layout and comments.", aka: ["PEP8", "Python style guide"] },
+    { term: "snake_case", def: "A naming style that writes identifiers in lowercase words joined by underscores, used for Python variables and functions.", aka: ["snake case", "lower_case_with_underscores"] },
+    { term: "docstring", def: "A string literal placed first in a module, function or class that documents what it is for and is readable at runtime.", aka: ["docstrings", "module docstring"] },
+    { term: "f-string", def: "A string literal prefixed with f whose braces hold expressions and optional format specs that are evaluated when the line runs.", aka: ["f-strings", "formatted string literal", "formatted string literals"] },
+    { term: "operator precedence", def: "The fixed ranking that decides which operator in an expression is applied first when there are no parentheses.", aka: ["precedence", "order of operations"] },
+    { term: "short-circuit evaluation", def: "The rule that and/or stop evaluating as soon as the result is known and return one of their operands rather than a pure True or False.", aka: ["short-circuit", "short circuit", "short-circuiting"] },
+    { term: "standard streams", def: "The three channels every process gets, stdin for input, stdout for normal output and stderr for warnings and errors.", aka: ["stdin", "stdout", "stderr"] },
+
+    // — w01d4: data types —
+    { term: "truthiness", def: "How Python decides whether any value counts as True or False in a condition or `bool()` call: empty containers, zero and `None` are false, nearly everything else is true.", aka: ["truthy", "falsy", "truth value"] },
+    { term: "mutable", def: "An object whose contents can change in place after it is created, such as a list, set or dict, unlike a str, tuple or int.", aka: ["mutability"] },
+    { term: "aliasing", def: "Two names bound to the same object, so changing it through one name shows up through the other.", aka: ["alias", "aliases"] },
+    { term: "hashable", def: "An object with a fixed hash value for its lifetime, which is what lets it be a set member or a dict key.", aka: ["hashability"] },
+    { term: "floating-point error", def: "The tiny rounding gap that appears because binary floats cannot store most decimal fractions exactly, so `0.1 + 0.2` is not `0.3`.", aka: ["float precision", "rounding error"] },
+    { term: "naive datetime", def: "A datetime with no time zone attached, so it names a clock reading but not an exact moment.", aka: ["naive datetimes"] },
+    { term: "namespace", def: "A mapping from names to objects, such as a module's globals, that decides which object a name refers to at that point.", aka: ["namespaces"] },
+    { term: "bytes", def: "An immutable sequence of integers from 0 to 255, the raw form that text becomes after `.encode()`.", aka: ["byte string"] },
+
+    // — w01d5: control flow, functions & classes —
+    { term: "guard clause", def: "An early `if` that handles a bad or special case and returns or continues at once, so the main logic stays unnested below it.", aka: ["early return", "guard clauses"] },
+    { term: "lambda", def: "A one-expression anonymous function written inline, most often as the `key=` argument of `sorted()`.", aka: ["lambda expression", "anonymous function"] },
+    { term: "LEGB rule", def: "The order Python searches for a name: local, enclosing, global, built-in.", aka: ["LEGB", "variable scope", "name lookup order"] },
+    { term: "mutable default argument", def: "A default such as `history=[]` that Python creates once at definition time and so shares across every call that omits it.", aka: ["mutable default", "default argument trap"] },
+    { term: "method override", def: "A subclass redefining a method it inherited so that calls on its objects run the new version, optionally reaching the parent's through `super()`.", aka: ["override", "overriding", "super()"] },
+    { term: "__repr__", def: "The special method that returns the developer-facing string for an object, used by `print()` when no `__str__` exists.", aka: ["repr", "dunder repr"] },
+    { term: "instance attribute", def: "A value stored on one object through `self`, as opposed to a class attribute shared by all objects of the class.", aka: ["self attribute", "class attribute"] }
     // GLOSSARY:END
   ];
 
