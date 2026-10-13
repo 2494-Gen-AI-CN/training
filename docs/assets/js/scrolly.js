@@ -33,6 +33,8 @@
     const multi = groups.length > 1;
 
     const stepToLink = new Map();
+    const stepToItem = new Map();   // step -> its <li>, so the active step's h3 sub-list can be shown (D-0040)
+    const subToLink = new Map();    // h3 -> its sub-entry link
     const partEls = [];
     if (toc) {
       const head = document.createElement("div");
@@ -59,8 +61,25 @@
           const a = document.createElement("a");
           a.href = "#"; a.textContent = shortLabel(h.textContent); a.title = h.textContent;
           a.addEventListener("click", (e) => { e.preventDefault(); s.scrollIntoView({ behavior: "smooth", block: "start" }); });
-          li.appendChild(a); ul.appendChild(li);
+          li.appendChild(a);
+          // nested entries for the step's h3 subsections (reference-depth pages, D-0040)
+          const subs = Array.from(s.querySelectorAll("h3"));
+          if (subs.length) {
+            const sub = document.createElement("ul");
+            sub.className = "toc-sub";
+            subs.forEach((h3) => {
+              const sli = document.createElement("li");
+              const sa = document.createElement("a");
+              sa.href = "#"; sa.textContent = shortLabel(h3.textContent); sa.title = h3.textContent;
+              sa.addEventListener("click", (e) => { e.preventDefault(); h3.scrollIntoView({ behavior: "smooth", block: "start" }); });
+              sli.appendChild(sa); sub.appendChild(sli);
+              subToLink.set(h3, sa);
+            });
+            li.appendChild(sub);
+          }
+          ul.appendChild(li);
           stepToLink.set(s, a);
+          stepToItem.set(s, li);
         });
         part.appendChild(ul);
         toc.appendChild(part);
@@ -83,6 +102,7 @@
         const di = parseInt(e.target.dataset.diagram || "0", 10);
         if (!isNaN(n) && window.Diagram) window.Diagram.to(di, n);
         stepToLink.forEach((a, s) => a.classList.toggle("on", s === e.target));
+        stepToItem.forEach((li, s) => li.classList.toggle("on", s === e.target));
         // accordion: expand the part this step belongs to
         let gi = 0;
         for (let k = 0; k < groups.length; k++) { if (groups[k].items.includes(e.target)) { gi = k; break; } }
@@ -90,6 +110,17 @@
       });
     }, { rootMargin: "-45% 0px -45% 0px", threshold: 0 });
     steps.forEach(s => obs.observe(s));
+
+    // h3 sub-entries light up as their subsection crosses the upper third of the viewport
+    if (subToLink.size) {
+      const subObs = new IntersectionObserver((entries) => {
+        entries.forEach((e) => {
+          if (!e.isIntersecting) return;
+          subToLink.forEach((a, h) => a.classList.toggle("on", h === e.target));
+        });
+      }, { rootMargin: "-30% 0px -60% 0px", threshold: 0 });
+      subToLink.forEach((_a, h) => subObs.observe(h));
+    }
 
     if (bar) {
       const onScroll = () => {

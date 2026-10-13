@@ -181,7 +181,7 @@ class ParsedPage:
         art = self.root.find("article", "reading-col")
         if not art:
             return 0
-        skip_tags = {"script", "pre", "button", "code"}
+        skip_tags = {"script", "pre", "button", "code", "sup"}   # sup = citation markers (D-0040); same walk as harness/notes_check.py
 
         def walk(el: Element) -> str:
             if el.tag in skip_tags or "reading-sources" in el.classes():

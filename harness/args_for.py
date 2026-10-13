@@ -18,6 +18,11 @@ Usage:
     python harness/args_for.py 1 2 --skip-research   # reuse the committed brief; demos onward run live
     python harness/args_for.py 1 3 --no-plan         # ESCAPE: ship a day without a week plan (logged)
     python harness/args_for.py 1 --plan --today 2026-10-12   # week-plan args for week 1
+    python harness/args_for.py 1 2 3 --notes-only    # D-0040: research depth + notes page only; the brief, demo
+                                                     # scripts and keys must already be on disk; exercise and
+                                                     # runbook are untouched
+    python harness/args_for.py 1 2 --notes-only --template harness/templates/day.exemplar.html
+                                                     # override the config template (pilot of a new page shape)
 """
 from __future__ import annotations
 
@@ -142,9 +147,14 @@ def main(argv: list[str]) -> int:
         i = argv.index("--today")
         today = argv[i + 1]
         del argv[i:i + 2]
-    flags = {f: f in argv for f in ("--skip-research", "--plan", "--no-plan")}
+    template_override = None
+    if "--template" in argv:
+        i = argv.index("--template")
+        template_override = argv[i + 1]
+        del argv[i:i + 2]
+    flags = {f: f in argv for f in ("--skip-research", "--plan", "--no-plan", "--notes-only")}
     argv = [a for a in argv if a not in flags]
-    skip_research, plan_mode, no_plan = flags["--skip-research"], flags["--plan"], flags["--no-plan"]
+    skip_research, plan_mode, no_plan, notes_only = flags["--skip-research"], flags["--plan"], flags["--no-plan"], flags["--notes-only"]
     nums = [int(a) for a in argv]
     cur = bi.load_curriculum()
     metrics = json.loads((ROOT / "harness" / "metrics.json").read_text(encoding="utf-8"))
@@ -205,27 +215,44 @@ def main(argv: list[str]) -> int:
         if nxt is not None and nxt.get("status") != "live" and nxt["day"] not in day_nos:
             nxt = None
         rows = plan_check.day_rows(plan, d["id"]) if plan else {"weekPlanRows": [], "threadRows": [], "ladderRows": [], "dayShape": "", "spoilerRows": []}
-        days.append({
+        rel = f"{week['dir']}/{d['slug']}"
+        day_args = {
             **_day_base(cur, week, d, s),
             "nextHref": f"{nxt['slug']}.html" if nxt else "../../index.html",
             "nextLabel": f"Day {nxt['day']} — {nxt['title']} →" if nxt else "Back to program →",
             **rows,
-        })
-        if skip_research:
-            brief = ROOT / "harness" / "research" / f"{week['dir']}/{d['slug']}.md"
-            if not brief.is_file():
-                print(f"--skip-research needs an existing brief at {brief}", file=sys.stderr)
+        }
+        brief = ROOT / "harness" / "research" / f"{rel}.md"
+        if (skip_research or notes_only) and not brief.is_file():
+            print(f"{'--notes-only' if notes_only else '--skip-research'} needs an existing brief at {brief}", file=sys.stderr)
+            return 2
+        if notes_only:
+            # D-0040: the notes page is re-authored on top of the day's existing demo scripts and keys.
+            scripts = _existing_scripts(rel)
+            if d.get("demoFormat") != "none" and (not scripts or not (ROOT / "trainer" / rel / "demos" / "key" / "README.md").is_file()):
+                print(f"--notes-only needs the day's demo scripts and key/README.md on disk under trainer/{rel}/demos/", file=sys.stderr)
                 return 2
-    # Notes-page template (D-0031): the promoted page named in config.json, else the exemplar.
+            day_args["existingScripts"] = scripts
+        days.append(day_args)
+    # Notes-page template (D-0031): the promoted page named in config.json, else the exemplar; --template overrides.
     exemplar = ROOT / "harness" / "templates" / "day.exemplar.html"
-    template = ROOT / config["template"] if config.get("template") else exemplar
-    if not template.is_file():
-        print(f"config.json template {template} missing; falling back to {exemplar}", file=sys.stderr)
-        template = exemplar
+    if template_override:
+        template = Path(template_override)
+        if not template.is_absolute():
+            template = ROOT / template
+        if not template.is_file():
+            print(f"--template {template_override} is not a file", file=sys.stderr)
+            return 2
+    else:
+        template = ROOT / config["template"] if config.get("template") else exemplar
+        if not template.is_file():
+            print(f"config.json template {template} missing; falling back to {exemplar}", file=sys.stderr)
+            template = exemplar
     args = {
         **_common(cur, week, ew, today, metrics, config),
         "days": days,
         "skipResearch": skip_research,
+        "notesOnly": notes_only,
         "template": _fwd(template),
         "weekPlan": _fwd(pfile) if plan else None,
         "noPlan": no_plan,

@@ -62,23 +62,26 @@
     "rule": "Model ids are resolved in the research brief from current docs, never from memory."
   },
   "models": {
-    "_comment": "Per-stage model and effort for harness/workflows/day-fanout.js (D-0026). model: sonnet | haiku | opus | null (null = inherit the session model). effort: low | medium | high | xhigh | max | null. A repass numbered >= escalateOn uses escalate instead of the stage tier, so a cheap first pass that fails its critic is retried on the strong tier.",
+    "_comment": "Per-stage model and effort for harness/workflows/day-fanout.js and week-plan.js (D-0026, D-0032, D-0040). model: sonnet | haiku | opus; effort: low | medium | high | xhigh | max. Every stage is pinned: no stage inherits the session model (D-0040), and tests/test_notes_mode.py fails a null. A repass numbered >= escalateOn uses escalate instead of the stage tier, so a cheap first pass that fails its critic is retried on the strong tier. notes-critic judges the notes page; notes-verify-light runs harness/notes_check.py (links, stamps, citations) on every day; notes-verify-full adds WebFetch claim currency on full-gate and currency-flagged days.",
     "escalateOn": 2,
-    "escalate": { "model": null, "effort": "high" },
+    "escalate": { "model": "opus", "effort": "high" },
     "stages": {
       "research-light": { "model": "sonnet", "effort": "medium" },
-      "research-full": { "model": null, "effort": "high" },
+      "research-full": { "model": "opus", "effort": "high" },
       "demos": { "model": "sonnet", "effort": "medium" },
-      "notes": { "model": null, "effort": "high" },
+      "notes": { "model": "opus", "effort": "high" },
+      "notes-critic": { "model": "opus", "effort": "medium" },
+      "notes-verify-light": { "model": "haiku", "effort": "low" },
+      "notes-verify-full": { "model": "sonnet", "effort": "medium" },
       "humanize": { "model": "sonnet", "effort": "medium" },
       "exercise": { "model": "sonnet", "effort": "medium" },
       "runbook": { "model": "sonnet", "effort": "medium" },
-      "critic": { "model": null, "effort": "medium" },
+      "critic": { "model": "opus", "effort": "medium" },
       "wire": { "model": "haiku", "effort": "low" },
       "verify": { "model": "haiku", "effort": "low" },
       "fix": { "model": "sonnet", "effort": "medium" },
-      "week-plan": { "model": null, "effort": "high" },
-      "week-plan-critic": { "model": null, "effort": "high" }
+      "week-plan": { "model": "opus", "effort": "high" },
+      "week-plan-critic": { "model": "opus", "effort": "high" }
     }
   },
   "threads": {

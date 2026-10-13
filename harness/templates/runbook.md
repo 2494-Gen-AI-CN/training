@@ -15,7 +15,7 @@ Notes page: [{{rel}}.html]({{siteUrl}}weeks/{{rel}}.html) · Demos: [demos/{{rel
 | Demo 2: 02_<slug>.md | 40 | demos/02_<slug>.md (script) |
 | Lunch | 60 | — |
 | Demo 3: 03_<slug>.md | 40 | demos/03_<slug>.md (script) |
-| Notes page walkthrough + quiz | 25 | docs/weeks/… |
+| Notes page handoff | 10 | docs/weeks/… |
 | Exercise briefing | 10 | exercises/… |
 | Exercise (trainees work) | 70 | exercises/… |
 | Wrap-up / questions | 20 | — |
@@ -61,8 +61,8 @@ By the end of today trainees can:
 
 ## Notes page handoff
 
-- Open docs/weeks/{{rel}}.html; scroll the diagram with the room; call out the 2–3 sections that deepen what the demo showed.
-- Trainees do the 6-question check (unlocks tomorrow's page).
+- Open docs/weeks/{{rel}}.html; show the table of contents and the "Check yourself" step at the end. The page is tonight's study material (30–45 minutes of reading, D-0040), not a recap of the day: name the 2–3 sections that go beyond what the demos built.
+- Trainees read it after class and do the 6-question check (unlocks tomorrow's page).
 
 ## Exercise briefing
 

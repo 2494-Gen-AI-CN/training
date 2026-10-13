@@ -1,42 +1,43 @@
 # Notes-page critic — PASS criteria
 
-You are judging `docs/weeks/<week>/<day>.html`. You are NOT the author. Read the page, the research brief (allowed facts), the template named in your prompt (structure gold standard; `harness/config.json` `template`, the promoted W1D2 page per D-0031, falling back to `harness/templates/day.exemplar.html`) and `harness/metrics.json`. Use Bash + Python to count, do not estimate. Return `pass=false` with specific critiques if ANY item fails.
+You are judging `docs/weeks/<week>/<day>.html`. You are NOT the author. Read the page, the research brief (the ONLY allowed facts: its Claims, Notes depth, Sources, Glossary and Pitfalls), the template named in your prompt (structure gold standard; `harness/config.json` `template`, falling back to `harness/templates/day.exemplar.html`) and `harness/metrics.json` `notes`. Use Bash + Python to count, do not estimate: run `python harness/notes_check.py <page> --counts --phrases --stamps --citations --links` and quote its output. Return `pass=false` with specific critiques if ANY item fails.
+
+The page is reference and study material (D-0040): a reader who studies it answers junior-developer interview questions on every subtopic of the day. Application is the demos' job; the page explains, shows, names the trade-off, and gives the words to say.
 
 ## Structure (must match the template)
 
 1. `<meta name="tc-day" content="<id>">` present; `<title>` ends with the site title.
 2. Topbar: brand, Home, Demos, Exercises links (relative paths `../../index.html`, config repo URL).
 3. `main.lesson2 > .reading2col` with `nav.toc`, `article.reading-col`, `aside.side`.
-4. `.lede` has `h1`, `.meta` with "Week W · Day D", the week theme, and "~N min" where N == round(prose words / 150).
-5. `section.step` count within `metrics.notes.stepsMin..stepsMax` (5–7); `data-step` values are 0..n-1 in order; each has a `.tag` and an `h2`.
-6. `section.reading-sources` present with ≥ `metrics.notes.sourcesMin` (3) `http` links, all taken from the research brief.
+4. `.lede` has `h1`, `.meta` with "Week W · Day D", the date, the week theme, "~N min" where N == round(prose words / `readingWpm`) within ±1, and `span.verified` reading "Sources checked YYYY-MM-DD" (the brief's `verified:` date) followed by "· <lib> <version>" stamps that all exist in the brief's `version-stamps:` (python at least). The `.summary` names in one sentence what the page assumes from the previous day, what it teaches and what the reader can answer afterwards.
+5. `section.step` count within `metrics.notes.stepsMin..stepsMax`; `data-step` values are 0..n-1 in order; each has a `.tag` and an `h2`.
+   - 5b. Every TEACHING step (all but the last) has ≥ `h3PerStepMin` `h3` subsections and exactly `interviewPerStep` `div.callout.interview` as its LAST element, with `div.k` "Say it in an interview" and 1–3 `<p>` in spoken form: first person, no code, each sayable in 10–20 seconds, each answering one of the step's interview questions from the brief.
+   - 5c. The LAST step's `.tag` is "Check yourself" with an `h2`, one intro `<p>`, and `checkYourselfMin..checkYourselfMax` `details.check` blocks, each `<summary>` a retrieval question and a `<p>` answer of 1–4 sentences that is correct against the brief. No h3, no interview callout, no citation requirement in this step.
+   - 5d. Page total of `<pre>` code blocks ≥ `codeBlocksMin`; every block is runnable as shown (or a terminal transcript) and the prose states its output.
+6. `section.reading-sources` with ≥ `sourcesMin` `<li id="src-N">` items (N = 1..), each one `http` link plus a one-line reason, every URL taken from the research brief (Sources, Claims or Notes depth).
 7. Aside: `.side-diagram` with `svg#diagram` + `.stage-caption`; `.side-cards` containing a `.demo-card` with `data-demo="pending"` and the text "Published after class" and NO links (D-0030: answer keys are trainer-only until the day's `taught` date; `harness/publish_demos.py` flips the card to links afterwards), a quiz `.activity-card[data-modal="quiz-modal"]`, optional deep-dive card; `.side-nav` with Back, Daily goals, and an empty `a.snav-next`. On a `demoFormat: none` day there is NO `.demo-card` at all.
-8. Modals: `#quiz-modal` (with `section#quiz` + `.modal-next`), `#goals-modal` (3–5 `.goals-list` items + "Today's exercise" link to the exercise README + a "Demos today" list naming each demo script's objective in order, no file links; omitted on `demoFormat: none` days), optional `#deep-modal`, 0–2 `#code-*` popups.
+8. Modals: `#quiz-modal` (with `section#quiz` + `.modal-next`), `#goals-modal` (`goalsMin..goalsMax` `.goals-list` items + "Today's exercise" link to the exercise README + a "Demos today" list naming each demo script's objective in order, no file links; omitted on `demoFormat: none` days), optional `#deep-modal`, `codePopupsMin..codePopupsMax` `#code-*` popups.
 9. Script tags, in order: `theme.js` in head; at the bottom exactly `diagram.js, scrolly.js, modals.js, quiz.js, widgets.js, glossary.js, codeviewer.js` (+ `survey.js` only on `feedback: true` days). No other scripts. No `FDE_`, `roster`, `progress.js`, `day-summary`, `auth.js`, `workers.dev`, `2463` anywhere.
 
 ## Content
 
-10. Prose word count (text inside `.reading-col` excluding `.reading-sources`, code and buttons) within `wordMin..wordMax` from args (default 1,200–1,800).
-11. Every factual claim traces to the research brief. Flag invented numbers, versions, API names.
-12. The page teaches THIS day's subtopics; where the reader should go and do what the trainer typed it names the demo by its objective ("the Git local-loop demo"), not by a file path that is not public yet. When the prompt carries week-plan rows (D-0034): every coverage row's subtopic is taught, in the step the row names (Notes step, 1-based), nothing the anti-spoiler rows defer to a later day is taught, and the "Demos today" list names the plan's demos for the day in ladder order.
-13. `window.DIAGRAM` present: `captions.length == step count`; every node has `step, x, y, w, h, label`; edges reference existing node ids; each step reveals something that matters for that section (not decoration).
-14. `window.QUIZ.questions.length == 6`; type mix ≥1 `scq`, ≥1 `tf`, ≥1 `mcq` or `match`, ≤1 `open`; `answer` indices in range; every `explain` present; questions test the brief's content.
-15. `window.NEXT = { label, href }` points to the next day's page (or `../../index.html` after day 5).
+10. Prose word count (`notes_check.py --counts`: text inside `.reading-col` excluding `.reading-sources`, code, buttons and citation markers) within `wordMin..wordMax` from `metrics.notes`. Every teaching step carries 450–900 of them.
+11. Every factual claim traces to the research brief (Claims, Notes depth, Pitfalls, Glossary). The author adds NOTHING to the brief. Flag invented numbers, versions, API names, defaults, limits, prices and behaviour claims the brief does not carry.
+    - 11b. Citations: every teaching step has ≥ `citationsPerStepMin` `<sup class="cite"><a href="#src-N">N</a></sup>` markers; every marker resolves to an `li#src-N`; every sentence that states a version number, a model id, an API/class/function/flag name's behaviour, a default value, a limit or a price carries one, and the cited source actually supports that sentence.
+12. Scope: the page teaches THIS day's coverage rows, each subtopic under an `h2` or an `h3`, in curriculum order, plus the adjacent concept the brief's Notes depth names for it. Nothing an anti-spoiler row defers to a later day is an `h2` or `h3` (one sentence that names where it lands is fine). The "Demos today" list names the plan's demos for the day in ladder order, by objective. The plan's Notes-step numbers are realigned by the run's Wire step from what the author built: do not fail on them.
+    - 12b. DEPTH BAR (the reason the page exists). Pick three subtopics of the day. For each, pose one junior-interview question and the follow-up one level beyond (the brief's Notes depth lists them). PASS only if the page answers both with all five elements present somewhere in that subtopic's section: a plain explanation a graduate can follow, a runnable example with its output stated, a trade-off or limit, how to recognise it on sight in someone else's code, and a spoken answer in the interview callout. Quote the gap when one is missing.
+    - 12c. Delivery references: zero hits of `metrics.notes.deliveryPhrases` in article prose, quiz strings or diagram strings (`notes_check.py --phrases`); no sentence that refers to the classroom, the session, the trainer or what the reader "watched". Broad strokes about what the demo thread builds are fine ("the ticket-desk code grows a queue of tuples"). No answer-key file path in prose (a code popup's `data-file` is the one place a key filename appears).
+13. `window.DIAGRAM` present: `captions.length == step count`; every node has `step, x, y, w, h, label`; edges reference existing node ids; each step reveals something that matters for that section (not decoration); the last caption summarises what the reader can now explain.
+14. `window.QUIZ.questions.length == metrics.notes.quizQuestions`; type mix per `quizTypeMix` (≥1 `scq`, ≥1 `tf`, ≥1 `mcq` or `match`, ≤1 `open`); `answer` indices in range; every `explain` present; questions test the page's content (which traces to the brief).
+15. `window.NEXT = { label, href }` points to the next day's page (or `../../index.html` after the last teaching day of the week).
 16. Code popups (if any): `button.code-cta[data-modal="code-<x>"]` + matching `#code-<x>.modal-overlay .code-modal` with `.cv[data-file]` naming a REAL answer-key file (in `trainer/<week>/<day>/demos/key/` before the day is taught, `demos/<week>/<day>/` after); the `<pre class="cv-raw">` content is a short excerpt of that file (HTML-escaped `< > &`), never the whole key.
 17. Widgets allowed: `.ix-legend`, `.ix-predict`, `.ix-spot` only.
-18. Prose reads like a person wrote it (D-0029; the `humanizer` skill's pattern list is the reference). FAIL on any of these in `.reading-col` prose, quiz `explain` text or diagram captions: "not X but Y" / "not just X, it's Y" contrasts; one-line closers that restate the paragraph ("That is the point."); forced triads where the meaning does not ask for three; em-dashes used as the default joiner (more than ~2 per section); bold labels at the start of list items or paragraphs; stock AI words (delve, crucial, robust, seamless, leverage, landscape, tapestry, navigate, journey, foster, testament, underscore, vibrant). Quote the offending sentence and give the plain rewrite. Facts, code, inline code, paths and link targets are out of scope for this item.
+18. Prose reads like a person wrote it (D-0029; the `humanizer` skill's pattern list is the reference). FAIL on any of these in `.reading-col` prose, quiz `explain` text, interview callouts, check answers or diagram captions: "not X but Y" / "not just X, it's Y" contrasts; one-line closers that restate the paragraph ("That is the point."); forced triads where the meaning does not ask for three; em-dashes used as the default joiner (more than ~2 per section); bold labels at the start of list items or paragraphs (the `.k` label of a callout is structure, not a bold label); stock AI words (delve, crucial, robust, seamless, leverage, landscape, tapestry, navigate, journey, foster, testament, underscore, vibrant). Quote the offending sentence and give the plain rewrite. Facts, code, inline code, paths and link targets are out of scope for this item.
+19. The notes-verify findings passed in your prompt are binding: every `structural` entry (the page does not parse, counts outside the bands), every `dead` link and every `stale` claim is a critique unless you show it is wrong, and any of them means `pass=false`.
 
-Verification snippet (run it):
+Verification (run it, quote it):
 ```
-python - <<'PY'
-import re,sys,html
-from pathlib import Path
-p=Path(sys.argv[1] if len(sys.argv)>1 else 'PAGE'); s=p.read_text(encoding='utf-8')
-steps=len(re.findall(r'<section class="step"',s)); caps=len(re.findall(r'^\s*"',re.search(r'captions:\s*\[(.*?)\]\s*\}',s,re.S).group(1),re.M)) if 'captions' in s else 0
-body=re.search(r'<article class="reading-col">(.*?)<section class="reading-sources"',s,re.S).group(1)
-body=re.sub(r'<(script|pre|button)[^>]*>.*?</\1>','',body,flags=re.S); words=len(html.unescape(re.sub(r'<[^>]+>',' ',body)).split())
-print('steps',steps,'captions',caps,'words',words,'quizQ',len(re.findall(r'\{\s*type:\s*"',s)))
-PY
+python harness/notes_check.py <page> --counts --phrases --stamps --citations --links
 ```
 
 Return a one-sentence summary plus critiques as concrete fixes.

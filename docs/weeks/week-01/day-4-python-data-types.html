@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="tc-day" content="w01d4">
 <title>W1·D4 — Python data types | 2494 · Gen-AI Python</title>
-<link rel="stylesheet" href="../../assets/css/style.css?v=20261013">
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261013-2">
 <script src="../../assets/js/theme.js"></script>
 </head>
 <body>
@@ -31,198 +31,724 @@
 
     <article class="reading-col">
       <div class="lede">
-        <h1>Python data types: the idioms a team expects and the pitfalls a review catches</h1>
+        <h1>Python data types: the idioms, trade-offs and pitfalls behind each built-in type</h1>
         <div class="meta">
           <span><b>Week 1</b> · Day 4</span>
           <span>Thu Oct 15, 2026</span>
           <span>Agile for developers, Git &amp; Python fundamentals</span>
-          <span><b>~11 min</b> · notes @150 wpm + diagram + check</span>
+          <span><b>~36 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span class="verified">Sources checked 2026-10-12 · python 3.12</span>
         </div>
-        <p class="summary">This page assumes Wednesday's work: the PEP 8 conventions, the ticket desk file with its flat
-        variables and three SLA constants, and the intake lines that read a title and a priority at the prompt. You know
-        every type on today's list from coursework, so the page covers the idioms a reviewer expects and the
-        mistakes that get past a first read. The four demos grow the same file, the trainer types each one live, and
-        this page is the reference for what you watched.</p>
+        <p class="summary">This page assumes Wednesday's conventions: PEP 8 names, <code>input()</code> and
+        <code>print()</code> with f-string formats, and a ticket-desk script whose ticket is still a handful of flat
+        variables. It works through Python's built-in types in the order a ticket record needs them: strings, casting and
+        truthiness for typed text; lists, tuples, <code>range</code> and sets for a queue; <code>bytes</code>,
+        <code>None</code> and dicts for the record; then numbers, <code>datetime</code> and the namespaces that hold every
+        name. Each section gives a runnable example with its output, the trade-off, how the idiom looks in someone else's
+        code, and a spoken answer for an interview. Afterwards you can explain aliasing, why <code>.sort()</code> returns
+        <code>None</code>, why <code>0.1 + 0.2</code> is not <code>0.3</code>, and what a second
+        <code>import datetime</code> does to a file.</p>
         <div class="ix-legend"></div>
       </div>
 
       <section class="step" data-diagram="0" data-step="0">
         <div class="tag">Text</div>
-        <h2>Strings: every method hands back a new string</h2>
-        <p>Strings are immutable. <code>.strip()</code>, <code>.lower()</code> and <code>.replace()</code> each return a
-        new string and leave the original alone, so a line that calls <code>title.upper()</code> and does nothing with
-        the result changes nothing. Assign the result back to the name when you want to keep it.</p>
-        <p>Typed text arrives with stray spaces and capitals, and Wednesday's intake used it as typed. The
-        ticket-text demo normalises both fields once, directly after the input guard, so every later line sees clean
-        text:</p>
-<pre><code>title = title.strip()
-priority = priority.strip().lower()</code></pre>
-        <p>The chain reads left to right, so a priority typed with capitals and spaces around it becomes
-        <code>"high"</code>.</p>
-        <p><code>title[:40]</code> runs from the start up to index 40 without including it, and a stop past the end is
-        fine, so a short title comes back whole. Negative indexes count from the end, which makes
-        <code>title[-3:]</code> the last three characters. <code>len</code> counts the characters,
-        <code>.startswith()</code> answers with a bool, and <code>in</code> tests for a substring anywhere in the
-        text.</p>
-        <div class="ix-spot" data-snippet="title = &quot;  Login page returns 500  &quot;&#10;title.strip()&#10;print(len(title))" data-q="The author expected 22. What prints, and why?" data-a="26. strip() returned a new 22-character string and the second line threw it away, so title still carries its four spaces. Write title = title.strip()."></div>
+        <h2>Strings: immutable text and the methods that clean it</h2>
+        <p>Text typed at a prompt arrives with stray spaces and capitals in it. Before a program compares a priority or
+        stores a title, it cleans the text, and every tool for that is a string method or a slice. In the ticket-desk code
+        that grows through this week, the typed title and priority are normalised once, straight after they are read, so
+        every later line sees clean text.</p>
+        <h3>Immutable strings and the methods that return new ones</h3>
+        <p>A Python <code>str</code> is an immutable sequence of Unicode code points. Methods such as
+        <code>strip()</code>, <code>lower()</code> and <code>replace()</code> build and return a new string, and the original
+        stays exactly as it was.<sup class="cite"><a href="#src-1">1</a></sup> That answers the most common opening
+        question about strings: <code>s.upper()</code> on a line of its own changes nothing, because it makes an upper-case
+        copy and nobody keeps it. To keep the result you bind it to a name, often the same one, as in
+        <code>title = title.strip()</code>.</p>
+<pre><code>title = "  Login page returns 500  "
+clean = title.strip()
+print(len(title), len(clean))
+print(clean.replace("500", "error"))
+print(clean)
+print(clean.startswith(("Login", "Signup")), "page" in clean)
+print("a  b".split(), "a  b".split(" "))</code></pre>
+        <p>The first line prints <code>26 22</code>: <code>strip()</code> removed the two spaces at each end and left the
+        spaces between words alone. The second prints <code>Login page returns error</code>, and the third still prints
+        <code>Login page returns 500</code>, because <code>replace()</code> returned a copy. That is also the difference
+        between <code>s.strip()</code> and <code>s.replace(" ", "")</code>: the first trims the ends, the second deletes
+        every space, including the ones that separate words.<sup class="cite"><a href="#src-2">2</a></sup> The fourth line
+        prints <code>True True</code>. <code>startswith()</code> accepts a tuple of prefixes and is true if any of them
+        matches,<sup class="cite"><a href="#src-2">2</a></sup> and <code>in</code> on two strings tests for a substring.<sup class="cite"><a href="#src-3">3</a></sup>
+        The last line prints <code>['a', 'b'] ['a', '', 'b']</code>. With no argument, <code>split()</code> splits on runs of
+        whitespace and throws away empty strings; <code>split(" ")</code> splits on each single space and keeps the empty
+        string between two adjacent ones.<sup class="cite"><a href="#src-2">2</a></sup></p>
+        <p>You recognise this idiom in other people's code as a chain on user input, such as
+        <code>name.strip().lower()</code>. Chaining works because each method returns a string the next method can be called
+        on.</p>
+        <div class="ix-predict" data-q="priority holds &quot;  High &quot; as typed. What does priority.strip().lower() == &quot;high&quot; print, and what is priority afterwards?" data-a="It prints True: strip() removes the outer spaces and lower() the capital. priority itself is still &quot;  High &quot;, because neither method changed it; assign the result back to keep it."></div>
+        <h3>Slicing and negative indexes</h3>
+        <p>Slicing is how you truncate, take the end of, or reverse a string without calling a method, and it is the
+        question an interviewer usually asks next. A slice <code>s[start:stop:step]</code> includes <code>start</code> and
+        excludes <code>stop</code>, and a negative index counts from the end, so <code>s[-1]</code> is the last
+        character.<sup class="cite"><a href="#src-3">3</a></sup> A slice never raises <code>IndexError</code>: asking for
+        more than exists returns what there is, while a single index past the end does
+        raise.<sup class="cite"><a href="#src-4">4</a></sup></p>
+<pre><code>clean = "Login page returns 500"
+print(clean[:40])
+print(clean[-3:], clean[-1])
+print(clean[::-1][:3])
+print("abc"[:40])</code></pre>
+        <p>This prints <code>Login page returns 500</code>, then <code>500 0</code>, then <code>005</code>, then
+        <code>abc</code>. The title is shorter than 40 characters, so <code>clean[:40]</code> is the whole title, which is
+        exactly why the slice is safe for display code. A step of <code>-1</code> walks the string backwards, so
+        <code>[::-1]</code> is the standard one-expression reversal. The pattern you will meet in real code is
+        <code>text[:40] + "..."</code> to truncate a long value for a table or a log line. Its limit is that it adds the dots
+        even when nothing was cut, so careful code checks <code>len(text)</code> first.</p>
+        <h3>Building a long string: join and f-strings</h3>
+        <p>Because strings are immutable, <code>s += part</code> cannot extend <code>s</code> in place. It creates a new string
+        holding all the old text plus the new part, so building a large string one piece at a time can copy the text over
+        and over. The standard way is to collect the pieces in a list and call <code>"".join(parts)</code> once, with
+        whatever separator you need in the quotes.<sup class="cite"><a href="#src-1">1</a></sup> Reviewers flag
+        <code>+=</code> on a string inside a loop for exactly this reason (loops arrive on Friday).</p>
+<pre><code>line = " ".join(["#101", "Login page returns 500", "[high]"])
+hours_open = 4.5
+print(line)
+print(f"{line} {hours_open:.2f}h")</code></pre>
+        <p>The output is <code>#101 Login page returns 500 [high]</code>, then the same line followed by
+        <code>4.50h</code>. An f-string evaluates the expressions in its braces at runtime, and the part after the colon is a
+        format spec, so <code>:.2f</code> shows two decimal places.<sup class="cite"><a href="#src-5">5</a></sup> For a
+        handful of values an f-string is the readable choice; for many pieces gathered over time, <code>join</code> is.</p>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Python strings are immutable. A method like upper or strip gives me back a new string and leaves the original
+          alone, so if I don't assign the result, nothing changes.</p>
+          <p>strip only trims whitespace at the two ends, while replacing every space with nothing also removes the spaces
+          between words. For a large string I collect the parts in a list and join them once, because repeated plus-equals
+          can copy the whole text each time.</p>
+        </div>
       </section>
 
       <section class="step" data-diagram="0" data-step="1">
-        <div class="tag">Pitfall</div>
-        <h2>Casting typed text, and what bool really tests</h2>
-        <p><code>input()</code> always returns text. The ticket-text demo keeps the typed text in one variable and casts
-        it on the next line, inside the same guard Wednesday wrote:</p>
-<pre><code>ticket_id_text = input("Ticket id: ")
-ticket_id = int(ticket_id_text)</code></pre>
-        <p>With the cast on its own line, a typed <code>abc</code> gives a traceback that points straight at it, and
-        the program stops with a <code>ValueError</code>.</p>
-        <p>On text, <code>int</code> accepts only whole-number text, so <code>int("3.5")</code> raises that same error
-        even though <code>float("3.5")</code> works. On a float it truncates toward zero, so <code>int(3.9)</code> is
-        3. Use <code>round</code> when you mean rounding. <code>str(ticket_id)</code> goes the other way, which you
-        need before joining a number to a string with <code>+</code>.</p>
-        <p><code>bool(x)</code> follows truthiness. Empty sequences, zero, <code>None</code> and <code>False</code> are
-        false, and nearly everything else is true. That includes every non-empty string, whatever it says.</p>
-        <div class="ix-predict" data-q="What do bool(&quot;False&quot;), bool(&quot;&quot;) and bool(0) print?" data-a="True, False, False. &quot;False&quot; is a non-empty string, so it is truthy. This is why a typed yes or no is compared as text (answer == &quot;yes&quot;): casting it with bool() would call &quot;no&quot; true."></div>
-        <p>A related mistake is comparing with <code>== True</code>. A non-empty title is truthy, yet that comparison
-        gives <code>False</code> for it, because <code>==</code> compares values and a string never equals
-        <code>True</code>. Test the value itself. The demo keeps one truthiness line, <code>is_open and title</code>,
-        which prints the title because <code>and</code> returns one of its operands.</p>
+        <div class="tag">Conversion</div>
+        <h2>Casting and truthiness</h2>
+        <p>Casting turns a value of one type into another, and truthiness is the cast Python performs on its own whenever a
+        value sits in a condition. Both are a frequent source of bugs that pass a quick read, because the code looks
+        right and runs without an error.</p>
+        <h3>Casting with int(), float() and str()</h3>
+        <p><code>input()</code> always returns a <code>str</code>, so a number typed at the prompt is text until you cast
+        it.<sup class="cite"><a href="#src-6">6</a></sup> <code>int()</code> given a float truncates toward zero, so
+        <code>int(3.9)</code> is 3 and <code>int(-3.9)</code> is -3; it never rounds, and <code>round()</code> is the call
+        for rounding.<sup class="cite"><a href="#src-7">7</a></sup> Given text, <code>int()</code> needs an integer literal:
+        <code>int("3.5")</code> raises <code>ValueError</code>, while <code>int(float("3.5"))</code> works, and an optional
+        second argument sets the base, so <code>int("ff", 16)</code> is 255.<sup class="cite"><a href="#src-7">7</a></sup>
+        <code>float()</code> accepts strings such as <code>"nan"</code> and <code>"inf"</code>, so a cast that succeeds does
+        not promise a finite number.<sup class="cite"><a href="#src-8">8</a></sup></p>
+<pre><code>typed = " 42 "
+ticket_id = int(typed)
+print(ticket_id + 1)
+print(int(3.9), int(-3.9), round(3.9))
+print(int(float("3.5")), int("ff", 16))
+print(float("inf"), float("nan"))
+print(str(ticket_id) + " is open", repr("42"))
+int("3.5")</code></pre>
+        <p>The output is <code>43</code>, then <code>3 -3 4</code>, <code>3 255</code>, <code>inf nan</code> and
+        <code>42 is open '42'</code>, and the last line stops the script with <code>ValueError</code>. The first line shows
+        that <code>int()</code> tolerates the spaces around a number. <code>str()</code> gives the readable form of an object
+        and <code>repr()</code> the unambiguous one,<sup class="cite"><a href="#src-9">9</a></sup> which is why
+        <code>repr("42")</code> keeps the quotes: in a log line that is how you tell the text <code>'42'</code> from the
+        number <code>42</code>. You recognise casting in real code as <code>age = int(input("Age: "))</code>, or
+        <code>float(row["price"])</code> applied to text read from a file. The trade-off to name is truncation: if the
+        requirement says "round to the nearest hour", <code>int()</code> is quietly wrong for every value with a fraction of
+        .5 or more.</p>
+        <h3>Checking text before you cast</h3>
+        <p>The follow-up question is how to convert user input safely. A common first answer is to test the text with
+        <code>str.isdigit()</code>, and it is not an exact match for what <code>int()</code> accepts. It rejects a sign and
+        surrounding whitespace, both of which <code>int()</code> accepts, and it accepts characters such as the superscript
+        <code>"²"</code>, which <code>int()</code> rejects.<sup class="cite"><a href="#src-10">10</a></sup>
+        <code>str.isdecimal()</code> is the closer match.<sup class="cite"><a href="#src-11">11</a></sup></p>
+<pre><code>print(" 42 ".isdigit(), "-7".isdecimal(), "42".isdecimal())
+print("²".isdigit())
+int("²")</code></pre>
+        <p>The first line prints <code>False False True</code>, even though <code>int(" 42 ")</code> and
+        <code>int("-7")</code> both succeed. The second prints <code>True</code>, and the third raises
+        <code>ValueError</code>. The reliable test is to attempt the cast and catch <code>ValueError</code> with
+        <code>try</code> and <code>except</code>,<sup class="cite"><a href="#src-7">7</a></sup> which a later lesson on error
+        handling covers.</p>
+        <h3>Truthiness and the bool type</h3>
+        <p>Every object has a truth value. <code>None</code>, <code>False</code>, zero of any numeric type and empty
+        sequences and collections are false; an object is also false when it defines <code>__bool__</code> returning
+        <code>False</code> or <code>__len__</code> returning 0; everything else is
+        true.<sup class="cite"><a href="#src-12">12</a></sup> So <code>bool("False")</code> and <code>bool("0")</code> are
+        both <code>True</code>: they are non-empty strings, and <code>bool()</code> does not read the words. <code>bool</code>
+        is a subclass of <code>int</code>, which makes <code>True == 1</code> true and
+        <code>sum([True, False, True])</code> equal to 2.<sup class="cite"><a href="#src-13">13</a></sup></p>
+<pre><code>print(bool("False"), bool(""), bool(0), bool([]), bool(None))
+print(True + True, sum([True, False, True]), isinstance(True, int))
+print(2 == True, bool(2))</code></pre>
+        <p>The lines print <code>True False False False False</code>, then <code>2 2 True</code>, then
+        <code>False True</code>. The last line is why <code>if x == True</code> is poor style: 2 is truthy, yet it is not
+        equal to <code>True</code>, because <code>True</code> equals 1. PEP 8 advises against comparing boolean values to
+        <code>True</code> or <code>False</code> with <code>==</code>;<sup class="cite"><a href="#src-14">14</a></sup> write
+        <code>if x:</code>. You recognise truthiness on sight as <code>if not queue:</code> guarding an empty list. Its limit
+        is that it treats <code>0</code>, <code>0.0</code> and <code>""</code> the same as
+        <code>None</code>,<sup class="cite"><a href="#src-12">12</a></sup> so a legitimate zero can look like a missing
+        value.</p>
+        <div class="ix-spot" data-snippet="hours_logged = 0&#10;label = hours_logged or &quot;not logged&quot;&#10;print(label)" data-q="The engineer did log zero hours. What does this print, and why is it wrong?" data-a="It prints not logged. 0 is falsy, so or skips it and returns the second operand. When zero is a real value, test for the missing case explicitly with hours_logged is None."></div>
+        <h3>and and or hand back an operand</h3>
+        <p><code>and</code> and <code>or</code> return one of their operands rather than a <code>bool</code>, and they stop
+        evaluating as soon as the result is known.<sup class="cite"><a href="#src-15">15</a></sup> <code>a and b</code>
+        returns <code>a</code> if it is falsy and otherwise <code>b</code>; <code>a or b</code> returns <code>a</code> if it
+        is truthy and otherwise <code>b</code>.</p>
+<pre><code>is_open = True
+title = "Login page returns 500"
+print(is_open and title)
+print("" or "anonymous")
+print(0 or None)</code></pre>
+        <p>This prints <code>Login page returns 500</code>, then <code>anonymous</code>, then <code>None</code>. The first
+        result surprises people who expect <code>True</code>: <code>is_open</code> was truthy, so <code>and</code> returned
+        the second operand, the title itself. The second line is the defaulting idiom you will see as
+        <code>value = name or "anonymous"</code>, and the spot-the-bug above is its limit.</p>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>int of 4.7 truncates toward zero and gives 4. int of the string "42" parses it and gives 42. int of the
+          string "4.7" raises a ValueError, because that text isn't an integer literal; I'd go through float first, or
+          round if rounding is what's wanted.</p>
+          <p>The falsy values are None, False, zero of any numeric type, and empty strings and containers. Everything
+          else is truthy, including the string "False". bool is a subclass of int, so True plus True is 2, and that's why
+          comparing to True with double equals is poor style: 2 is truthy but isn't equal to True.</p>
+        </div>
       </section>
 
       <section class="step" data-diagram="0" data-step="2">
-        <div class="tag">Collections</div>
-        <h2>A queue of tuples that sorts itself</h2>
-        <p>A tuple is immutable, which suits a record nobody should edit by accident. The ticket-queue demo holds three
-        tickets as a list of tuples, each one a rank, a ticket id and a title. They are appended out of order and each
-        is printed by its own line, which Friday's loop replaces.</p>
-        <p>Tuples compare element by element, left to right. Rank comes first, so <code>sorted(queue)</code> puts rank 1
-        at the front, and when two ranks tie the ticket id decides. Lay a tuple out so its natural order is the order
-        you want and no sort key is needed.</p>
-        <p><code>sorted()</code> returns a new list and leaves the original alone. <code>queue.sort()</code> sorts in
-        place and returns <code>None</code>.</p>
-        <div class="ix-spot" data-snippet="queue = [(2, 103), (1, 101)]&#10;queue = queue.sort()&#10;print(queue[0])" data-q="The last line crashes. Why?" data-a="sort() sorted the list in place and returned None, and the second line bound queue to that None, so there is no list left to index. Call queue.sort() on a line of its own, or write queue = sorted(queue)."></div>
-        <button class="code-cta" type="button" data-modal="code-w01d4-queue"><span class="cc-ico">&lt;/&gt;</span> See the queue and its copy <span class="cc-meta">· ticket-queue excerpt</span></button>
-        <p>Assigning a list to a second name binds the same object. After <code>backup = queue</code>, appending through
-        either name changes both, and the demo prints both lengths as 4. <code>queue.copy()</code> makes a new list,
-        and they print as 3 and 4. The copy is shallow, meaning the items inside are shared, so a copied list of lists
-        still shares its inner lists.</p>
-        <p>The comma is what makes a tuple. <code>(1)</code> is the number 1 in parentheses and <code>(1,)</code> is a
-        one-element tuple. <code>range(1, 4)</code> gives 1, 2 and 3, because the stop value is excluded as it is in a
-        slice. A range is an immutable sequence that computes its items on demand, so wrap it in <code>list()</code>
-        to see the numbers.</p>
+        <div class="tag">Sequences</div>
+        <h2>Lists, tuples and range</h2>
+        <p>The three ordered sequence types look alike on the page and behave differently once you change, copy or sort
+        them. In the ticket-desk code, a queue of tickets becomes a list whose items are <code>(rank, ticket_id, title)</code>
+        tuples, and the examples below use that shape.</p>
+        <h3>Lists: in-place methods, sorted() and aliasing</h3>
+        <p>A list is a mutable sequence. <code>append</code>, <code>extend</code>, <code>insert</code>, <code>remove</code>,
+        <code>pop</code>, <code>sort</code> and <code>reverse</code> change the list in place, and the ones that change its
+        order or size return <code>None</code>, except <code>pop</code>, which returns the item it
+        removed.<sup class="cite"><a href="#src-16">16</a></sup> <code>append(x)</code> adds one item at the end,
+        <code>extend(items)</code> adds each item of another sequence, and <code>insert(i, x)</code> puts one item at a
+        position. A negative index counts from the end and a slice returns a new
+        list.<sup class="cite"><a href="#src-3">3</a></sup></p>
+<pre><code>queue = []
+queue.append((2, 103, "Wi-Fi drops"))
+queue.append((1, 101, "Login page returns 500"))
+queue.append((2, 102, "Printer jams"))
+print(queue[-1])
+print(queue[1:])
+print(sorted(queue))
+print(queue.sort())</code></pre>
+        <p><code>queue[-1]</code> prints <code>(2, 102, 'Printer jams')</code> and <code>queue[1:]</code> prints the last two
+        tuples in a new list. <code>sorted(queue)</code> returns a new list starting with the rank 1 ticket, followed by
+        ticket 102 and then 103: tuples compare element by element, so a list of tuples sorts by rank first and by id when
+        ranks tie.<sup class="cite"><a href="#src-17">17</a></sup> The last line prints <code>None</code>. <code>sort()</code>
+        did sort <code>queue</code>, in place, and returned nothing, which is why <code>queue = queue.sort()</code> is a bug
+        that replaces your list with <code>None</code>. Both sorts are stable, so items that compare equal keep their
+        original order.<sup class="cite"><a href="#src-17">17</a></sup> Sorting by something other than tuple order needs a
+        key function, which Friday's <code>lambda</code> supplies.</p>
+        <p>Assignment never copies. <code>backup = queue</code> binds a second name to the same list object, so a change
+        through either name shows through both; <code>queue.copy()</code> makes a new
+        list.<sup class="cite"><a href="#src-18">18</a></sup></p>
+<pre><code>backup = queue
+backup.append((9, 999, "oops"))
+print(len(queue), backup is queue)
+safe = queue.copy()
+safe.append((8, 888, "late"))
+print(len(queue), len(safe))</code></pre>
+        <p>This prints <code>4 True</code>, then <code>4 5</code>. The trade-off of a list is at its front:
+        <code>pop(0)</code> and <code>insert(0, x)</code> shift every other element, so they cost O(n), which makes a list a
+        poor queue for large data. <code>collections.deque</code> adds and removes at both ends in
+        O(1).<sup class="cite"><a href="#src-19">19</a></sup><sup class="cite"><a href="#src-20">20</a></sup></p>
+        <h3>Shallow and deep copies</h3>
+        <p>The next question after aliasing is what <code>copy()</code> actually copies. It copies the outer list only, so
+        any lists inside it are still shared. <code>copy.deepcopy</code> copies nested objects
+        recursively.<sup class="cite"><a href="#src-21">21</a></sup> A related trap is <code>[x] * n</code>, which repeats
+        references to the same object, so mutable elements end up shared.<sup class="cite"><a href="#src-3">3</a></sup></p>
+<pre><code>rows = [[0] * 3] * 3
+rows[0][0] = 1
+print(rows)
+import copy
+nested = [[1, 2], [3]]
+shallow = nested.copy()
+deep = copy.deepcopy(nested)
+nested[0].append(99)
+print(shallow[0], deep[0])</code></pre>
+        <p>The first print shows <code>[[1, 0, 0], [1, 0, 0], [1, 0, 0]]</code>: one assignment changed all three rows,
+        because they are one list. The second prints <code>[1, 2, 99] [1, 2]</code>. When you see
+        <code>rows = [[0] * 3] * 3</code> in a review, it is almost always three aliases of one row by accident.</p>
+        <h3>Tuples: fixed records that sort and hash</h3>
+        <p>A tuple is an immutable sequence, used for a fixed record whose positions mean something, where a list holds a
+        varying number of similar things. The comma makes the tuple, not the parentheses: <code>(1)</code> is the integer 1,
+        <code>(1,)</code> is a one-element tuple, and <code>()</code> is the empty
+        tuple.<sup class="cite"><a href="#src-22">22</a></sup> Tuples compare lexicographically, so <code>(1, 9) &lt; (2,
+        0)</code>.<sup class="cite"><a href="#src-17">17</a></sup> They support <code>count()</code> and
+        <code>index()</code> and have no method that changes them.<sup class="cite"><a href="#src-23">23</a></sup></p>
+<pre><code>print(type((1)), type((1,)))
+print((1, 9) &lt; (2, 0))
+rank, tid, text = (1, 101, "Login page returns 500")
+first, *rest = (1, 101, "Login page returns 500")
+print(tid, first, rest)
+pair = (1, [2])
+pair[1].append(3)
+print(pair)
+hash(pair)</code></pre>
+        <p>This prints <code>&lt;class 'int'&gt; &lt;class 'tuple'&gt;</code>, then <code>True</code>, then
+        <code>101 1 [101, 'Login page returns 500']</code>. Unpacking needs as many targets as items unless a starred target
+        absorbs the rest.<sup class="cite"><a href="#src-22">22</a></sup> The tuple <code>pair</code> prints as
+        <code>(1, [2, 3])</code>: a tuple is immutable only at its own level, so a list inside it can still change. That is
+        also why the last line raises <code>TypeError</code>. A tuple is hashable, and so usable as a dict key, only if
+        every element is hashable.<sup class="cite"><a href="#src-24">24</a></sup> In real code you recognise tuples by
+        unpacking such as <code>rank, tid, text = row</code>, or a trailing comma such as <code>SIZE = (640,)</code>.</p>
+        <h3>range: integers computed on demand</h3>
+        <p><code>range(start, stop, step)</code> excludes <code>stop</code>, and a negative step counts
+        down.<sup class="cite"><a href="#src-25">25</a></sup> In Python 3 a <code>range</code> is not a list. It is an
+        immutable sequence that stores only start, stop and step and computes items on demand, so <code>len()</code>,
+        indexing and <code>in</code> work without building the values, and a range of a billion numbers takes the same
+        small memory as a range of three.<sup class="cite"><a href="#src-26">26</a></sup></p>
+<pre><code>r = range(1, 4)
+print(r, list(r), len(r), r[-1], 3 in r)
+print(list(range(10, 0, -1)))
+print(list(range(0, 10, 3)))
+range(0.5, 3)</code></pre>
+        <p>The first line prints <code>range(1, 4) [1, 2, 3] 3 3 True</code>; <code>list()</code> is how you materialise
+        the values. The next two print ten down to one, then <code>[0, 3, 6, 9]</code>. The limit is that a range holds
+        integers only, so <code>range(0.5, 3)</code> raises <code>TypeError</code>,<sup class="cite"><a href="#src-25">25</a></sup>
+        and a step of 0 raises <code>ValueError</code>.<sup class="cite"><a href="#src-26">26</a></sup> You will see it as
+        <code>list(range(1, 4))</code>, or as <code>range(len(items))</code> to get positions.</p>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>b equals a doesn't copy a list; it gives the same list a second name, so appending through b shows up in a.
+          For an independent copy I call copy, and if the list holds other lists I use deepcopy, because copy is
+          shallow.</p>
+          <p>a dot sort sorts the list in place and returns None. sorted of a returns a new sorted list and leaves a alone.
+          Writing a equals a dot sort is a classic bug, because it throws the list away.</p>
+          <p>A list is mutable and holds a varying number of similar things. A tuple is immutable, is a fixed record, and
+          can be a dict key as long as everything inside it is hashable.</p>
+        </div>
       </section>
 
       <section class="step" data-diagram="0" data-step="3">
-        <div class="tag">Collections</div>
-        <h2>Sets for membership, bytes for files and APIs</h2>
-        <p>A set holds each value once and has no order. The literal in the ticket-queue demo names dana twice and the
-        set keeps one, and <code>.add()</code> with a name already there changes nothing. Print
-        <code>sorted(reporters)</code> when you want the same output on every run.</p>
-        <p><code>in</code> asks whether a value is a member. <code>&amp;</code> gives the intersection, the names in
-        both sets, and <code>-</code> gives the difference, the names only in the left one.</p>
-        <p>Set elements must be hashable, which means the object has a fixed hash for its lifetime. Strings, numbers and
-        tuples qualify and a list does not. Dictionary keys follow the same rule. <code>{}</code> is an empty dict, so
-        an empty set is written <code>set()</code>.</p>
-        <p>Text is <code>str</code>. Files and APIs carry <code>bytes</code>, an immutable sequence of integers from 0
-        to 255. <code>.encode()</code> turns a string into bytes, UTF-8 by default, and <code>.decode()</code> reverses
-        it. The ticket-dict demo opens with that round trip on the ticket title.</p>
-        <p><code>len</code> counts code points for a string and bytes for a bytes object, so the two can disagree.</p>
-        <div class="ix-predict" data-q="What do len(&quot;café&quot;) and len(&quot;café&quot;.encode()) print?" data-a="4 and 5. The string has four characters, and é takes two bytes in UTF-8. The two types do not mix either: adding a str to bytes raises TypeError, so decode the bytes or encode the text first."></div>
+        <div class="tag">Sets &amp; bytes</div>
+        <h2>Sets and binary types</h2>
+        <p>Sets and bytes have little in common except that people reach for a list or a string when they should not.
+        A set answers "have I seen this before?" quickly, and <code>bytes</code> is the form text takes the moment it
+        leaves your program for a file, a socket or an HTTP response.</p>
+        <h3>Sets: distinct, hashable, fast to search</h3>
+        <p>A set is an unordered collection of distinct hashable objects, built for fast membership testing. It locates an
+        element by its hash value, while <code>x in some_list</code> compares <code>x</code> against the items one by
+        one.<sup class="cite"><a href="#src-27">27</a></sup> That is why <code>in</code> on a set is faster
+        than on a list. <code>add</code> ignores an element that is already present; <code>remove</code> raises
+        <code>KeyError</code> for a missing element and <code>discard</code> does not. Values that compare equal, such as
+        <code>1</code> and <code>1.0</code>, count as one element, and because <code>{}</code> already means an empty dict, an
+        empty set is written <code>set()</code>.<sup class="cite"><a href="#src-28">28</a></sup></p>
+<pre><code>reporters = {"dana", "lee", "dana"}
+reporters.add("lee")
+print(len(reporters), "dana" in reporters)
+print(type({}), type(set()), {1, 1.0})
+reporters.discard("zed")
+reporters.remove("zed")</code></pre>
+        <p>The first print shows <code>2 True</code>: the literal listed <code>"dana"</code> twice and the set kept one, and
+        adding <code>"lee"</code> again changed nothing. The second shows <code>&lt;class 'dict'&gt; &lt;class 'set'&gt;
+        {1}</code>. <code>discard</code> on a missing name passes quietly, and the last line raises
+        <code>KeyError: 'zed'</code>.</p>
+        <p>The trade-off: a set has no order and no indexing, and its elements must be hashable, so a list cannot be a
+        member. <code>list(set(items))</code> is the quick way to remove duplicates from a list, and it does not keep the
+        original order.<sup class="cite"><a href="#src-28">28</a></sup> When you need a set inside a set or as a dict key,
+        <code>frozenset</code> is the immutable, hashable variant.<sup class="cite"><a href="#src-28">28</a></sup> In other
+        people's code, sets show up as <code>seen = set()</code> before a scan, or <code>unique = set(names)</code>.</p>
+        <h3>Set algebra in one expression</h3>
+        <p>The follow-up is usually "which reporters are also watchers?", and sets answer it with an operator.
+        <code>a &amp; b</code>, <code>a | b</code>, <code>a - b</code> and <code>a ^ b</code> give the intersection, union,
+        difference and symmetric difference, and each has a method with the same name spelled
+        out.<sup class="cite"><a href="#src-28">28</a></sup></p>
+<pre><code>watchers = {"lee", "sam"}
+print(sorted(reporters &amp; watchers), sorted(reporters | watchers))
+print(sorted(reporters - watchers), sorted(reporters ^ watchers))</code></pre>
+        <p>This prints <code>['lee'] ['dana', 'lee', 'sam']</code>, then <code>['dana'] ['dana', 'sam']</code>. The
+        <code>sorted()</code> calls are there because a set has no order of its own: <code>sorted</code> returns a list, so
+        the output reads the same on every run.</p>
+        <h3>bytes: what text becomes after encoding</h3>
+        <p>A <code>str</code> holds Unicode code points; a <code>bytes</code> object holds raw bytes. <code>str.encode()</code>
+        returns <code>bytes</code>, using UTF-8 unless you name another codec, and <code>bytes.decode()</code> reverses
+        it.<sup class="cite"><a href="#src-29">29</a></sup> <code>len</code> counts code points for a <code>str</code> and
+        bytes for a <code>bytes</code>, and indexing a <code>bytes</code> object returns an <code>int</code> from 0 to
+        255.<sup class="cite"><a href="#src-30">30</a></sup> UTF-8 uses one to four bytes per character, so
+        <code>"café"</code> has 4 characters and 5 bytes, because <code>é</code> takes two. Python 3 never mixes the two
+        types implicitly, so <code>b"a" + "b"</code> raises <code>TypeError</code>.<sup class="cite"><a href="#src-31">31</a></sup></p>
+<pre><code>title = "Café menu crashes"
+raw = title.encode("utf-8")
+print(raw)
+print(len("café"), len("café".encode()))
+print(raw[0], raw.decode() == title)
+print(b"caf\xc3\xa9".decode("latin-1"))
+print(b"\xff".decode("utf-8", errors="replace"))
+b"a" + "b"</code></pre>
+        <p>The first print shows <code>b'Caf\xc3\xa9 menu crashes'</code>, the two bytes of <code>é</code> written as hex
+        escapes. Then come <code>4 5</code> and <code>67 True</code>: the first byte is the integer code for
+        <code>C</code>, and the round trip gives back the same string. The next line decodes UTF-8 bytes as latin-1 and
+        prints <code>cafÃ©</code>. Decoding with the wrong codec either raises <code>UnicodeDecodeError</code> or, as here,
+        silently produces the wrong characters, because latin-1 accepts every byte. <code>errors="replace"</code> puts the
+        replacement character U+FFFD in place of a bad byte instead of
+        raising,<sup class="cite"><a href="#src-31">31</a></sup> so the sixth line prints <code>�</code>. The last line raises
+        <code>TypeError</code>.</p>
+        <p>The limit to keep in mind is that byte length is not character count. Code that cuts a byte string at a fixed
+        position, say to fit a 255-byte field, can split a character in half, and decoding the result
+        fails.<sup class="cite"><a href="#src-31">31</a></sup> You recognise <code>bytes</code> on sight as a
+        <code>b"..."</code> literal, or as <code>payload.decode("utf-8")</code> on data that came from a file, a socket or an
+        HTTP response.</p>
+        <h3>bytearray, the mutable variant</h3>
+        <p>Once you know <code>bytes</code> is immutable, the next question is what to use when the bytes must change.
+        <code>bytearray</code> is the mutable counterpart, so its items can be reassigned in
+        place.<sup class="cite"><a href="#src-29">29</a></sup></p>
+<pre><code>buf = bytearray(b"abc")
+buf[0] = 65
+print(buf)</code></pre>
+        <p>This prints <code>bytearray(b'Abc')</code>. Assigning the integer 65 replaced the first byte with the code for
+        <code>A</code>; the same assignment on a <code>bytes</code> object would raise <code>TypeError</code>.</p>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>To remove duplicates I turn the list into a set, which keeps one of each. I lose the original order, and every
+          item has to be hashable. Membership on a set is fast because it finds the item by its hash instead of comparing
+          against every element the way a list does.</p>
+          <p>A str is text, a sequence of code points; bytes is the encoded form, raw values from 0 to 255. len can differ
+          because UTF-8 uses more than one byte for characters like é, so café is four characters but five bytes.</p>
+        </div>
       </section>
 
       <section class="step" data-diagram="0" data-step="4">
-        <div class="tag">Modelling</div>
-        <h2>None for "not yet", and the ticket as a dict</h2>
-        <p><code>None</code> is the only value of <code>NoneType</code>, and it means no value: the ticket exists and
-        nobody has been assigned. An empty string or a zero would say something different. Test for it with
-        <code>is None</code>, which asks whether this is the one such object. Other types can override
-        <code>==</code>, and reviewers flag that form.</p>
-        <p>A dict maps keys to values. The ticket-dict demo replaces Wednesday's three SLA constants with one table and
-        rewrites the line that used them:</p>
+        <div class="tag">Mappings</div>
+        <h2>None and dictionaries</h2>
+        <p>A ticket has an assignee before anyone is assigned, and a record has fields that may or may not be there.
+        <code>None</code> is how Python spells "no value yet", and a dict is how it spells a record with named fields. In
+        the ticket-desk code the ticket becomes a dict, and three separate SLA constants become one lookup table.</p>
+        <h3>None, the single missing value</h3>
+        <p><code>None</code> is the only value of the type <code>NoneType</code>, and it is a singleton: there is exactly
+        one <code>None</code> object in a running program, so an identity test with <code>is</code> is
+        reliable.<sup class="cite"><a href="#src-32">32</a></sup> PEP 8 says comparisons to singletons such as
+        <code>None</code> should use <code>is</code> or <code>is not</code>, never the equality
+        operators.<sup class="cite"><a href="#src-14">14</a></sup> Many calls hand back <code>None</code> because they do
+        their work as a side effect: <code>print()</code> returns <code>None</code>,<sup class="cite"><a href="#src-33">33</a></sup>
+        and so do the in-place list methods such as <code>sort()</code>.<sup class="cite"><a href="#src-16">16</a></sup></p>
+<pre><code>assignee = None
+print(assignee is None, type(assignee))
+print(print("x"))
+print({}.get("owner"))
+None &lt; 1</code></pre>
+        <p>The first line prints <code>True &lt;class 'NoneType'&gt;</code>. The second prints <code>x</code> and then
+        <code>None</code>: the inner <code>print</code> runs first and shows <code>x</code>, and the outer one prints what
+        the inner one returned. The third prints <code>None</code>, because <code>dict.get(key)</code> returns
+        <code>None</code> when the key is missing and no default is given.<sup class="cite"><a href="#src-34">34</a></sup>
+        The last line raises <code>TypeError</code>, since <code>None</code> cannot be ordered against
+        numbers.<sup class="cite"><a href="#src-35">35</a></sup></p>
+        <p>The trade-off is the one from truthiness. <code>None</code> is falsy, so <code>if not value:</code> cannot tell
+        <code>None</code> from <code>0</code> or <code>""</code>;<sup class="cite"><a href="#src-12">12</a></sup> when
+        "missing" must stay distinct from "empty", write <code>if value is None</code>. You recognise the idiom as a
+        placeholder such as <code>assignee = None</code> at the top of a record, filled in later.</p>
+        <h3>Dictionaries: keys, lookups and safe reads</h3>
+        <p>A dict maps keys to values. <code>d[key]</code> raises <code>KeyError</code> when the key is missing;
+        <code>d.get(key, default)</code> returns the default instead, without raising and without inserting the key.
+        <code>d.setdefault(key, default)</code> is the variant that does insert the default when the key is absent, then
+        returns the value. <code>key in d</code> tests keys, not values, and keys must be hashable, so a list cannot be
+        one.<sup class="cite"><a href="#src-36">36</a></sup></p>
 <pre><code>SLA_HOURS = {"high": 4, "normal": 24, "low": 72}
-hours_left = SLA_HOURS[priority] - hours_open</code></pre>
-        <p>Adding a priority is now one entry in the table. The change also fixes a bug. Wednesday's line always
-        subtracted from the high-priority constant, so a ticket typed as low was measured against 4 hours, and with
-        the lookup it gets 72. The lookup works because the priority was stripped and lower-cased first.</p>
-        <p>The ticket itself becomes a dict of five fields. Its <code>assignee</code> starts as <code>None</code> and
-        its <code>history</code> as an empty list. <code>ticket["owner"]</code> raises <code>KeyError</code> because the
-        key is absent, and <code>ticket.get("owner", "unassigned")</code> returns the default instead. Use square
-        brackets for keys that must exist and <code>.get</code> for optional ones.</p>
-        <p><code>in</code> on a dict tests keys. Dicts keep insertion order, so <code>list(ticket.items())</code> gives
-        the key and value pairs as tuples in the order the fields were written. The demo's last line builds
-        <code>tickets_by_id</code>, a dict from each id to its ticket, so a ticket is found by id without scanning a
-        list.</p>
+priority = "high"
+ticket = {"id": 101, "title": "Login page returns 500",
+          "priority": priority, "assignee": None, "history": []}
+print(SLA_HOURS[priority])
+print(ticket.get("owner", "unassigned"), "owner" in ticket)
+ticket["assignee"] = "lee"
+ticket["history"].append("assigned to lee")
+print("id" in ticket, "lee" in ticket)
+print(ticket.setdefault("tags", []), "tags" in ticket)
+tickets_by_id = {ticket["id"]: ticket}
+print(tickets_by_id[101]["assignee"])
+ticket["owner"]</code></pre>
+        <p>The prints show <code>4</code>, then <code>unassigned False</code> (the default came back and no
+        <code>owner</code> key was added), then <code>True False</code>, because <code>"lee"</code> is a value and
+        <code>in</code> only looks at keys. <code>setdefault</code> prints <code>[] True</code>: this time the key was
+        added. <code>tickets_by_id</code> is a registry that finds a ticket from its id, and it prints <code>lee</code>. The
+        last line raises <code>KeyError: 'owner'</code>. One subtlety follows from the <code>None</code> section:
+        <code>ticket.get("assignee") is None</code> would also have been <code>True</code> before assignment, when the key
+        existed with the value <code>None</code>, so a <code>get</code> that returns <code>None</code> does not prove the key
+        is missing. <code>in</code> does.</p>
+        <p>Replacing three constants with <code>SLA_HOURS</code> turns a choice between names into a lookup, so a fourth
+        priority is one more entry in the table. The trade-off is that a dict gives fast lookup by key at the cost of memory,
+        and offers no lookup by value at all.<sup class="cite"><a href="#src-36">36</a></sup> In other people's code you
+        will meet <code>config.get("timeout", 30)</code>, and registries written as
+        <code>by_id = {t["id"]: t for t in tickets}</code>, a dict comprehension you only need to recognise for now.</p>
+        <h3>Views, order and the hash table underneath</h3>
+        <p><code>.keys()</code>, <code>.values()</code> and <code>.items()</code> return views, live windows that reflect
+        later changes to the dict, so <code>list(d.items())</code> is how you take a snapshot that stays
+        still.<sup class="cite"><a href="#src-37">37</a></sup> Dicts preserve insertion order, and that has been a guarantee
+        of the language since Python 3.7.<sup class="cite"><a href="#src-36">36</a></sup><sup class="cite"><a href="#src-38">38</a></sup></p>
+<pre><code>items = ticket.items()
+print(len(items))
+ticket["status"] = "open"
+print(len(items))
+snapshot = list(ticket.items())
+print(list(ticket))</code></pre>
+        <p>Continuing with the same ticket, this prints <code>6</code>, then <code>7</code>: the view saw the new key
+        without being asked again. The last line lists the keys in the order they were added, from <code>'id'</code> to
+        <code>'status'</code>.</p>
+        <p>Underneath, a dict is a hash table. Python hashes the key to find its slot, which gives average constant-time
+        lookup, insertion and deletion however large the dict grows.<sup class="cite"><a href="#src-20">20</a></sup> The
+        same mechanism powers sets, which is why both need hashable members: if a key's hash could change after insertion,
+        the table would look in the wrong slot.<sup class="cite"><a href="#src-24">24</a></sup></p>
+        <button class="code-cta" type="button" data-modal="code-w01d4-dict"><span class="cc-ico">&lt;/&gt;</span> See the ticket record as the desk code builds it <span class="cc-meta">· 03_ticket_dict.py</span></button>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>None is the single value of NoneType. I compare with is None because there's only one None object, so an
+          identity check is exact, and PEP 8 asks for it.</p>
+          <p>Square brackets raise a KeyError when the key is missing. get returns None, or the default I pass, and doesn't
+          add the key. Keys have to be hashable, so strings, numbers and tuples of those work and lists don't. And yes,
+          dicts keep insertion order; it's been part of the language since 3.7.</p>
+        </div>
       </section>
 
       <section class="step" data-diagram="0" data-step="5">
         <div class="tag">Numbers &amp; time</div>
-        <h2>Floats that almost match, and hours that come from a clock</h2>
-        <p>Binary floating point cannot represent 0.1 exactly, so adding 0.1 and 0.2 gives
-        <code>0.30000000000000004</code>, and comparing that to 0.3 with <code>==</code> gives <code>False</code>.
-        Compare floats by rounding to the precision you care about, or by checking that the difference is tiny:</p>
-<pre><code>round(0.1 + 0.2, 2) == 0.3
-abs((0.1 + 0.2) - 0.3) &lt; 1e-9</code></pre>
-        <p><code>/</code> is true division and <code>//</code> is floor division, so 10 divided by 4 is 2.5 with the
-        first and 2 with the second. <code>divmod</code> returns the quotient and the remainder together as a tuple.
-        A long literal can use <code>_</code> as a separator, as in <code>1_000_000</code>.</p>
-        <p>Until this point <code>hours_open</code> was a float someone typed. The ticket-clock demo computes it from two
-        datetimes:</p>
-<pre><code>opened_at = datetime(2026, 10, 15, 9, 30)
+        <h2>Numbers and datetime</h2>
+        <p>Numbers and dates share a section because they meet in the same calculation: how long has a ticket been open,
+        and is it past its deadline? The ticket-desk code replaces a hard-coded hours figure with one computed from two
+        datetimes, and the float pitfalls show up in that same computation.</p>
+        <h3>int, float and the two divisions</h3>
+        <p>A <code>float</code> is a binary floating-point number, and binary floating point cannot represent 0.1 exactly.
+        The tiny error in 0.1 and in 0.2 does not cancel out when they are added, so <code>0.1 + 0.2 == 0.3</code> is
+        <code>False</code>.<sup class="cite"><a href="#src-39">39</a></sup> An <code>int</code>, by contrast, has arbitrary
+        precision, so integer overflow does not happen in Python; an <code>int</code> grows as large as memory
+        allows.<sup class="cite"><a href="#src-40">40</a></sup> <code>/</code> is true division and always returns a float,
+        while <code>//</code> is floor division and rounds down, so <code>-7 // 2</code> is -4 rather than
+        -3.<sup class="cite"><a href="#src-41">41</a></sup> <code>divmod(a, b)</code> returns the quotient and the remainder
+        as a tuple.<sup class="cite"><a href="#src-42">42</a></sup></p>
+<pre><code>print(0.1 + 0.2 == 0.3, 0.1 + 0.2)
+print(round(0.1 + 0.2, 2) == 0.3, abs((0.1 + 0.2) - 0.3) &lt; 1e-9)
+print(10 / 4, 10 // 4, 10 / 5, -7 // 2)
+print(divmod(28, 24), round(2.5), round(3.5))
+print(2 ** 100, 1_000_000)</code></pre>
+        <p>The first line prints <code>False 0.30000000000000004</code>, which shows the error directly. The second prints
+        <code>True True</code>: the two safe comparisons are rounding both sides to the precision you care about, or checking
+        that the difference is smaller than a tolerance. The third prints <code>2.5 2 2.0 -4</code>; note that
+        <code>10 / 5</code> is the float <code>2.0</code> even though the division is exact. The fourth prints
+        <code>(1, 4) 2 4</code>: 28 hours is one day and four hours, and <code>round()</code> rounds half to even, so 2.5
+        goes down to 2 and 3.5 up to 4.<sup class="cite"><a href="#src-43">43</a></sup> The last line prints a 31-digit
+        integer and <code>1000000</code>; the underscores in a numeric literal are ignored by the interpreter and exist only
+        for the reader.<sup class="cite"><a href="#src-44">44</a></sup></p>
+        <p>You recognise careful float code on sight by <code>abs(a - b) &lt; 1e-9</code> where a naive version would have
+        <code>==</code>. Week 2's <code>math</code> module adds a named helper for the same comparison.</p>
+        <h3>Exact decimal arithmetic with decimal</h3>
+        <p>When an interviewer asks how you would handle money, the expected answer is the <code>decimal</code> module.
+        <code>Decimal</code> works in base ten, so the sum that failed above succeeds.<sup class="cite"><a href="#src-45">45</a></sup></p>
+<pre><code>from decimal import Decimal
+print(Decimal("0.1") + Decimal("0.2") == Decimal("0.3"))</code></pre>
+        <p>This prints <code>True</code>. Each value is built from a string, so it holds exactly the digits written. The
+        trade-off: floats are fast and compact but approximate, and <code>Decimal</code> is exact for decimal fractions but
+        slower.<sup class="cite"><a href="#src-39">39</a></sup> Hours on a support ticket can live with a float compared
+        through a tolerance. A bank balance cannot.</p>
+        <h3>datetime and timedelta arithmetic</h3>
+        <p>Subtracting one <code>datetime</code> from another gives a <code>timedelta</code>, a duration, and adding a
+        <code>timedelta</code> to a <code>datetime</code> gives a new <code>datetime</code>.<sup class="cite"><a href="#src-46">46</a></sup>
+        <code>total_seconds()</code> converts a duration to a float. The similar-looking <code>.seconds</code> attribute is
+        only the seconds part left over after whole days, so it is wrong for anything a day or
+        longer.<sup class="cite"><a href="#src-47">47</a></sup></p>
+<pre><code>from datetime import datetime, timedelta
+opened_at = datetime(2026, 10, 15, 9, 30)
 NOW = datetime(2026, 10, 15, 14, 0)
 age = NOW - opened_at
-hours_open = age.total_seconds() / 3600</code></pre>
-        <p>Subtracting two datetimes gives a <code>timedelta</code>. <code>total_seconds()</code> converts it to a
-        float, and dividing by 3600 gives 4.5 hours. <code>NOW</code> is pinned because <code>datetime.now()</code>
-        returns a different value on every run, and a rule built on it cannot be checked. These are naive datetimes,
-        meaning they carry no time zone. Zones arrive in week 2.</p>
-        <div class="ix-predict" data-q="The sample ticket is high priority, opened at 09:30, and NOW is 14:00. What does hours_left print?" data-a="-0.5. hours_open is 4.5 and SLA_HOURS[&quot;high&quot;] is 4, so the ticket is half an hour past its SLA and is_breached stays True."></div>
-        <p>Adding a <code>timedelta</code> to a datetime gives another datetime, which is how the deadline is built from
-        the SLA table. The sample ticket opened at 09:30 with a 4-hour SLA, so its deadline is 13:30, and the pinned
-        clock is already past it. <code>.isoformat()</code> writes the deadline as <code>2026-10-15T13:30:00</code>,
-        and <code>.strftime()</code> formats it by a pattern you supply.</p>
-        <button class="code-cta" type="button" data-modal="code-w01d4-deadline"><span class="cc-ico">&lt;/&gt;</span> See the deadline lines <span class="cc-meta">· ticket-clock excerpt</span></button>
+hours_open = age.total_seconds() / 3600
+deadline = opened_at + timedelta(hours=4)
+print(age, hours_open)
+print(NOW &gt; deadline)
+long = timedelta(days=1, hours=2)
+print(long.seconds, long.total_seconds())</code></pre>
+        <p>This prints <code>4:30:00 4.5</code>, then <code>True</code>, because a four-hour deadline from 9:30 passed at
+        13:30. The last line prints <code>7200 93600.0</code>: <code>.seconds</code> reports only the two hours and drops
+        the whole day, while <code>total_seconds()</code> counts all 26 hours.</p>
+        <p><code>NOW</code> is a fixed value on purpose. <code>datetime.now()</code> reads the system clock on every call,
+        so code that calls it directly gives a different answer on every run,<sup class="cite"><a href="#src-48">48</a></sup>
+        and a test that checks "is this ticket breached?" would pass in the morning and fail in the evening. Pinning the
+        current time in one name keeps the output repeatable. The bigger limit is time zones. These values are naive: they
+        carry no time zone, so subtracting values recorded in different zones silently gives a wrong answer, and comparing a
+        naive datetime with an aware one using <code>&lt;</code> raises
+        <code>TypeError</code>.<sup class="cite"><a href="#src-46">46</a></sup> Zones arrive in week 2. In real code you
+        recognise the idiom as <code>datetime.now() - created_at</code>, or
+        <code>deadline = start + timedelta(hours=24)</code>.</p>
+        <h3>Formatting and parsing: isoformat, strftime and strptime</h3>
+        <p>Once the arithmetic works, the next question is how to turn a datetime into text and back.
+        <code>isoformat()</code> returns an ISO 8601 string such as <code>2026-10-15T09:30:00</code>,<sup class="cite"><a href="#src-48">48</a></sup>
+        the form to use in logs, files and APIs. <code>strftime</code> formats with codes such as <code>%a</code> for the
+        abbreviated weekday and <code>%H:%M</code> for 24-hour time, and <code>strptime</code> parses text using the same
+        codes.<sup class="cite"><a href="#src-49">49</a></sup></p>
+<pre><code>print(deadline.isoformat())
+print(deadline.strftime("%a %H:%M"))
+parsed = datetime.strptime("2026-10-15 09:30", "%Y-%m-%d %H:%M")
+print(parsed == opened_at)</code></pre>
+        <p>This prints <code>2026-10-15T13:30:00</code>, then <code>Thu 13:30</code>, then <code>True</code>: the parsed text
+        names the same moment as <code>opened_at</code>.</p>
+        <button class="code-cta" type="button" data-modal="code-w01d4-clock"><span class="cc-ico">&lt;/&gt;</span> See the age and deadline lines in the desk code <span class="cc-meta">· 04_ticket_clock.py</span></button>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Binary floating point can't store 0.1 or 0.2 exactly, so their sum comes out a tiny bit off and the equality
+          fails. I compare floats with a tolerance, or round both sides, and for money I use Decimal.</p>
+          <p>Single slash is true division and always gives a float; double slash is floor division and rounds down, so
+          minus seven floor two is minus four.</p>
+          <p>Subtracting two datetimes gives a timedelta. I use total_seconds for the full duration, because the seconds
+          attribute drops the whole days.</p>
+        </div>
       </section>
 
       <section class="step" data-diagram="0" data-step="6">
-        <div class="tag">Practice</div>
-        <h2>Namespaces, the merge, and what to carry forward</h2>
-        <p>A namespace is a mapping from names to objects. The top level of a file is one, and <code>dir()</code> lists
-        the names in it: your variables, the names you imported, and a few that Python adds itself. Every assignment
-        and every import binds a name, and a later binding replaces an earlier one.</p>
-        <p>The ticket-clock demo types a common import mistake and then deletes it:</p>
+        <div class="tag">Names</div>
+        <h2>Namespaces: which object a name means</h2>
+        <p>Every section so far has bound values to names: <code>title</code>, <code>queue</code>, <code>ticket</code>,
+        <code>NOW</code>. This last one is about the names themselves: where they live, how to list them, how to remove
+        one, and how one ordinary line can make a name point at something else.</p>
+        <h3>Namespaces, dir() and del</h3>
+        <p>A namespace is a mapping from names to objects. Python keeps several: the built-in names such as
+        <code>len</code> and <code>list</code>, the global names of each module, and the local names of each function
+        call.<sup class="cite"><a href="#src-50">50</a></sup> When a line uses a name, Python looks it up in these
+        namespaces to find the object. <code>dir()</code> with no arguments lists the names in the current
+        scope,<sup class="cite"><a href="#src-51">51</a></sup> and <code>del name</code> removes a binding. It does not
+        necessarily destroy the object, which is freed only when no names refer to it any
+        more.<sup class="cite"><a href="#src-52">52</a></sup></p>
+<pre><code>queue = [(1, 101, "Login page returns 500")]
+backup = queue
+print("backup" in dir())
+del backup
+print("backup" in dir(), len(queue))</code></pre>
+        <p>This prints <code>True</code>, then <code>False 1</code>. The name <code>backup</code> is gone from the module's
+        namespace, and the list it pointed at is untouched, because <code>queue</code> still refers to it. This links back
+        to aliasing: a name is a label on an object, and <code>del</code> peels off one label. You recognise
+        <code>del</code> in real code as tidying a name that should not be used again, such as <code>del backup</code>
+        after the copy it held has served its purpose.</p>
+        <h3>__name__ and the main guard</h3>
+        <p>Every module has a global name <code>__name__</code>. It is <code>"__main__"</code> when the file is run
+        directly, and the module's own name when the file is imported.<sup class="cite"><a href="#src-53">53</a></sup> That
+        difference is what the line at the bottom of so many scripts tests.</p>
+<pre><code>print(__name__)
+if __name__ == "__main__":
+    print("running as a script")</code></pre>
+        <p>Saved as <code>ticket_desk.py</code> and run with <code>python ticket_desk.py</code>, this prints
+        <code>__main__</code> and then <code>running as a script</code>. If another file runs
+        <code>import ticket_desk</code> instead, the first line prints <code>ticket_desk</code> and the guarded line is
+        skipped.<sup class="cite"><a href="#src-53">53</a></sup> That is the point of the guard: code beneath it runs when the
+        file is the program and stays quiet when the file is used as a library. The trade-off is small but real: anything
+        a script does outside the guard also happens on import, so a module that prints or prompts at top level does so
+        for every file that imports it.</p>
+        <h3>Shadowing: the later binding wins</h3>
+        <p>A later binding replaces an earlier one with no warning, so a name can shadow a built-in such as
+        <code>list</code> or <code>id</code> and break code further down.<sup class="cite"><a href="#src-50">50</a></sup> The
+        import statements are bindings too. <code>from datetime import datetime</code> binds the name
+        <code>datetime</code> to the class; a later <code>import datetime</code> binds the same name to the module, so the
+        class is no longer reachable by that name.<sup class="cite"><a href="#src-50">50</a></sup></p>
 <pre><code>from datetime import datetime
+print(datetime(2026, 10, 15))
 import datetime
-print(datetime(2026, 10, 15))</code></pre>
-        <p>The first line binds the name <code>datetime</code> to the class. The second rebinds the same name to the
-        module, so the third fails with a <code>TypeError</code> saying that a module object is not callable. Keep one
-        import style per module, and do not reuse a standard-library name for a variable.</p>
-        <p><code>del</code> removes a name from the namespace, and the demo checks for <code>backup</code> in
-        <code>dir()</code> before and after. <code>__name__</code> is one of the names Python adds. It is
-        <code>"__main__"</code> when the file runs as a script.</p>
-        <p>The demo ends by merging the day's branch:</p>
-<pre><code>git switch main
-git merge feature/data-types</code></pre>
-        <p><code>main</code> has not moved since the branch started, so the merge is a fast-forward, and the log shows
-        the day's four commits, one per demo.</p>
-        <p>Today's exercise is a pytest-checked module with four jobs: normalise a ticket title, build the queue as
-        tuples, look up SLA hours from a dict, and compute a deadline with <code>timedelta</code>.</p>
-        <p>To remember from today: string methods return new strings; any non-empty string is truthy;
-        <code>.sort()</code> returns <code>None</code>; a second name for a list is the same list; <code>.get</code>
-        for optional keys and <code>is None</code> for missing values; no <code>==</code> on floats. Friday
-        assumes this file and asks when the repeated prints become a loop, when the inline deadline becomes a function,
-        and when the ticket dict becomes a class.</p>
+datetime(2026, 10, 15)</code></pre>
+        <p>The first print shows <code>2026-10-15 00:00:00</code>. The last line fails with
+        <code>TypeError: 'module' object is not callable</code>, because <code>datetime</code> now names the module, and a
+        module cannot be called. The usual way in is a file that grows over time: someone adds
+        <code>import datetime</code> near the top for an unrelated reason, and code twenty lines down that worked yesterday
+        breaks. The fix is one import style per module.</p>
+        <p>The interviewer's next question is often how to get a built-in back. Assigning <code>list = [1]</code> at module
+        level hides the built-in <code>list</code> until the module-level name is
+        deleted,<sup class="cite"><a href="#src-50">50</a></sup> and the <code>builtins</code> module still reaches the
+        original in the meantime.<sup class="cite"><a href="#src-54">54</a></sup></p>
+<pre><code>list = [1]
+import builtins
+print(builtins.list("ab"))
+del list
+print(list("ab"))</code></pre>
+        <p>Both prints show <code>['a', 'b']</code>. Between the first two lines, calling <code>list("ab")</code> would have
+        raised <code>TypeError</code>, because <code>list</code> named a list object. After <code>del list</code>, the lookup
+        falls through to the built-in namespace again.</p>
+        <div class="ix-predict" data-q="A module starts with from datetime import datetime. Halfway down, someone adds import datetime. What happens to a call datetime(2026, 10, 15) further down?" data-a="It raises TypeError: 'module' object is not callable. The second import rebound the name datetime to the module, replacing the class."></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A namespace is a mapping from names to objects. There's one for the built-ins, one per module for its
+          globals, and one per function call for its locals, and Python looks a name up in them to find the object.</p>
+          <p>If a file does from datetime import datetime and later import datetime, the second import rebinds the name to
+          the module, so calling datetime fails with "module object is not callable".</p>
+          <p>The main guard checks dunder name. It's set to main, with the double underscores, when I run the file
+          directly, and to the module's name when it's imported, so the code under the guard only runs when the file is the
+          program.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="7">
+        <div class="tag">Check yourself</div>
+        <h2>Check yourself</h2>
+        <p>Nine retrieval questions, at least one per section. Answer each out loud before you open it.</p>
+        <details class="check"><summary>A line reads <code>title.upper()</code> on its own and the title is still lower-case afterwards. Why, and how do you cut a title to 40 characters for display without risking an error?</summary><p>Strings are immutable, so <code>upper()</code> returned a new string that nobody kept; write <code>title = title.upper()</code>. <code>title[:40]</code> is safe because a slice never raises <code>IndexError</code>; a shorter title comes back whole.</p></details>
+        <details class="check"><summary>What do <code>int(4.7)</code>, <code>int(" 42 ")</code> and <code>int("4.7")</code> give?</summary><p>4, because <code>int()</code> truncates toward zero; 42, because surrounding whitespace is accepted; and a <code>ValueError</code>, because <code>"4.7"</code> is not an integer literal. <code>int(float("4.7"))</code> or <code>round()</code> handle the third case.</p></details>
+        <details class="check"><summary>Why is <code>bool("False")</code> true, and why is <code>if x == True:</code> poor style?</summary><p>Any non-empty string is truthy; <code>bool()</code> does not read the words. <code>True</code> equals 1, so a truthy value such as 2 fails <code>== True</code>; PEP 8 says to test the value directly with <code>if x:</code>.</p></details>
+        <details class="check"><summary>After <code>queue = queue.sort()</code>, what is in <code>queue</code>? And after <code>backup = queue</code> and <code>backup.append(t)</code>, how long is <code>queue</code>?</summary><p><code>None</code>, because <code>sort()</code> sorts in place and returns <code>None</code>; use <code>sorted(queue)</code> for a new list. <code>queue</code> is one item longer, because both names refer to the same list; <code>queue.copy()</code> makes a separate (shallow) one.</p></details>
+        <details class="check"><summary>What is the type of <code>(1)</code>, and what values does <code>range(1, 4)</code> contain?</summary><p><code>(1)</code> is just the integer 1, because the comma makes a tuple: <code>(1,)</code>. <code>range(1, 4)</code> contains 1, 2 and 3, since the stop value is excluded, and it computes them on demand rather than storing a list.</p></details>
+        <details class="check"><summary>How do you write an empty set, and why is <code>len("café")</code> different from <code>len("café".encode())</code>?</summary><p><code>set()</code>, because <code>{}</code> is an empty dict. The string has 4 code points; UTF-8 needs two bytes for <code>é</code>, so the bytes object has 5.</p></details>
+        <details class="check"><summary>What is the difference between <code>ticket["owner"]</code> and <code>ticket.get("owner", "unassigned")</code>, and how do you test whether <code>assignee</code> has been set?</summary><p>The first raises <code>KeyError</code> when the key is missing; the second returns the default without raising or adding the key. Test with <code>assignee is None</code>, since <code>None</code> is a singleton and <code>if not assignee</code> would also treat an empty string as unset.</p></details>
+        <details class="check"><summary>Why is <code>0.1 + 0.2 == 0.3</code> false, and why is <code>timedelta(days=1, hours=2).seconds</code> 7200?</summary><p>Binary floating point cannot represent 0.1 exactly, so compare with <code>abs(a - b) &lt; 1e-9</code> or round both sides. <code>.seconds</code> is only the part after whole days; <code>total_seconds()</code> gives the full 93600.0.</p></details>
+        <details class="check"><summary>A file has <code>from datetime import datetime</code> at the top and someone adds <code>import datetime</code> below it. What breaks, and how can you see the names a module currently has?</summary><p>The second import rebinds <code>datetime</code> to the module, so <code>datetime(2026, 10, 15)</code> raises <code>TypeError: 'module' object is not callable</code>. <code>dir()</code> with no arguments lists the names in the current scope.</p></details>
       </section>
 
       <section class="reading-sources" aria-label="Sources and deeper dive">
         <h2>Sources &amp; deeper dive</h2>
         <ul>
-          <li><a href="https://docs.python.org/3/library/stdtypes.html" target="_blank" rel="noopener">Python 3.12 — Built-in Types</a> — strings, truth value testing, lists, tuples, ranges, sets, bytes, <code>None</code> and dicts in one reference.</li>
-          <li><a href="https://docs.python.org/3/library/functions.html" target="_blank" rel="noopener">Python 3.12 — Built-in Functions</a> — what <code>int</code>, <code>float</code>, <code>bool</code>, <code>round</code> and <code>sorted</code> accept and return.</li>
-          <li><a href="https://docs.python.org/3/tutorial/datastructures.html" target="_blank" rel="noopener">Python tutorial — Data Structures</a> — tuples and sequences, including the one-element tuple.</li>
-          <li><a href="https://docs.python.org/3/howto/sorting.html" target="_blank" rel="noopener">Sorting Techniques</a> — <code>sorted</code> against <code>list.sort</code>, and sorting tuples.</li>
-          <li><a href="https://docs.python.org/3/tutorial/floatingpoint.html" target="_blank" rel="noopener">Python tutorial — Floating-Point Arithmetic: Issues and Limitations</a> — why <code>0.1 + 0.2</code> is not <code>0.3</code>.</li>
-          <li><a href="https://docs.python.org/3/library/datetime.html" target="_blank" rel="noopener">datetime module</a> — <code>datetime</code>, <code>timedelta</code>, <code>isoformat</code> and the <code>strftime</code> codes.</li>
-          <li><a href="https://docs.python.org/3/tutorial/classes.html#python-scopes-and-namespaces" target="_blank" rel="noopener">Python tutorial — Scopes and Namespaces</a> — what a namespace is and how names are bound.</li>
+          <li id="src-1"><a href="https://docs.python.org/3/library/stdtypes.html#text-sequence-type-str" target="_blank" rel="noopener">Built-in Types: Text Sequence Type</a> — why strings are immutable and how <code>join</code> builds a large one.</li>
+          <li id="src-2"><a href="https://docs.python.org/3/library/stdtypes.html#string-methods" target="_blank" rel="noopener">Built-in Types: String Methods</a> — <code>strip</code>, <code>replace</code>, <code>split</code> and <code>startswith</code> with a tuple.</li>
+          <li id="src-3"><a href="https://docs.python.org/3/library/stdtypes.html#common-sequence-operations" target="_blank" rel="noopener">Built-in Types: Common Sequence Operations</a> — <code>in</code>, negative indexes, slices and <code>[x] * n</code>.</li>
+          <li id="src-4"><a href="https://docs.python.org/3/tutorial/introduction.html#strings" target="_blank" rel="noopener">Tutorial: An Informal Introduction to Python, Strings</a> — why an out-of-range slice never raises.</li>
+          <li id="src-5"><a href="https://peps.python.org/pep-0498/" target="_blank" rel="noopener">PEP 498 – Literal String Interpolation</a> — f-strings and their format specs.</li>
+          <li id="src-6"><a href="https://docs.python.org/3/library/functions.html#input" target="_blank" rel="noopener">Built-in Functions: input</a> — it always returns a <code>str</code>.</li>
+          <li id="src-7"><a href="https://docs.python.org/3/library/functions.html#int" target="_blank" rel="noopener">Built-in Functions: int</a> — truncation toward zero, integer literals and the base argument.</li>
+          <li id="src-8"><a href="https://docs.python.org/3/library/functions.html#float" target="_blank" rel="noopener">Built-in Functions: float</a> — the strings it accepts, including <code>"nan"</code> and <code>"inf"</code>.</li>
+          <li id="src-9"><a href="https://docs.python.org/3/library/functions.html#repr" target="_blank" rel="noopener">Built-in Functions: repr</a> — the unambiguous form beside <code>str()</code>'s readable one.</li>
+          <li id="src-10"><a href="https://docs.python.org/3/library/stdtypes.html#str.isdigit" target="_blank" rel="noopener">String Methods: str.isdigit</a> — which characters count as digits.</li>
+          <li id="src-11"><a href="https://docs.python.org/3/library/stdtypes.html#str.isdecimal" target="_blank" rel="noopener">String Methods: str.isdecimal</a> — the closer pre-check for <code>int()</code>.</li>
+          <li id="src-12"><a href="https://docs.python.org/3/library/stdtypes.html#truth-value-testing" target="_blank" rel="noopener">Built-in Types: Truth Value Testing</a> — the full list of falsy values.</li>
+          <li id="src-13"><a href="https://docs.python.org/3/library/stdtypes.html#boolean-type-bool" target="_blank" rel="noopener">Built-in Types: Boolean Type</a> — <code>bool</code> as a subclass of <code>int</code>.</li>
+          <li id="src-14"><a href="https://peps.python.org/pep-0008/#programming-recommendations" target="_blank" rel="noopener">PEP 8: Programming Recommendations</a> — no <code>== True</code>, and <code>is None</code> for singletons.</li>
+          <li id="src-15"><a href="https://docs.python.org/3/library/stdtypes.html#boolean-operations-and-or-not" target="_blank" rel="noopener">Built-in Types: Boolean Operations</a> — <code>and</code> and <code>or</code> return an operand and short-circuit.</li>
+          <li id="src-16"><a href="https://docs.python.org/3/tutorial/datastructures.html#more-on-lists" target="_blank" rel="noopener">Tutorial: More on Lists</a> — the in-place list methods and what they return.</li>
+          <li id="src-17"><a href="https://docs.python.org/3/howto/sorting.html" target="_blank" rel="noopener">Sorting Techniques</a> — <code>sort()</code> against <code>sorted()</code>, stability and tuple order.</li>
+          <li id="src-18"><a href="https://docs.python.org/3/library/stdtypes.html#mutable-sequence-types" target="_blank" rel="noopener">Built-in Types: Mutable Sequence Types</a> — <code>copy()</code> and what assignment binds.</li>
+          <li id="src-19"><a href="https://docs.python.org/3/tutorial/datastructures.html#using-lists-as-queues" target="_blank" rel="noopener">Tutorial: Using Lists as Queues</a> — why the front of a list is slow, and <code>deque</code>.</li>
+          <li id="src-20"><a href="https://wiki.python.org/moin/TimeComplexity" target="_blank" rel="noopener">Python Wiki: Time Complexity</a> — supplementary costs of list, deque, set and dict operations.</li>
+          <li id="src-21"><a href="https://docs.python.org/3/library/copy.html" target="_blank" rel="noopener">copy module</a> — shallow and deep copies.</li>
+          <li id="src-22"><a href="https://docs.python.org/3/tutorial/datastructures.html#tuples-and-sequences" target="_blank" rel="noopener">Tutorial: Tuples and Sequences</a> — the trailing comma and unpacking.</li>
+          <li id="src-23"><a href="https://docs.python.org/3/library/stdtypes.html#tuples" target="_blank" rel="noopener">Built-in Types: Tuples</a> — the two methods a tuple has.</li>
+          <li id="src-24"><a href="https://docs.python.org/3/glossary.html#term-hashable" target="_blank" rel="noopener">Glossary: hashable</a> — what may be a set member or a dict key.</li>
+          <li id="src-25"><a href="https://docs.python.org/3/library/functions.html#func-range" target="_blank" rel="noopener">Built-in Functions: range</a> — start, stop, step and integer-only arguments.</li>
+          <li id="src-26"><a href="https://docs.python.org/3/library/stdtypes.html#ranges" target="_blank" rel="noopener">Built-in Types: Ranges</a> — a lazy, immutable sequence and its fixed memory.</li>
+          <li id="src-27"><a href="https://docs.python.org/3/tutorial/datastructures.html#sets" target="_blank" rel="noopener">Tutorial: Sets</a> — sets as fast membership tests.</li>
+          <li id="src-28"><a href="https://docs.python.org/3/library/stdtypes.html#set-types-set-frozenset" target="_blank" rel="noopener">Built-in Types: Set Types</a> — <code>add</code>, <code>remove</code>, <code>discard</code>, the operators and <code>frozenset</code>.</li>
+          <li id="src-29"><a href="https://docs.python.org/3/library/stdtypes.html#binary-sequence-types-bytes-bytearray-memoryview" target="_blank" rel="noopener">Built-in Types: Binary Sequence Types</a> — <code>bytes</code>, <code>bytearray</code>, encoding and decoding.</li>
+          <li id="src-30"><a href="https://docs.python.org/3/library/stdtypes.html#bytes-objects" target="_blank" rel="noopener">Built-in Types: bytes Objects</a> — indexing gives an integer from 0 to 255.</li>
+          <li id="src-31"><a href="https://docs.python.org/3/howto/unicode.html" target="_blank" rel="noopener">Unicode HOWTO</a> — UTF-8 byte lengths, wrong codecs and error handlers.</li>
+          <li id="src-32"><a href="https://docs.python.org/3/library/stdtypes.html#the-null-object" target="_blank" rel="noopener">Built-in Types: The Null Object</a> — <code>None</code> as the single value of its type.</li>
+          <li id="src-33"><a href="https://docs.python.org/3/library/functions.html#print" target="_blank" rel="noopener">Built-in Functions: print</a> — it returns <code>None</code>.</li>
+          <li id="src-34"><a href="https://docs.python.org/3/library/stdtypes.html#dict.get" target="_blank" rel="noopener">Mapping Types: dict.get</a> — the default, and <code>None</code> when none is given.</li>
+          <li id="src-35"><a href="https://docs.python.org/3/library/stdtypes.html#comparisons" target="_blank" rel="noopener">Built-in Types: Comparisons</a> — which types can be ordered against each other.</li>
+          <li id="src-36"><a href="https://docs.python.org/3/library/stdtypes.html#mapping-types-dict" target="_blank" rel="noopener">Built-in Types: Mapping Types, dict</a> — lookups, <code>setdefault</code>, keys and insertion order.</li>
+          <li id="src-37"><a href="https://docs.python.org/3/library/stdtypes.html#dict-views" target="_blank" rel="noopener">Built-in Types: Dictionary view objects</a> — live views and snapshots.</li>
+          <li id="src-38"><a href="https://docs.python.org/3/tutorial/datastructures.html#dictionaries" target="_blank" rel="noopener">Tutorial: Dictionaries</a> — dicts in the tutorial, including their order.</li>
+          <li id="src-39"><a href="https://docs.python.org/3/tutorial/floatingpoint.html" target="_blank" rel="noopener">Tutorial: Floating-Point Arithmetic, Issues and Limitations</a> — why 0.1 is not exact.</li>
+          <li id="src-40"><a href="https://docs.python.org/3/library/stdtypes.html#numeric-types-int-float-complex" target="_blank" rel="noopener">Built-in Types: Numeric Types</a> — arbitrary-precision integers.</li>
+          <li id="src-41"><a href="https://peps.python.org/pep-0238/" target="_blank" rel="noopener">PEP 238 – Changing the Division Operator</a> — true division against floor division.</li>
+          <li id="src-42"><a href="https://docs.python.org/3/library/functions.html#divmod" target="_blank" rel="noopener">Built-in Functions: divmod</a> — quotient and remainder in one call.</li>
+          <li id="src-43"><a href="https://docs.python.org/3/library/functions.html#round" target="_blank" rel="noopener">Built-in Functions: round</a> — round half to even.</li>
+          <li id="src-44"><a href="https://peps.python.org/pep-0515/" target="_blank" rel="noopener">PEP 515 – Underscores in Numeric Literals</a> — <code>1_000_000</code>.</li>
+          <li id="src-45"><a href="https://docs.python.org/3/library/decimal.html" target="_blank" rel="noopener">decimal module</a> — exact decimal arithmetic.</li>
+          <li id="src-46"><a href="https://docs.python.org/3/library/datetime.html" target="_blank" rel="noopener">datetime module</a> — datetime and timedelta arithmetic, naive and aware values.</li>
+          <li id="src-47"><a href="https://docs.python.org/3/library/datetime.html#timedelta-objects" target="_blank" rel="noopener">datetime module: timedelta Objects</a> — <code>.seconds</code> against <code>total_seconds()</code>.</li>
+          <li id="src-48"><a href="https://docs.python.org/3/library/datetime.html#datetime-objects" target="_blank" rel="noopener">datetime module: datetime Objects</a> — <code>now()</code> and <code>isoformat()</code>.</li>
+          <li id="src-49"><a href="https://docs.python.org/3/library/datetime.html#strftime-and-strptime-behavior" target="_blank" rel="noopener">strftime() and strptime() Behavior</a> — the format codes.</li>
+          <li id="src-50"><a href="https://docs.python.org/3/tutorial/classes.html#python-scopes-and-namespaces" target="_blank" rel="noopener">Tutorial: Python Scopes and Namespaces</a> — what a namespace is and how bindings replace each other.</li>
+          <li id="src-51"><a href="https://docs.python.org/3/library/functions.html#dir" target="_blank" rel="noopener">Built-in Functions: dir</a> — the names in the current scope.</li>
+          <li id="src-52"><a href="https://docs.python.org/3/reference/simple_stmts.html#the-del-statement" target="_blank" rel="noopener">Language Reference: the del statement</a> — removing a binding.</li>
+          <li id="src-53"><a href="https://docs.python.org/3/library/__main__.html" target="_blank" rel="noopener">__main__: Top-level code environment</a> — <code>__name__</code> and the main guard.</li>
+          <li id="src-54"><a href="https://docs.python.org/3/library/builtins.html" target="_blank" rel="noopener">builtins module</a> — reaching a built-in that a module-level name hides.</li>
         </ul>
       </section>
 
@@ -245,7 +771,7 @@ git merge feature/data-types</code></pre>
         <button class="activity-card accent" type="button" data-modal="quiz-modal">
           <div class="ac-k">✓ Comprehension check</div>
           <div class="ac-t">6 quick questions</div>
-          <div class="ac-meta">~5 min · practice, not graded</div>
+          <div class="ac-meta">~5 min · after you have read the page</div>
         </button>
       </div>
 
@@ -277,11 +803,10 @@ git merge feature/data-types</code></pre>
     <h2>Day 4 — goals &amp; exercise</h2>
     <div class="ma-k">By the end of today you can</div>
     <ul class="goals-list">
-      <li>Normalise typed text with string methods and cast it to a number, predicting what <code>int</code> and <code>bool</code> do to common inputs</li>
-      <li>Hold several records as a list of tuples that sorts by tuple order, and avoid the <code>.sort()</code> and aliasing pitfalls</li>
-      <li>Choose a set for unique membership and a dict for lookup, with <code>.get</code> for optional keys and <code>is None</code> for missing values</li>
-      <li>Compare floats safely and compute an age and a deadline from <code>datetime</code> and <code>timedelta</code> values</li>
-      <li>Read a file's namespace with <code>dir()</code> and explain how a second import can rebind a name you already use</li>
+      <li>Clean typed text with string methods and slicing, cast it to a number safely, and predict what <code>bool()</code> returns for strings, numbers and empty containers</li>
+      <li>Choose between a list, a tuple, a range and a set for a job, and explain aliasing, shallow copies and why <code>.sort()</code> returns <code>None</code></li>
+      <li>Model a record as a dict with <code>None</code> for missing values, read it safely with <code>.get</code>, and explain why <code>len</code> differs between a string and its bytes</li>
+      <li>Compare floats without <code>==</code>, compute an age and a deadline from two datetimes, and say what a namespace is and how a name gets shadowed</li>
     </ul>
     <div class="ma-k">Today's exercise</div>
     <ul class="deliv-list check">
@@ -289,131 +814,151 @@ git merge feature/data-types</code></pre>
     </ul>
     <div class="ma-k">Demos today</div>
     <ul class="deliv-list">
-      <li>Demo 1 — clean typed ticket text with string methods, turn typed text into a number with int() and name what int and bool do to common inputs, and predict bool(x) for strings and numbers before running it</li>
-      <li>Demo 2 — hold several tickets as a list of (rank, ticket_id, title) tuples that sorts by tuple order, avoid the aliasing and .sort()-returns-None pitfalls, build ids from range, and track reporters as a set</li>
-      <li>Demo 3 — encode and decode a title as bytes, represent "not assigned yet" with None, and model a ticket as a dict whose SLA hours come from a lookup table, using .get for safe reads</li>
-      <li>Demo 4 — compare floats safely, compute a ticket's age and SLA deadline from datetime and timedelta values, inspect the module namespace, and merge the day's branch into main</li>
+      <li>Demo 1 — clean typed ticket text with string methods, turn typed text into a number with <code>int()</code> and name what <code>int</code> and <code>bool</code> do to common inputs, and predict <code>bool(x)</code> for strings and numbers before running it</li>
+      <li>Demo 2 — build a queue of tickets as a list of tuples, sort it by tuple order, avoid the aliasing and <code>.sort()</code> traps, and track unique reporters in a set</li>
+      <li>Demo 3 — encode and decode a title as bytes, represent "not assigned yet" with <code>None</code>, and model a ticket as a dict whose SLA hours come from a lookup table, using <code>.get</code> for safe reads</li>
+      <li>Demo 4 — compare floats safely, compute a ticket's age and deadline from two datetimes, read a namespace with <code>dir()</code> and spot a shadowed name, then merge the day's branch into <code>main</code></li>
     </ul>
-    <p class="goals-foot">Friday assumes today's file, merged into main. Finish the check to unlock the next page.</p>
+    <p class="goals-foot">Friday assumes these types. Finish the check to unlock the next page.</p>
   </div>
 </div>
 
 <script>
 window.NEXT = { label: "Day 5 — Control flow, functions & classes →", href: "day-5-control-flow-functions-and-classes.html" };
 window.DIAGRAM = {
-  title: "Day 4 · one ticket file, type by type",
-  width: 500, height: 488,
+  title: "Day 4 · from typed text to a ticket with a clock",
+  width: 500, height: 580,
   nodes: [
-    { id:"text", step:0, kind:"example", x:14, y:14, w:472, h:50, label:"TYPED TEXT\n  title.strip() · priority.strip().lower()", detail:"String methods return new strings, so the result is assigned back to the name. Both fields are cleaned once, right after the input guard." },
-    { id:"cast", step:1, x:24, y:90, w:200, h:48, label:"int(ticket_id_text)\n  typed text → number", detail:"input() returns text. int(\"3.5\") raises ValueError; int(3.9) truncates to 3; str(ticket_id) goes back to text." },
-    { id:"truth", step:1, x:276, y:90, w:200, h:48, label:"bool(x)\n  \"\" · 0 · None → False", detail:"Empty sequences, zero, None and False are false. Every non-empty string is true, including \"False\". Do not compare with == True." },
-    { id:"queue", step:2, x:24, y:168, w:200, h:56, label:"queue · list of tuples\n  (rank, ticket_id, title)\n  sorted() by tuple order", detail:"Tuples compare element by element: rank, then id. sorted() returns a new list; .sort() returns None. backup = queue is one list with two names; queue.copy() is a shallow copy." },
-    { id:"reporters", step:3, x:276, y:168, w:200, h:56, label:"reporters · set\n  each name once\n  in · & · -", detail:"No order, no duplicates, members must be hashable. {} is an empty dict, so an empty set is set()." },
-    { id:"raw", step:3, x:276, y:254, w:200, h:56, label:"raw · bytes\n  title.encode(\"utf-8\")\n  raw.decode()", detail:"len counts code points for str and bytes for bytes: \"café\" is 4 characters and 5 bytes. bytes + str raises TypeError." },
-    { id:"ticket", step:4, x:24, y:254, w:200, h:56, label:"ticket · dict\n  assignee None · history []\n  SLA_HOURS[priority]", detail:"ticket[\"owner\"] raises KeyError; ticket.get(\"owner\", \"unassigned\") returns the default. Test assignee with is None. tickets_by_id maps each id to its ticket." },
-    { id:"clock", step:5, x:24, y:340, w:200, h:56, label:"opened_at · NOW\n  age → hours_open\n  deadline = opened_at + SLA", detail:"NOW - opened_at is a timedelta of 4:30:00; total_seconds() / 3600 gives 4.5. The deadline is opened_at plus timedelta(hours=SLA_HOURS[priority]). NOW is pinned so the output is the same on every run." },
-    { id:"ns", step:6, x:276, y:340, w:200, h:56, label:"the file's namespace\n  dir() · __name__\n  del backup", detail:"A namespace maps names to objects. A later import datetime rebinds a name bound by from datetime import datetime. __name__ is \"__main__\" when the file runs as a script." },
-    { id:"main", step:6, kind:"example", x:14, y:426, w:472, h:50, label:"MAIN AFTER THE MERGE\n  git merge feature/data-types · four commits, one per demo" }
+    { id:"str", step:0, kind:"example", x:14, y:14, w:472, h:50, label:"STRINGS\n  strip · lower · [:40] · join", detail:"Immutable: every method returns a new string. A slice never raises IndexError. Build large strings with \"\".join(parts); f-strings take format specs such as :.2f." },
+    { id:"cast", step:1, x:24, y:86, w:200, h:48, label:"Casting\n  int() · float() · str()", detail:"input() always returns str. int(3.9) is 3 (truncates); int(\"3.5\") raises ValueError; isdecimal() is the closer pre-check." },
+    { id:"truth", step:1, x:276, y:86, w:200, h:48, label:"Truthiness\n  falsy · and / or", detail:"None, False, zeros and empty containers are falsy; bool(\"False\") is True. and / or return an operand, not a bool." },
+    { id:"list", step:2, x:24, y:162, w:140, h:56, label:"list\n  mutable · sort() → None\n  b = a aliases", detail:"In-place methods return None (pop returns the item). sorted() returns a new list; copy() is shallow, copy.deepcopy is deep." },
+    { id:"tuple", step:2, x:180, y:162, w:140, h:56, label:"tuple\n  (1,) · sorts by field\n  hashable if items are", detail:"The comma makes the tuple. Tuples compare element by element, so a list of (rank, id, title) sorts by rank, then id." },
+    { id:"range", step:2, x:336, y:162, w:140, h:56, label:"range\n  stop excluded\n  computed on demand", detail:"range(1, 4) is 1, 2, 3. Stores only start, stop and step; integers only; a step of 0 raises ValueError." },
+    { id:"set", step:3, x:24, y:242, w:200, h:48, label:"set\n  distinct · & | - ^ · set()", detail:"Membership by hash, so x in s is fast. No order, no indexing; {} is an empty dict. frozenset is the hashable variant." },
+    { id:"bytes", step:3, x:276, y:242, w:200, h:48, label:"bytes\n  encode · decode · 0..255", detail:"len(\"café\") is 4, its UTF-8 bytes are 5. bytes + str raises TypeError; the wrong codec raises or garbles. bytearray is mutable." },
+    { id:"none", step:4, x:24, y:314, w:200, h:48, label:"None\n  singleton · is None", detail:"The only value of NoneType. print() and in-place list methods return it; dict.get(key) returns it for a missing key." },
+    { id:"dict", step:4, x:276, y:314, w:200, h:48, label:"dict\n  .get(k, default) · views", detail:"d[k] raises KeyError, .get does not and adds nothing. Keys must be hashable. Insertion order is guaranteed since 3.7." },
+    { id:"num", step:5, x:24, y:386, w:200, h:48, label:"Numbers\n  0.1 + 0.2 · / vs // · Decimal", detail:"Floats are approximate: compare with abs(a - b) < 1e-9 or round. ints never overflow. round() rounds half to even." },
+    { id:"dt", step:5, x:276, y:386, w:200, h:48, label:"datetime\n  NOW - opened_at → timedelta", detail:"total_seconds() for the full duration; .seconds drops whole days. isoformat() for logs; strftime and strptime share format codes." },
+    { id:"ns", step:6, kind:"example", x:14, y:458, w:472, h:50, label:"NAMESPACES\n  dir() · del · __name__ · shadowing", detail:"A namespace maps names to objects. import datetime after from datetime import datetime rebinds the name; builtins reaches a hidden built-in." },
+    { id:"check", step:7, x:24, y:528, w:452, h:40, label:"CHECK YOURSELF\n  answer out loud, then open" }
   ],
   edges: [
-    { id:"e1", step:1, from:"text", to:"cast", label:"typed id" },
-    { id:"e2", step:1, from:"text", to:"truth", label:"is it empty?" },
-    { id:"e3", step:2, from:"cast", to:"queue", label:"id in each tuple" },
-    { id:"e4", step:3, from:"queue", to:"reporters", label:"who reported" },
-    { id:"e5", step:4, from:"queue", to:"ticket", label:"one record, named" },
-    { id:"e6", step:4, from:"ticket", to:"raw", label:"its title", dir:"-" },
-    { id:"e7", step:5, from:"ticket", to:"clock", label:"SLA hours" },
-    { id:"e8", step:6, from:"clock", to:"ns", label:"names bound" },
-    { id:"e9", step:6, from:"clock", to:"main", dir:"-" },
-    { id:"e10", step:6, from:"ns", to:"main", dir:"-" }
+    { id:"e1", step:1, from:"str", to:"cast", label:"typed text → int" },
+    { id:"e2", step:1, from:"str", to:"truth", label:"\"\" is falsy" },
+    { id:"e3", step:2, from:"tuple", to:"list", label:"items of" },
+    { id:"e4", step:3, from:"list", to:"set", label:"dedupe" },
+    { id:"e5", step:3, from:"str", to:"bytes", label:"encode" },
+    { id:"e6", step:4, from:"truth", to:"none", label:"falsy, not False" },
+    { id:"e7", step:4, from:"tuple", to:"dict", label:"hashable key" },
+    { id:"e8", step:5, from:"dict", to:"dt", label:"SLA_HOURS → deadline" },
+    { id:"e9", step:5, from:"num", to:"dt", label:"hours_open" },
+    { id:"e10", step:6, from:"dt", to:"ns", label:"import binds a name" },
+    { id:"e11", step:7, from:"ns", to:"check", dir:"-" }
   ],
   captions: [
-    "Typed text is cleaned once with string methods, and each method returns a new string. <span style='opacity:.7'>(tap nodes for detail)</span>",
-    "The typed id is cast with int() on its own line, and bool() follows truthiness whatever a string happens to say.",
-    "Three tickets sit in a list of tuples, and sorted() orders them by rank and then id with no key.",
-    "Reporters go in a set, which keeps each name once; the title makes a round trip through bytes.",
-    "One ticket becomes a dict with None for the missing assignee, and its SLA hours come from a lookup table.",
-    "Two datetimes give the ticket's age, and adding the SLA as a timedelta gives its deadline.",
-    "Every line so far bound a name in the file's namespace; the day's branch then merges into main as four commits."
+    "Strings: immutable text, cleaned with methods that return new strings, cut with slices and built with join. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "Casting turns typed text into numbers, and truthiness is the cast Python makes on its own in every condition.",
+    "Three sequences: a mutable list, a fixed and sortable tuple, and a range that computes integers on demand.",
+    "A set keeps distinct hashable items for fast membership; bytes is what text becomes once it is encoded.",
+    "None marks a value that is not there yet, and a dict holds a record by key with .get for safe reads.",
+    "Floats are approximate and ints are exact; two datetimes give a timedelta, and a timedelta gives a deadline.",
+    "Every name lives in a namespace, and a later binding, including an import, silently replaces an earlier one.",
+    "You can now explain each built-in type's idiom, its trade-off and the pitfall a reviewer looks for, out loud and without notes."
   ]
 };
 window.QUIZ = {
   id: "w01-d4",
   title: "Check your understanding",
   questions: [
-    { type: "scq", stem: "A file contains the line queue = queue.sort(). What is queue bound to afterwards?",
-      options: ["The same list, now sorted", "None", "A new sorted list, with the old one unchanged", "A tuple of the sorted items"], answer: 1,
-      explain: "list.sort() sorts in place and returns None, so the assignment replaces the list with None. Use sorted(queue) when you want a new list back." },
-    { type: "scq", stem: "queue holds three tuples. After backup = queue and one backup.append(...), what does print(len(queue), len(backup)) show?",
-      options: ["3 4", "4 4", "3 3", "4 3"], answer: 1,
-      explain: "Assignment binds a second name to the same list, so the append is visible through both names. queue.copy() would have given 3 4." },
-    { type: "tf", stem: "In Python, 0.1 + 0.2 == 0.3 evaluates to True.", answer: false,
-      explain: "Binary floating point cannot represent 0.1 exactly, so the sum is 0.30000000000000004. Round both sides or test that the absolute difference is below a small tolerance such as 1e-9." },
-    { type: "mcq", stem: "Which of these values are false when passed to bool()? Select all that apply.",
-      options: ["\"\" (an empty string)", "\"0\" (the text zero)", "0", "None"], answer: [0, 2, 3],
-      explain: "Empty sequences, zero and None are false. \"0\" is a non-empty string, so it is true, in the same way that \"False\" is." },
-    { type: "match", stem: "Match each expression to what it gives.",
+    { type: "scq", stem: "queue holds three tuples. What does print(queue.sort()) print?",
+      options: ["The three tuples in sorted order", "None", "The three tuples in their original order", "A TypeError, because tuples cannot be sorted"], answer: 1,
+      explain: "sort() sorts the list in place and returns None, so the print shows None while queue itself is now sorted. sorted(queue) returns a new sorted list." },
+    { type: "tf", stem: "bool(\"False\") is False.", answer: false,
+      explain: "Any non-empty string is truthy, whatever the words say. Only the empty string \"\" is a falsy string." },
+    { type: "mcq", stem: "Which of these can be a dict key? Select all that apply.",
+      options: ["(1, 2)", "\"high\"", "[1, 2]", "(1, [2])"], answer: [0, 1],
+      explain: "Keys must be hashable. A string and a tuple of integers are; a list is not, and a tuple is hashable only if every element is, so (1, [2]) is not." },
+    { type: "match", stem: "Match each expression to its result.",
       pairs: [
-        { l: "int(\"3.5\")", r: "raises ValueError" },
-        { l: "int(3.9)", r: "3" },
-        { l: "ticket[\"owner\"] when the key is absent", r: "raises KeyError" },
-        { l: "ticket.get(\"owner\", \"unassigned\")", r: "\"unassigned\"" },
-        { l: "NOW - opened_at", r: "a timedelta" }
+        { l: "10 / 4", r: "2.5" },
+        { l: "10 // 4", r: "2" },
+        { l: "divmod(28, 24)", r: "(1, 4)" },
+        { l: "-7 // 2", r: "-4" }
       ],
-      explain: "int() of text accepts only whole-number text, and int() of a float truncates toward zero. Square brackets raise KeyError on a missing key while .get returns its default. Subtracting two datetimes gives a timedelta." },
-    { type: "open", stem: "In one or two sentences: why does the ticket-clock demo pin NOW to a fixed datetime, and how does hours_open come out of NOW and opened_at?",
-      hint: "Think about what datetime.now() prints on two different runs.",
-      model: "datetime.now() returns a different value on every run, so a breach rule built on it could not be checked; a pinned NOW gives the same output each time. NOW - opened_at is a timedelta, total_seconds() turns it into a float, and dividing by 3600 gives 4.5 hours." }
+      explain: "/ is true division and returns a float. // floors, so -7 // 2 rounds down to -4. divmod returns the quotient and remainder as a tuple." },
+    { type: "scq", stem: "A file begins with from datetime import datetime. Later it adds import datetime, then calls datetime(2026, 10, 15). What happens?",
+      options: ["It returns a datetime for 15 October 2026", "It raises TypeError: 'module' object is not callable", "It raises ImportError", "Python warns about the duplicate import and uses the class"], answer: 1,
+      explain: "The second import rebinds the name datetime to the module, with no warning. A module cannot be called, so the call raises TypeError." },
+    { type: "open", stem: "In two or three sentences: what is the difference between ticket[\"owner\"] and ticket.get(\"owner\", \"unassigned\"), and why does ticket.get(\"assignee\") returning None not prove the key is missing?",
+      hint: "One raises, one does not; None can be a stored value.",
+      model: "ticket[\"owner\"] raises KeyError when the key is missing, while .get returns the default \"unassigned\" without raising or inserting the key. .get returns None for a missing key when no default is given, but it also returns None when the key exists and holds None, as assignee does before anyone is assigned, so \"assignee\" in ticket is the test for presence." }
   ]
 };
 </script>
 
-<!-- code popup: an excerpt of the ticket-queue answer key -->
-<div id="code-w01d4-queue" class="modal-overlay" hidden>
+<!-- code popup: excerpt of the ticket-dict answer key -->
+<div id="code-w01d4-dict" class="modal-overlay" hidden>
   <div class="modal-card code-modal">
     <button class="modal-close" type="button" aria-label="Close">✕</button>
-    <h2>Excerpt: the queue of tuples and its copy</h2>
-    <p class="cv-cap">Steps 1 and 2 of the ticket-queue demo. Three tuples are appended out of order, printed one by one, sorted by tuple order, and then copied.</p>
-    <div class="cv" data-file="02_ticket_queue.py" data-lang="python"><pre class="cv-raw">queue = []
-queue.append((2, 103, &quot;Wi-Fi drops&quot;))
-queue.append((1, 101, &quot;Login page returns 500&quot;))
-queue.append((2, 102, &quot;Printer jams&quot;))
-print(queue[0])
-print(queue[1])
-print(queue[2])
-print(queue[-1])
-print(queue[1:])
-print(len(queue))
-print(sorted(queue))
+    <h2>Answer key excerpt: 03_ticket_dict.py</h2>
+    <p class="cv-cap">The end of the dict rung: a placeholder assignee, the ticket as a dict, a safe read with a default, and a registry keyed by id.</p>
+    <div class="cv" data-file="03_ticket_dict.py" data-lang="python"><pre class="cv-raw">assignee = None
+print(assignee is None)
 
-backup = queue.copy()
-backup.append((9, 999, &quot;oops&quot;))
-print(len(queue), len(backup))</pre></div>
-    <p class="cv-foot">sorted(queue) prints ticket 101 first, then 102, then 103: rank decides and the id breaks the tie. The last line prints 3 4 because backup is a copy.</p>
+ticket = {
+    &quot;id&quot;: ticket_id,
+    &quot;title&quot;: title,
+    &quot;priority&quot;: priority,
+    &quot;assignee&quot;: assignee,
+    &quot;history&quot;: [],
+}
+print(ticket.get(&quot;owner&quot;, &quot;unassigned&quot;))
+ticket[&quot;assignee&quot;] = &quot;lee&quot;
+ticket[&quot;history&quot;].append(&quot;assigned to lee&quot;)
+print(ticket)
+print(&quot;id&quot; in ticket)
+print(list(ticket.items()))
+tickets_by_id = {ticket[&quot;id&quot;]: ticket}
+print(tickets_by_id[ticket_id][&quot;title&quot;])</pre></div>
+    <p class="cv-foot">.get returns the default and adds no key; the history list is mutated in place through the dict; tickets_by_id is the registry a later class replaces.</p>
   </div>
 </div>
 
-<!-- code popup: an excerpt of the ticket-clock answer key -->
-<div id="code-w01d4-deadline" class="modal-overlay" hidden>
+<!-- code popup: excerpt of the ticket-clock answer key -->
+<div id="code-w01d4-clock" class="modal-overlay" hidden>
   <div class="modal-card code-modal">
     <button class="modal-close" type="button" aria-label="Close">✕</button>
-    <h2>Excerpt: the deadline from a timedelta</h2>
-    <p class="cv-cap">Step 2 of the ticket-clock demo. The age prints as a timedelta, and the deadline is the opening time plus the SLA hours from the table.</p>
-    <div class="cv" data-file="04_ticket_clock.py" data-lang="python"><pre class="cv-raw">print(age)
+    <h2>Answer key excerpt: 04_ticket_clock.py</h2>
+    <p class="cv-cap">The clock rung: hours_open now comes from two datetimes, and the deadline from the SLA table.</p>
+    <div class="cv" data-file="04_ticket_clock.py" data-lang="python"><pre class="cv-raw">from datetime import datetime, timedelta
+...
+opened_at = datetime(2026, 10, 15, 9, 30)
+NOW = datetime(2026, 10, 15, 14, 0)
+age = NOW - opened_at
+hours_open = age.total_seconds() / 3600
+...
+print(round(0.1 + 0.2, 2) == 0.3, abs((0.1 + 0.2) - 0.3) &lt; 1e-9)
+print(10 / 4, 10 // 4)
+print(divmod(int(hours_open), 24))
+print(1_000_000)
+
+print(age)
 deadline = opened_at + timedelta(hours=SLA_HOURS[priority])
 print(f&quot;opened {opened_at.isoformat()}, deadline {deadline.isoformat()}&quot;)
 print(f&quot;past deadline: {NOW &gt; deadline}&quot;)
 print(deadline.strftime(&quot;%a %H:%M&quot;))</pre></div>
-    <p class="cv-foot">For the sample ticket this prints 4:30:00, then the opening time and the 13:30 deadline in ISO form, then past deadline: True, then Thu 13:30.</p>
+    <p class="cv-foot">NOW is pinned so every run prints the same age, 4:30:00; with a high priority the deadline is 13:30 and the breach flag is True.</p>
   </div>
 </div>
 
-<script src="../../assets/js/diagram.js?v=20261011"></script>
-<script src="../../assets/js/scrolly.js?v=20261011"></script>
-<script src="../../assets/js/modals.js?v=20261011"></script>
-<script src="../../assets/js/quiz.js?v=20261012"></script>
-<script src="../../assets/js/widgets.js?v=20261012"></script>
-<script src="../../assets/js/glossary.js?v=20261012"></script>
-<script src="../../assets/js/codeviewer.js?v=20261011"></script>
+<script src="../../assets/js/diagram.js?v=20261013-2"></script>
+<script src="../../assets/js/scrolly.js?v=20261013-2"></script>
+<script src="../../assets/js/modals.js?v=20261013-2"></script>
+<script src="../../assets/js/quiz.js?v=20261013-2"></script>
+<script src="../../assets/js/widgets.js?v=20261013-2"></script>
+<script src="../../assets/js/glossary.js?v=20261013-2"></script>
+<script src="../../assets/js/codeviewer.js?v=20261013-2"></script>
 </body>
 </html>

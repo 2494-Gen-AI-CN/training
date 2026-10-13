@@ -178,9 +178,9 @@ A support desk at a small software company works like this: a customer files a t
 | Source control management (git, vcs, cvcs, dvcs) | w01d2 | facilitation | 5 |
 | Git fundamentals | w01d2 | 02_local_git_loop | 5 |
 | Initializing a repository | w01d2 | 02_local_git_loop | 5 |
-| Commit, branch, merge, push, pull | w01d2 | 02_local_git_loop | 5 |
-| Pushing to a remote repository | w01d2 | 03_remote_round_trip | 6 |
-| Git exercise | w01d2 | facilitation | 7 |
+| Commit, branch, merge, push, pull | w01d2 | 02_local_git_loop | 6 |
+| Pushing to a remote repository | w01d2 | 03_remote_round_trip | 7 |
+| Git exercise | w01d2 | facilitation | 8 |
 | Python syntax | w01d3 | 01_ticket_record | 1 |
 | Comments | w01d3 | 01_ticket_record | 2 |
 | Variables and datatypes | w01d3 | 01_ticket_record | 3 |
@@ -203,10 +203,10 @@ A support desk at a small software company works like this: a customer files a t
 | While loops | w01d5 | 01_desk_control_flow | 2 |
 | For loops | w01d5 | 01_desk_control_flow | 2 |
 | Functions | w01d5 | 02_desk_functions | 3 |
-| Lambda | w01d5 | 02_desk_functions | 3 |
-| Arrays | w01d5 | 02_desk_functions | 3 |
-| OOP concepts | w01d5 | 03_ticket_class | 4 |
-| Inheritance | w01d5 | 03_ticket_class | 5 |
-| Iterators | w01d5 | 04_desk_object | 6 |
-| Scope | w01d5 | 04_desk_object | 7 |
-| Classes and objects | w01d5 | 04_desk_object | 4 |
+| Lambda | w01d5 | 02_desk_functions | 4 |
+| Arrays | w01d5 | 02_desk_functions | 5 |
+| OOP concepts | w01d5 | 03_ticket_class | 6 |
+| Inheritance | w01d5 | 03_ticket_class | 7 |
+| Iterators | w01d5 | 04_desk_object | 8 |
+| Scope | w01d5 | 04_desk_object | 9 |
+| Classes and objects | w01d5 | 04_desk_object | 6 |

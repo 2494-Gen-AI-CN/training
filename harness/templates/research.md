@@ -9,12 +9,21 @@ version-stamps:
   - python: {{python}} (verified {{today}})
   - <library>: <version> (verified {{today}})   # one line per library the demos import
 
-## Claims (each MUST carry a source on a full gate; light gate: source optional but recommended)
+## Claims (≥ metrics.research.claimsMin; each MUST carry a source on a full gate; light gate: source optional but recommended)
 
 - <claim> — [<source title>](<url>)
 - ...
 
-## Sources (official / primary docs preferred; ≥3; full gate: every URL fetched and confirmed)
+## Notes depth (D-0040; one block per curriculum subtopic, sized for a 4500–7000-word study page; every claim-bearing line carries [title](official url))
+
+### <subtopic, spelled exactly as the curriculum lists it>
+- Interview questions: <junior-level question 1>; <question 2>; <the follow-up one level beyond>
+- Adjacent concept: <what the interviewer asks next> — <one sentence on why it belongs with this subtopic; never a later day's subtopic>
+- Trade-off or limit: <claim> — [<title>](<url>)
+- Recognise on sight: <what it looks like in someone else's code: a one- or two-line snippet or a pattern name>
+- Claims: <3–6 more testable statements the page can teach, each "<claim> — [<title>](<url>)", one per line>
+
+## Sources (official / primary docs preferred; ≥ metrics.research.sourcesMin; full gate: every URL fetched and confirmed)
 
 - <title> — <url>
 - ...

@@ -14,8 +14,13 @@ harness/
   demo_check.py        format + both-ways check for one day's demo scripts and answer keys (critic and tests call it; D-0030);
                        thread rungs carry lines from their Starts from key, replaced lines go in a python replaced block (D-0033);
                        "What we did NOT cover" bullets take one format (D-0039)
-  prose_guard.py       prose-only guard for a humanizer pass on demo scripts and runbooks: compares a file with a snapshot or
-                       with HEAD and fails when code, headings, header bullets, tables, labels or bullet counts moved (D-0039)
+  prose_guard.py       prose-only guard for a humanizer pass on demo scripts and runbooks (D-0039) and, in html mode, on notes
+                       pages (D-0040): compares a file with a snapshot or with HEAD and fails when code, headings, header
+                       bullets, tables, labels, the HTML tag skeleton, attributes, citations or quiz answers moved
+  notes_check.py       the one mechanical checker for a notes page (D-0040): --counts (steps, words, h3, interview callouts,
+                       Check yourself, code blocks, citations, quiz, minutes), --phrases (classroom references), --stamps
+                       (Sources checked vs the brief), --citations (sup.cite -> li#src-N, URLs in the brief), --links
+                       (liveness); --all-live covers every live page; author, humanizer, verify agent, critic and tests call it
   publish_demos.py     copies trainer/<rel>/demos/key/ to demos/<rel>/ and flips the notes demo card once the day is taught (D-0030)
   build_tracker.py     writes ../tracker.html (the work tracker; local, gitignored, D-0036) = templates/tracker.html + a data block
                        read from repo state; --check in tests (D-0035)
@@ -45,9 +50,9 @@ Decisions that shaped any of this (and every later schedule/scope change) are lo
 
 | Stage | Author writes | Critic checks (spec) | Gate |
 |---|---|---|---|
-| Research | `harness/research/<week>/<day>.md` | `critics/research.md` | `full`: URLs fetched; `light`: structure + stamps; covers the plan's rows |
+| Research | `harness/research/<week>/<day>.md` (Claims, a `## Notes depth` block per subtopic, Sources, Glossary, Pitfalls, Demo hints) | `critics/research.md` | `full`: URLs fetched; `light`: structure + stamps; covers the plan's rows; Notes depth per subtopic (D-0040) |
 | Demos | `trainer/<week>/<day>/demos/NN_<slug>.md` scripts + `key/` answer keys (skipped on `demoFormat: none`); the plan's thread rows decide the demos, each rung extends its `Starts from` key | `critics/demos.md` | `demo_check.py` OK (format, both-ways with carried lines), every key runs, pre-flight walk, rung matches its plan row |
-| Notes ∥ Exercise | `docs/weeks/<week>/<day>.html`, `exercises/<week>/<day>/` + `trainer/.../solutions/` | `critics/notes.md`, `critics/exercise.md` | metrics bands; demo card pending; starter fails / solution passes |
+| Notes ∥ Exercise | `docs/weeks/<week>/<day>.html` (reference/study material, D-0040: 4500–7000 words, h3 subsections, an interview callout per step, a Check-yourself step, inline citations, a Sources-checked stamp, no classroom references), `exercises/<week>/<day>/` + `trainer/.../solutions/` | `critics/notes.md` (+ a notes-verify agent: `notes_check.py` every day, WebFetch currency on full-gate and currency-flagged days; its findings bind the critic), `critics/exercise.md` | metrics bands via `notes_check.py`; demo card pending; starter fails / solution passes |
 | Runbook | `trainer/<week>/<day>/runbook.md` | `critics/runbook.md` | headings, minutes, one pointer section per script + a Facilitation block per concept subtopic |
 | Wire (serial) | glossary.js append, `status: live`, `build_index.py`, NEXT links, `publish_demos.py` (no-op until `taught`), `build_tracker.py` | — | — |
 | Record | one line in `runs.jsonl` via `log_run.py add` (agents, passes, flags, tiers); `tracker.html` rebuilt (D-0035) | — | — |
@@ -55,7 +60,9 @@ Decisions that shaped any of this (and every later schedule/scope change) are lo
 
 Each gated artifact: author → critic → up to 3 repair passes → else **flagged** (reported, never blocks the run).
 
-A humanizer agent (`humanizer:humanizer`, file mode, tier `humanize`) runs between author and critic on three artifacts: the notes page (D-0029) and the trainer's delivery wording, which is the day's demo scripts and the runbook (D-0039). On the trainer files it changes prose only and proves it: `python harness/prose_guard.py snapshot <files>` before, `python harness/prose_guard.py check <snapshot dir> <files>` after. No critic item judges the wording of trainer files, so the pass adds agents (two per day, more on a repass) without moving the bar. For a hand pass on committed files use `python harness/prose_guard.py git <files>`.
+A humanizer agent (`humanizer:humanizer`, file mode, tier `humanize`) runs between author and critic on three artifacts: the notes page (D-0029) and the trainer's delivery wording, which is the day's demo scripts and the runbook (D-0039). On every one of them it changes prose only and proves it: `python harness/prose_guard.py snapshot <files>` before, `python harness/prose_guard.py check <snapshot dir> <files>` after (html mode for a page, D-0040). No critic item judges the wording of trainer files, so the pass adds agents (two per day, more on a repass) without moving the bar. For a hand pass on committed files use `python harness/prose_guard.py git <files>`.
+
+Notes-only mode (D-0040): `python harness/args_for.py <week> <day...> --notes-only` runs a research DEPTH pass (a research agent extends the committed brief's `## Notes depth` section, judged by the research critic), then the notes page on top of the demo scripts and keys already on disk; exercise and runbook are untouched. `--template <path>` points the authors at another page shape (used to pilot a new template). Every stage tier in `config.json` `models` is pinned to opus, sonnet or haiku; none inherits the session model.
 
 ## Running a day
 
@@ -78,4 +85,4 @@ Agent budget: ~13 agents on a clean pass per day, ~28 worst case (one of them th
 
 ## Changing the bar
 
-Edit `metrics.json` (numbers) or `critics/*.md` (PASS rules). The workflow prompts reference both; the tests read `metrics.json`. The notes-page template the authors copy is `config.json` `template` (D-0031: the promoted `docs/weeks/week-01/day-2-orientation-agile-and-git.html`); `args_for.py` passes it as args `template` and falls back to `templates/day.exemplar.html` when the file is missing. To promote a better page, change `template` via a decision entry; the exemplar stays the structure gold standard for `tests/test_pages.py`.
+Edit `metrics.json` (numbers) or `critics/*.md` (PASS rules). The workflow prompts reference both; the tests and `notes_check.py` read `metrics.json`. The notes-page template the authors copy is `config.json` `template` (D-0031: the promoted `docs/weeks/week-01/day-2-orientation-agile-and-git.html`); `args_for.py` passes it as args `template` and falls back to `templates/day.exemplar.html` when the file is missing. To promote a better page, change `template` via a decision entry; the exemplar stays the structure gold standard for `tests/test_pages.py`.

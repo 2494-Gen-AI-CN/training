@@ -12,6 +12,7 @@ from helpers import DOCS, FORBIDDEN_RE, HARNESS, PAGE_SCRIPT_ORDER, ROOT, TRAINE
 
 sys.path.insert(0, str(HARNESS))
 import build_index  # noqa: E402
+import notes_check  # noqa: E402
 
 EXEMPLAR = HARNESS / "templates" / "day.exemplar.html"
 
@@ -30,6 +31,12 @@ def _structure_checks(tc: unittest.TestCase, page: ParsedPage, day_id: str | Non
     for s in steps:
         tc.assertIsNotNone(s.find("h2"))
         tc.assertIsNotNone(s.find(class_name="tag"))
+    # reference-depth shape (D-0040): a closing "Check yourself" step, an interview callout, a sources stamp
+    tc.assertTrue(steps, "a page needs steps")
+    tc.assertEqual("check yourself", steps[-1].find(class_name="tag").text().strip().lower(), "the last step is Check yourself (D-0040)")
+    tc.assertTrue(steps[-1].find_all("details", "check"), "Check yourself needs details.check blocks")
+    tc.assertTrue(r.find_all("div", "interview"), "at least one .callout.interview (D-0040)")
+    tc.assertIn("Sources checked", r.find(class_name="meta").text())
     tc.assertIsNotNone(r.find("section", "reading-sources"))
     tc.assertIsNotNone(r.find("svg", id="diagram"))
     tc.assertIsNotNone(r.find(class_name="stage-caption"))
@@ -76,10 +83,18 @@ class ExemplarTests(unittest.TestCase):
         self.assertTrue(EXEMPLAR.exists())
         page = ParsedPage(EXEMPLAR)
         _structure_checks(self, page, None, feedback=False)
+        c = notes_check.counts(page.raw)
+        M = metrics()["notes"]
+        self.assertTrue(c["lastIsCheck"])
+        self.assertTrue(all(n >= M["h3PerStepMin"] for n in c["h3"]), c["h3"])
+        self.assertTrue(all(n == M["interviewPerStep"] for n in c["interview"]), c["interview"])
+        self.assertTrue(all(n >= M["citationsPerStepMin"] for n in c["citations"]), c["citations"])
+        self.assertEqual([], notes_check.citation_findings(notes_check.citation_report(page.raw, None)))
+        self.assertEqual([], notes_check.phrase_hits(page.raw, M["deliveryPhrases"]))
         if node_exe():
             p = page.probe()
             self.assertEqual(p["captions"], len(page.root.find_all("section", "step")))
-            self.assertEqual(6, p["questions"])
+            self.assertEqual(M["quizQuestions"], p["questions"])
 
 
 class LivePageTests(unittest.TestCase):
@@ -99,6 +114,10 @@ class LivePageTests(unittest.TestCase):
                 mins = re.search(r"~(\d+) min", page.raw)
                 self.assertIsNotNone(mins, "meta line needs ~N min")
                 self.assertAlmostEqual(round(words / M["readingWpm"]), int(mins.group(1)), delta=1)
+                # reference-depth bars (D-0040): one checker for the author, the critic and this test
+                rep = notes_check.check_page(path, {"counts", "phrases", "stamps", "citations"}, M, tolerance=M["wordTolerance"])
+                self.assertEqual([], rep["findings"], "\n".join(rep["findings"]))
+                self.assertEqual(words, rep["counts"]["words"], "helpers.prose_words and notes_check.counts must agree")
                 goals = page.root.find("ul", "goals-list").find_all("li")
                 self.assertTrue(M["goalsMin"] <= len(goals) <= M["goalsMax"])
                 src_links = [a for a in page.root.find("section", "reading-sources").find_all("a") if a.attrs.get("href", "").startswith("http")]

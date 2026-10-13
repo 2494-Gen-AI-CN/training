@@ -623,6 +623,24 @@ footer.foot { border-top:1px solid var(--line); margin-top:50px; padding: 26px 2
 .reading-col .step .tag { font-size:13px; }
 .reading-col .step h2 { font-size:33px; line-height:1.15; margin:6px 0 14px; }
 .reading-col .step p { font-size:21px; line-height:1.75; margin:0 0 18px; }
+/* Reference-depth pages (D-0040): long sections read at full strength (no dimming, no forced height), h3
+   subsections, an interview callout per step, a Check-yourself step and inline citations. */
+.reading-col .step, .reading-col .step:first-of-type, .reading-col .step:last-of-type { min-height:0; opacity:1; justify-content:flex-start; padding:34px 0 12px; }
+.reading-col .step h3 { font-size:24px; line-height:1.25; margin:30px 0 10px; scroll-margin-top:80px; }
+.reading-col .step ul, .reading-col .step ol { font-size:20px; line-height:1.7; margin:0 0 18px; padding-left:26px; }
+.reading-col .step li { margin:0 0 6px; }
+.reading-col .step table { font-size:17px; border-collapse:collapse; margin:0 0 18px; }
+.reading-col .step th, .reading-col .step td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; }
+.callout.interview { background:var(--accent-soft); }
+.callout.interview .k { color:var(--accent); }
+.reading-col .step .callout.interview p { font-size:19px; }
+details.check { margin:12px 0; border:1px solid var(--line); border-radius:10px; padding:4px 14px; background:var(--surface); }
+details.check summary { cursor:pointer; font-weight:600; font-size:19px; line-height:1.5; padding:8px 0; }
+details.check[open] summary { border-bottom:1px solid var(--line); margin-bottom:8px; }
+details.check p { font-size:19px; }
+sup.cite { font-size:.6em; line-height:0; vertical-align:super; margin-left:1px; }
+sup.cite a { color:var(--accent); text-decoration:none; font-weight:700; }
+.reading-col .lede .meta .verified { color:var(--dim); }
 .reading-col code { max-width:100%; white-space:pre-wrap; overflow-wrap:anywhere; word-break:break-word; }
 /* Markdown-style code on notes pages: inline chips and fenced command blocks (D-0022) */
 .reading-col code { font-family:var(--mono); font-size:.86em; background:var(--code-bg); padding:1px 5px; border-radius:4px; }
@@ -634,7 +652,7 @@ footer.foot { border-top:1px solid var(--line); margin-top:50px; padding: 26px 2
 .reading-col .step .callout p { font-size:19px; }
 
 /* in-page section nav */
-.toc { position:sticky; top:60px; align-self:start; padding-top:34px; }
+.toc { position:sticky; top:60px; align-self:start; padding-top:34px; max-height:calc(100vh - 80px); overflow-y:auto; }
 .toc-head { text-transform:uppercase; letter-spacing:.11em; font-size:11px; color:var(--dim); font-weight:700; margin-bottom:12px; }
 .toc ul { list-style:none; margin:0; padding:0; border-left:2px solid var(--line); }
 /* accordion parts (multi-diagram days) */
@@ -643,11 +661,16 @@ footer.foot { border-top:1px solid var(--line); margin-top:50px; padding: 26px 2
 .toc-part-head .cv { font-size:9px; color:var(--dim); transition:transform .2s; flex:0 0 auto; }
 .toc-part.open > .toc-part-head { color:var(--accent); }
 .toc-part.open > .toc-part-head .cv { transform:rotate(90deg); color:var(--accent); }
-.toc-part-list { max-height:1400px; overflow:hidden; transition:max-height .35s ease, opacity .2s; }
+.toc-part-list { max-height:3000px; overflow:hidden; transition:max-height .35s ease, opacity .2s; }
 .toc-part:not(.open) .toc-part-list { max-height:0; opacity:0; border-color:transparent; }
 .toc li a { display:block; padding:5px 0 5px 11px; margin-left:-2px; border-left:2px solid transparent; color:var(--ink-soft); text-decoration:none; font-size:12px; line-height:1.25; }
 .toc li a:hover { color:var(--ink); }
 .toc li a.on { color:var(--accent); border-left-color:var(--accent); font-weight:600; }
+/* nested h3 entries (D-0040): shown for the active step only */
+.toc li ul.toc-sub { display:none; border-left:none; margin:0 0 4px 10px; padding:0; }
+.toc li.on > ul.toc-sub { display:block; }
+.toc li li a { font-size:11px; padding:3px 0 3px 9px; color:var(--dim); font-weight:400; }
+.toc li li a.on { color:var(--accent); border-left-color:var(--accent); font-weight:600; }
 
 .side { position:sticky; top:60px; height:calc(100vh - 78px); display:flex; flex-direction:column; gap:14px; padding-top:30px; }
 .side-diagram { flex:1; min-height:0; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:14px 14px 10px; display:flex; flex-direction:column; box-shadow:0 6px 24px rgba(40,30,10,.06); }

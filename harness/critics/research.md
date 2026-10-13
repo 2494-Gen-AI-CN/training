@@ -5,12 +5,13 @@ You are judging `harness/research/<week>/<day>.md`. You are NOT the author. Retu
 ## Both gates
 
 1. Header present: title line `# <id> — <title>`, `gate:`, `verified: <today from args>`, `version-stamps:` with at least one library line besides python.
-2. `## Claims` has ≥5 claims, each a single, testable statement (no vague "X is important").
-3. `## Sources` lists ≥3 URLs on official or primary sites (docs.python.org, dev.mysql.com, cloud.google.com, docs.aws.amazon.com, python.langchain.com, langchain-ai.github.io, docs.trychroma.com, docs.pinecone.io, tensorflow.org, platform.claude.com / docs.anthropic.com, scikit-learn.org, pandas.pydata.org, numpy.org, peps.python.org, git-scm.com, scrumguides.org, arxiv.org). Blog/SEO sites only as a supplement, never the sole source for a claim.
+2. `## Claims` has ≥ `metrics.research.claimsMin` (12) claims, each a single, testable statement (no vague "X is important").
+3. `## Sources` lists ≥ `metrics.research.sourcesMin` (5) URLs on official or primary sites (docs.python.org, dev.mysql.com, cloud.google.com, docs.aws.amazon.com, python.langchain.com, langchain-ai.github.io, docs.trychroma.com, docs.pinecone.io, tensorflow.org, platform.claude.com / docs.anthropic.com, scikit-learn.org, pandas.pydata.org, numpy.org, peps.python.org, git-scm.com, scrumguides.org, arxiv.org). Blog/SEO sites only as a supplement, never the sole source for a claim.
 4. `## Glossary terms` has 3–8 lines in the form `- term | one sentence | aka: ...`; definitions are one plain sentence; no term duplicates an existing `docs/assets/js/glossary.js` entry (case-insensitive, check term and aka).
 5. `## Common pitfalls` has 3–6 concrete pitfalls (what a learner actually does wrong).
 6. `## Demo plan hints` has 2–4 hints naming what must be shown live.
 7. Content is scoped to THIS day's subtopics from the curriculum; it does not pre-teach a later day. When the prompt carries week-plan rows (D-0034), the brief covers exactly the day's coverage rows, its `## Demo plan hints` name the plan's demos for the day (the thread rows, in ladder order), and nothing the anti-spoiler rows defer to a later day appears as content.
+7b. `## Notes depth` (D-0040; the notes page's study material) has one `### <subtopic>` block per curriculum subtopic of the day, spelled as the curriculum lists it, each with all five bullets: `Interview questions` (≥2 junior-level questions plus one follow-up a level beyond), `Adjacent concept` (the usual next question; it is NOT a subtopic of a later day), `Trade-off or limit` (sourced), `Recognise on sight` (a snippet or pattern name), `Claims` (3–6 testable statements, each with `[title](url)` on an official domain from item 3's list). On a full gate every URL in this section is fetched; on a light gate it must be an official-doc URL the author is confident exists. The item-11 deprecated-API sweep covers this section too.
 
 ## Full gate only (weeks 5, 8, 9, 10, 11)
 

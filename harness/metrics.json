@@ -1,17 +1,24 @@
 {
   "_comment": "Quality bars for every generated day. Tests and critics read this file; the workflow passes wordMin/wordMax as args overrides.",
   "notes": {
-    "wordMin": 1200, "wordMax": 1800, "wordTolerance": 100,
+    "_comment": "D-0040: a notes page is reference/study material at junior-interview depth. Per-step bars apply to TEACHING steps (every step but the last 'Check yourself' step). deliveryPhrases are forbidden in .reading-col prose, quiz strings and diagram captions (harness/notes_check.py --phrases).",
+    "wordMin": 4500, "wordMax": 7000, "wordTolerance": 250,
     "readingWpm": 150,
-    "stepsMin": 5, "stepsMax": 7,
+    "stepsMin": 6, "stepsMax": 10,
+    "h3PerStepMin": 2,
+    "interviewPerStep": 1,
+    "checkYourselfMin": 5, "checkYourselfMax": 10,
+    "codeBlocksMin": 6,
+    "citationsPerStepMin": 2,
     "quizQuestions": 6,
     "quizTypeMix": { "scq": 1, "tf": 1, "mcqOrMatch": 1, "openMax": 1 },
     "goalsMin": 3, "goalsMax": 5,
     "codePopupsMin": 0, "codePopupsMax": 2,
-    "sourcesMin": 3
+    "sourcesMin": 6,
+    "deliveryPhrases": ["the trainer", "in class", "you watched", "you saw", "this morning", "this afternoon", "today's demo", "today's session", "typed live", "live demo", "the room", "in the room", "code-along", "after class", "during the demo", "earlier today"]
   },
   "demos": { "scriptsMin": 2, "scriptsMax": 5, "minutesPerScriptMin": 15, "minutesPerScriptMax": 45, "maxLinesPerFile": 90, "maxLinesPerThreadKey": 200, "maxTypedLinesPerRung": 60 },
   "exercise": { "testsMin": 4, "testsMax": 10, "pytestTimeoutSec": 120 },
   "runbook": { "dayMinutesMin": 330, "dayMinutesMax": 390 },
-  "research": { "glossaryMin": 3, "glossaryMax": 8, "pitfallsMin": 3, "pitfallsMax": 6, "demoHintsMin": 2, "demoHintsMax": 4, "fullGateUrlSpotChecks": 3 }
+  "research": { "claimsMin": 12, "sourcesMin": 5, "glossaryMin": 3, "glossaryMax": 8, "pitfallsMin": 3, "pitfallsMax": 6, "demoHintsMin": 2, "demoHintsMax": 4, "fullGateUrlSpotChecks": 3 }
 }

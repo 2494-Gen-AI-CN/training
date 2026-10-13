@@ -26,6 +26,71 @@ version-stamps:
 - `input(prompt)` writes the prompt, reads one line from standard input, strips the trailing newline and always returns `str`; it raises `EOFError` when standard input is at end of file. — [Built-in functions: input](https://docs.python.org/3/library/functions.html#input)
 - `sys.stdin.isatty()` is true when standard input is a character device such as an interactive terminal, false when it is a pipe or a regular file; on Windows the NUL device also reports true, so unattended runs should pipe input rather than redirect from NUL. — [sys.stdin](https://docs.python.org/3/library/sys.html#sys.stdin) and [io.IOBase.isatty](https://docs.python.org/3/library/io.html#io.IOBase.isatty)
 
+## Notes depth (D-0040; one block per curriculum subtopic, sized for a 4500–7000-word study page; every claim-bearing line carries [title](official url))
+
+### Python syntax
+- Interview questions: How does Python mark a block of code, and what happens if the indentation is inconsistent?; What does PEP 8 say about line length, blank lines and where imports go?; Follow-up: how does a long expression continue across lines, and which way does PEP 8 prefer?
+- Adjacent concept: Naming conventions (snake_case, UPPER_CASE, CapWords) — the next question after layout is always how identifiers are named, and a reviewer reads both in the same pass.
+- Trade-off or limit: Significant indentation removes brace noise but makes whitespace part of the program, so a block that mixes tabs and spaces in a way that makes its meaning depend on how many spaces a tab is worth is rejected with a TabError, and PEP 8 asks for four spaces per level. — [Python reference: Indentation](https://docs.python.org/3/reference/lexical_analysis.html#indentation)
+- Recognise on sight: `import os, sys` on one line, a `def` with one blank line above it, or `Total_Count = 3` at module level, each of which a PEP 8 reviewer flags.
+- Claims:
+  - A logical line ends at a NEWLINE token unless it sits inside brackets or ends in a backslash; PEP 8 prefers continuing inside parentheses over using a backslash. — [Python reference: Explicit line joining](https://docs.python.org/3/reference/lexical_analysis.html#explicit-line-joining) and [PEP 8 – Maximum Line Length](https://peps.python.org/pep-0008/#maximum-line-length)
+  - Statements in a block are grouped by indentation, and a block with inconsistent dedent raises IndentationError. — [Python reference: Indentation](https://docs.python.org/3/reference/lexical_analysis.html#indentation)
+  - PEP 8 asks for two blank lines around top-level function and class definitions. — [PEP 8 – Blank Lines](https://peps.python.org/pep-0008/#blank-lines)
+  - PEP 8 asks for imports at the top of the file, after the module docstring and before module globals, with standard-library imports first. — [PEP 8 – Imports](https://peps.python.org/pep-0008/#imports)
+  - PEP 8 recommends limiting lines to 79 characters and says individual teams may agree on a longer limit. — [PEP 8 – Maximum Line Length](https://peps.python.org/pep-0008/#maximum-line-length)
+  - PEP 8 says a project's own style guide takes precedence over PEP 8 itself, and that consistency within a project matters more than consistency with the guide, and consistency within one module or function matters most. — [PEP 8 – Introduction](https://peps.python.org/pep-0008/#introduction) and [PEP 8 – A Foolish Consistency](https://peps.python.org/pep-0008/#a-foolish-consistency-is-the-hobgoblin-of-little-minds)
+
+### Comments
+- Interview questions: What is the difference between a comment and a docstring?; When is a comment a bad comment?; Follow-up: how does a comment go stale, and what in a code review catches it?
+- Adjacent concept: Docstrings and self-documenting names — an interviewer asks what you do before reaching for a comment, and the answer is a clearer name or a docstring.
+- Trade-off or limit: A comment is never checked by the interpreter or by tests, so unlike code it can silently drift from the behaviour, which is why PEP 8 says comments that contradict the code are worse than none. — [PEP 8 – Comments](https://peps.python.org/pep-0008/#comments)
+- Recognise on sight: `x = x + 1  # add one to x` (restates the code) against `SLA_HOURS_HIGH = 4  # contract with the customer, see policy` (records a reason).
+- Claims:
+  - A comment starts with `#` (outside a string literal) and runs to the end of the physical line, and the tokenizer ignores it; the one exception is an encoding declaration in the first or second line. A `#!` first line is read by the OS, not by Python. — [Python reference: Comments](https://docs.python.org/3/reference/lexical_analysis.html#comments)
+  - A `#` inside a string literal is part of the string, not a comment. — [Python reference: Comments](https://docs.python.org/3/reference/lexical_analysis.html#comments)
+  - PEP 8 says inline comments should be separated from the statement by at least two spaces and start with `# `. — [PEP 8 – Inline Comments](https://peps.python.org/pep-0008/#inline-comments)
+  - A docstring is available at runtime as the `__doc__` attribute, a comment is not. — [PEP 257 – What is a Docstring?](https://peps.python.org/pep-0257/#what-is-a-docstring)
+  - PEP 8 asks that comments be complete sentences and be kept up to date when the code changes. — [PEP 8 – Comments](https://peps.python.org/pep-0008/#comments)
+
+### Variables and datatypes
+- Interview questions: Is Python statically or dynamically typed, and what does `type(x)` tell you?; What does `a = b` do when `b` holds a number or a string?; Follow-up: what is the difference between a name being rebound and an object being changed?
+- Adjacent concept: Identity versus equality (`is` against `==`) — it comes up as soon as you say a variable is a name for an object rather than a box that holds a value.
+- Trade-off or limit: Dynamic typing lets one name hold a str now and an int later, so a type mistake surfaces only when that line runs, and nothing in the language marks a name as a constant. — [Python reference: Naming and binding](https://docs.python.org/3/reference/executionmodel.html#naming-and-binding)
+- Recognise on sight: `count = "3"` later used as `count + 1` (a TypeError at run time), or `MAX_RETRIES = 3` reassigned further down the file.
+- Claims:
+  - Assignment binds a name to an object; it does not copy a value into a typed slot. — [Python reference: Assignment statements](https://docs.python.org/3/reference/simple_stmts.html#assignment-statements)
+  - The built-in scalar types for today are int (unbounded precision), float (a C double), str and bool; bool is a subclass of int, so `True + 1` is `2`. — [Library: Built-in types](https://docs.python.org/3/library/stdtypes.html#boolean-type-bool)
+  - `0.1 + 0.2 == 0.3` is False because binary floats cannot store most decimal fractions exactly. — [Tutorial: Floating-point arithmetic](https://docs.python.org/3/tutorial/floatingpoint.html)
+  - Identifiers are case-sensitive and may contain letters, digits and underscores but cannot start with a digit or be a keyword. — [Python reference: Identifiers and keywords](https://docs.python.org/3/reference/lexical_analysis.html#identifiers)
+  - PEP 8 names constants in UPPER_CASE with underscores, and variables and functions in lowercase_with_underscores. — [PEP 8 – Naming Conventions](https://peps.python.org/pep-0008/#naming-conventions)
+  - An f-string evaluates its braces at run time, so `f"{hours_open}"` shows the current binding of the name. — [Reference: Formatted string literals](https://docs.python.org/3/reference/lexical_analysis.html#f-strings)
+
+### Operators
+- Interview questions: What is the difference between `/` and `//`, and what does `%` return for a negative number?; Why does `x == "a" or "b"` always pass?; Follow-up: what do `and` and `or` return, and how does that differ from `not`?
+- Adjacent concept: Operator precedence and parentheses — the next question after any operator list is which one binds first, and the readable answer is to add parentheses.
+- Trade-off or limit: `and` / `or` return an operand rather than a bool, which enables the `value or default` idiom but also hides bugs when a falsy value such as `0` or `""` is a legitimate input. — [Python reference: Boolean operations](https://docs.python.org/3/reference/expressions.html#boolean-operations)
+- Recognise on sight: `if status == "open" or "new":` (always true), `a < b < c` (chained comparison), or `n % 3 == 0` (every third).
+- Claims:
+  - `//` floors toward negative infinity, so `-7 // 2` is `-4`, and `%` takes the sign of the right operand, keeping `a == (a // b) * b + a % b`. — [Python reference: Binary arithmetic operations](https://docs.python.org/3/reference/expressions.html#binary-arithmetic-operations)
+  - `a < b < c` is evaluated as `a < b and b < c` with `b` evaluated once. — [Python reference: Comparisons](https://docs.python.org/3/reference/expressions.html#comparisons)
+  - `not` binds looser than comparison operators, so `not a == b` means `not (a == b)`. — [Python reference: Operator precedence](https://docs.python.org/3/reference/expressions.html#operator-precedence)
+  - `and` binds tighter than `or`, so `a or b and c` is `a or (b and c)`. — [Python reference: Operator precedence](https://docs.python.org/3/reference/expressions.html#operator-precedence)
+  - `==` compares values and `is` compares object identity; since Python 3.8, `is` or `is not` with a literal such as `x is "high"` emits a SyntaxWarning at compile time. — [Python reference: Identity comparisons](https://docs.python.org/3/reference/expressions.html#identity-comparisons) and [What's New In Python 3.8](https://docs.python.org/3/whatsnew/3.8.html)
+  - Integer division or modulo by zero raises ZeroDivisionError. — [Library: Built-in Exceptions, ZeroDivisionError](https://docs.python.org/3/library/exceptions.html#ZeroDivisionError)
+
+### User input and output
+- Interview questions: What type does `input()` return?; What is the difference between stdout and stderr, and why print a warning to stderr?; Follow-up: how does a script behave when its standard input is a pipe instead of a terminal?
+- Adjacent concept: Standard streams and redirection (`>`, `2>`, `|`) — the next question about print is where the output goes when the program runs under a shell, a scheduler or a test runner.
+- Trade-off or limit: `input()` blocks waiting for a line, so a script that calls it unconditionally hangs or raises EOFError when run unattended or under a test runner; the usual guard is checking `sys.stdin.isatty()`. — [Built-in functions: input](https://docs.python.org/3/library/functions.html#input)
+- Recognise on sight: `print(..., file=sys.stderr)`, `print(a, b, sep=", ", end="")` and `f"{name:<30}{n:>6.1f}"` for aligned columns.
+- Claims:
+  - `print` joins its arguments with `sep` (default a space) and ends with `end` (default a newline). — [Built-in functions: print](https://docs.python.org/3/library/functions.html#print)
+  - `sys.stdout` and `sys.stderr` are separate text streams, so a shell can redirect them to different places. — [Library: sys.stdout, sys.stderr](https://docs.python.org/3/library/sys.html#sys.stdout)
+  - In a format spec, `<` and `>` align within a minimum width, and `.1f` fixes one digit after the decimal point. — [Format Specification Mini-Language](https://docs.python.org/3/library/string.html#format-specification-mini-language)
+  - `print` converts each non-string argument with `str()`, so `print(1.0)` shows `1.0`; an f-string field without a spec calls `format(value, "")`, which for these types gives the same text as `str()`. — [Built-in functions: print](https://docs.python.org/3/library/functions.html#print) and [Reference: Formatted string literals](https://docs.python.org/3/reference/lexical_analysis.html#f-strings)
+  - Standard output is line-buffered when attached to a terminal and block-buffered otherwise, so `flush=True` matters when output is piped. — [Library: sys.stdout](https://docs.python.org/3/library/sys.html#sys.stdout)
+
 ## Sources (official / primary docs preferred; ≥3; full gate: every URL fetched and confirmed)
 
 - PEP 8 – Style Guide for Python Code — https://peps.python.org/pep-0008/
@@ -37,6 +102,13 @@ version-stamps:
 - Python library: string, Format Specification Mini-Language — https://docs.python.org/3/library/string.html#format-specification-mini-language
 - Python library: sys — https://docs.python.org/3/library/sys.html
 - Python library: io — https://docs.python.org/3/library/io.html
+- Python reference: Lexical analysis — https://docs.python.org/3/reference/lexical_analysis.html
+- Python reference: Execution model, Naming and binding — https://docs.python.org/3/reference/executionmodel.html#naming-and-binding
+- Python library: Built-in types — https://docs.python.org/3/library/stdtypes.html
+- Python library: Built-in Exceptions — https://docs.python.org/3/library/exceptions.html
+- The Python Tutorial: Floating-Point Arithmetic — https://docs.python.org/3/tutorial/floatingpoint.html
+- The Python Tutorial: Input and Output — https://docs.python.org/3/tutorial/inputoutput.html
+- What's New In Python 3.8 — https://docs.python.org/3/whatsnew/3.8.html
 
 ## Glossary terms (3–8; one-sentence plain-language definitions; aka = alternate surface forms)
 

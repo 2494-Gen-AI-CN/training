@@ -44,7 +44,7 @@ test result, anything left undone and why.
 | 5 | Stage 4 Daily close audit | Needed Tue 2026-10-13 evening after the first delivery; audits the classroom repo against the keys, sets `taught`, carries unreached steps to the next day, re-checks later rungs | 1 session, no agents |
 | 6 | Stage 8 Hidden week, Friday gate, series review, drift check | Week-ahead authoring needs pages that stay unlinked until the Friday release; by Thu 2026-10-15 | 1 session, no agents |
 | 7 | Week-2 plan and batch | By Fri 2026-10-16; settle O-11 and O-12 first | 2 sessions, ~5 + ~100 agents (ask first) |
-| 8 | Stage 7 Notes depth (interview sections) | Fits the persona; touches critic + template. Notes keep their delivery references for now (trainer decision 2026-10-12: wait for learner feedback) | 1 session |
+| ~~8~~ | ~~Stage 7 Notes depth (interview sections)~~ | ~~Fits the persona; touches critic + template. Notes keep their delivery references for now (trainer decision 2026-10-12: wait for learner feedback)~~ | ~~1 session~~ done 2026-10-13, D-0040, widened to the reference-notes rework (4500–7000 words, Check yourself, citations, no delivery references) + notes QC (`notes_check.py`, notes-verify agent, pinned tiers); the stance of 2026-10-12 was reversed by the trainer on 2026-10-13 |
 | 9 | Stage 5 Rules registry + OVERRIDE state | Governance; no delivery dependency | 1 session |
 | 10 | Stage 6 Skills | After the processes have run at least once by hand | 1–2 sessions |
 
@@ -301,6 +301,8 @@ Build:
   the plan and every script in ladder order and checks that the series tells one story and the last rung
   delivers the Weekly Epic. Flags only; no auto-fix loop yet.
 - harness/drift_check.py + tests/test_drift.py (port of catalog F5, read-only, exit 1 on hard findings):
+  - also runs `python harness/notes_check.py --all-live --links` (D-0040): dead links and stale stamps on live notes pages
+    are findings (network ones soft unless --strict);
   decisions index rows match files and IDs are sequential; stale markers (TBD, OWED, pending, blocked until) in
   live docs outside decisions/ and docs/process/*catalog*; untracked files and unstaged deletions in both
   repos; taught days with no Delivery record; days `taught` but not `live`; a stale tracker.
@@ -348,6 +350,8 @@ Exit: skills listed by /skills; one dry run each; pushed.
 ```
 
 ## Stage 7 — Notes depth: interview sections and portability decision (catalog B1, B2, B3, B4, B6, B9)
+
+Done 2026-10-13 as D-0040, wider than the prompt below: day-bound page with portable sections (B1), the depth bar as critic item 12b (B2), "Say it in an interview" per step and a closing "Check yourself" step (B3), adjacent concepts from a new brief section `## Notes depth` (B3/B4), link liveness on every page through `harness/notes_check.py --links` plus WebFetch currency on full-gate and currency-flagged days (B6), 4500–7000 words (B5 raised), delivery phrases banned (`metrics.notes.deliveryPhrases`), every stage tier pinned, and a notes-only workflow mode for the retrofit. The prompt is kept for the record.
 
 ```
 STAGE 7 — Notes depth.

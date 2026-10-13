@@ -116,6 +116,63 @@ class SnapshotCliTests(unittest.TestCase):
         self.assertEqual(2, self._run().returncode)
 
 
+class HtmlTests(unittest.TestCase):
+    """html mode (D-0040): a notes page keeps everything but its prose byte-identical through the humanizer."""
+
+    PAGE = (HARNESS / "templates" / "day.exemplar.html").read_text(encoding="utf-8")
+
+    def _names(self, new: str) -> list[str]:
+        return [f.split(":")[0] for f in prose_guard.compare(self.PAGE, new, script=False, html=True)[0]]
+
+    def test_prose_edits_pass(self):
+        new = self.PAGE.replace("Explain the mechanism in plain words a graduate can follow.", "Explain the mechanism plainly, so a graduate can follow it.")
+        new = new.replace("Step 2 caption: the pitfall and why it bites.", "Step 2 caption: the pitfall, and why it bites.")
+        new = new.replace('explain: "Why it is true." }', 'explain: "Why the statement holds." }')
+        new = new.replace("<summary>A question that tests the pitfall?</summary><p>The answer.</p>", "<summary>A question about the pitfall?</summary><p>The answer, reworded.</p>")
+        self.assertEqual(([], []), prose_guard.compare(self.PAGE, new, script=False, html=True))
+
+    def test_frozen_content_fails(self):
+        for label, new, expect in [
+            ("code", self.PAGE.replace("git add hello.py", "git add hi.py"), "code blocks"),
+            ("inline code", self.PAGE.replace("<code>(3, 12)</code>", "<code>(3, 13)</code>"), "code blocks"),
+            ("href", self.PAGE.replace('href="#src-3"', 'href="#src-2"', 1), "tag skeleton"),
+            ("dropped tag", self.PAGE.replace('<div class="ix-legend"></div>', ""), "tag skeleton"),
+            ("heading", self.PAGE.replace("<h2>How it actually works</h2>", "<h2>How it works</h2>"), "headings"),
+            ("h3", self.PAGE.replace("<h3>Option A</h3>", "<h3>Option one</h3>"), "headings"),
+            ("tag label", self.PAGE.replace('<div class="tag">Pitfall</div>', '<div class="tag">Pitfalls</div>'), "labels"),
+            ("callout label", self.PAGE.replace('<div class="k">Say it in an interview</div>', '<div class="k">Say it</div>', 1), "labels"),
+            ("meta span", self.PAGE.replace("Sources checked 2026-01-01", "Sources checked 2026-01-02"), "labels"),
+            ("citation marker", self.PAGE.replace('<a href="#src-1">1</a></sup></p>\n        <h3>First', '<a href="#src-1">one</a></sup></p>\n        <h3>First'), "citations"),
+            ("quiz answer", self.PAGE.replace("answer: 1,", "answer: 2,", 1), "scripts"),
+            ("quiz type", self.PAGE.replace('{ type: "tf",', '{ type: "scq",', 1), "scripts"),
+            ("match pair", self.PAGE.replace('r: "Meaning 1"', 'r: "Meaning one"'), "scripts"),
+            ("diagram label", self.PAGE.replace('label:"Part A"', 'label:"Part one"'), "scripts"),
+            ("next", self.PAGE.replace('href: "day-1-next-topic.html"', 'href: "day-2.html"'), "scripts"),
+            ("dropped option", self.PAGE.replace('options: ["Correct option", "Wrong option", "Wrong option"]', 'options: ["Correct option", "Wrong option"]'), "scripts"),
+        ]:
+            with self.subTest(change=label):
+                self.assertIn(expect, self._names(new))
+
+    def test_truncated_page_fails(self):
+        self.assertIn("page does not parse", prose_guard.compare(self.PAGE, self.PAGE[: len(self.PAGE) // 2], script=False, html=True)[0][0])
+
+    def test_changed_number_in_prose_is_a_warning(self):
+        new = self.PAGE.replace("Each teaching step is 450–900 prose words", "Each teaching step is 400–900 prose words")
+        findings, warnings = prose_guard.compare(self.PAGE, new, script=False, html=True)
+        self.assertEqual([], findings)
+        self.assertEqual(1, len(warnings))
+
+    def test_cli_dispatches_on_the_suffix(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            page = Path(tmp) / "page.html"
+            page.write_text(self.PAGE, encoding="utf-8")
+            snap = subprocess.run([sys.executable, str(HARNESS / "prose_guard.py"), "snapshot", str(page)], capture_output=True, text=True, encoding="utf-8", cwd=ROOT).stdout.strip()
+            page.write_text(self.PAGE.replace("git add hello.py", "git add hi.py"), encoding="utf-8")
+            r = subprocess.run([sys.executable, str(HARNESS / "prose_guard.py"), "check", snap, str(page)], capture_output=True, text=True, encoding="utf-8", cwd=ROOT)
+            self.assertEqual(1, r.returncode)
+            self.assertIn("code blocks", r.stdout)
+
+
 class WorkflowWiringTests(unittest.TestCase):
     """Static: day-fanout.js humanizes the demo scripts and the runbook between author and critic (D-0039)."""
 

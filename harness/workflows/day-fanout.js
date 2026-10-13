@@ -16,13 +16,19 @@
 // reading harness/critics/<artifact>.md; up to 3 passes, then the item is flagged (never blocks).
 // A humanizer agent runs between author and critic on the notes page (D-0029) and on the trainer's delivery
 // wording, the demo scripts and the runbook (D-0039; prose only, guarded by harness/prose_guard.py).
+// Notes pages (D-0040) are reference/study material at junior-interview depth: a notes-verify agent runs
+// harness/notes_check.py (structure, delivery phrases, stamps, citations, link liveness; WebFetch claim currency
+// on full-gate and currency-flagged days) and its findings bind the notes critic.
+// Notes-only mode (args_for.py --notes-only, D-0040): Research = a depth pass that extends the committed brief's
+// "## Notes depth" section; Demos = the scripts and keys already on disk; Materials = the notes page only
+// (exercise and runbook untouched); Wire realigns the week plan's Notes-step column from what was built.
 //
 // Scripts cannot touch the filesystem or Date(); everything comes in through args.
 // Lifted from the reference week-fanout.js: gated(), fix(), VERDICT, repairNulls(), compact(), salvage.
 
 export const meta = {
   name: 'day-fanout',
-  description: 'Research -> demos (in day order) -> notes/runbook/exercise (critic-gated, 3-pass repass) -> wire -> verify, for one training day or the days of one week',
+  description: 'Research -> demos (in day order) -> notes/runbook/exercise (critic-gated, 3-pass repass) -> wire -> verify, for one training day or the days of one week; --notes-only re-authors the notes pages alone (research depth, then notes)',
   phases: [
     { title: 'Research' },
     { title: 'Demos' },
@@ -64,7 +70,8 @@ function tier(stage, pass, quiet) {
   return o
 }
 const tierLabel = (s) => { const t = tier(s, 0, true); return `${s}=${t.model || 'inherit'}/${t.effort || 'inherit'}` }
-const TIER_LABELS = ['research-light','research-full','demos','notes','humanize','exercise','runbook','critic','wire','verify','fix'].map(tierLabel).join(' · ')
+const TIER_LABELS = ['research-light','research-full','demos','notes','notes-critic','notes-verify-light','notes-verify-full','humanize','exercise','runbook','critic','wire','verify','fix'].map(tierLabel).join(' · ')
+const NOTES_ONLY = !!A.notesOnly
 const DAYS = A.days.map(d => ({
   ...d,
   researchFile: `${H}/research/${d.rel}.md`,
@@ -93,8 +100,16 @@ const DEMO_SCHEMA = { type:'object', additionalProperties:false, properties:{
   summary:{type:'string'} }, required:['scripts','facilitation','requirements','summary'] }
 const NOTES_SCHEMA = { type:'object', additionalProperties:false, properties:{
   wordCount:{type:'number'}, declaredMinutes:{type:'number'}, steps:{type:'number'}, quizCount:{type:'number'},
+  h3Count:{type:'number'}, interviewCount:{type:'number'}, checkYourselfCount:{type:'number'}, codeBlocks:{type:'number'}, citations:{type:'number'},
+  sourcesChecked:{type:'string'},
+  stepMap:{ type:'array', items:{ type:'object', additionalProperties:false, properties:{ subtopic:{type:'string'}, step:{type:'number'} }, required:['subtopic','step'] } },
   demoLinks:{ type:'array', items:{type:'string'} }, codePopups:{ type:'array', items:{type:'string'} }, summary:{type:'string'} },
-  required:['wordCount','declaredMinutes','steps','quizCount','demoLinks','codePopups','summary'] }
+  required:['wordCount','declaredMinutes','steps','quizCount','h3Count','interviewCount','checkYourselfCount','codeBlocks','citations','sourcesChecked','stepMap','demoLinks','codePopups','summary'] }
+// notes-verify (D-0040): mechanical findings that bind the notes critic. structural = notes_check.py findings
+// about parsing or the bands; dead = links that do not answer; stale = currency, stamp and citation findings.
+const VERIFY_NOTES_SCHEMA = { type:'object', additionalProperties:false, properties:{
+  checked:{type:'number'}, structural:{ type:'array', items:{type:'string'} }, dead:{ type:'array', items:{type:'string'} }, stale:{ type:'array', items:{type:'string'} }, summary:{type:'string'} },
+  required:['checked','structural','dead','stale','summary'] }
 const RUNBOOK_SCHEMA = { type:'object', additionalProperties:false, properties:{
   totalMinutes:{type:'number'}, demoSections:{type:'number'}, solutionFiles:{ type:'array', items:{type:'string'} }, summary:{type:'string'} },
   required:['totalMinutes','demoSections','solutionFiles','summary'] }
@@ -199,13 +214,16 @@ async function demosStage(d) {
       { schema: VERDICT, label:`${d.id}:demos-crit`, phase:'Demos', ...tier('critic') }))
 }
 
-// Humanizer pass (D-0029): runs after the notes author and before the notes critic. Prose only.
+// Humanizer pass (D-0029): runs after the notes author and before the notes critic. Prose only, proven by
+// harness/prose_guard.py in its html mode (D-0040): the tag skeleton, code, attributes, labels, citations and
+// the non-prose script literals must be byte-identical afterwards.
 const humanize = (d) => agent(
-  `HUMANIZE pass for ${d.pageFile}. Load the humanizer skill with the Skill tool ("humanizer:humanizer") and apply it in FILE MODE to that page.\n` +
-  `Rewrite prose only: text inside article.reading-col (the .lede, paragraphs, list items), the window.QUIZ question/option/explain strings, and window.DIAGRAM captions and node detail strings. Reference voice: neutral, plain, technical.\n` +
-  `Leave untouched: every HTML tag and attribute, <pre>/<code> blocks, inline <code>, filenames, URLs, numbers, versions, dates, quiz answer indices and question count, section.step count, window.NEXT, script tags.\n` +
-  `Do not add or remove a fact. After writing, run the verification snippet from ${H}/critics/notes.md with Bash and confirm the prose count is still within ${WORD_MIN}–${WORD_MAX} and steps/captions/quiz counts are unchanged; if the rewrite pushed the count under ${WORD_MIN}, restore cut sentences rather than inventing new ones.\n` +
-  `Return one short paragraph: patterns found (by humanizer section number), sentences changed, final word count.`,
+  `HUMANIZE pass for the notes page ${d.pageFile} (D-0029, D-0040). The page is long (${WORD_MIN}–${WORD_MAX} prose words), so work one section.step at a time.\n` +
+  `1. FIRST, from ${ROOT}, run: python harness/prose_guard.py snapshot ${d.pageFile}   and keep the snapshot directory it prints.\n` +
+  `2. Load the humanizer skill with the Skill tool ("humanizer:humanizer") and apply it in FILE MODE, one section.step per Edit call (never a whole-file Write). Rewrite prose text only: the .lede summary, paragraphs and list items inside article.reading-col, the interview callouts' <p>, the Check yourself answers' <p> and <summary> questions, the window.QUIZ stem/option/explain/hint/model strings, and the window.DIAGRAM captions and node detail strings. Reference voice: neutral, plain, technical, as a person explaining to a colleague. Light touch: leave a sentence that already reads plainly.\n` +
+  `3. FROZEN, byte for byte: every HTML tag and attribute (ids, classes, hrefs, data-*), <pre>/<code> blocks, inline <code>, <sup class="cite"> markers, headings (h1–h3, title), the .tag / .k / .meta labels, filenames, URLs, numbers, versions, dates, quiz answer indices, pairs, types and question count, diagram labels, ids and edges, section.step count, window.NEXT, script tags. Do not add or remove a fact.\n` +
+  `4. Verify from ${ROOT}: python harness/prose_guard.py check <snapshot directory> ${d.pageFile}   must print OK with no WARN line (a WARN means a number changed: restore it), and python harness/notes_check.py ${d.pageFile} --counts   must still show words >= ${WORD_MIN + 100} with unchanged steps, captions, h3, callouts, check, code and quiz counts; if a step lost more than 8% of its words, restore cut sentences rather than inventing new ones. Fix and re-run until both hold. Touch no other file.\n` +
+  `Return one short paragraph: patterns found (by humanizer section number), sentences changed per step, final word count.`,
   { label:`${d.id}:notes-humanize`, phase:'Materials', ...tier('humanize') })
 
 // Humanizer pass on the trainer's delivery wording (D-0039): the day's demo scripts after the demo author and the
@@ -230,42 +248,103 @@ const humanizeTrainer = (d, kind, files, phaseName) => agent(
   `Return one short paragraph: sentences changed per file, humanizer sections found (by number), anything left alone on purpose.`,
   { label:`${d.id}:${kind}-humanize`, phase: phaseName, ...tier('humanize') })
 
-async function materialsStage(d, demo) {
+// What the materials authors know about the day's demos (names, keys, objectives, facilitation subtopics).
+function demoFacts(d, demo) {
   const scripts = (demo && demo.result && demo.result.scripts) ? demo.result.scripts : []
-  const scriptNames = scripts.map(s => s.name)
-  const keyNames = scripts.map(s => s.key)
   const facilitation = (demo && demo.result && demo.result.facilitation) ? demo.result.facilitation : []
-  const demoUrl = `${CFG.repoUrl}/tree/${CFG.repoBranch || 'main'}/demos/${d.rel}`
-  const exUrl = `${CFG.repoUrl}/tree/${CFG.repoBranch || 'main'}/exercises/${d.rel}`
   const demoCtx = d.noDemos
     ? `This day has NO code demos (demoFormat none): every subtopic is facilitated from the runbook.\n`
     : `Demo scripts (private until taught, in ${d.demoDir}): ${J(scripts.map(s => ({ name:s.name, key:s.key, objective:s.objective, minutes:s.minutes })))}. Answer keys in ${d.keyDir}. Subtopics facilitated without a demo: ${J(facilitation)}.\n`
-  const notes = () => gated(`${d.id} notes page`,
+  return { scripts, scriptNames: scripts.map(s => s.name), keyNames: scripts.map(s => s.key), facilitation, demoCtx,
+    demoUrl: `${CFG.repoUrl}/tree/${CFG.repoBranch || 'main'}/demos/${d.rel}`, exUrl: `${CFG.repoUrl}/tree/${CFG.repoBranch || 'main'}/exercises/${d.rel}` }
+}
+
+// Research depth (D-0040): in a notes-only run a research agent extends the committed brief with the
+// "## Notes depth" section the notes author needs (interview questions, adjacent concept, trade-off,
+// recognise-on-sight and sourced claims per subtopic). A normal run writes that section in the research stage.
+async function researchDepthStage(d) {
+  const full = d.gate === 'full'
+  return gated(`${d.id} research-depth`,
+    (cr, pass) => agent(
+      `You are the RESEARCH agent, depth pass (D-0040). ${dayHeader(d)}` +
+      `The brief ${d.researchFile} exists and is committed. Read it and ${H}/templates/research.md. Add (or replace, if present) its "## Notes depth" section EXACTLY as the template lays it out: one "### <subtopic>" block per subtopic listed above, spelled as the curriculum lists it, each with the five bullets (Interview questions: >=2 junior-level questions plus one follow-up a level beyond; Adjacent concept: the usual next question, never a later day's subtopic; Trade-off or limit, sourced; Recognise on sight: a snippet or pattern name; Claims: 3–6 testable statements, each "- <claim> — [title](url)"). It sits after "## Claims" and before "## Sources"; add every new URL to "## Sources" too. If "## Claims" has fewer than ${(M.research || {}).claimsMin || 12} claims, add sourced ones until it does. Change NOTHING else in the brief: header lines, version stamps, glossary, pitfalls and demo hints stay byte-identical.\n` +
+      (full
+        ? `FULL GATE: load WebFetch (ToolSearch: select:WebFetch). VERIFY every URL you add with WebFetch before citing it; versions and model ids from the provider's current docs, never from memory; name the current replacement of any deprecated API.\n`
+        : `LIGHT GATE: no web fetching required. Cite only official doc URLs you are confident exist (docs.python.org, peps.python.org, git-scm.com, dev.mysql.com, cloud.google.com, tensorflow.org, scikit-learn.org, pandas.pydata.org, numpy.org, scrumguides.org ...).\n`) +
+      `Return versionStamps (as in the header), sourceCount, glossaryTerms (empty array), pitfalls (empty array), 2-sentence summary.` + fix(cr),
+      { schema: RESEARCH_SCHEMA, label:`${d.id}:research-depth`, phase:'Research', ...tier(full ? 'research-full' : 'research-light', pass) }),
+    (_r) => agent(
+      `RESEARCH CRITIC, depth pass (D-0040). Read ${H}/critics/research.md and apply items 1, 2, 3 and 7b${full ? ', 9 and 11' : ''} to ${d.researchFile}; the rest of the brief was judged when it was written. Gate=${d.gate}. ${full ? 'Load WebFetch (ToolSearch: select:WebFetch) and spot-check >=3 of the Notes depth URLs.' : 'No WebFetch needed.'} Run git diff on the brief and confirm nothing outside "## Claims", "## Notes depth" and "## Sources" changed.\n` +
+      `Day context: ${dayHeader(d)}` +
+      `Return pass, critiques (specific fixes), one-sentence summary.`,
+      { schema: VERDICT, label:`${d.id}:research-depth-crit`, phase:'Research', ...tier('critic') }))
+}
+
+// notes-verify (D-0040): mechanical findings for the notes critic. Every day: harness/notes_check.py (structure,
+// delivery phrases, stamps, citations, link liveness). Full-gate days and days whose week/day note carries a
+// currency flag: WebFetch every cited claim about a version, model id, API name, default, limit or price.
+const currencyDay = (d) => d.gate === 'full' || /currency|tflearn|pre-1\.0|deprecat|langchain|langgraph|bedrock|sagemaker|pinecone/i.test(`${A.weekNotes || ''} ${d.notes || ''}`)
+const notesVerify = (d, pass) => agent(
+  `NOTES VERIFY for ${d.pageFile} (D-0040). You produce mechanical findings for the critic and judge nothing else; you edit no file.\n` +
+  `1. FIRST, from ${ROOT} run: python harness/notes_check.py ${d.pageFile} --counts --phrases --stamps --citations --links   and quote its last JSON line. Sort every finding line it prints: parsing, steps, captions, words, h3, callouts, Check yourself, code blocks, citations-per-step, quiz, minutes, sources or stamp-missing lines go into structural[]; "dead link" lines go into dead[] (URL and reason); "delivery phrase", "stamp", "citation target" and "source URL not in the brief" lines go into stale[].\n` +
+  (currencyDay(d)
+    ? `2. CURRENCY (this day is full-gate or its week/day note carries a currency flag): load WebFetch (ToolSearch: select:WebFetch). For EVERY citation on the page whose sentence states a version, a model id, an API/class/function/flag name's behaviour, a default, a limit or a price: fetch the cited URL (the li#src-N target) and confirm the doc supports the sentence as written today. A renamed or deprecated API, a newer stable version than the brief's stamp, or a claim the doc does not support is STALE: add "<sentence> | <url> | <what the doc says now>" to stale[]. Run the deprecated-API sweep of ${H}/critics/research.md item 11 over the page. An out-of-date version stamp goes into stale[] too (the author corrects the brief's version-stamps and verified: lines on the repass).\n`
+    : `2. This is a light-gate day with no currency flag: no web fetching beyond the script's link check.\n`) +
+  `Return checked (URLs tested), structural, dead, stale, summary.`,
+  { schema: VERIFY_NOTES_SCHEMA, label:`${d.id}:notes-verify`, phase:'Materials', ...tier(currencyDay(d) ? 'notes-verify-full' : 'notes-verify-light') })   // no escalation: it runs a script, it judges nothing
+
+// Notes page (D-0040): reference/study material at junior-interview depth. Author -> humanizer (prose-guarded)
+// -> notes-verify + notes critic, up to 3 passes.
+async function notesStage(d, demo) {
+  const { scriptNames, keyNames, demoCtx, exUrl } = demoFacts(d, demo)
+  const page = d.pageFile
+  const wpm = MN.readingWpm || 150
+  return gated(`${d.id} notes page`,
     (cr, pass) => agent(
       `You are the NOTES-PAGE author. ${dayHeader(d)}${demoCtx}` +
-      `Read (1) ${TEMPLATE} — copy its FULL structure (head+meta tc-day, topbar, nav.toc, article.reading-col with .lede + section.step blocks + section.reading-sources, aside.side with diagram + ${d.noDemos ? 'NO demo card (demoFormat none)' : '.demo-card variant A (pending)'} + quiz card + side-nav, #quiz-modal, #goals-modal, optional #deep-modal, 0–2 #code-* popups, inline window.NEXT/DIAGRAM/QUIZ, the exact script tags). (2) ${d.researchFile} — your ONLY source of facts. (3) ${d.noDemos ? 'nothing else' : 'the demo scripts ' + J(scriptNames) + ' in ' + d.demoDir + ' and the answer keys in ' + d.keyDir}.\n` +
-      `Write ${d.pageFile}:\n` +
+      `PURPOSE (D-0040): ${page} is reference and study material a learner reads on their own after the day (${Math.round(WORD_MIN / wpm)}–${Math.round(WORD_MAX / wpm)} minutes). It teaches every subtopic of this day to the depth a junior-developer interview expects, plus the adjacent concept the brief names for it. Applying the concepts is the demos' job; this page explains, shows a runnable example, names the trade-off, shows what the thing looks like in someone else's code, and gives the sentences the reader would say when asked.\n` +
+      `DEPTH BAR per subtopic (the critic samples three): (1) a plain explanation a graduate can follow, (2) a runnable example in a <pre><code> block with its output stated in the prose, (3) a trade-off or a limit, (4) how to recognise it on sight in real code, (5) a spoken answer in the step's "Say it in an interview" callout; then the adjacent concept from the brief's Notes depth (what the interviewer asks next).\n` +
+      `SCOPE: teach this day's coverage rows in curriculum order, each under an h2 or an h3. A later day's topic may be named in ONE sentence ("week 2 moves this into a module"), never taught as an h2 or h3; the anti-spoiler rows above mean "not a section".\n` +
+      `DELIVERY REFERENCES: the page never refers to the classroom. None of these strings may appear in article prose, quiz strings or diagram strings: ${J(MN.deliveryPhrases || [])}. Do not describe what the trainer did, what the reader watched, or the session. You MAY say in broad strokes what the demo thread builds ("the ticket-desk code grows a queue of tuples"), never an answer-key file path in prose. The demo card and the goals modal's "Demos today" list are structure and stay.\n` +
+      `FACTS: ${d.researchFile} is your ONLY source (its Claims, Notes depth, Sources, Glossary, Pitfalls). Add nothing to the brief. Every sentence that states a version number, a model id, an API/class/function/flag name's behaviour, a default, a limit or a price carries a citation <sup class="cite"><a href="#src-N">N</a></sup> to an <li id="src-N"> in section.reading-sources whose URL is in the brief; >= ${MN.citationsPerStepMin} citations per teaching step.\n` +
+      `STRUCTURE: read ${TEMPLATE} and copy its shell exactly (head + meta tc-day, topbar, nav.toc, article.reading-col, aside.side with diagram + ${d.noDemos ? 'NO demo card (demoFormat none)' : 'the demo card as variant A (pending) from ' + H + '/templates/day.exemplar.html, whatever the template page shows'} + quiz card + side-nav, #quiz-modal, #goals-modal, optional #deep-modal, ${MN.codePopupsMin}–${MN.codePopupsMax} #code-* popups, inline window.NEXT/DIAGRAM/QUIZ, the exact script tags). Then:\n` +
       `- <meta name="tc-day" content="${d.id}">; title "<title> | ${CFG.siteTitle}"; topbar brand "${(CFG.brand||{}).bold}·${(CFG.brand||{}).rest}", Home ../../index.html, Demos ${CFG.repoUrl}/tree/main/demos, Exercises ${CFG.repoUrl}/tree/main/exercises.\n` +
-      `- .lede meta: "Week ${A.week} · Day ${d.day}", "${d.dateLabel}", "${A.theme}", "~N min" where N = round(prose words / ${MN.readingWpm || 150}).\n` +
-      `- ${MN.stepsMin}–${MN.stepsMax} section.step (data-step 0..n-1), prose ${WORD_MIN}–${WORD_MAX} words total; the page is the reference that deepens what the trainer types live — refer to a demo by its objective ("the Git local-loop demo"), never by a file path (the answer keys are not public until after class).\n` +
-      (d.noDemos ? `- NO .demo-card and no "Demos today" list (demoFormat none).\n`
-                 : `- .demo-card exactly as the template's variant A: data-demo="pending", text "Published after class", no links (D-0030; harness/publish_demos.py flips it after the session).\n`) +
-      `- window.DIAGRAM with captions.length == step count, nodes {id,step,x,y,w,h,label,detail?}, edges referencing real ids; each step reveals something the section explains.\n` +
-      `- window.QUIZ with exactly ${MN.quizQuestions} questions: ≥1 scq, ≥1 tf, ≥1 mcq or match, ≤1 open; every non-open question has explain; grounded in the brief and the demos.\n` +
-      `- #goals-modal: ${MN.goalsMin}–${MN.goalsMax} "By the end of today you can" items; "Today's exercise" link ${exUrl}; ${d.noDemos ? 'no demo list' : '"Demos today" list: one item per script, its objective in order, no file names or links'}.\n` +
-      `- Code popups: 0–2, each a SHORT excerpt of a real answer key in ${d.keyDir} (data-file = exact key filename, e.g. ${keyNames[0] || '01_<slug>.py'}; code HTML-escaped; never the whole file).\n` +
+      `- .lede: h1; .meta spans "Week ${A.week} · Day ${d.day}", "${d.dateLabel}", "${A.theme}", "<b>~N min</b> · reference notes @${wpm} wpm · diagram · check" (N = round(prose words / ${wpm})), and <span class="verified">Sources checked <the brief's verified: date> · python ${CFG.python}[ · <lib> <version> for each library stamp in the brief]</span>; p.summary of 3–5 sentences: the one sentence the page assumes from the previous day (week note), what the page teaches, what the reader can answer afterwards; then the .ix-legend.\n` +
+      `- ${MN.stepsMin}–${MN.stepsMax} section.step (data-step 0..n-1, each with .tag and h2). All but the last are TEACHING steps: >= ${MN.h3PerStepMin} h3 subsections each (a subtopic or its adjacent concept per h3), 450–900 prose words, runnable <pre><code> examples wherever the subtopic is code-shaped (page total >= ${MN.codeBlocksMin}), citations, at most one widget (.ix-predict / .ix-spot) and optionally one code popup button, and LAST in the step exactly one <div class="callout interview"><div class="k">Say it in an interview</div><p>…</p></div> with 1–3 <p>, each a spoken first-person answer (10–20 seconds, no code) to one of the step's interview questions from the brief.\n` +
+      `- The LAST step: .tag "Check yourself", h2 "Check yourself", one intro <p>, then ${MN.checkYourselfMin}–${MN.checkYourselfMax} <details class="check"><summary>question</summary><p>answer, 1–4 sentences</p></details> covering every teaching step. No h3, no callout.\n` +
+      `- section.reading-sources: <li id="src-1">, <li id="src-2"> … in citation order, >= ${MN.sourcesMin} items, each one http link taken from the brief plus a one-line reason.\n` +
+      (d.noDemos ? `- NO .demo-card and no "Demos today" list (demoFormat none).\n` : `- .demo-card exactly variant A: data-demo="pending", text "Published after class", no links (D-0030; harness/publish_demos.py flips it after the session).\n`) +
+      `- window.DIAGRAM with captions.length == step count, nodes {id,step,x,y,w,h,label,detail?}, edges referencing real ids; each step reveals something the section explains; the last caption sums up what the reader can now explain.\n` +
+      `- window.QUIZ with exactly ${MN.quizQuestions} questions: ≥1 scq, ≥1 tf, ≥1 mcq or match, ≤1 open; every non-open question has explain; grounded in the page.\n` +
+      `- #goals-modal: ${MN.goalsMin}–${MN.goalsMax} "By the end of today you can" items; "Today's exercise" link ${exUrl}; ${d.noDemos ? 'no demo list' : '"Demos today" list: one item per script, its objective in ladder order, no file names or links'}.\n` +
+      `- Code popups: ${MN.codePopupsMin}–${MN.codePopupsMax}, each a SHORT excerpt of a real answer key in ${d.keyDir} (data-file = exact key filename, e.g. ${keyNames[0] || '01_<slug>.py'}; code HTML-escaped; never the whole file).\n` +
       `- Code in prose: single tokens (a command, a filename, an identifier) inline as <code>; any sequence of 2+ commands or lines the reader would type goes in a <pre><code> block (HTML-escaped, one command per line, no prompt characters) — never a run of commands inside a sentence.\n` +
-      `- section.reading-sources with ≥${MN.sourcesMin} URLs from the brief.\n` +
       `- window.NEXT = { label: ${J(d.nextLabel)}, href: ${J(d.nextHref)} }.\n` +
-      `- Scripts: theme.js in head; bottom exactly diagram, scrolly, modals, quiz, widgets, glossary, codeviewer${d.feedback ? ', survey (+ a #survey section with window.SURVEY and a link to ' + CFG.feedbackFormUrl + ')' : ''}; relative ../../assets/... paths. Widgets allowed: .ix-legend, .ix-predict, .ix-spot only.\n` +
+      `- Scripts: theme.js in head; bottom exactly diagram, scrolly, modals, quiz, widgets, glossary, codeviewer${d.feedback ? ', survey (+ a #survey section with window.SURVEY and a link to ' + CFG.feedbackFormUrl + ')' : ''}; relative ../../assets/... paths with the template's ?v= versions. Widgets allowed: .ix-legend, .ix-predict, .ix-spot only.\n` +
       `- Prose voice (D-0029): write plainly, as a person explaining to a colleague. No "not X but Y" contrasts, no one-line closers that restate the paragraph, no forced triads, no em-dashes as the default joiner, no bold labels at the start of items, no stock AI words (delve, crucial, robust, seamless, leverage, landscape, navigate, journey, foster, testament, underscore). A humanizer pass runs after you; give it little to do.\n` +
-      `- Count words with a Python one-liner before returning. Return wordCount, declaredMinutes, steps, quizCount, demoLinks, codePopups, summary.` + fix(cr),
+      `WRITE INCREMENTALLY (the page is ${WORD_MIN}–${WORD_MAX} prose words; aim for ${WORD_MIN + 300}–${WORD_MAX - 300}; one huge Write gets truncated):\n` +
+      `1. ONE Write of the whole shell: the lede, every section.step with its tag, h2 and h3 headings only, an empty Check yourself step, window.NEXT, window.DIAGRAM with one placeholder caption per step, window.QUIZ with ${MN.quizQuestions} placeholder questions, the modals and the script tags. It must parse: run python ${H}/notes_check.py ${page} --counts (band findings are expected at this point, a parse error is not).\n` +
+      `2. Fill ONE step per Edit call (its prose, code blocks, citations, callout). After each Edit run the same --counts command and watch the words total; stop adding prose at ${WORD_MAX - 300}.\n` +
+      `3. Then the Check yourself step, the real quiz, the diagram nodes/edges/captions, the sources list, the meta minutes and the verified span. Never rewrite the whole file after step 1.\n` +
+      `Before returning run: python ${H}/notes_check.py ${page} --counts --phrases --stamps --citations   until it prints OK, and quote its last line. Return wordCount, declaredMinutes, steps, h3Count, interviewCount, checkYourselfCount, codeBlocks, citations (total), sourcesChecked, stepMap (every coverage-row subtopic -> the 1-based step that teaches it), quizCount, demoLinks, codePopups, summary.` + fix(cr),
       { schema: NOTES_SCHEMA, label:`${d.id}:notes`, phase:'Materials', ...tier('notes', pass) })
       .then(async (r) => { if (r) await humanize(d); return r }),
-    (_r) => agent(
-      `NOTES CRITIC. Read ${H}/critics/notes.md and apply it to ${d.pageFile} against ${d.researchFile} (allowed facts), ${TEMPLATE} (structure), ${d.noDemos ? 'no demos (demoFormat none: the page must carry NO demo card)' : 'demo scripts ' + J(scriptNames) + ' in ' + d.demoDir + ' and answer keys ' + J(keyNames) + ' in ' + d.keyDir + ' (the demo card must be data-demo="pending" with no links)'}. Word band ${WORD_MIN}–${WORD_MAX}. Item 12 against the week plan: the page teaches exactly this day's coverage rows (every subtopic row present, the step the row names covers it) and nothing the anti-spoiler rows defer. Run the verification snippet in the critic spec with Bash. Day context: ${dayHeader(d)}` +
-      `Return pass, critiques (concrete fixes), one-sentence summary.`,
-      { schema: VERDICT, label:`${d.id}:notes-crit`, phase:'Materials', ...tier('critic') }))
+    async (_r, pass) => {
+      const v = await notesVerify(d, pass)
+      const c = await agent(
+        `NOTES CRITIC. Read ${H}/critics/notes.md and apply it to ${page} against ${d.researchFile} (allowed facts), ${TEMPLATE} (structure), ${d.noDemos ? 'no demos (demoFormat none: the page must carry NO demo card)' : 'demo scripts ' + J(scriptNames) + ' in ' + d.demoDir + ' and answer keys ' + J(keyNames) + ' in ' + d.keyDir + ' (the demo card must be data-demo="pending" with no links)'}. Word band ${WORD_MIN}–${WORD_MAX}. Item 12 against the week plan rows: every coverage subtopic is taught under an h2 or h3 and nothing the anti-spoiler rows defer is a section. Run the verification command in the critic spec with Bash and quote it. Day context: ${dayHeader(d)}` +
+        `Findings from the notes-verify agent (item 19, binding; each is a critique unless you show it is wrong): ${J(v || { checked:0, structural:['notes-verify agent hard-failed; run notes_check.py yourself'], dead:[], stale:[] })}\n` +
+        `Return pass, critiques (concrete fixes), one-sentence summary.`,
+        { schema: VERDICT, label:`${d.id}:notes-crit`, phase:'Materials', ...tier('notes-critic') })
+      if (!c) return c
+      const hard = [...((v && v.structural) || []).map(x => `structural: ${x}`), ...((v && v.dead) || []).map(x => `dead link: ${x}`), ...((v && v.stale) || []).map(x => `stale: ${x}`)]
+      return hard.length ? { pass:false, critiques:[...hard, ...(c.critiques || [])], summary: c.summary } : c
+    })
+}
+
+async function materialsStage(d, demo) {
+  const { scriptNames, facilitation, demoCtx, demoUrl, exUrl } = demoFacts(d, demo)
+  const notes = () => notesStage(d, demo)
 
   const rubric = d.exerciseKind === 'rubric'
   const exercise = () => rubric ? gated(`${d.id} exercise`,
@@ -326,17 +405,27 @@ else log(`Week plan: ${A.weekPlan}`)
 // later days of the run: they are reported flagged and nothing is authored on top of a missing key. A day the
 // critic flagged still has its keys and does not block.
 const blocked = (label, by) => ({ task: label, status:'flagged', passes:0, flags:[`blocked: ${by} produced no demo keys, so this day's rungs have no Starts from state; re-run from ${by}`], summary:`not attempted (blocked by ${by})` })
+if (NOTES_ONLY) log(`Notes-only run (D-0040): research depth -> notes page; demos, exercise and runbook reused from disk`)
 phase('Research')
-const researched = await parallel(DAYS.map(d => () => researchStage(d)))
+const researched = await parallel(DAYS.map(d => () => NOTES_ONLY ? researchDepthStage(d) : researchStage(d)))
 phase('Demos')
 const demoed = []
 let blockedBy = null
-for (const d of DAYS) {
-  if (blockedBy) { demoed.push(blocked(`${d.id} demos`, blockedBy)); continue }
-  let r = null
-  try { r = await demosStage(d) } catch (e) { log(`${d.id} demos stage threw: ${e && e.message}`) }
-  demoed.push(r)
-  if (!d.noDemos && !(r && r.result && (r.result.scripts || []).length)) blockedBy = `${d.id} demos`
+if (NOTES_ONLY) {
+  // D-0040: the day's scripts and keys are already on disk (args_for.py --notes-only checked); nothing is authored.
+  for (const d of DAYS) demoed.push(d.noDemos
+    ? { task:`${d.id} demos`, status:'skipped', passes:0, summary:'demoFormat none: no code demo', result:{ scripts:[], facilitation: d.subtopics, requirements:[], summary:'' } }
+    : { task:`${d.id} demos`, status:'cached', passes:0, summary:'notes-only: scripts and keys reused from disk',
+        result:{ scripts:(d.existingScripts || []).map(s => ({ name:s.name, key:s.key, objective:s.objective, minutes:s.time || 0, mode:'', needsKey:false })),
+                 facilitation:(d.weekPlanRows || []).filter(r => r.Demo === 'facilitation').map(r => r.Subtopic), requirements:[], summary:'' } })
+} else {
+  for (const d of DAYS) {
+    if (blockedBy) { demoed.push(blocked(`${d.id} demos`, blockedBy)); continue }
+    let r = null
+    try { r = await demosStage(d) } catch (e) { log(`${d.id} demos stage threw: ${e && e.message}`) }
+    demoed.push(r)
+    if (!d.noDemos && !(r && r.result && (r.result.scripts || []).length)) blockedBy = `${d.id} demos`
+  }
 }
 phase('Materials')
 const materials = await parallel(DAYS.map((d, i) => async () => {
@@ -348,6 +437,10 @@ const materials = await parallel(DAYS.map((d, i) => async () => {
     const skip = (label) => ({ task: label, status:'flagged', passes:0, flags:[why], summary:'not attempted (no demo scripts)' })
     return { notes: skip(`${d.id} notes page`), exercise: skip(`${d.id} exercise`), runbook: skip(`${d.id} runbook`) }
   }
+  if (NOTES_ONLY) {
+    const reused = (label) => ({ task: label, status:'cached', passes:0, summary:'not re-authored in a notes-only run (D-0040); its notes-handoff wording may lag the page' })
+    return { notes: await notesStage(d, demos), exercise: reused(`${d.id} exercise`), runbook: reused(`${d.id} runbook`) }
+  }
   return materialsStage(d, demos)
 }))
 const perDay = DAYS.map((d, i) => ({ d, research: researched[i], demos: demoed[i], ...(materials[i] || {}) }))
@@ -356,6 +449,9 @@ const perDay = DAYS.map((d, i) => ({ d, research: researched[i], demos: demoed[i
 phase('Wire')
 const glossaryAdds = []
 perDay.forEach(x => { if (x && x.research && x.research.result) (x.research.result.glossaryTerms || []).forEach(t => glossaryAdds.push({ day: x.d.id, ...t })) })
+// D-0040: the plan's Coverage map records the page step that teaches each subtopic; the author reports where
+// each one landed and the serial Wire step realigns the column (parallel authors never edit the plan).
+const stepMaps = perDay.filter(x => x && x.notes && x.notes.result && (x.notes.result.stepMap || []).length).map(x => ({ day: x.d.id, stepMap: x.notes.result.stepMap }))
 const wire = await agent(
   `WIRE step (serial, shared files). Days shipped this run: ${J(DAYS.map(d => ({ id:d.id, rel:d.rel, page:d.pageRel })))}.\n` +
   `1. Open ${ROOT}/docs/assets/js/glossary.js. Between "// GLOSSARY:BEGIN" and "// GLOSSARY:END" append these entries as { term, def, aka } lines, SKIPPING any whose term or aka already exists (case-insensitive, check both term and aka of existing entries): ${J(glossaryAdds)}. Keep the file valid JS (node --check).\n` +
@@ -364,7 +460,8 @@ const wire = await agent(
   `4. For each shipped day whose previous day page exists, confirm the previous page's window.NEXT.href points at this day's filename; fix if not. And for each shipped day's own page: if its window.NEXT.href names a day page that does not exist on disk (a later day of this run was blocked or failed), set it to { label: "Back to program →", href: "../../index.html" }.\n` +
   `5. Publish step (D-0030): for each shipped day run "python ${H}/publish_demos.py <week> <day>" (${J(DAYS.map(d => `${A.week} ${d.day}`))}). It copies the answer keys to demos/<rel>/ and flips the notes demo card ONLY if curriculum.json carries taught:<date> for that day (set by the delivery-day close); otherwise it prints "not taught yet" and that is the expected outcome on an authoring run. Never copy demo files by hand.\n` +
   `6. Run ${ROOT}/docs/bump-css.sh --all if you changed glossary.js.\n` +
-  `7. Last, run: python ${H}/build_tracker.py   so tracker.html matches the state you just changed (never edit tracker.html by hand).\n` +
+  `7. Coverage-map realignment (D-0040): ${(A.noPlan || !stepMaps.length) ? 'nothing to do this run (no week plan, or no notes page reported a stepMap).' : 'in ' + A.weekPlan + ' "## Coverage map" table, for each day below set the "Notes step" cell of the row whose Day and Subtopic match to the number given, touching no other cell: ' + J(stepMaps) + '. Then run: python ' + H + '/plan_check.py ' + A.weekPlan + '   and quote its OK line (fix the cell, never the checker, if it complains).'}\n` +
+  `8. Last, run: python ${H}/build_tracker.py   so tracker.html matches the state you just changed (never edit tracker.html by hand).\n` +
   `Return a one-paragraph summary of what changed.`,
   { label:'wire', phase:'Wire', ...tier('wire') })
 
@@ -397,7 +494,7 @@ const runRecord = {
   artifacts: report.flatMap(r => ['research','demos','notes','exercise','runbook'].map(k => ({ day: r.day, name: k, status: (r[k] && r[k].status) || 'flagged', passes: r[k] ? r[k].passes : 0 }))),
   flagged: flagged.length,
   flags: flagged.map(f => ({ day: f.day, artifact: f.artifact, flags: (f.flags || []).slice(0, 6).map(x => String(x).slice(0, 300)) })),
-  tests: null, resolved: false, note: A.noPlan ? 'run with the --no-plan escape' : '',
+  tests: null, resolved: false, note: [A.noPlan ? 'run with the --no-plan escape' : '', NOTES_ONLY ? 'notes-only run (D-0040): research depth + notes page; demos, exercise and runbook reused' : ''].filter(Boolean).join('; '),
 }
 const recorded = await agent(
   `RECORD step (work tracker, D-0035).\n` +
