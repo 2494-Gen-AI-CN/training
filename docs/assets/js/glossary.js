@@ -216,12 +216,16 @@
   }
   function closeModal() { if (modal) modal.classList.remove("show"); }
 
+  // Focus view (D-0044) reads as plain text: no tips, no modal, no tab stops on the terms.
+  function quiet() { return document.documentElement.getAttribute("data-view") === "focus"; }
+
   function wire(el) {
-    el.addEventListener("mouseenter", function () { showTip(el); });
+    el.addEventListener("mouseenter", function () { if (!quiet()) showTip(el); });
     el.addEventListener("mouseleave", hideTip);
-    el.addEventListener("focus", function () { showTip(el); });
+    el.addEventListener("focus", function () { if (!quiet()) showTip(el); });
     el.addEventListener("blur", hideTip);
     el.addEventListener("click", function (e) {
+      if (quiet()) return;
       e.preventDefault();
       hideTip();
       openModal(el.dataset.glossTerm);
@@ -286,6 +290,16 @@
       node.parentNode.replaceChild(frag, node);
     });
 
+    // theme.js fires tc-view when the reader changes the page view
+    var terms = root.querySelectorAll(".gloss-term");
+    function syncView() {
+      var stop = quiet() ? -1 : 0;
+      for (var i = 0; i < terms.length; i++) terms[i].tabIndex = stop;
+      hideTip();
+    }
+    if (quiet()) syncView();
+    document.addEventListener("tc-view", syncView);
+
     buildKeyTerms(foundOrder, found);
   }
 
@@ -295,26 +309,30 @@
     order.sort(function (a, b) { return a.toLowerCase().localeCompare(b.toLowerCase()); });
     buildModal(order, found);
 
-    var block = document.createElement("button");
-    block.type = "button";
-    block.className = "gloss-block";
-    block.innerHTML =
-      '<span class="gb-k">Glossary</span>' +
-      '<span class="gb-t">Key terms on this page</span>' +
-      '<span class="gb-n">' + order.length + ' term' + (order.length === 1 ? '' : 's') +
-        ' · tap to define</span>';
-    block.addEventListener("click", function () { openModal(); });
-
-    var toc = document.querySelector(".toc");
-    var tocVisible = toc && getComputedStyle(toc).display !== "none";
-    if (tocVisible) {
-      toc.appendChild(block);
-    } else {
-      block.classList.add("gloss-block-inline");
-      var src = document.querySelector(".reading-sources");
-      if (src) src.parentNode.insertBefore(block, src);
-      else document.querySelector(".reading-col").appendChild(block);
+    function keyTermsBlock() {
+      var block = document.createElement("button");
+      block.type = "button";
+      block.className = "gloss-block";
+      block.innerHTML =
+        '<span class="gb-k">Glossary</span>' +
+        '<span class="gb-t">Key terms on this page</span>' +
+        '<span class="gb-n">' + order.length + ' term' + (order.length === 1 ? '' : 's') +
+          ' · tap to define</span>';
+      block.addEventListener("click", function () { openModal(); });
+      return block;
     }
+
+    // One block under the page menu and one inline before the sources. The menu is
+    // hidden in narrow windows and in Focus view (D-0044), and can come and go after
+    // load, so the stylesheet picks which of the two shows (.gloss-block-alt).
+    var toc = document.querySelector(".toc");
+    if (toc) toc.appendChild(keyTermsBlock());
+    var inline = keyTermsBlock();
+    inline.classList.add("gloss-block-inline");
+    if (toc) inline.classList.add("gloss-block-alt");
+    var src = document.querySelector(".reading-sources");
+    if (src) src.parentNode.insertBefore(inline, src);
+    else document.querySelector(".reading-col").appendChild(inline);
   }
 
   // Expose for tests / tooling (read-only).

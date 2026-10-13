@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="tc-day" content="w01d4">
 <title>W1·D4 — Python data types | 2494 · Gen-AI Python</title>
-<link rel="stylesheet" href="../../assets/css/style.css?v=20261013-2">
-<script src="../../assets/js/theme.js"></script>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261013-8">
+<script src="../../assets/js/theme.js?v=20261013-8"></script>
 </head>
 <body>
 <a class="skip-link" href="#reading-main">Skip to content</a>
@@ -37,7 +37,7 @@
           <span>Thu Oct 15, 2026</span>
           <span>Agile for developers, Git &amp; Python fundamentals</span>
           <span><b>~36 min</b> · reference notes @150 wpm · diagram · check</span>
-          <span class="verified">Sources checked 2026-10-12 · python 3.12</span>
+          <span class="verified">Sources checked 2026-10-12 · python 3.15</span>
         </div>
         <p class="summary">This page assumes Wednesday's conventions: PEP 8 names, <code>input()</code> and
         <code>print()</code> with f-string formats, and a ticket-desk script whose ticket is still a handful of flat
@@ -65,7 +65,7 @@
         question about strings: <code>s.upper()</code> on a line of its own changes nothing, because it makes an upper-case
         copy and nobody keeps it. To keep the result you bind it to a name, often the same one, as in
         <code>title = title.strip()</code>.</p>
-<pre><code>title = "  Login page returns 500  "
+<pre data-run="python"><code>title = "  Login page returns 500  "
 clean = title.strip()
 print(len(title), len(clean))
 print(clean.replace("500", "error"))
@@ -93,7 +93,7 @@ print("a  b".split(), "a  b".split(" "))</code></pre>
         character.<sup class="cite"><a href="#src-3">3</a></sup> A slice never raises <code>IndexError</code>: asking for
         more than exists returns what there is, while a single index past the end does
         raise.<sup class="cite"><a href="#src-4">4</a></sup></p>
-<pre><code>clean = "Login page returns 500"
+<pre data-run="python"><code>clean = "Login page returns 500"
 print(clean[:40])
 print(clean[-3:], clean[-1])
 print(clean[::-1][:3])
@@ -110,7 +110,7 @@ print("abc"[:40])</code></pre>
         and over. The standard way is to collect the pieces in a list and call <code>"".join(parts)</code> once, with
         whatever separator you need in the quotes.<sup class="cite"><a href="#src-1">1</a></sup> Reviewers flag
         <code>+=</code> on a string inside a loop for exactly this reason (loops arrive on Friday).</p>
-<pre><code>line = " ".join(["#101", "Login page returns 500", "[high]"])
+<pre data-run="python"><code>line = " ".join(["#101", "Login page returns 500", "[high]"])
 hours_open = 4.5
 print(line)
 print(f"{line} {hours_open:.2f}h")</code></pre>
@@ -143,7 +143,7 @@ print(f"{line} {hours_open:.2f}h")</code></pre>
         second argument sets the base, so <code>int("ff", 16)</code> is 255.<sup class="cite"><a href="#src-7">7</a></sup>
         <code>float()</code> accepts strings such as <code>"nan"</code> and <code>"inf"</code>, so a cast that succeeds does
         not promise a finite number.<sup class="cite"><a href="#src-8">8</a></sup></p>
-<pre><code>typed = " 42 "
+<pre data-run="python"><code>typed = " 42 "
 ticket_id = int(typed)
 print(ticket_id + 1)
 print(int(3.9), int(-3.9), round(3.9))
@@ -166,7 +166,7 @@ int("3.5")</code></pre>
         surrounding whitespace, both of which <code>int()</code> accepts, and it accepts characters such as the superscript
         <code>"²"</code>, which <code>int()</code> rejects.<sup class="cite"><a href="#src-10">10</a></sup>
         <code>str.isdecimal()</code> is the closer match.<sup class="cite"><a href="#src-11">11</a></sup></p>
-<pre><code>print(" 42 ".isdigit(), "-7".isdecimal(), "42".isdecimal())
+<pre data-run="python"><code>print(" 42 ".isdigit(), "-7".isdecimal(), "42".isdecimal())
 print("²".isdigit())
 int("²")</code></pre>
         <p>The first line prints <code>False False True</code>, even though <code>int(" 42 ")</code> and
@@ -182,7 +182,7 @@ int("²")</code></pre>
         both <code>True</code>: they are non-empty strings, and <code>bool()</code> does not read the words. <code>bool</code>
         is a subclass of <code>int</code>, which makes <code>True == 1</code> true and
         <code>sum([True, False, True])</code> equal to 2.<sup class="cite"><a href="#src-13">13</a></sup></p>
-<pre><code>print(bool("False"), bool(""), bool(0), bool([]), bool(None))
+<pre data-run="python"><code>print(bool("False"), bool(""), bool(0), bool([]), bool(None))
 print(True + True, sum([True, False, True]), isinstance(True, int))
 print(2 == True, bool(2))</code></pre>
         <p>The lines print <code>True False False False False</code>, then <code>2 2 True</code>, then
@@ -199,7 +199,7 @@ print(2 == True, bool(2))</code></pre>
         evaluating as soon as the result is known.<sup class="cite"><a href="#src-15">15</a></sup> <code>a and b</code>
         returns <code>a</code> if it is falsy and otherwise <code>b</code>; <code>a or b</code> returns <code>a</code> if it
         is truthy and otherwise <code>b</code>.</p>
-<pre><code>is_open = True
+<pre data-run="python"><code>is_open = True
 title = "Login page returns 500"
 print(is_open and title)
 print("" or "anonymous")
@@ -233,7 +233,7 @@ print(0 or None)</code></pre>
         <code>extend(items)</code> adds each item of another sequence, and <code>insert(i, x)</code> puts one item at a
         position. A negative index counts from the end and a slice returns a new
         list.<sup class="cite"><a href="#src-3">3</a></sup></p>
-<pre><code>queue = []
+<pre data-run="python"><code>queue = []
 queue.append((2, 103, "Wi-Fi drops"))
 queue.append((1, 101, "Login page returns 500"))
 queue.append((2, 102, "Printer jams"))
@@ -252,7 +252,7 @@ print(queue.sort())</code></pre>
         <p>Assignment never copies. <code>backup = queue</code> binds a second name to the same list object, so a change
         through either name shows through both; <code>queue.copy()</code> makes a new
         list.<sup class="cite"><a href="#src-18">18</a></sup></p>
-<pre><code>backup = queue
+<pre data-run="python" data-continues><code>backup = queue
 backup.append((9, 999, "oops"))
 print(len(queue), backup is queue)
 safe = queue.copy()
@@ -267,7 +267,7 @@ print(len(queue), len(safe))</code></pre>
         any lists inside it are still shared. <code>copy.deepcopy</code> copies nested objects
         recursively.<sup class="cite"><a href="#src-21">21</a></sup> A related trap is <code>[x] * n</code>, which repeats
         references to the same object, so mutable elements end up shared.<sup class="cite"><a href="#src-3">3</a></sup></p>
-<pre><code>rows = [[0] * 3] * 3
+<pre data-run="python"><code>rows = [[0] * 3] * 3
 rows[0][0] = 1
 print(rows)
 import copy
@@ -286,7 +286,7 @@ print(shallow[0], deep[0])</code></pre>
         tuple.<sup class="cite"><a href="#src-22">22</a></sup> Tuples compare lexicographically, so <code>(1, 9) &lt; (2,
         0)</code>.<sup class="cite"><a href="#src-17">17</a></sup> They support <code>count()</code> and
         <code>index()</code> and have no method that changes them.<sup class="cite"><a href="#src-23">23</a></sup></p>
-<pre><code>print(type((1)), type((1,)))
+<pre data-run="python"><code>print(type((1)), type((1,)))
 print((1, 9) &lt; (2, 0))
 rank, tid, text = (1, 101, "Login page returns 500")
 first, *rest = (1, 101, "Login page returns 500")
@@ -308,7 +308,7 @@ hash(pair)</code></pre>
         immutable sequence that stores only start, stop and step and computes items on demand, so <code>len()</code>,
         indexing and <code>in</code> work without building the values, and a range of a billion numbers takes the same
         small memory as a range of three.<sup class="cite"><a href="#src-26">26</a></sup></p>
-<pre><code>r = range(1, 4)
+<pre data-run="python"><code>r = range(1, 4)
 print(r, list(r), len(r), r[-1], 3 in r)
 print(list(range(10, 0, -1)))
 print(list(range(0, 10, 3)))
@@ -344,7 +344,7 @@ range(0.5, 3)</code></pre>
         <code>KeyError</code> for a missing element and <code>discard</code> does not. Values that compare equal, such as
         <code>1</code> and <code>1.0</code>, count as one element, and because <code>{}</code> already means an empty dict, an
         empty set is written <code>set()</code>.<sup class="cite"><a href="#src-28">28</a></sup></p>
-<pre><code>reporters = {"dana", "lee", "dana"}
+<pre data-run="python"><code>reporters = {"dana", "lee", "dana"}
 reporters.add("lee")
 print(len(reporters), "dana" in reporters)
 print(type({}), type(set()), {1, 1.0})
@@ -364,7 +364,7 @@ reporters.remove("zed")</code></pre>
         <code>a &amp; b</code>, <code>a | b</code>, <code>a - b</code> and <code>a ^ b</code> give the intersection, union,
         difference and symmetric difference, and each has a method with the same name spelled
         out.<sup class="cite"><a href="#src-28">28</a></sup></p>
-<pre><code>watchers = {"lee", "sam"}
+<pre data-run="python" data-continues><code>watchers = {"lee", "sam"}
 print(sorted(reporters &amp; watchers), sorted(reporters | watchers))
 print(sorted(reporters - watchers), sorted(reporters ^ watchers))</code></pre>
         <p>This prints <code>['lee'] ['dana', 'lee', 'sam']</code>, then <code>['dana'] ['dana', 'sam']</code>. The
@@ -378,7 +378,7 @@ print(sorted(reporters - watchers), sorted(reporters ^ watchers))</code></pre>
         255.<sup class="cite"><a href="#src-30">30</a></sup> UTF-8 uses one to four bytes per character, so
         <code>"café"</code> has 4 characters and 5 bytes, because <code>é</code> takes two. Python 3 never mixes the two
         types implicitly, so <code>b"a" + "b"</code> raises <code>TypeError</code>.<sup class="cite"><a href="#src-31">31</a></sup></p>
-<pre><code>title = "Café menu crashes"
+<pre data-run="python"><code>title = "Café menu crashes"
 raw = title.encode("utf-8")
 print(raw)
 print(len("café"), len("café".encode()))
@@ -403,7 +403,7 @@ b"a" + "b"</code></pre>
         <p>Once you know <code>bytes</code> is immutable, the next question is what to use when the bytes must change.
         <code>bytearray</code> is the mutable counterpart, so its items can be reassigned in
         place.<sup class="cite"><a href="#src-29">29</a></sup></p>
-<pre><code>buf = bytearray(b"abc")
+<pre data-run="python"><code>buf = bytearray(b"abc")
 buf[0] = 65
 print(buf)</code></pre>
         <p>This prints <code>bytearray(b'Abc')</code>. Assigning the integer 65 replaced the first byte with the code for
@@ -432,7 +432,7 @@ print(buf)</code></pre>
         operators.<sup class="cite"><a href="#src-14">14</a></sup> Many calls hand back <code>None</code> because they do
         their work as a side effect: <code>print()</code> returns <code>None</code>,<sup class="cite"><a href="#src-33">33</a></sup>
         and so do the in-place list methods such as <code>sort()</code>.<sup class="cite"><a href="#src-16">16</a></sup></p>
-<pre><code>assignee = None
+<pre data-run="python"><code>assignee = None
 print(assignee is None, type(assignee))
 print(print("x"))
 print({}.get("owner"))
@@ -453,7 +453,7 @@ None &lt; 1</code></pre>
         <code>d.setdefault(key, default)</code> is the variant that does insert the default when the key is absent, then
         returns the value. <code>key in d</code> tests keys, not values, and keys must be hashable, so a list cannot be
         one.<sup class="cite"><a href="#src-36">36</a></sup></p>
-<pre><code>SLA_HOURS = {"high": 4, "normal": 24, "low": 72}
+<pre data-run="python"><code>SLA_HOURS = {"high": 4, "normal": 24, "low": 72}
 priority = "high"
 ticket = {"id": 101, "title": "Login page returns 500",
           "priority": priority, "assignee": None, "history": []}
@@ -484,7 +484,7 @@ ticket["owner"]</code></pre>
         later changes to the dict, so <code>list(d.items())</code> is how you take a snapshot that stays
         still.<sup class="cite"><a href="#src-37">37</a></sup> Dicts preserve insertion order, and that has been a guarantee
         of the language since Python 3.7.<sup class="cite"><a href="#src-36">36</a></sup><sup class="cite"><a href="#src-38">38</a></sup></p>
-<pre><code>items = ticket.items()
+<pre data-run="python" data-continues><code>items = ticket.items()
 print(len(items))
 ticket["status"] = "open"
 print(len(items))
@@ -523,7 +523,7 @@ print(list(ticket))</code></pre>
         while <code>//</code> is floor division and rounds down, so <code>-7 // 2</code> is -4 rather than
         -3.<sup class="cite"><a href="#src-41">41</a></sup> <code>divmod(a, b)</code> returns the quotient and the remainder
         as a tuple.<sup class="cite"><a href="#src-42">42</a></sup></p>
-<pre><code>print(0.1 + 0.2 == 0.3, 0.1 + 0.2)
+<pre data-run="python"><code>print(0.1 + 0.2 == 0.3, 0.1 + 0.2)
 print(round(0.1 + 0.2, 2) == 0.3, abs((0.1 + 0.2) - 0.3) &lt; 1e-9)
 print(10 / 4, 10 // 4, 10 / 5, -7 // 2)
 print(divmod(28, 24), round(2.5), round(3.5))
@@ -541,7 +541,7 @@ print(2 ** 100, 1_000_000)</code></pre>
         <h3>Exact decimal arithmetic with decimal</h3>
         <p>When an interviewer asks how you would handle money, the expected answer is the <code>decimal</code> module.
         <code>Decimal</code> works in base ten, so the sum that failed above succeeds.<sup class="cite"><a href="#src-45">45</a></sup></p>
-<pre><code>from decimal import Decimal
+<pre data-run="python"><code>from decimal import Decimal
 print(Decimal("0.1") + Decimal("0.2") == Decimal("0.3"))</code></pre>
         <p>This prints <code>True</code>. Each value is built from a string, so it holds exactly the digits written. The
         trade-off: floats are fast and compact but approximate, and <code>Decimal</code> is exact for decimal fractions but
@@ -553,7 +553,7 @@ print(Decimal("0.1") + Decimal("0.2") == Decimal("0.3"))</code></pre>
         <code>total_seconds()</code> converts a duration to a float. The similar-looking <code>.seconds</code> attribute is
         only the seconds part left over after whole days, so it is wrong for anything a day or
         longer.<sup class="cite"><a href="#src-47">47</a></sup></p>
-<pre><code>from datetime import datetime, timedelta
+<pre data-run="python"><code>from datetime import datetime, timedelta
 opened_at = datetime(2026, 10, 15, 9, 30)
 NOW = datetime(2026, 10, 15, 14, 0)
 age = NOW - opened_at
@@ -581,7 +581,7 @@ print(long.seconds, long.total_seconds())</code></pre>
         the form to use in logs, files and APIs. <code>strftime</code> formats with codes such as <code>%a</code> for the
         abbreviated weekday and <code>%H:%M</code> for 24-hour time, and <code>strptime</code> parses text using the same
         codes.<sup class="cite"><a href="#src-49">49</a></sup></p>
-<pre><code>print(deadline.isoformat())
+<pre data-run="python" data-continues><code>print(deadline.isoformat())
 print(deadline.strftime("%a %H:%M"))
 parsed = datetime.strptime("2026-10-15 09:30", "%Y-%m-%d %H:%M")
 print(parsed == opened_at)</code></pre>
@@ -613,7 +613,7 @@ print(parsed == opened_at)</code></pre>
         scope,<sup class="cite"><a href="#src-51">51</a></sup> and <code>del name</code> removes a binding. It does not
         necessarily destroy the object, which is freed only when no names refer to it any
         more.<sup class="cite"><a href="#src-52">52</a></sup></p>
-<pre><code>queue = [(1, 101, "Login page returns 500")]
+<pre data-run="python"><code>queue = [(1, 101, "Login page returns 500")]
 backup = queue
 print("backup" in dir())
 del backup
@@ -627,7 +627,7 @@ print("backup" in dir(), len(queue))</code></pre>
         <p>Every module has a global name <code>__name__</code>. It is <code>"__main__"</code> when the file is run
         directly, and the module's own name when the file is imported.<sup class="cite"><a href="#src-53">53</a></sup> That
         difference is what the line at the bottom of so many scripts tests.</p>
-<pre><code>print(__name__)
+<pre data-run="python"><code>print(__name__)
 if __name__ == "__main__":
     print("running as a script")</code></pre>
         <p>Saved as <code>ticket_desk.py</code> and run with <code>python ticket_desk.py</code>, this prints
@@ -643,7 +643,7 @@ if __name__ == "__main__":
         import statements are bindings too. <code>from datetime import datetime</code> binds the name
         <code>datetime</code> to the class; a later <code>import datetime</code> binds the same name to the module, so the
         class is no longer reachable by that name.<sup class="cite"><a href="#src-50">50</a></sup></p>
-<pre><code>from datetime import datetime
+<pre data-run="python"><code>from datetime import datetime
 print(datetime(2026, 10, 15))
 import datetime
 datetime(2026, 10, 15)</code></pre>
@@ -656,7 +656,7 @@ datetime(2026, 10, 15)</code></pre>
         level hides the built-in <code>list</code> until the module-level name is
         deleted,<sup class="cite"><a href="#src-50">50</a></sup> and the <code>builtins</code> module still reaches the
         original in the meantime.<sup class="cite"><a href="#src-54">54</a></sup></p>
-<pre><code>list = [1]
+<pre data-run="python"><code>list = [1]
 import builtins
 print(builtins.list("ab"))
 del list
@@ -674,6 +674,71 @@ print(list("ab"))</code></pre>
           <p>The main guard checks dunder name. It's set to main, with the double underscores, when I run the file
           directly, and to the module's name when it's imported, so the code under the guard only runs when the file is the
           program.</p>
+        </div>
+      </section>
+
+      <section class="practice" id="practice" hidden>
+        <div class="tag">Practice</div>
+        <h2>Practice</h2>
+        <div class="ix-task" data-id="t1" data-title="Strings" data-q="Write &lt;code&gt;ticket_line(ticket_id, title, priority)&lt;/code&gt;. It returns one line of text such as &lt;code&gt;#101 Login page returns 500 [high]&lt;/code&gt;: the id after a &lt;code&gt;#&lt;/code&gt;, the title with the whitespace around it removed, and the priority in lower case inside square brackets. Return the text; do not print it.">
+<pre class="task-starter"><code>def ticket_line(ticket_id, title, priority):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert ticket_line(101, "Login page returns 500", "high") == "#101 Login page returns 500 [high]", "builds the line from the three values"
+assert ticket_line(7, "  Printer jams \n", "low") == "#7 Printer jams [low]", "removes the whitespace around the title"
+assert ticket_line(102, "Wi-Fi drops", "HIGH") == "#102 Wi-Fi drops [high]", "puts the priority in lower case"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t2" data-title="Casting and truthiness" data-q="Write &lt;code&gt;hours_label(hours)&lt;/code&gt;. &lt;code&gt;hours&lt;/code&gt; is a number, or &lt;code&gt;None&lt;/code&gt; when nothing was logged. Return &lt;code&gt;&quot;not logged&quot;&lt;/code&gt; for &lt;code&gt;None&lt;/code&gt;, and otherwise the number followed by &lt;code&gt;h&lt;/code&gt;, such as &lt;code&gt;&quot;2.5h&quot;&lt;/code&gt;. Zero is a real value: &lt;code&gt;0&lt;/code&gt; gives &lt;code&gt;&quot;0h&quot;&lt;/code&gt;.">
+<pre class="task-starter"><code>def hours_label(hours):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert hours_label(2.5) == "2.5h", "a number becomes text that ends in h"
+assert hours_label(None) == "not logged", "None means nothing was logged"
+assert hours_label(0) == "0h", "zero hours is a real value, not a missing one"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t3" data-title="Lists, tuples and range" data-q="Write &lt;code&gt;add_ticket(queue, ticket)&lt;/code&gt;. It returns a new list that holds every ticket in &lt;code&gt;queue&lt;/code&gt; followed by &lt;code&gt;ticket&lt;/code&gt;. The caller&#x27;s list must be left as it was.">
+<pre class="task-starter"><code>def add_ticket(queue, ticket):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>rows = [(1, 101, "Login page returns 500")]
+result = add_ticket(rows, (2, 102, "Printer jams"))
+assert result == [(1, 101, "Login page returns 500"), (2, 102, "Printer jams")], "returns the tickets with the new one at the end"
+assert rows == [(1, 101, "Login page returns 500")], "leaves the caller's list as it was"
+assert result is not rows, "returns a new list, not the same object"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t4" data-title="Sets and binary types" data-q="Write &lt;code&gt;new_reporters(today, known)&lt;/code&gt;. Both arguments are lists of reporter names as typed, so the same person can appear with different capitals or stray spaces. Return a &lt;code&gt;set&lt;/code&gt; of the names that are in &lt;code&gt;today&lt;/code&gt; and not in &lt;code&gt;known&lt;/code&gt;, each one stripped and lower-cased.">
+<pre class="task-starter"><code>def new_reporters(today, known):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>result = new_reporters(["Dana", " lee ", "SAM", "dana"], ["Lee"])
+assert isinstance(result, set), "returns a set"
+assert result == {"dana", "sam"}, "keeps who is new, each name once and cleaned up"
+assert new_reporters(["Lee"], ["lee "]) == set(), "nobody new gives an empty set"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t5" data-title="None and dictionaries" data-q="A ticket is a dict. Write &lt;code&gt;assignee_of(ticket)&lt;/code&gt;. It returns the value under &lt;code&gt;&quot;assignee&quot;&lt;/code&gt;, or &lt;code&gt;&quot;unassigned&quot;&lt;/code&gt; when the key is missing or its value is &lt;code&gt;None&lt;/code&gt;.">
+<pre class="task-starter"><code>def assignee_of(ticket):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert assignee_of({"id": 101, "assignee": "dana"}) == "dana", "returns the assignee when there is one"
+assert assignee_of({"id": 102}) == "unassigned", "a missing key gives unassigned"
+assert assignee_of({"id": 103, "assignee": None}) == "unassigned", "a key that holds None gives unassigned"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t6" data-title="Numbers and datetime" data-q="Write &lt;code&gt;hours_between(opened, closed)&lt;/code&gt;. Both arguments are &lt;code&gt;datetime&lt;/code&gt; values. Return the time between them in hours as a &lt;code&gt;float&lt;/code&gt;, so 90 minutes is &lt;code&gt;1.5&lt;/code&gt; and a ticket open for a day and two hours is &lt;code&gt;26.0&lt;/code&gt;.">
+<pre class="task-starter"><code>from datetime import datetime, timedelta
+
+
+def hours_between(opened, closed):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>from datetime import datetime
+opened = datetime(2026, 10, 15, 9, 30)
+assert hours_between(opened, datetime(2026, 10, 15, 11, 0)) == 1.5, "90 minutes is 1.5 hours"
+assert hours_between(opened, datetime(2026, 10, 16, 11, 30)) == 26.0, "counts the whole days too"
+assert type(hours_between(opened, opened)) is float, "returns a float"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t7" data-title="Namespaces" data-q="This script stops with &lt;code&gt;TypeError: &#x27;list&#x27; object is not callable&lt;/code&gt;: its first line gives the name &lt;code&gt;list&lt;/code&gt; to a list of tags, which hides the builtin. Change the script so the tags live under the name &lt;code&gt;tags&lt;/code&gt;, the builtin &lt;code&gt;list&lt;/code&gt; is left alone, and &lt;code&gt;count&lt;/code&gt; ends up as &lt;code&gt;3&lt;/code&gt;.">
+<pre class="task-starter"><code>list = ["printer", "hardware"]
+letters = list("abc")
+count = len(letters)
+print(list, count)</code></pre>
+<pre class="task-tests" hidden><code>import builtins
+assert list is builtins.list, "list still names the builtin"
+assert tags == ["printer", "hardware"], "the tags live under the name tags"
+assert count == 3, "count is 3"</code></pre>
         </div>
       </section>
 
@@ -953,12 +1018,12 @@ print(deadline.strftime(&quot;%a %H:%M&quot;))</pre></div>
   </div>
 </div>
 
-<script src="../../assets/js/diagram.js?v=20261013-2"></script>
-<script src="../../assets/js/scrolly.js?v=20261013-2"></script>
-<script src="../../assets/js/modals.js?v=20261013-2"></script>
-<script src="../../assets/js/quiz.js?v=20261013-2"></script>
-<script src="../../assets/js/widgets.js?v=20261013-2"></script>
-<script src="../../assets/js/glossary.js?v=20261013-2"></script>
-<script src="../../assets/js/codeviewer.js?v=20261013-2"></script>
+<script src="../../assets/js/diagram.js?v=20261013-8"></script>
+<script src="../../assets/js/scrolly.js?v=20261013-8"></script>
+<script src="../../assets/js/modals.js?v=20261013-6"></script>
+<script src="../../assets/js/quiz.js?v=20261013-6"></script>
+<script src="../../assets/js/widgets.js?v=20261013-6"></script>
+<script src="../../assets/js/glossary.js?v=20261013-6"></script>
+<script src="../../assets/js/codeviewer.js?v=20261013-6"></script>
 </body>
 </html>

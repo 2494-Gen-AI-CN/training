@@ -6,8 +6,8 @@ week: 1 · Agile for developers, Git & Python fundamentals
 day: 4 · python-data-types
 
 version-stamps:
-  - python: 3.12 (verified 2026-10-12)
-  - datetime (standard library): bundled with Python 3.12 (verified 2026-10-12)
+  - python: 3.15 (verified 2026-10-13)
+  - datetime (standard library): bundled with Python 3.15 (verified 2026-10-13)
   - pytest: 8.x (verified 2026-10-12)
 
 ## Claims (each MUST carry a source on a full gate; light gate: source optional but recommended)
@@ -187,25 +187,25 @@ version-stamps:
 
 ## Sources (official / primary docs preferred; ≥3; full gate: every URL fetched and confirmed)
 
-- Python 3.12 Built-in Types — https://docs.python.org/3/library/stdtypes.html
-- Python 3.12 Built-in Functions — https://docs.python.org/3/library/functions.html
-- Python 3.12 Tutorial: Data Structures — https://docs.python.org/3/tutorial/datastructures.html
-- Python 3.12 Tutorial: Floating-Point Arithmetic — https://docs.python.org/3/tutorial/floatingpoint.html
-- Python 3.12 datetime module — https://docs.python.org/3/library/datetime.html
-- Python 3.12 Sorting Techniques — https://docs.python.org/3/howto/sorting.html
-- Python 3.12 Tutorial: Scopes and Namespaces — https://docs.python.org/3/tutorial/classes.html#python-scopes-and-namespaces
-- Python 3.12 Tutorial: An Informal Introduction (Strings) — https://docs.python.org/3/tutorial/introduction.html#strings
-- Python 3.12 Unicode HOWTO — https://docs.python.org/3/howto/unicode.html
-- Python 3.12 copy module — https://docs.python.org/3/library/copy.html
-- Python 3.12 decimal module — https://docs.python.org/3/library/decimal.html
-- Python 3.12 Glossary — https://docs.python.org/3/glossary.html
-- Python 3.12 __main__ top-level code environment — https://docs.python.org/3/library/__main__.html
-- Python 3.12 Language Reference: Simple statements (del) — https://docs.python.org/3/reference/simple_stmts.html#the-del-statement
-- Python 3.12 builtins module — https://docs.python.org/3/library/builtins.html
-- Python 3.12 Built-in Types: str.isdigit — https://docs.python.org/3/library/stdtypes.html#str.isdigit
-- Python 3.12 Built-in Types: str.isdecimal — https://docs.python.org/3/library/stdtypes.html#str.isdecimal
-- Python 3.12 Built-in Types: dict.get — https://docs.python.org/3/library/stdtypes.html#dict.get
-- Python 3.12 Tutorial: Sets — https://docs.python.org/3/tutorial/datastructures.html#sets
+- Python 3.15 Built-in Types — https://docs.python.org/3/library/stdtypes.html
+- Python 3.15 Built-in Functions — https://docs.python.org/3/library/functions.html
+- Python 3.15 Tutorial: Data Structures — https://docs.python.org/3/tutorial/datastructures.html
+- Python 3.15 Tutorial: Floating-Point Arithmetic — https://docs.python.org/3/tutorial/floatingpoint.html
+- Python 3.15 datetime module — https://docs.python.org/3/library/datetime.html
+- Python 3.15 Sorting Techniques — https://docs.python.org/3/howto/sorting.html
+- Python 3.15 Tutorial: Scopes and Namespaces — https://docs.python.org/3/tutorial/classes.html#python-scopes-and-namespaces
+- Python 3.15 Tutorial: An Informal Introduction (Strings) — https://docs.python.org/3/tutorial/introduction.html#strings
+- Python 3.15 Unicode HOWTO — https://docs.python.org/3/howto/unicode.html
+- Python 3.15 copy module — https://docs.python.org/3/library/copy.html
+- Python 3.15 decimal module — https://docs.python.org/3/library/decimal.html
+- Python 3.15 Glossary — https://docs.python.org/3/glossary.html
+- Python 3.15 __main__ top-level code environment — https://docs.python.org/3/library/__main__.html
+- Python 3.15 Language Reference: Simple statements (del) — https://docs.python.org/3/reference/simple_stmts.html#the-del-statement
+- Python 3.15 builtins module — https://docs.python.org/3/library/builtins.html
+- Python 3.15 Built-in Types: str.isdigit — https://docs.python.org/3/library/stdtypes.html#str.isdigit
+- Python 3.15 Built-in Types: str.isdecimal — https://docs.python.org/3/library/stdtypes.html#str.isdecimal
+- Python 3.15 Built-in Types: dict.get — https://docs.python.org/3/library/stdtypes.html#dict.get
+- Python 3.15 Tutorial: Sets — https://docs.python.org/3/tutorial/datastructures.html#sets
 - PEP 8 Style Guide for Python Code — https://peps.python.org/pep-0008/
 - PEP 238 Changing the Division Operator — https://peps.python.org/pep-0238/
 - PEP 498 Literal String Interpolation — https://peps.python.org/pep-0498/

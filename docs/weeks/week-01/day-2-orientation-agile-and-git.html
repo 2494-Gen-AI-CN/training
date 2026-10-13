@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="tc-day" content="w01d2">
 <title>W1·D2 — Orientation, Agile &amp; Git fundamentals | 2494 · Gen-AI Python</title>
-<link rel="stylesheet" href="../../assets/css/style.css?v=20261013-2">
-<script src="../../assets/js/theme.js"></script>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261013-8">
+<script src="../../assets/js/theme.js?v=20261013-8"></script>
 </head>
 <body>
 <a class="skip-link" href="#reading-main">Skip to content</a>
@@ -37,12 +37,12 @@
           <span>Tue Oct 13, 2026</span>
           <span>Agile for developers, Git &amp; Python fundamentals</span>
           <span><b>~41 min</b> · reference notes @150 wpm · diagram · check</span>
-          <span class="verified">Sources checked 2026-10-13 · python 3.12 · git 2.50 · notebook 7.x</span>
+          <span class="verified">Sources checked 2026-10-13 · python 3.15 · git 2.50 · notebook 7.x</span>
         </div>
         <p class="summary">This is the first page of the program, so it assumes only what you bring from university:
         Python syntax, the <code>clone</code>, <code>add</code>, <code>commit</code> and <code>push</code> loop, and the
         difference between a compiler and an interpreter. A short on-ramp covers what Python is, what a team expects from
-        you, and a check that your shell runs Python 3.12. The rest of the page is about how software teams work: the
+        you, and a check that your shell runs Python 3.15. The rest of the page is about how software teams work: the
         SDLC, waterfall and Agile, Scrum, story points, and Git as the team's shared workflow, from <code>git init</code> to
         a pull that meets diverged histories. Afterwards you can name Scrum's events and time-boxes, explain why points are
         not hours, and talk an interviewer through a branch, a merge and a conflict.</p>
@@ -60,7 +60,7 @@
         for back-end and data work mostly for the standard library, which covers internet protocols and operating-system
         interfaces among much else,<sup class="cite"><a href="#src-1">1</a></sup> and for readability: "Readability counts" is a line of the
         Zen of Python that people still quote in code review.<sup class="cite"><a href="#src-3">3</a></sup></p>
-        <p>The Python you run is CPython, the reference implementation, pinned here at 3.12.<sup class="cite"><a href="#src-2">2</a></sup> Its limit worth naming early is the global interpreter lock,
+        <p>The Python you run is CPython, the reference implementation, pinned here at 3.15.<sup class="cite"><a href="#src-2">2</a></sup> Its limit worth naming early is the global interpreter lock,
         which lets only one thread execute Python bytecode at a time, so CPU-bound threads do not run in
         parallel.<sup class="cite"><a href="#src-2">2</a></sup> You spot a Python script in another repository by a <code>#!/usr/bin/env python3</code> first line or an <code>if __name__ == "__main__":</code> block at the
         bottom.</p>
@@ -80,7 +80,7 @@
 py -0p
 where.exe python
 python -c "import sys; print(sys.executable)"</code></pre>
-        <p>The first line should print a version starting <code>Python 3.12</code>. <code>where.exe python</code> lists every <code>python</code> on
+        <p>The first line should print a version starting <code>Python 3.15</code>. <code>where.exe python</code> lists every <code>python</code> on
         PATH in search order, and the shell runs the first. If that path contains <code>WindowsApps</code>, it is the
         Microsoft Store app execution alias, which opens the Store instead of an interpreter; turn it off under Settings,
         Apps, Advanced app settings, App execution aliases, or use <code>py</code>.<sup class="cite"><a href="#src-7">7</a></sup>
@@ -97,7 +97,7 @@ python -c "import sys; print(sys.executable)"</code></pre>
 <pre><code>python hello.py
 python -c "import hello"</code></pre>
         <p>With a five-line <code>hello.py</code>, both lines print
-        <code>Hello, Toronto</code>. Only the second leaves <code>__pycache__/hello.cpython-312.pyc</code> behind, because
+        <code>Hello, Toronto</code>. Only the second leaves <code>__pycache__/hello.cpython-315.pyc</code> behind, because
         the module run directly from the command line is always recompiled and never
         cached.<sup class="cite"><a href="#src-10">10</a></sup> That folder is why a Python <code>.gitignore</code> lists
         <code>__pycache__/</code>, and a <code>SyntaxError</code> reported before any line runs is the compile step
@@ -886,12 +886,12 @@ $ git log --oneline --graph
   </div>
 </div>
 
-<script src="../../assets/js/diagram.js?v=20261013-2"></script>
-<script src="../../assets/js/scrolly.js?v=20261013-2"></script>
-<script src="../../assets/js/modals.js?v=20261013-2"></script>
-<script src="../../assets/js/quiz.js?v=20261013-2"></script>
-<script src="../../assets/js/widgets.js?v=20261013-2"></script>
-<script src="../../assets/js/glossary.js?v=20261013-2"></script>
-<script src="../../assets/js/codeviewer.js?v=20261013-2"></script>
+<script src="../../assets/js/diagram.js?v=20261013-8"></script>
+<script src="../../assets/js/scrolly.js?v=20261013-8"></script>
+<script src="../../assets/js/modals.js?v=20261013-6"></script>
+<script src="../../assets/js/quiz.js?v=20261013-6"></script>
+<script src="../../assets/js/widgets.js?v=20261013-6"></script>
+<script src="../../assets/js/glossary.js?v=20261013-6"></script>
+<script src="../../assets/js/codeviewer.js?v=20261013-6"></script>
 </body>
 </html>

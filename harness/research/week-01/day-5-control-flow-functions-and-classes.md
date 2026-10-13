@@ -6,9 +6,9 @@ week: 1 · Agile for developers, Git & Python fundamentals
 day: 5 · day-5-control-flow-functions-and-classes
 
 version-stamps:
-  - python: 3.12 (verified 2026-10-12)
-  - array (stdlib): 3.12 (verified 2026-10-12)
-  - datetime (stdlib): 3.12 (verified 2026-10-12)
+  - python: 3.15 (verified 2026-10-13)
+  - array (stdlib): 3.15 (verified 2026-10-13)
+  - datetime (stdlib): 3.15 (verified 2026-10-13)
 
 ## Claims (each MUST carry a source on a full gate; light gate: source optional but recommended)
 

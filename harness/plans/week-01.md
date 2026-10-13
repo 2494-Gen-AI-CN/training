@@ -16,7 +16,7 @@ By Friday afternoon a trainee opens `team-repo`, checks out `main`, and runs `py
 ## Assumes from the previous week
 
 - First week: the audience persona from config.json. Recent CS graduates (University of Toronto cohort), no industry experience. They know Python syntax and the standard data types from coursework, `git clone`, `add`, `commit`, `push`, and the compiler-versus-interpreter distinction.
-- Does NOT assume: that `python --version` on their laptop prints 3.12, that `git` is installed and configured with a name and email, or that they have resolved a merge conflict. Tuesday's `01_tooling_check` and `02_local_git_loop` Step 1 re-check all three before anything depends on them.
+- Does NOT assume: that `python --version` on their laptop prints 3.15, that `git` is installed and configured with a name and email, or that they have resolved a merge conflict. Tuesday's `01_tooling_check` and `02_local_git_loop` Step 1 re-check all three before anything depends on them.
 - Does NOT assume any team practice: SDLC, Scrum, story points, feature branches, commit hygiene and code review are taught from the start on Tuesday.
 
 ## Threads
@@ -63,7 +63,7 @@ metrics.demos.maxTypedLinesPerRung typed lines. A live day's rows are recorded a
 
 | # | Day | Demo | Minutes | Must follow | Guarantees |
 |---|---|---|---|---|---|
-| 1 | w01d2 | 01_tooling_check | 15 | — | `python --version` prints 3.12 on every machine; the room tells the shell, the `>>>` REPL and a running script apart; `w01d2-scratch/hello.py` exists and `__pycache__/` has appeared once |
+| 1 | w01d2 | 01_tooling_check | 15 | — | `python --version` prints 3.15 on every machine; the room tells the shell, the `>>>` REPL and a running script apart; `w01d2-scratch/hello.py` exists and `__pycache__/` has appeared once |
 | 2 | w01d2 | 02_local_git_loop | 40 | 1 | git identity and `init.defaultBranch main` configured; `w01d2-scratch/team-repo/` on `main` with 5 commits, `hello.py`, `.gitignore`, a fast-forward merge and a hand-resolved conflict with no markers left |
 | 3 | w01d2 | 03_remote_round_trip | 30 | 2 | `team-repo` has `origin` (bare `../origin.git`, then GitHub), `main` tracks `origin/main`, 10 commits, `README.md` with four content lines ending `Run it with: python hello.py`; the room has seen fetch, pull, a diverged merge and a commit body |
 | 4 | w01d3 | 01_ticket_record | 30 | 3 | branch `feature/ticket-record`; `team-repo/ticket_desk.py` exists, runs, prints one ticket from flat variables; the ticket variable names every later rung reads, and three `SLA_HOURS_*` constants that rung 8 replaces |
@@ -91,7 +91,7 @@ metrics.demos.maxTypedLinesPerRung typed lines. A live day's rows are recorded a
 
 ### w01d3 — Python basics (Wed Oct 14, 2026)
 
-- AM: setup check (10; `python --version` 3.12 and a clean `git status` in `team-repo`, the state Tuesday left), framing (5; the page's first sentence: today assumes the tooling check passed and `team-repo` exists), Facilitation: PEP 8 as the team's contract (10; five rules on the board: names, blank lines, line length, imports first, comments say why), Demo 1 (01_ticket_record, 30 min; Python syntax, Comments, Variables and datatypes), break (15), Demo 2 (02_ticket_rules, 30 min; Operators), lunch (60).
+- AM: setup check (10; `python --version` 3.15 and a clean `git status` in `team-repo`, the state Tuesday left), framing (5; the page's first sentence: today assumes the tooling check passed and `team-repo` exists), Facilitation: PEP 8 as the team's contract (10; five rules on the board: names, blank lines, line length, imports first, comments say why), Demo 1 (01_ticket_record, 30 min; Python syntax, Comments, Variables and datatypes), break (15), Demo 2 (02_ticket_rules, 30 min; Operators), lunch (60).
 - PM: Demo 3 (03_desk_intake, 35 min; User input and output; its `if sys.stdin.isatty():` guard is the day's only `if`, named as known from coursework with the talking point that Friday treats `if` as a design choice; then the merge into `main`), break (10), notes page handoff and 6-question check (15), exercise briefing (10; a pytest-checked module the trainee writes to PEP 8: a ticket summary line from given variables, with the operators and the f-string formats of the day), exercise (100), wrap-up (10). Total 340.
 - Demo minutes: 95 (01_ticket_record 30, 02_ticket_rules 30, 03_desk_intake 35).
 - Stop points: if the day runs long after Demo 1 Step 3 → the comment-deletion talking points move to the start of the PM before Demo 3, while the deletion itself is made from `01_ticket_record.py` before rung 3's commit; after Demo 2 Step 3 → `%`, `**` precedence and `round` move to Demo 3's first step; after Demo 3 Step 3 → the `sys.stderr` warning line's talking points move to Thursday's framing while the line itself is pasted from `03_desk_intake.py` before the rung's commit (the room's file equals the key); only the merge into `main` slides to Thursday's Demo 1 Step 1 (w01d4 01_ticket_text's row absorbs it before `git switch -c feature/data-types`).

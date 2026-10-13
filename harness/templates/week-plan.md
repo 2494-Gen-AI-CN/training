@@ -62,7 +62,7 @@ metrics.demos.maxTypedLinesPerRung typed lines. A live day's rows are recorded a
 
 | # | Day | Demo | Minutes | Must follow | Guarantees |
 |---|---|---|---|---|---|
-| 1 | w01d2 | 01_tooling_check | 15 | — | python 3.12 answers on every machine; hello.py exists |
+| 1 | w01d2 | 01_tooling_check | 15 | — | python 3.15 answers on every machine; hello.py exists |
 | 2 | w01d2 | 02_local_git_loop | 40 | 1 | team-repo with hello.py, .gitignore, a merged feature branch and a resolved conflict |
 
 ## Per-day shape

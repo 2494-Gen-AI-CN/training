@@ -160,7 +160,7 @@ body {
 }
 .step:first-of-type { min-height: 30vh; padding-top: 4px; }
 .step:last-of-type { min-height: 34vh; }
-.step.active { opacity: 1; border-left-color: var(--accent); }
+.step.active { opacity: 1; }
 .step .tag { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: var(--accent); font-weight: 700; margin-bottom: 4px; }
 
 /* sticky diagram stage */
@@ -243,7 +243,7 @@ details.deep[open] summary { border-bottom: 1px solid var(--line); margin-bottom
 .dgm-pop b { color:#ffd8bf; }
 
 /* ============ INLINE INTERACTIVE WIDGETS ============ */
-.ix-predict, .ix-spot, .ix-tokens, .ix-temp, .ix-cost, .ix-retry, .ix-run, .ix-agent,
+.ix-predict, .ix-spot, .ix-task, .ix-tokens, .ix-temp, .ix-cost, .ix-retry, .ix-run, .ix-agent,
 .ix-mcp, .ix-transport, .ix-consent, .ix-handoff, .ix-frameworks, .ix-compress, .ix-paging,
 .ix-chunk, .ix-sim, .ix-retrieve, .ix-dims, .ix-precision, .ix-faith, .ix-ragas {
   border:1px solid var(--line); border-radius:12px; background:var(--surface); padding:16px 18px; margin:22px 0;
@@ -313,6 +313,42 @@ details.deep[open] summary { border-bottom: 1px solid var(--line); margin-bottom
 .ix-run .run-out.ok { background:var(--surface-2); border:1px solid #d8e6d8; border-radius:9px; padding:12px 14px; }
 .ix-run .run-out.err { color:var(--bad); }
 .ix-run .run-out.info { color:var(--ink-soft); font-size:14px; }
+/* runnable code blocks and practice tasks (D-0042, D-0043): bar, output, CodeMirror editor, checks */
+.run-bar { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin:-8px 0 14px; }
+.run-bar .ix-btn { font-size:13px; padding:3px 12px; border-width:1px; border-radius:7px; }
+.run-bar .run-alt { border-color:var(--line); color:var(--ink-soft); font-weight:500; }
+.run-bar.running .run-go { opacity:.55; }
+.reading-col .run-bar .run-ver { margin-left:auto; font-family:var(--font); font-size:12px; color:var(--dim); background:none; padding:0; }
+.reading-col pre.run-out { margin:-6px 0 16px; background:var(--surface-2); white-space:pre-wrap; overflow-wrap:anywhere; max-height:24em; overflow-y:auto; }
+.reading-col pre.run-out:empty { display:none; }
+.run-out .err { color:var(--bad); }
+.run-out .info { color:var(--ink-soft); }
+.run-editor { margin:14px 0; }
+.run-editor[hidden] { display:none; }
+.reading-col .run-editor > pre { margin:0; }
+/* CodeMirror's own sheet loads after this one, so these carry one more class than its rules */
+.reading-col .CodeMirror { height:auto; font-family:var(--mono); font-size:13.5px; line-height:1.5; border:1px solid var(--accent); border-radius:8px; }
+.cm-s-tc.CodeMirror { background:var(--code-bg); color:var(--ink); }
+.cm-s-tc .CodeMirror-gutters { background:var(--code-bg); border-right:1px solid var(--line); }
+.cm-s-tc .CodeMirror-linenumber { color:var(--dim); }
+.cm-s-tc .CodeMirror-cursor { border-left-color:var(--ink); }
+.cm-s-tc .CodeMirror-selected, .cm-s-tc.CodeMirror-focused .CodeMirror-selected { background:var(--accent-soft); }
+.cm-s-tc .cm-keyword { color:var(--accent); }
+.cm-s-tc .cm-string { color:var(--good); }
+.cm-s-tc .cm-comment { color:var(--dim); font-style:italic; }
+.cm-s-tc .CodeMirror-matchingbracket { color:var(--accent) !important; font-weight:700; text-decoration:underline; }
+.reading-col .practice { padding:34px 0 12px; }
+.reading-col .practice .tag { font-size:13px; text-transform:uppercase; letter-spacing:.12em; color:var(--accent); font-weight:700; margin-bottom:4px; }
+.reading-col .practice h2 { font-size:33px; line-height:1.15; margin:6px 0 14px; }
+.reading-col .practice-intro { font-size:19px; line-height:1.6; color:var(--ink-soft); margin:0 0 6px; }
+.ix-task .ix-k { display:flex; align-items:baseline; gap:6px; }
+.ix-task .ix-q { font-weight:400; line-height:1.6; }
+.ix-task .task-state { margin-left:auto; text-transform:none; letter-spacing:0; color:var(--good); }
+.ix-task.solved { border-color:var(--good); }
+.task-checks { list-style:none; margin:0; padding:0; font-size:14.5px; line-height:1.55; }
+.task-checks li { padding:2px 0; overflow-wrap:anywhere; }
+.task-checks .ok { color:var(--good); }
+.task-checks .bad { color:var(--bad); }
 .ix-k { font-size:12px; text-transform:uppercase; letter-spacing:.1em; font-weight:700; color:var(--accent); margin-bottom:8px; }
 .ix-k.spot { color:#1c7ed6; }
 .ix-k .ix-sub { text-transform:none; letter-spacing:0; font-weight:500; color:var(--ink-soft); }
@@ -713,8 +749,90 @@ a.snav-btn:hover { border-color:var(--accent); color:var(--accent); }
   .side { position:static; height:auto; min-width:0; order:-1; padding-top:12px; }
   .side-diagram { flex:none; height:min(46vh, 420px); }
   .reading-col .lede h1 { font-size:34px; }
-  .reading-col .step h2 { font-size:26px; }
+  .reading-col .step h2, .reading-col .practice h2 { font-size:26px; }
   .reading-col .step p { font-size:19px; }
+}
+
+/* ============ PAGE VIEWS: Compact and Focus (D-0044) ============
+   Full is the layout above. theme.js sets html[data-view] before first paint and
+   draws the switch in the top bar. Screen only, so print stays as it is. These
+   selectors outrank the two breakpoints above, so Compact restates its grid at
+   each of them, widest first, the same max-width way round. */
+.side-dgm-btn, .side-dgm-close { display:none; border:1.5px solid var(--line); background:var(--surface); color:var(--ink); font:inherit; cursor:pointer; }
+.side-dgm-btn[aria-expanded="true"] { border-color:var(--accent); color:var(--accent); }
+.side-dgm-close { position:absolute; top:8px; right:8px; width:28px; height:28px; padding:0; border-width:1px; border-radius:8px; color:var(--ink-soft); font-size:13px; line-height:1; }
+.side-dgm-close:hover { color:var(--accent); border-color:var(--accent); }
+
+@media screen {
+  /* both views: the rail's cards and navigation become one run of small buttons */
+  html[data-view] .side { height:auto; gap:8px; }
+  html[data-view] .side-cards, html[data-view] .side-nav { display:contents; }
+  html[data-view] .side .activity-card,
+  html[data-view] .side .snav-btn,
+  html[data-view] .side-dgm-btn { flex:0 0 auto; min-width:0; padding:9px 6px; border-radius:10px; text-align:center; font-size:12.5px; font-weight:600; line-height:1.25; }
+  html[data-view] .side .activity-card:hover { transform:none; box-shadow:none; }
+  /* quiz.js and publish_demos.py own the text inside these elements, so the short labels are generated content */
+  html[data-view] .side .ac-meta, html[data-view] .side .activity-card.accent .ac-t { display:none; }
+  html[data-view] .side .ac-k { font-size:0; margin:0; }
+  html[data-view] .side .ac-k::before { font-size:12.5px; }
+  html[data-view] .side .demo-card .ac-k::before { content:"Demo"; }
+  html[data-view] .side .activity-card.accent .ac-k::before { content:"Quiz"; }
+  html[data-view] .side .ac-done { margin:3px 0 0; }
+  html[data-view] .side .demo-card .ac-t { font-size:0; counter-reset:demo-file; }
+  html[data-view] .side .demo-card[data-demo="pending"] .ac-t::before { content:"after class"; font-size:10.5px; font-weight:400; color:var(--dim); }
+  html[data-view] .side .demo-card .ac-t a { counter-increment:demo-file; display:inline-block; min-width:22px; margin:3px 2px 0; border:1px solid var(--line); border-radius:6px; color:var(--accent); text-decoration:none; }
+  html[data-view] .side .demo-card .ac-t a::before { content:counter(demo-file); font-size:11.5px; }
+  html[data-view] .side .snav-btn { font-size:0; }
+  html[data-view] .side .snav-btn::before { font-size:12.5px; }
+  html[data-view] .side-nav a.snav-btn:not(.snav-next)::before { content:"\25C2\00A0 Back"; }
+  html[data-view] .side .snav-btn.goals::before { content:"Goals"; }
+  html[data-view] .side .snav-next::before { content:"Next\00A0\25B8"; }
+  html[data-view] .side .snav-next.locked::before { content:"\1F512\00A0 Next"; }
+  /* the diagram stays rendered (diagram.js measures its paths on every step), clipped to nothing */
+  html[data-view] .side-diagram { position:absolute; flex:none; width:1px; height:1px; margin:0; padding:0; border:0; box-shadow:none; overflow:hidden; clip-path:inset(50%); visibility:hidden; pointer-events:none; }
+
+  /* Compact: the page menu stays, quieter (top-level entries only); the rail is a strip of buttons */
+  html[data-view="compact"] .reading2col { grid-template-columns:108px minmax(0,860px) 84px; justify-content:center; }
+  html[data-view="compact"] .toc-head { display:none; }
+  html[data-view="compact"] .toc ul { border-left-color:transparent; }
+  html[data-view="compact"] .toc li.on > ul.toc-sub { display:none; }
+  html[data-view="compact"] .toc .gloss-block { margin-top:18px; padding:8px 10px; }
+  html[data-view="compact"] .toc .gloss-block .gb-k,
+  html[data-view="compact"] .toc .gloss-block .gb-n { display:none; }
+  html[data-view="compact"] .toc .gloss-block .gb-t { margin:0; font-size:12px; }
+  html[data-view="compact"] .side { flex-direction:column; z-index:30; }
+  /* the diagram comes back as a panel when its button is pressed: beside the strip,
+     over the right edge of the notes, so it never covers its own button */
+  html[data-view="compact"] .side-dgm-btn { display:block; }
+  html[data-view="compact"][data-dgm="open"] .side-diagram { top:30px; right:calc(100% + 14px); width:min(560px, calc(100vw - 180px)); height:min(620px, calc(100vh - 110px)); padding:14px 14px 10px; border:1px solid var(--line); box-shadow:0 18px 50px var(--shadow); overflow:visible; clip-path:none; visibility:visible; pointer-events:auto; }
+  html[data-view="compact"][data-dgm="open"] .side-dgm-close { display:block; }
+
+  /* Focus: the notes on their own; the quiz and the page links wait under them */
+  html[data-view="focus"] .reading2col { grid-template-columns:minmax(0,860px); justify-content:center; gap:0; }
+  html[data-view="focus"] .toc { display:none; }
+  html[data-view="focus"] .side { position:static; order:0; flex-direction:row; flex-wrap:wrap; padding:18px 0 50px; border-top:1px solid var(--line); }
+  html[data-view="focus"] .side .activity-card,
+  html[data-view="focus"] .side .snav-btn { padding:9px 14px; }
+  html[data-view="focus"] .side .demo-card { display:flex; align-items:baseline; gap:6px; }
+  html[data-view="focus"] .reading-col { padding-bottom:30px; }
+  html[data-view="focus"] .progressbar { visibility:hidden; }   /* keeps its width, so the switch does not move under the pointer */
+  html[data-view="focus"] .gloss-term,
+  html[data-view="focus"] .gloss-term:hover { cursor:inherit; text-decoration:none; background-color:transparent; }
+  html[data-view="focus"] .gloss-tip { display:none; }
+}
+@media screen and (max-width:1180px) {
+  /* the page menu is gone at this width */
+  html[data-view="compact"] .reading2col { grid-template-columns:minmax(0,860px) 84px; }
+}
+@media screen and (max-width:980px) {
+  /* one column: the strip is a row above the notes, where the diagram was */
+  html[data-view="compact"] .reading2col { grid-template-columns:minmax(0,1fr); }
+  html[data-view="compact"] .side { flex-direction:row; flex-wrap:wrap; z-index:auto; }
+  html[data-view="compact"] .side .activity-card,
+  html[data-view="compact"] .side .snav-btn,
+  html[data-view="compact"] .side-dgm-btn { padding:9px 14px; }
+  html[data-view="compact"] .side .demo-card { display:flex; align-items:baseline; gap:6px; }
+  html[data-view="compact"][data-dgm="open"] .side-diagram { position:fixed; z-index:60; top:auto; left:12px; right:12px; bottom:12px; width:auto; height:min(52vh, 440px); }
 }
 
 /* ---------- trainer-only (role-gated) ---------- */
@@ -1065,6 +1183,34 @@ html[data-theme="dark"] .prose code { background: var(--code-bg); }
   box-shadow: 0 6px 20px var(--shadow);
 }
 
+/* ===================== Page view switch: Full / Compact / Focus (D-0044) ===================== */
+.view-switch {
+  display: inline-flex; flex: 0 0 auto; gap: 2px; padding: 2px;
+  border: 1px solid var(--line); border-radius: 9px; background: var(--surface);
+}
+.view-switch button {
+  position: relative;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 28px; padding: 0 9px; border: 0; border-radius: 7px;
+  background: transparent; color: var(--ink-soft);
+  font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
+  transition: color .15s, background .15s;
+}
+.view-switch button:hover { color: var(--accent); }
+.view-switch button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-ink); }
+.view-switch button:focus-visible { outline-offset: 1px; }
+.view-switch svg { width: 16px; height: 16px; display: block; flex: 0 0 auto; }
+@media (max-width: 1199px) {
+  /* icons only; the names stay for screen readers and in the button titles */
+  .view-switch .vs-t { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .view-switch button { width: 30px; padding: 0; }
+  .topbar-right .progressbar { flex-shrink: 1; min-width: 40px; }
+}
+@media (max-width: 480px) {
+  .view-switch button { width: 27px; height: 26px; }
+  .topbar-right .progressbar { flex-basis: 24px; min-width: 24px; }   /* so it shares the row instead of wrapping under it */
+}
+
 /* ===================== Completion status (comprehension check + spoken summary) ===================== */
 .done-check {
   display: inline-flex; align-items: center; gap: 5px; vertical-align: middle;
@@ -1146,6 +1292,10 @@ html[data-theme="dark"] .ritual.cr { color:#5fe3c0; border-color:rgba(56,217,169
 .gloss-block .gb-t { display: block; font-size: 14px; font-weight: 650; margin: 3px 0 2px; line-height: 1.25; }
 .gloss-block .gb-n { display: block; font-size: 11.5px; color: var(--ink-soft); }
 .gloss-block-inline { max-width: var(--maxprose); margin: 34px 0 0; }
+/* On a page with a menu glossary.js builds the block twice; this inline twin shows where the menu does not (D-0044) */
+.gloss-block-alt { display: none; }
+@media (max-width: 1180px) { .gloss-block-alt { display: block; } }
+@media screen { html[data-view="focus"] .gloss-block-alt { display: block; } }
 
 /* Glossary modal */
 .gloss-modal-overlay {
@@ -1380,7 +1530,7 @@ html[data-theme="dark"] .ritual.sd { color:#b197fc; border-color:rgba(132,94,247
 
   .topbar, .toc, .side-cards, .side-nav, .quiz-fab, .rc-fab,
   .reading-col button, .reading-col input, .reading-col textarea, .reading-col select,
-  .ix-btn, .run-go, .run-tabs, .rag-tabs, .rag-chips,
+  .ix-btn, .run-go, .run-tabs, .run-bar, .run-editor.ex, .rag-tabs, .rag-chips,
   .code-cta, .skip-link, footer.foot { display: none !important; }
 
   .lesson2, .wrap, .closing { max-width: none; padding: 0 !important; margin: 0 !important; }
@@ -1418,4 +1568,5 @@ html[data-theme="dark"] .ritual.sd { color:#b197fc; border-color:rgba(132,94,247
 
   pre, code, .cv-body, .ix-snippet { white-space: pre-wrap !important; overflow-wrap: anywhere; }
   input, textarea, select { box-shadow: none !important; }
+  .reading-col pre[data-run][hidden] { display: block !important; }   /* print the block, not the hidden editor */
 }

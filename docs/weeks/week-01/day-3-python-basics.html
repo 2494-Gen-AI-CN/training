@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="tc-day" content="w01d3">
 <title>W1·D3 — Python basics | 2494 · Gen-AI Python</title>
-<link rel="stylesheet" href="../../assets/css/style.css?v=20261013-2">
-<script src="../../assets/js/theme.js"></script>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261013-8">
+<script src="../../assets/js/theme.js?v=20261013-8"></script>
 </head>
 <body>
 <a class="skip-link" href="#reading-main">Skip to content</a>
@@ -37,9 +37,9 @@
           <span>Wed Oct 14, 2026</span>
           <span>Agile for developers, Git &amp; Python fundamentals</span>
           <span><b>~32 min</b> · reference notes @150 wpm · diagram · check</span>
-          <span class="verified">Sources checked 2026-10-12 · python 3.12</span>
+          <span class="verified">Sources checked 2026-10-12 · python 3.15</span>
         </div>
-        <p class="summary">This page assumes Tuesday's tooling check passed: your shell runs Python 3.12 and
+        <p class="summary">This page assumes Tuesday's tooling check passed: your shell runs Python 3.15 and
         <code>team-repo</code> is a Git repository you can branch from. Since you already know Python's syntax, the page
         is about the conventions a team expects on top of it: the layout and naming PEP 8 asks for, comments that record
         a reason, variables as names bound to objects, what each operator returns, and input and output that behave at a
@@ -294,7 +294,7 @@ print(line, f"{hours_open}h")</code></pre>
 <pre><code>priority = "high"
 print(priority == "high")
 print(priority is "high")</code></pre>
-        <p>Run as a file under 3.12, this shows <code>SyntaxWarning: "is" with 'str' literal. Did you mean "=="?</code>
+        <p>Run as a file under 3.15, this shows <code>SyntaxWarning: "is" with 'str' literal. Did you mean "=="?</code>
         before any output, and the first comparison prints <code>True</code>. Whatever the second line prints, it answers
         whether two references point at one object, and the question you meant to ask was about values. Use
         <code>==</code> for values and keep <code>is</code> for asking whether two names share an object, as
@@ -731,12 +731,12 @@ print(f&quot;warning: ticket {ticket_id} breached={is_breached}&quot;, file=sys.
   </div>
 </div>
 
-<script src="../../assets/js/diagram.js?v=20261013-2"></script>
-<script src="../../assets/js/scrolly.js?v=20261013-2"></script>
-<script src="../../assets/js/modals.js?v=20261013-2"></script>
-<script src="../../assets/js/quiz.js?v=20261013-2"></script>
-<script src="../../assets/js/widgets.js?v=20261013-2"></script>
-<script src="../../assets/js/glossary.js?v=20261013-2"></script>
-<script src="../../assets/js/codeviewer.js?v=20261013-2"></script>
+<script src="../../assets/js/diagram.js?v=20261013-8"></script>
+<script src="../../assets/js/scrolly.js?v=20261013-8"></script>
+<script src="../../assets/js/modals.js?v=20261013-6"></script>
+<script src="../../assets/js/quiz.js?v=20261013-6"></script>
+<script src="../../assets/js/widgets.js?v=20261013-6"></script>
+<script src="../../assets/js/glossary.js?v=20261013-6"></script>
+<script src="../../assets/js/codeviewer.js?v=20261013-6"></script>
 </body>
 </html>

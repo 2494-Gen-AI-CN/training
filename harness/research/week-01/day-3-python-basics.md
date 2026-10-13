@@ -6,8 +6,8 @@ week: 1 · Agile for developers, Git & Python fundamentals
 day: 3 · python-basics
 
 version-stamps:
-  - python: 3.12 (verified 2026-10-12)
-  - sys (standard library): 3.12 (verified 2026-10-12)
+  - python: 3.15 (verified 2026-10-13)
+  - sys (standard library): 3.15 (verified 2026-10-13)
 
 ## Claims (each MUST carry a source on a full gate; light gate: source optional but recommended)
 

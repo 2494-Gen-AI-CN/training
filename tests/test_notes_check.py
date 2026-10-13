@@ -14,7 +14,7 @@ import notes_check  # noqa: E402
 
 EXEMPLAR = HARNESS / "templates" / "day.exemplar.html"
 BRIEF = (
-    "# w00d0 — Topic\n\ngate: light\nverified: 2026-01-01\n\nversion-stamps:\n  - python: 3.12 (verified 2026-01-01)\n"
+    "# w00d0 — Topic\n\ngate: light\nverified: 2026-01-01\n\nversion-stamps:\n  - python: 3.15 (verified 2026-01-01)\n"
     "  - git: 2.50 (verified 2026-01-01)\n\n## Claims\n\n- A claim — [Tutorial](https://docs.python.org/3/tutorial/)\n\n"
     "## Sources\n\n- Tutorial — https://docs.python.org/3/tutorial/\n- sys — https://docs.python.org/3/library/sys.html\n"
     "- Pro Git — https://git-scm.com/book/en/v2\n- PEP 8 — https://peps.python.org/pep-0008/\n"
@@ -91,10 +91,10 @@ class PhraseStampCitationTests(unittest.TestCase):
 
     def test_stamps_against_the_brief(self):
         self.assertEqual([], notes_check.stamp_findings(self.text, BRIEF))
-        self.assertEqual([], notes_check.stamp_findings(self.text.replace("python 3.12</span>", "python 3.12 · git 2.50</span>"), BRIEF))
+        self.assertEqual([], notes_check.stamp_findings(self.text.replace("python 3.15</span>", "python 3.15 · git 2.50</span>"), BRIEF))
         self.assertTrue(notes_check.stamp_findings(self.text.replace("Sources checked 2026-01-01", "Sources checked 2026-02-02"), BRIEF))
-        self.assertTrue(notes_check.stamp_findings(self.text.replace("python 3.12</span>", "python 3.12 · numpy 2.0</span>"), BRIEF))
-        self.assertTrue(notes_check.stamp_findings(self.text.replace('<span class="verified">Sources checked 2026-01-01 · python 3.12</span>', ""), BRIEF))
+        self.assertTrue(notes_check.stamp_findings(self.text.replace("python 3.15</span>", "python 3.15 · numpy 2.0</span>"), BRIEF))
+        self.assertTrue(notes_check.stamp_findings(self.text.replace('<span class="verified">Sources checked 2026-01-01 · python 3.15</span>', ""), BRIEF))
 
     def test_citations_resolve_and_sources_come_from_the_brief(self):
         r = notes_check.citation_report(self.text, BRIEF)

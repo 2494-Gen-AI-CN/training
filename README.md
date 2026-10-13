@@ -27,7 +27,7 @@ So week 1 is Tue–Fri, week 7 (Nov 23–27) is Mon–Wed, and week 11 (Dec 21�
 
 ## Setup (once)
 
-You need Python 3.12 and Git.
+You need Python 3.15 and Git.
 
 ```
 git clone https://github.com/2494-Gen-AI-CN/training.git

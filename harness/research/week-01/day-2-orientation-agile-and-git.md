@@ -6,7 +6,7 @@ week: 1 · Agile for developers, Git & Python fundamentals
 day: 2 · day-2-orientation-agile-and-git
 
 version-stamps:
-  - python: 3.12 (verified 2026-10-13)
+  - python: 3.15 (verified 2026-10-13)
   - git: 2.50 (verified 2026-10-13)   # any 2.28+ works (init.defaultBranch); 2.23+ needed for `git switch`; the git demos are typed live in the terminal (D-0030: script + transcript answer key), no Python wrapper
   - git (trainer marking only): 2.52 (verified 2026-10-13)   # the rubric's expected outputs were produced on 2.52; its AC5 arbiter `git merge-tree --write-tree` needs 2.38+ on the trainer machine, trainees need nothing newer than 2.28
   - notebook: 7.x (verified 2026-10-13)   # Jupyter Notebook, opened once in the on-ramp tooling check; not imported by demos
@@ -18,7 +18,7 @@ version-stamps:
 - "Professionalism at Revature" (first 10 minutes of the on-ramp) is Revature-internal material: expectations about attendance, communication, written updates and conduct during training; there is no external source for it and the notes author must not invent a citation; present it as house rules, not as a sourced claim
 - Running `python` with no arguments starts the interactive interpreter (REPL) with the `>>>` prompt; `python -i script.py` runs the script and then drops into the REPL with the script's names still defined; you leave with `exit()` or `quit()`, Ctrl-Z then Enter on Windows, Ctrl-D elsewhere — [Using the Python Interpreter](https://docs.python.org/3/tutorial/interpreter.html)
 - In interactive mode the value of the last printed expression is kept in the read-only name `_` — [An Informal Introduction to Python](https://docs.python.org/3/tutorial/introduction.html)
-- On Windows the `py` launcher ships with the python.org installer and `py -3.12` selects a specific version; `py --version` or `python --version` is the one-line tooling check that proves the shell will run the interpreter you think it will — [Python Launcher for Windows](https://docs.python.org/3/using/windows.html#python-launcher-for-windows)
+- On Windows the `py` launcher ships with the python.org installer and `py -3.15` selects a specific version; `py --version` or `python --version` is the one-line tooling check that proves the shell will run the interpreter you think it will — [Python Launcher for Windows](https://docs.python.org/3/using/windows.html#python-launcher-for-windows)
 - A Jupyter Notebook is a document of code and Markdown cells; each code cell is sent to a running kernel and its output appears underneath, so a notebook is a REPL with a memory of every cell executed, in execution order rather than top-to-bottom order — [Jupyter documentation](https://docs.jupyter.org/en/latest/)
 - The software development life cycle (SDLC) is the sequence of phases every piece of software passes through regardless of methodology: requirements/planning, design, implementation, testing, deployment and maintenance; methodologies differ in whether those phases happen once in order (waterfall) or repeat in short cycles (Agile); Scrum is founded on empiricism (transparency, inspection, adaptation) and runs all the phases inside every Sprint — [The 2020 Scrum Guide: Scrum Theory](https://scrumguides.org/scrum-guide.html)
 - Waterfall is the sequential model: each phase is completed and signed off before the next begins, requirements are frozen early and working software appears only at the end; the Agile principles instead call for delivering working software frequently, "from a couple of weeks to a couple of months", and welcoming changing requirements even late in development — [Principles behind the Agile Manifesto](https://agilemanifesto.org/principles.html)
@@ -57,7 +57,7 @@ version-stamps:
   - CPython is the reference implementation, the one distributed on python.org and the one this course runs — [Python glossary: CPython](https://docs.python.org/3/glossary.html#term-CPython)
   - "Readability counts" and "There should be one-- and preferably only one --obvious way to do it" are lines of the Zen of Python — [PEP 20 – The Zen of Python](https://peps.python.org/pep-0020/)
   - The standard library covers string processing, internet protocols, software-engineering tools and operating-system interfaces, which is the usual "batteries included" argument — [General Python FAQ: What is Python good for?](https://docs.python.org/3/faq/general.html#what-is-python-good-for)
-  - Python 3.12 is the version this course pins; each release's changes are catalogued in its "What's New" page — [What's New In Python 3.12](https://docs.python.org/3/whatsnew/3.12.html)
+  - Python 3.15 is the version this course pins; each release's changes are catalogued in its "What's New" page — [What's New In Python 3.15](https://docs.python.org/3/whatsnew/3.15.html)
 
 ### Professionalism at Revature
 - Interview questions: How do you communicate a blocker to your team?; Why do written updates matter on a distributed team?; Follow-up: how do you disagree with a teammate's approach without stalling the Sprint?
@@ -74,11 +74,11 @@ version-stamps:
 - Interview questions: How do you check which Python version and which interpreter a shell will run?; How do you tell the shell prompt, the `>>>` REPL and a running script apart?; Follow-up: two Pythons are installed and `python` runs the wrong one; how do you find out which one runs and fix it?
 - Adjacent concept: PATH resolution — the shell runs the first `python` it finds on PATH, so `where.exe python` lists the candidates in search order, `py -0p` lists every installed interpreter with its path, and `sys.executable` names the one actually running.
 - Trade-off or limit: the bare `python` command runs whichever interpreter comes first on PATH, while the Windows `py` launcher locates installed versions itself and, unlike PATH, selects the most appropriate one; the cost is that `py` exists only on Windows, so instructions shared with macOS or Linux teammates still name `python` or `python3` — [Python on Windows: Python Launcher for Windows](https://docs.python.org/3/using/windows.html#python-launcher-for-windows)
-- Recognise on sight: `where.exe python` printing two paths with the first under `WindowsApps`; `py -0p` listing `-V:3.12 *` beside a full path; `import sys; sys.executable` typed at the `>>>` prompt.
+- Recognise on sight: `where.exe python` printing two paths with the first under `WindowsApps`; `py -0p` listing `-V:3.15[-64] *` beside a full path; `import sys; sys.executable` typed at the `>>>` prompt.
 - Claims:
   - `python --version` (or `-V`) prints the Python version number and exits — [Command line and environment](https://docs.python.org/3/using/cmdline.html)
   - `sys.executable` is a string giving the absolute path of the executable binary for the running interpreter — [sys.executable](https://docs.python.org/3/library/sys.html#sys.executable)
-  - The `py` launcher on Windows selects an installed version with `py -3.12` — [Python Launcher for Windows](https://docs.python.org/3/using/windows.html#python-launcher-for-windows)
+  - The `py` launcher on Windows selects an installed version with `py -3.15` — [Python Launcher for Windows](https://docs.python.org/3/using/windows.html#python-launcher-for-windows)
   - `py --list-paths` (short form `py -0p`) lists the installed Python versions the launcher can find, with the path of each — [Python Launcher for Windows](https://docs.python.org/3/using/windows.html#python-launcher-for-windows)
   - On Windows the Microsoft Store `python` stub is an app execution alias that appears in WindowsApps paths — [Using Python on Windows](https://docs.python.org/3/using/windows.html)
 
@@ -86,10 +86,10 @@ version-stamps:
 - Interview questions: What is the difference between a compiler and an interpreter?; Is Python compiled or interpreted?; Follow-up: what is in a `.pyc` file and when does Python refuse to reuse it?
 - Adjacent concept: a virtual machine executing bytecode — the same shape as the JVM, which the interviewer often uses as the comparison.
 - Trade-off or limit: running bytecode on a virtual machine is slower than native machine code, which is why CPython 3.11 added a specializing interpreter to narrow the gap, reporting 10-60% faster runs than 3.10 — [What's New In Python 3.11](https://docs.python.org/3/whatsnew/3.11.html)
-- Recognise on sight: a `__pycache__/` folder holding `hello.cpython-312.pyc` once `hello` has been imported (running `python hello.py` alone writes none); a `SyntaxError` reported before any line of the script runs.
+- Recognise on sight: a `__pycache__/` folder holding `hello.cpython-315.pyc` once `hello` has been imported (running `python hello.py` alone writes none); a `SyntaxError` reported before any line of the script runs.
 - Claims:
   - CPython compiles source to bytecode and executes that bytecode on a virtual machine; the glossary defines bytecode as the internal representation of a program — [Python glossary: bytecode](https://docs.python.org/3/glossary.html#term-bytecode)
-  - Cached bytecode lives in `__pycache__` with the interpreter version in the filename (for example `cpython-312`) so several versions can share one source tree — [PEP 3147 – PyCache](https://peps.python.org/pep-3147/)
+  - Cached bytecode lives in `__pycache__` with the interpreter version in the filename (for example `cpython-315`) so several versions can share one source tree — [PEP 3147 – PyCache](https://peps.python.org/pep-3147/)
   - The `dis` module disassembles functions into their bytecode instructions — [dis module](https://docs.python.org/3/library/dis.html)
   - Python always recompiles the module loaded directly from the command line and does not store the result, so only imported modules are cached as `.pyc` — [Modules: "Compiled" Python files](https://docs.python.org/3/tutorial/modules.html#compiled-python-files)
   - The built-in `compile()` turns source into a code object and raises `SyntaxError` if the source is invalid — [Built-in Functions: compile](https://docs.python.org/3/library/functions.html#compile)
@@ -266,7 +266,7 @@ version-stamps:
 - Git 2.33.1 release notes (pull: divergent branches become a hard error) — https://github.com/git/git/blob/master/Documentation/RelNotes/2.33.1.adoc
 - git-merge-tree reference — https://git-scm.com/docs/git-merge-tree
 - GitHub Docs — About remote repositories — https://docs.github.com/en/get-started/getting-started-with-git/about-remote-repositories
-- What's New In Python 3.12 — https://docs.python.org/3/whatsnew/3.12.html
+- What's New In Python 3.15 — https://docs.python.org/3/whatsnew/3.15.html
 - What's New In Python 3.11 — https://docs.python.org/3/whatsnew/3.11.html
 - PEP 20 – The Zen of Python — https://peps.python.org/pep-0020/
 - PEP 3147 – PyCache — https://peps.python.org/pep-3147/

@@ -22,7 +22,7 @@ You are judging `harness/research/<week>/<day>.md`. You are NOT the author. Retu
 
 ## Light gate only (weeks 1–4, 6, 7)
 
-12. No WebFetch required. Version stamps may cite the known-stable major version (e.g. python 3.12, MySQL 8.x, TensorFlow 2.x) but must still be present.
+12. No WebFetch required. Version stamps may cite the known-stable major version (e.g. python 3.15, MySQL 8.x, TensorFlow 2.x) but must still be present.
 13. Week 7 (TFLearn): the brief must state that TFLearn is unmaintained and name the Keras / TF2 equivalent for each listed topic.
 
 Return a one-sentence summary plus critiques as a list of concrete fixes.

@@ -17,7 +17,8 @@
     return s;
   }
   function init() {
-    const steps = Array.from(document.querySelectorAll(".step"));
+    // the practice section (D-0043) gets a TOC entry like a step; it has no data-step, so the diagram stays put
+    const steps = Array.from(document.querySelectorAll(".step, .practice:not([hidden])"));
     const bar = document.querySelector(".progressbar > i");
     const toc = document.querySelector(".toc");
     if (!steps.length) return;
