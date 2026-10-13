@@ -704,6 +704,11 @@ body.is-trainer .trainer-only { display:block; }
 /* ---------- calendar homepage ---------- */
 .topnav { color:var(--ink-soft); text-decoration:none; font-weight:600; font-size:14px; margin-left:16px; }
 .topnav:hover { color:var(--accent); }
+/* Exercise links hidden while the exercises are reworked (STATUS.md O-14): the top-bar link, the calendar's
+   Exercise chip and the goals modal's "Today's exercise" block. Delete this rule to bring them back. */
+#nav-exercises, .topnav[href$="/tree/main/exercises"],
+.chip[href*="/tree/main/exercises/"],
+#goals-modal .goals-list + .ma-k, #goals-modal .deliv-list.check { display:none; }
 .cal-wrap { max-width:1560px; margin:0 auto; padding:18px 28px 60px; }
 
 /* Schedule + right sidebar. The rail sits BESIDE the calendar and sticks while
