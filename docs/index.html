@@ -52,6 +52,8 @@
         <span class="fr-label">🔗 Resources</span>
         <a class="fr-btn" id="rail-repo" href="#" target="_blank" rel="noopener">📦 Course repository</a>
         <a class="fr-btn" id="rail-feedback" href="#" target="_blank" rel="noopener">📝 Weekly feedback form</a>
+        <a class="fr-btn" id="rail-revpro" href="#" target="_blank" rel="noopener">🎓 RevPro</a>
+        <a class="fr-btn" id="rail-revops" href="#" target="_blank" rel="noopener">⏱️ RevOps - Timesheets</a>
       </div>
     </aside>
   </div>
@@ -156,7 +158,9 @@ window.WEEKS = [
 // Site-level links. Keep in sync with harness/config.json (build_index.py does not touch these).
 window.SITE = {
   repoUrl: "https://github.com/2494-Gen-AI-CN/training",
-  feedbackFormUrl: "https://forms.cloud.microsoft/pages/responsepage.aspx?id=iuJja_motUeqQJfiMSFRZMU3bOO2vNdAiSFsti9sgKVUQkhYWEhIRzJSWjNOVVM5REFOU0tWT0JXQyQlQCN0PWcu&route=shorturl"
+  feedbackFormUrl: "https://forms.cloud.microsoft/pages/responsepage.aspx?id=iuJja_motUeqQJfiMSFRZMU3bOO2vNdAiSFsti9sgKVUQkhYWEhIRzJSWjNOVVM5REFOU0tWT0JXQyQlQCN0PWcu&route=shorturl",
+  revProUrl: "https://app.revature.com/dashboard",
+  revOpsUrl: "https://rev-ops.revatureengineering.com/"
 };
 (function () {
   const S = window.SITE;
@@ -164,6 +168,8 @@ window.SITE = {
   document.getElementById("nav-exercises").href = S.repoUrl + "/tree/main/exercises";
   document.getElementById("rail-repo").href = S.repoUrl;
   document.getElementById("rail-feedback").href = S.feedbackFormUrl;
+  document.getElementById("rail-revpro").href = S.revProUrl;
+  document.getElementById("rail-revops").href = S.revOpsUrl;
 
   const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri"];
   const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
