@@ -12,13 +12,12 @@ You are judging `exercises/<week>/<day>/` together with `trainer/<week>/<day>/so
 8. The task exercises THIS day's subtopics and uses only libraries the demos introduced (plus stdlib).
 9. Solution file is clean, idiomatic, ≤ ~120 lines, and would itself pass `python -m py_compile`.
 10. Learner repo (D-0037, `config.json` `learnerRepo`, quoted in the prompt as LEARNER REPO): "Getting started" copies the exercise from the training repo into `<week>/<day>/` of the trainee's own `<FirstnameLastname>` repository, the trainee works in that copy, and the README ends the work with a commit and a push to `main` there (a "Hand-in" line). FAIL a README that asks for a new repository, a personal-account repository or a public one, or that leaves the trainee working inside the training repo clone. The copy commands run in both Windows PowerShell and bash.
-11. Assumed knowledge (D-0048, the Audience line): the README's task, hints and criteria: nothing tells the trainee they already know something, met it in coursework or university, or will recall it (`metrics.notes.assumptionPhrases` is the mechanical floor, not the whole rule); a construct the day did not teach gets a one-line explanation in the hint that needs it.
 
 Return a one-sentence summary plus critiques as concrete fixes.
 
 ## Rubric kind (day carries `exerciseKind: rubric`, D-0025)
 
-Items 1–6, 9 and 10 above do not apply (item 11 does, as item 10 below). Judge `exercises/<week>/<day>/README.md` and `trainer/<week>/<day>/solutions/RUBRIC.md` instead:
+Items 1–6, 9 and 10 above do not apply. Judge `exercises/<week>/<day>/README.md` and `trainer/<week>/<day>/solutions/RUBRIC.md` instead:
 
 1. Layout: `README.md` only; NO `starter/` and NO `tests/` directory (check with Bash).
 2. README headings in this order: `## Task`, `## Deliverable`, `## Acceptance criteria`, `## Rubric`, `## Getting started`, `## Hints`.
@@ -29,4 +28,3 @@ Items 1–6, 9 and 10 above do not apply (item 11 does, as item 10 below). Judge
 7. The task exercises THIS day's subtopics (and the Day note), uses only tools the demos introduced, and is sized for 60–90 minutes.
 8. Getting-started commands are in a fenced block, one per line, no prompt characters, and actually run on Windows PowerShell and bash.
 9. Learner repo (D-0037, `config.json` `learnerRepo`, quoted in the prompt as LEARNER REPO): the Deliverable lives in the trainee's own private `<FirstnameLastname>` repository inside the cohort organisation, in the folder `<week>/<day>/` pushed to `main`; `solutions/RUBRIC.md` clones that repository and reads that folder. The one exception is the day named in `learnerRepo.createdIn`, whose deliverable is the repository itself (organisation-owned, private, named to the rule). FAIL a deliverable that is a new per-day repository, a personal-account repository or a public one.
-10. Assumed knowledge (D-0048, the Audience line): the README's task, hints and criteria: nothing tells the trainee they already know something, met it in coursework or university, or will recall it (`metrics.notes.assumptionPhrases` is the mechanical floor, not the whole rule); a construct the day did not teach gets a one-line explanation in the hint that needs it.

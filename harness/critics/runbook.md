@@ -12,6 +12,5 @@ You are judging `trainer/<week>/<day>/runbook.md` and `trainer/<week>/<day>/solu
 6. `solutions/<module>.py` exists where `<module>` equals the exercise's `starter/<module>.py`; running `EXERCISE_SRC=<abs path to solutions> python -m pytest -q` from `exercises/<week>/<day>` exits 0. On `exerciseKind: rubric` days (D-0025) instead: `solutions/RUBRIC.md` exists and the Exercise briefing names the deliverable, every acceptance criterion, and how the trainer marks in the room.
 7. Every fact or version stated traces to the research brief.
 8. Tone: direct instructions to the trainer, present tense, no filler.
-9. Assumed knowledge (D-0048, the Audience line): nothing tells the trainee they already know something, met it in coursework or university, or will recall it (`metrics.notes.assumptionPhrases` is the mechanical floor, not the whole rule) in framing, talking points or common questions; a recap covers what earlier days of this course taught.
 
 Return a one-sentence summary plus critiques as concrete fixes.

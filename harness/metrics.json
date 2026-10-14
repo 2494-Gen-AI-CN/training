@@ -1,7 +1,7 @@
 {
   "_comment": "Quality bars for every generated day. Tests and critics read this file; the workflow passes wordMin/wordMax as args overrides.",
   "notes": {
-    "_comment": "D-0040: a notes page is reference/study material at junior-interview depth. Per-step bars apply to TEACHING steps (every step but the last 'Check yourself' step). deliveryPhrases are forbidden in .reading-col prose, quiz strings and diagram captions (harness/notes_check.py --phrases). assumptionPhrases (D-0048) are forbidden in the same places and in exercise READMEs and trainer scripts and runbooks (tests): the page never claims the reader knows something from outside the course.",
+    "_comment": "D-0040: a notes page is reference/study material at junior-interview depth. Per-step bars apply to TEACHING steps (every step but the last 'Check yourself' step). deliveryPhrases are forbidden in .reading-col prose, quiz strings and diagram captions (harness/notes_check.py --phrases). assumptionPhrases (D-0048, notes pages only per D-0049) are forbidden in the same places: the page never claims the reader knows something from outside the course.",
     "wordMin": 4500, "wordMax": 7000, "wordTolerance": 250,
     "readingWpm": 150,
     "stepsMin": 6, "stepsMax": 10,
