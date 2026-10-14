@@ -337,7 +337,7 @@ details.deep[open] summary { border-bottom: 1px solid var(--line); margin-bottom
 .cm-s-tc .cm-string { color:var(--good); }
 .cm-s-tc .cm-comment { color:var(--dim); font-style:italic; }
 .cm-s-tc .CodeMirror-matchingbracket { color:var(--accent) !important; font-weight:700; text-decoration:underline; }
-.reading-col .practice { padding:34px 0 12px; }
+.reading-col .practice { padding:34px 0 12px; margin-left:-21px; border-left:3px solid transparent; }   /* same left edge as a .step */
 .reading-col .practice .tag { font-size:13px; text-transform:uppercase; letter-spacing:.12em; color:var(--accent); font-weight:700; margin-bottom:4px; }
 .reading-col .practice h2 { font-size:33px; line-height:1.15; margin:6px 0 14px; }
 .reading-col .practice-intro { font-size:19px; line-height:1.6; color:var(--ink-soft); margin:0 0 6px; }
