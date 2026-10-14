@@ -9,7 +9,7 @@ Checks (stdlib only):
   headings  - the template's sections, in order; one "### <id> — ..." per teaching day under Per-day shape
   threads   - "### <thread-id>" blocks with a rung table: rungs 1..n, Day in this week, Key = Demo + ext,
               Starts from = cold (first rung) or exactly the previous rung's key path (or an existing key on
-              disk for the first rung of a later week); .py start keys exist when the rung's day is live
+              disk for the first rung of a later week); .py start keys exist when the rung's day is authored/live
   standalone- Day in this week, Demo/Key well formed
   ladder    - every thread rung and standalone demo appears exactly once, numbered 1..n in teaching order;
               Minutes within metrics.demos.minutesPerScriptMin..Max; scripts per day within scriptsMin..Max;
@@ -17,7 +17,8 @@ Checks (stdlib only):
               includes the previous rung of the same thread
   coverage  - every curriculum subtopic of every teaching day of the week appears once, with its own day,
               Demo = a demo of that day | facilitation | notes, Notes step a positive integer
-  live days - a live day's rows equal its scripts on disk (name, Time, Thread, Starts from)
+  authored/live days - an authored or live day is recorded as-is: its rows equal its scripts on disk
+              (name, Time, Thread, Starts from) (D-0052)
 
 Usage:
     python harness/plan_check.py harness/plans/week-01.md
@@ -181,7 +182,7 @@ def check_plan(path: Path, metrics: dict | None = None, root: Path = ROOT) -> li
     wk = next(w for w in cur["weeks"] if w["week"] == plan["week"])
     teaching = bi.teaching_days(wk)
     ids = [d["id"] for d in teaching]
-    live = {d["id"] for d in teaching if d.get("status") == "live"}
+    recorded = {d["id"] for d in teaching if d.get("status") in ("authored", "live")}  # D-0052
     # headings in order
     pos = -1
     for s in SECTIONS:
@@ -231,8 +232,8 @@ def check_plan(path: Path, metrics: dict | None = None, root: Path = ROOT) -> li
                     p.append(f"{name}: {tag}: first rung must start cold or from an existing key (previous week's last rung), got '{s}'")
             elif s != prev_key:
                 p.append(f"{name}: {tag}: Starts from must be the previous rung's key '{prev_key}', got '{s}'")
-            if r["Day"] in live and s != "cold" and not (root / s).is_file():
-                p.append(f"{name}: {tag}: live day but Starts from key {s} is not on disk")
+            if r["Day"] in recorded and s != "cold" and not (root / s).is_file():
+                p.append(f"{name}: {tag}: authored/live day but Starts from key {s} is not on disk")
             for col in ("Adds", "End state", "Commit message"):
                 if not r[col]:
                     p.append(f"{name}: {tag}: '{col}' is empty")
@@ -347,14 +348,14 @@ def check_plan(path: Path, metrics: dict | None = None, root: Path = ROOT) -> li
             p.append(f"{name}: anti-spoiler row '{r['Defers']}': To must be a day id or 'week WW', got '{r['To']}'")
     if not plan["deviations"]:
         p.append(f"{name}: deviation ledger table missing or empty (columns {DEVIATION_COLS})")
-    # live days: rows equal the scripts on disk
+    # authored/live days: rows equal the scripts on disk (D-0052)
     trainer = root / "trainer"
     for d in teaching:
-        if d.get("status") != "live" or d.get("demoFormat") == "none" or not trainer.exists():
+        if d.get("status") not in ("authored", "live") or d.get("demoFormat") == "none" or not trainer.exists():
             continue
         ddir = trainer / wk["dir"] / d["slug"] / "demos"
         if d.get("demoFormat") == "loose" and not ddir.is_dir():
-            continue  # D-0050: a loose live day without fallback scripts has nothing to compare to the ladder
+            continue  # D-0050: a loose authored/live day without fallback scripts has nothing to compare to the ladder
         on_disk = {}
         for s in sorted(ddir.glob("*.md")):
             if re.match(r"^\d{2}_", s.name):
@@ -363,19 +364,19 @@ def check_plan(path: Path, metrics: dict | None = None, root: Path = ROOT) -> li
                 on_disk[s.stem] = (int(tm.group(1)) if tm else None, hdr.get("Thread", ""), hdr.get("Starts from", ""), Path(hdr.get("Answer key", "")).name)
         planned = order_by_day.get(d["id"], [])
         if sorted(on_disk) != sorted(planned):
-            p.append(f"{name}: live day {d['id']}: plan lists {planned} but disk has {sorted(on_disk)} (a live day is recorded as-is)")
+            p.append(f"{name}: authored/live day {d['id']}: plan lists {planned} but disk has {sorted(on_disk)} (an authored or live day is recorded as-is)")
             continue
         for demo, (mins, thread, starts, keyname) in on_disk.items():
             key = (d["id"], demo)
             if minutes_by.get(key) != mins:
-                p.append(f"{name}: live day {d['id']} {demo}: ladder says {minutes_by.get(key)} min, script header says {mins}")
+                p.append(f"{name}: authored/live day {d['id']} {demo}: ladder says {minutes_by.get(key)} min, script header says {mins}")
             tid, s = expected_start.get(key, ("", ""))
             if (tid, s) != (thread, starts):
-                p.append(f"{name}: live day {d['id']} {demo}: plan says thread '{tid}' starts from '{s}', script header says '{thread}' / '{starts}'")
+                p.append(f"{name}: authored/live day {d['id']} {demo}: plan says thread '{tid}' starts from '{s}', script header says '{thread}' / '{starts}'")
             row_key = next((r["Key"] for t in plan["threads"] for r in t["rungs"] if (r["Day"], r["Demo"]) == key), None) \
                 or next((r["Key"] for r in plan["standalone"] if (r["Day"], r["Demo"]) == key), None)
             if row_key != keyname:
-                p.append(f"{name}: live day {d['id']} {demo}: plan Key '{row_key}' but script's Answer key is '{keyname}'")
+                p.append(f"{name}: authored/live day {d['id']} {demo}: plan Key '{row_key}' but script's Answer key is '{keyname}'")
     return p
 
 

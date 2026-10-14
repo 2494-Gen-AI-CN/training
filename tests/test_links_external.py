@@ -9,7 +9,7 @@ import os
 import sys
 import unittest
 
-from helpers import DOCS, HARNESS, live_days
+from helpers import DOCS, HARNESS, authored_days
 
 sys.path.insert(0, str(HARNESS))
 import notes_check  # noqa: E402
@@ -19,7 +19,7 @@ import notes_check  # noqa: E402
 class ExternalLinkTests(unittest.TestCase):
     def test_external_links_respond(self):
         seen: dict[str, str | None] = {}
-        for w, d, rel in live_days():
+        for w, d, rel in authored_days():
             text = (DOCS / "weeks" / f"{rel}.html").read_text(encoding="utf-8")
             for href in notes_check.page_links(text):
                 if href not in seen:

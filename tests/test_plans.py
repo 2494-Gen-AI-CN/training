@@ -8,16 +8,21 @@ through args, so the tier names are checked on the args and statically on the sc
 
 from __future__ import annotations
 
+import contextlib
+import copy
+import io
 import json
 import re
 import subprocess
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from helpers import HARNESS, ROOT, TRAINER, curriculum, live_days, metrics
 
 sys.path.insert(0, str(HARNESS))
+import args_for  # noqa: E402
 import plan_check  # noqa: E402
 
 PLANS = HARNESS / "plans"
@@ -185,10 +190,108 @@ class WeekBatchTests(unittest.TestCase):
         for cur, nxt in zip(out, out[1:]):
             self.assertEqual(f"{nxt['slug']}.html", cur["nextHref"], f"{cur['id']} links to the next page of the same run")
         self.assertEqual("../../index.html", out[-1]["nextHref"], "the last day of a week points back at the program")
-        # outside a batch, a day still only links to a page that is already live
+        # outside a batch and inside the week (releaseOnWire true), a day only links to a page that is already live
+        # (D-0052: an authored next page is unreleased; NextLinkTests covers the authored-ahead case)
         alone = json.loads(run_args(str(wk["week"]), str(days[0]["day"]), "--today", "2026-10-12").stdout)["days"][0]
         expect = f"{days[1]['slug']}.html" if days[1].get("status") == "live" else "../../index.html"
         self.assertEqual(expect, alone["nextHref"])
+
+    def test_series_review_runs_once_after_the_demos_loop(self):
+        # D-0053: one series-review critic after every day's demos, only on a multi-day run; flags only
+        src = (HARNESS / "workflows" / "day-fanout.js").read_text(encoding="utf-8")
+        demos_part = src[src.index("phase('Demos')"):src.index("phase('Materials')")]
+        self.assertEqual(1, demos_part.count("tier('series-review')"), "exactly one series-review agent, in the Demos phase")
+        self.assertEqual(1, src.count("tier('series-review')"))
+        loop = demos_part.rindex("for (const d of DAYS)")
+        call = demos_part.index("tier('series-review')")
+        self.assertLess(loop, call, "the series review runs after the day-order demos loop")
+        guard = demos_part.index("DAYS.length > 1")
+        self.assertLess(loop, guard)
+        self.assertLess(guard, call, "a single-day run has no series to review")
+        self.assertIn("critics/series-review.md", demos_part)
+        self.assertIn("series-review: ", src, "a FAIL reaches the run record's flags")
+        self.assertIn("'series-review'", src[src.index("const TIER_LABELS"):src.index("const NOTES_ONLY")])
+        self.assertTrue((HARNESS / "critics" / "series-review.md").is_file())
+        cfg = json.loads((HARNESS / "config.json").read_text(encoding="utf-8"))
+        self.assertIn("series-review", cfg["models"]["stages"])
+
+
+class ReleaseOnWireTests(unittest.TestCase):
+    """D-0052: the Wire step writes `live` once the week has started, `authored` when the week is authored ahead."""
+
+    def _release(self, today: str) -> bool:
+        res = run_args("1", "4", "--today", today)
+        self.assertEqual(0, res.returncode, res.stderr)
+        return json.loads(res.stdout)["releaseOnWire"]
+
+    def test_true_on_or_after_the_weeks_monday(self):
+        start = json.loads(run_args("1", "4", "--today", "2026-10-14").stdout)["weekStart"]
+        self.assertEqual("2026-10-12", start)
+        self.assertTrue(self._release("2026-10-14"))
+        self.assertTrue(self._release(start))
+
+    def test_false_before_the_weeks_monday(self):
+        self.assertFalse(self._release("2026-10-09"))
+        self.assertFalse(self._release("2026-10-11"))
+
+    def test_today_must_be_an_iso_date(self):
+        # a lexical compare would put "2026-10-5" after "2026-10-12" and release the week early
+        for bad in ("2026-10-5", "14/10/2026", "tomorrow"):
+            with self.subTest(today=bad):
+                res = run_args("1", "4", "--today", bad)
+                self.assertNotEqual(0, res.returncode, res.stdout)
+                self.assertIn("YYYY-MM-DD", res.stderr)
+        res = run_args("1", "--plan", "--today", "2026-10-5")
+        self.assertNotEqual(0, res.returncode)
+
+
+class NextLinkTests(unittest.TestCase):
+    """D-0052: a page links forward to an authored (unlinked) next day only while it stays unreleased itself."""
+
+    def _next_href(self, statuses: dict, day: int, today: str, *more: int) -> str:
+        cur = copy.deepcopy(curriculum())
+        wk = next(w for w in cur["weeks"] if w["week"] == 1)
+        for d in wk["days"]:
+            if d["day"] in statuses:
+                d["status"] = statuses[d["day"]]
+        out = io.StringIO()
+        with mock.patch.object(args_for.bi, "load_curriculum", return_value=cur), contextlib.redirect_stdout(out):
+            rc = args_for.main(["1", str(day), *map(str, more), "--today", today])
+        self.assertEqual(0, rc)
+        return json.loads(out.getvalue())["days"][0]["nextHref"]
+
+    def test_authored_next_day(self):
+        wk = next(w for w in curriculum()["weeks"] if w["week"] == 1)
+        slug4 = next(d["slug"] for d in wk["days"] if d["day"] == 4) + ".html"
+        index = "../../index.html"
+        # inside the week (releaseOnWire true): this day goes live on Wire, so an authored next page is not linked
+        self.assertEqual(index, self._next_href({3: "authored", 4: "authored"}, 3, "2026-10-14"))
+        # before the week (releaseOnWire false): both pages stay unreleased, so the link is safe
+        self.assertEqual(slug4, self._next_href({3: "authored", 4: "authored"}, 3, "2026-10-09"))
+        # an already-live page never links into an authored one, even ahead of the week
+        self.assertEqual(index, self._next_href({3: "live", 4: "authored"}, 3, "2026-10-09"))
+        # a planned next day is never linked; a next day of the same run always is
+        self.assertEqual(index, self._next_href({3: "authored", 4: "planned"}, 3, "2026-10-09"))
+        self.assertEqual(slug4, self._next_href({3: "live", 4: "planned"}, 3, "2026-10-14", 4))
+        # a live next day is linked whenever
+        self.assertEqual(slug4, self._next_href({3: "live", 4: "live"}, 3, "2026-10-14"))
+
+    def test_wire_never_points_a_live_page_at_an_authored_one(self):
+        src = (HARNESS / "workflows" / "day-fanout.js").read_text(encoding="utf-8")
+        wire = src[src.index("WIRE step"):src.index("// ---------- report")]
+        step4 = wire[wire.index("`4. "):wire.index("`5. ")]
+        self.assertIn("A.releaseOnWire", step4)
+        self.assertIn("leave its window.NEXT exactly as it is", step4)
+
+    def test_wire_status_is_computed_per_day(self):
+        # D-0052: Wire never downgrades a live day; the target status is computed per day in the script, not in prose
+        src = (HARNESS / "workflows" / "day-fanout.js").read_text(encoding="utf-8")
+        self.assertIn("d.status === 'live' || A.releaseOnWire", src)
+        self.assertLess(src.index("const WIRE_STATUS"), src.index("WIRE step"))
+        wire = src[src.index("WIRE step"):src.index("// ---------- report")]
+        step2 = wire[wire.index("`2. "):wire.index("`3. ")]
+        self.assertIn("${J(WIRE_STATUS)}", step2)
+        self.assertNotIn("A.releaseOnWire ?", step2, "one baked status for every day would downgrade a live day")
 
 
 if __name__ == "__main__":

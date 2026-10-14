@@ -1,4 +1,4 @@
-"""Demo contract for every live day (D-0030).
+"""Demo contract for every authored or live day (D-0030, D-0052; publish state stays on live/taught).
 
 A demo is a walkthrough script the trainer types (trainer/<rel>/demos/NN_<slug>.md) plus an answer key
 (trainer/<rel>/demos/key/NN_<slug>.py|.md). Answer keys are published to demos/<rel>/ only once the day
@@ -15,7 +15,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from helpers import HARNESS, ROOT, SECRET_RE, TRAINER, live_days, load_json, metrics, public_demos, trainer_demos
+from helpers import HARNESS, ROOT, SECRET_RE, TRAINER, authored_days, live_days, load_json, metrics, public_demos, trainer_demos
 
 sys.path.insert(0, str(HARNESS))
 import demo_check  # noqa: E402
@@ -28,8 +28,8 @@ KEY_RE = re.compile(r"^\d{2}_")
 class DemoScriptTests(unittest.TestCase):
     """Scripts + answer keys in the private repo; skipped per day when trainer/ is absent."""
 
-    def test_every_live_day(self):
-        for w, d, rel in live_days():
+    def test_every_authored_day(self):
+        for w, d, rel in authored_days():  # D-0052: authored or live
             with self.subTest(rel=rel):
                 if d["demoFormat"] == "none":
                     self.assertFalse(trainer_demos(rel).exists(), "demoFormat none: no demo folder in trainer/")
@@ -67,14 +67,14 @@ class DemoScriptTests(unittest.TestCase):
 
 
 class ThreadChainTests(unittest.TestCase):
-    """Every live rung's `Starts from` key exists and its surviving lines are still in the rung's key, so
-    re-authoring an earlier day fails the later ones loudly instead of silently staling them (A7, A12)."""
+    """Every authored or live rung's `Starts from` key exists and its surviving lines are still in the rung's key, so
+    re-authoring an earlier day fails the later ones loudly instead of silently staling them (A7, A12; D-0052)."""
 
-    def test_every_live_rung_chains(self):
+    def test_every_authored_rung_chains(self):
         if not TRAINER.exists():
             self.skipTest("trainer/ private repo not cloned here")
         seen = 0
-        for w, d, rel in live_days():
+        for w, d, rel in authored_days():
             if d["demoFormat"] == "none":
                 continue
             ddir = trainer_demos(rel)

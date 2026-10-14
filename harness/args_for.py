@@ -58,7 +58,7 @@ def _fwd(p: Path) -> str:
 
 
 def _existing_scripts(rel: str) -> list[dict]:
-    """Header facts of the demo scripts already on disk for a day (live days are recorded as-is in the plan)."""
+    """Header facts of the demo scripts already on disk for a day (authored or live days are recorded as-is in the plan, D-0052)."""
     ddir = ROOT / "trainer" / rel / "demos"
     out = []
     if not ddir.is_dir():
@@ -88,11 +88,24 @@ def _day_base(cur: dict, week: dict, d: dict, s: dict) -> dict:
     }
 
 
+def _today(today: str | None) -> dt.date:
+    """--today as a date (main() has already refused a value that is not YYYY-MM-DD); the clock when absent."""
+    return dt.date.fromisoformat(today) if today else dt.date.today()
+
+
+def release_on_wire(today: str | None, ew: dict) -> bool:
+    """D-0052: true once the week has started (today >= its Monday, compared as dates), so the Wire step may write
+    status "live"; false means the week is authored ahead and Wire writes "authored" (release_week.py flips it on
+    the Friday before)."""
+    return _today(today) >= ew["start"]
+
+
 def _common(cur: dict, week: dict, ew: dict, today: str | None, metrics: dict, config: dict) -> dict:
     week_no = week["week"]
     return {
         "root": _fwd(ROOT),
-        "today": today or dt.date.today().isoformat(),
+        "today": _today(today).isoformat(),
+        "releaseOnWire": release_on_wire(today, ew),
         "timezone": cur["timezone"],
         "week": week_no, "weekDir": week["dir"], "theme": week["theme"], "phase": week["phase"], "project": week["project"],
         "weekStart": ew["start"].isoformat(), "weekEnd": ew["end"].isoformat(),
@@ -185,8 +198,8 @@ def practice_args(cur: dict, week: dict, day_nos: list[int], build: bool, today:
         rel = f"{week['dir']}/{d['slug']}"
         doc = pt.load(rel)
         why = None
-        if not pt.page_for(rel).is_file() or d.get("status") != "live":
-            why = "its notes page is not authored yet (practice tasks come after the day's other content)"
+        if not pt.page_for(rel).is_file() or d.get("status") not in ("authored", "live"):
+            why = "its notes page is not authored yet (status is not authored or live; practice tasks come after the day's other content, D-0052)"
         elif not build and pt.built(doc):
             why = "it already carries built tasks (to change them, edit its file under harness/practice/ and run insert)"
         elif build and doc is None:
@@ -242,8 +255,13 @@ def main(argv: list[str]) -> int:
     today = None
     if "--today" in argv:
         i = argv.index("--today")
-        today = argv[i + 1]
+        today = argv[i + 1] if i + 1 < len(argv) else ""
         del argv[i:i + 2]
+        try:
+            today = dt.date.fromisoformat(today).isoformat()   # normalised: every emitted "today" is YYYY-MM-DD
+        except ValueError:
+            print(f"--today {today!r} is not a date in the form YYYY-MM-DD", file=sys.stderr)
+            return 2
     template_override = None
     if "--template" in argv:
         i = argv.index("--template")
@@ -312,6 +330,7 @@ def main(argv: list[str]) -> int:
             return 2
         plan = plan_check.load_plan(pfile)
     teaching = bi.teaching_days(week)
+    release_wire = release_on_wire(today, ew)
     days = []
     for d in teaching:
         if d["day"] not in day_nos:
@@ -319,9 +338,13 @@ def main(argv: list[str]) -> int:
         s = by_slot[d["day"]]
         idx = teaching.index(d)
         nxt = teaching[idx + 1] if idx + 1 < len(teaching) else None
-        # Only link forward to a page that exists or that this same run writes (week batch, D-0038);
-        # any other planned day falls back to the program index.
-        if nxt is not None and nxt.get("status") != "live" and nxt["day"] not in day_nos:
+        # Link forward only to a page that is live or that this same run writes (week batch, D-0038). An authored
+        # next page (on disk, not linked from the index, D-0052) is linked only while this day stays unreleased
+        # too: the week is authored ahead (releaseOnWire false) and this day is not already live. A live page
+        # never links into an unreleased one. Any other next day falls back to the program index.
+        if nxt is not None and nxt["day"] not in day_nos and not (
+                nxt.get("status") == "live"
+                or (nxt.get("status") == "authored" and not release_wire and d.get("status") != "live")):
             nxt = None
         rows = plan_check.day_rows(plan, d["id"]) if plan else {"weekPlanRows": [], "threadRows": [], "ladderRows": [], "dayShape": "", "spoilerRows": []}
         rel = f"{week['dir']}/{d['slug']}"

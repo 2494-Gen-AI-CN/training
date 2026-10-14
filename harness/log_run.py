@@ -155,7 +155,9 @@ def run_tests() -> dict:
     def count(name: str) -> int:
         m = re.search(rf"{name}=(\d+)", out)
         return int(m.group(1)) if m else 0
-    return {"date": dt.date.today().isoformat(), "ran": int(ran.group(1)) if ran else 0, "ok": res.returncode == 0,
+    # `at` (local time, seconds) is additive beside `date`: release_week.py compares it with page mtimes (D-0052)
+    return {"date": dt.date.today().isoformat(), "at": dt.datetime.now().isoformat(timespec="seconds"),
+            "ran": int(ran.group(1)) if ran else 0, "ok": res.returncode == 0,
             "failures": count("failures"), "errors": count("errors"), "skipped": count("skipped")}
 
 

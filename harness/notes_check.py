@@ -12,8 +12,10 @@ one "Say it in an interview" callout per teaching step, a closing "Check yoursel
 Usage (from the repo root):
   python harness/notes_check.py <page.html> [...] [--counts] [--phrases] [--stamps] [--citations] [--links] [--json]
   python harness/notes_check.py --all-live [same flags]        every status: live day of the curriculum
+  python harness/notes_check.py --all-authored [same flags]    every status: authored or live day (D-0052)
 No flag = --counts --phrases --stamps --citations (everything but the network). The last line printed is a JSON
-summary. Exit 1 on any hard finding.
+summary {"ok", "pages": [{"page", "findings": [text, ...], "findingCount", "counts"?}]}. Exit 1 on any hard
+finding, 2 when there is no page to check.
 
 Words: text inside article.reading-col, skipping <script>, <pre>, <button>, <code>, <sup> and .reading-sources
 (the same walk as tests/helpers.py prose_words()). Per-step bars apply to TEACHING steps: every step but the
@@ -372,14 +374,27 @@ def dead_links(text: str) -> list[dict]:
 
 
 # ---------------------------------------------------------------- driver
-def live_pages() -> list[Path]:
-    cur = json.loads((ROOT / "harness" / "curriculum.json").read_text(encoding="utf-8"))
+def pages_with_status(statuses: tuple[str, ...], cur: dict | None = None, root: Path | None = None) -> list[Path]:
+    """Notes pages of every teaching day whose status is in `statuses` (curriculum order).
+    `cur` and `root` default to the repo's curriculum.json and ROOT (a seam for the tests)."""
+    root = ROOT if root is None else root
+    if cur is None:
+        cur = json.loads((root / "harness" / "curriculum.json").read_text(encoding="utf-8"))
     out = []
     for w in cur["weeks"]:
         for d in w["days"]:
-            if d.get("kind") != "holiday" and d.get("status") == "live":
-                out.append(ROOT / "docs" / "weeks" / w["dir"] / f"{d['slug']}.html")
+            if d.get("kind") != "holiday" and d.get("status") in statuses:
+                out.append(root / "docs" / "weeks" / w["dir"] / f"{d['slug']}.html")
     return out
+
+
+def live_pages() -> list[Path]:
+    return pages_with_status(("live",))
+
+
+def authored_pages() -> list[Path]:
+    """Every authored or live day's page (D-0052): what --all-authored sweeps."""
+    return pages_with_status(("authored", "live"))
 
 
 def check_page(page: Path, phases: set[str], m: dict | None = None, tolerance: int = 0) -> dict:
@@ -414,7 +429,9 @@ def main(argv: list[str]) -> int:
     flags = {a for a in argv if a.startswith("--")}
     files = [a for a in argv if not a.startswith("--")]
     phases = {p for p in STEP_PHASES if f"--{p}" in flags} or {"counts", "phrases", "stamps", "citations"}
-    if "--all-live" in flags:
+    if "--all-authored" in flags:
+        files += [p.as_posix() for p in authored_pages()]
+    elif "--all-live" in flags:
         files += [p.as_posix() for p in live_pages()]
     if not files:
         print(__doc__)
@@ -430,7 +447,8 @@ def main(argv: list[str]) -> int:
                 c = r["counts"]
                 print(f"  steps {c['steps']} captions {c['captions']} words {c['words']} h3 {c['h3']} interview {c['interview']} "
                       f"check {c['checkDetails']} code {c['codeBlocks']} cites {c['citations']} quizQ {c['quizQ']} sources {c['sources']} ~{c['declaredMinutes']} min")
-    print(json.dumps({"ok": not bad, "pages": [{"page": r["page"], "findings": len(r["findings"]), **({"counts": r["counts"]} if "counts" in r else {})} for r in reports]}, ensure_ascii=False))
+    print(json.dumps({"ok": not bad, "pages": [{"page": r["page"], "findings": r["findings"], "findingCount": len(r["findings"]),
+                                                **({"counts": r["counts"]} if "counts" in r else {})} for r in reports]}, ensure_ascii=False))
     return 1 if bad else 0
 
 

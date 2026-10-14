@@ -13,6 +13,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from helpers import HARNESS, all_days
 
@@ -160,6 +161,20 @@ class LocateTests(unittest.TestCase):
         with self.assertRaises(SystemExit) as cm:
             close_day.locate(week["week"], day["day"])
         self.assertIn("not built yet", str(cm.exception.code))
+
+    def test_unreleased_day_is_refused(self):
+        """D-0052: an authored or planned loose day is refused (dry run and --apply both go through plan -> locate)."""
+        week = {"week": 2, "dir": "week-02", "days": []}
+        for status in ("authored", "planned"):
+            day = {"id": "w02d1", "day": 1, "slug": "day-1-x", "demoFormat": "loose", "status": status}
+            fixture = ({"demoRepo": CFG["demoRepo"]}, day, "week-02/day-1-x", {"weeks": [week]}, week)
+            with self.subTest(status=status), mock.patch.object(close_day.pd, "_locate", return_value=fixture):
+                with self.assertRaises(SystemExit) as cm:
+                    close_day.plan(2, 1, pull=False)
+                msg = str(cm.exception.code)
+                self.assertIn(f"w02d1 is '{status}', not live", msg)
+                self.assertIn("python harness/release_week.py 2 --today", msg)
+                self.assertNotIn("taught", day)
 
 
 class RecordTests(unittest.TestCase):

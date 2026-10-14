@@ -42,7 +42,7 @@ test result, anything left undone and why.
 | ~~3~~ | ~~Stage 2 Week plan artifact + demo threads~~ | ~~W1D3–W1D5 are still unauthored: plan week 1 (demo ladder, anti-spoiler ledger, coverage map, stop points) and make the demos one growing thread (rungs that extend the previous rung's key) before any of them is written. Must land before Wed 2026-10-14 morning; if it cannot, run W1D3 first and Stage 2 before W1D4~~ | ~~1 long session, ~3 agents; amends the demo contract (`demo_check.py`, demos critic, demo-script template, metrics)~~ done 2026-10-12, D-0033 (demo threads) + D-0034 (week plan); `harness/plans/week-01.md` written by `week-plan.js` |
 | ~~4~~ | ~~Week-1 batch run W1D3–W1D5 (milestone 6)~~ | ~~Wed 2026-10-14 needs its material; first use of the week batch (D-0038): demos in day order, the rest in parallel~~ | ~~1 session, ~60 agents (approved 2026-10-12)~~ done 2026-10-12, run `wf_55423fc5-aa6`, 67 agents, 0 flagged |
 | ~~5~~ | ~~Stage 4 Daily close audit~~ | ~~Needed Tue 2026-10-13 evening after the first delivery; audits the classroom repo against the keys, sets `taught`, carries unreached steps to the next day, re-checks later rungs~~ | ~~1 session, no agents~~ loose close built 2026-10-14, D-0050 (`close_day.py`; W1D2 and W1D3 closed); the rung-diff close for thread days is deferred to week 3 (O-18) |
-| 6 | Stage 8 Hidden week, Friday gate, series review, drift check | Week-ahead authoring needs pages that stay unlinked until the Friday release; by Thu 2026-10-15 | 1 session, no agents |
+| ~~6~~ | ~~Stage 8 Hidden week, Friday gate, series review, drift check~~ | ~~Week-ahead authoring needs pages that stay unlinked until the Friday release; by Thu 2026-10-15~~ | ~~1 session, no agents~~ done 2026-10-14, D-0052, D-0053 |
 | 7 | Week-2 plan and batch | By Fri 2026-10-16; settle O-11 and O-12 first | 2 sessions, ~5 + ~100 agents (ask first) |
 | ~~8~~ | ~~Stage 7 Notes depth (interview sections)~~ | ~~Fits the persona; touches critic + template. Notes keep their delivery references for now (trainer decision 2026-10-12: wait for learner feedback)~~ | ~~1 session~~ done 2026-10-13, D-0040, widened to the reference-notes rework (4500–7000 words, Check yourself, citations, no delivery references) + notes QC (`notes_check.py`, notes-verify agent, pinned tiers); the stance of 2026-10-12 was reversed by the trainer on 2026-10-13 |
 | 9 | Stage 5 Rules registry + OVERRIDE state | Governance; no delivery dependency | 1 session |
@@ -276,6 +276,8 @@ Exit: tests green; W1D2 closed (taught, published, delivery record); checklist c
 
 ## Stage 8 — Hidden week, Friday gate, series review, drift check (catalog A13, A14, D9, F5)
 
+Done 2026-10-14 as D-0052 (status `authored`, `releaseOnWire`, `release_week.py`, tracker badge and alarm, `drift_check.py`, `authored_days()`) and D-0053 (series-review critic, authored wording in the week-plan and demos critics). The prompt is kept for the record; the checklist it feeds is `delivery-close.md`.
+
 ```
 STAGE 8 — Week-ahead visibility and the Friday gate.
 Decision already taken by the trainer (2026-10-12): next week's pages stay hidden while they are authored and
@@ -305,7 +307,7 @@ Build:
 - harness/drift_check.py + tests/test_drift.py (port of catalog F5, read-only, exit 1 on hard findings):
   - also runs `python harness/notes_check.py --all-live --links` (D-0040): dead links and stale stamps on live notes pages
     are findings (network ones soft unless --strict);
-  decisions index rows match files and IDs are sequential; stale markers (TBD, OWED, pending, blocked until) in
+  decisions index rows match files and IDs are sequential; stale markers (`TBD`, `OWED`, `pending`, `blocked until`) in
   live docs outside decisions/ and docs/process/*catalog*; untracked files and unstaged deletions in both
   repos; taught days with no Delivery record or no delivery.json; days `taught` but not `live`; a stale tracker.
 Decision entries (new status, critic wording). Exit: `release_week.py 2 --check --today 2026-10-16` refuses

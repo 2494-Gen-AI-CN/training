@@ -18,7 +18,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from helpers import HARNESS, ROOT, TRAINER, ParsedPage, curriculum, live_days, node_exe, run_node
+from helpers import HARNESS, ROOT, TRAINER, ParsedPage, authored_days, curriculum, live_days, node_exe, run_node
 
 sys.path.insert(0, str(HARNESS))
 import build_tracker as bt  # noqa: E402
@@ -62,12 +62,15 @@ class TrackerDataTests(unittest.TestCase):
         self.assertEqual(51, len(teaching))
         self.assertEqual(len(cur["holidays"]), len(days) - len(teaching))
         self.assertEqual(len(list(live_days())), sum(1 for d in teaching if d["status"] == "live"))
+        self.assertEqual(len(list(authored_days())), sum(1 for d in teaching if d["status"] in ("authored", "live")))
         for d in teaching:
+            self.assertIn(d["status"], ("planned", "authored", "live"), d["id"])
             self.assertEqual({"research", "demos", "notes", "exercise", "runbook", "solutions", "published", "closed"}, set(d["a"]), d["id"])
             self.assertEqual({"planned", "scripts", "keys"}, set(d["a"]["demos"]), d["id"])
-        for w, d, rel in live_days():
+        for w, d, rel in authored_days():
             td = next(x for x in teaching if x["id"] == d["id"])
-            self.assertTrue(td["a"]["research"] and td["a"]["notes"] and td["a"]["exercise"] and td["a"]["runbook"], f"{d['id']} is live but an artifact is missing")
+            self.assertTrue(td["a"]["research"] and td["a"]["notes"] and td["a"]["exercise"] and td["a"]["runbook"],
+                            f"{d['id']} is {d['status']} but an artifact is missing")
 
     def test_status_and_stages_are_parsed(self):
         text = (ROOT / "STATUS.md").read_text(encoding="utf-8")
@@ -105,11 +108,11 @@ class RunLogTests(unittest.TestCase):
                 self.assertEqual([], log_run.validate(r, cur))
                 self.assertEqual(r, log_run.normalize(r))
 
-    def test_every_live_day_and_every_plan_has_a_record(self):
+    def test_every_authored_day_and_every_plan_has_a_record(self):
         runs = log_run.read_runs()
         recorded_days = {d for r in runs for d in r["days"]}
-        for w, d, rel in live_days():
-            self.assertIn(d["id"], recorded_days, f"{d['id']} is live but no run in harness/runs.jsonl names it")
+        for w, d, rel in authored_days():
+            self.assertIn(d["id"], recorded_days, f"{d['id']} is {d['status']} but no run in harness/runs.jsonl names it")
         planned_weeks = {r["week"] for r in runs if r["kind"] == "week-plan"}
         for p in sorted((HARNESS / "plans").glob("week-*.md")):
             self.assertIn(int(p.stem.split("-")[1]), planned_weeks, f"{p.name} exists but no week-plan run is recorded")
@@ -211,9 +214,10 @@ class TrackerPageTests(unittest.TestCase):
                  "closeAmberDays": 1, "closeRedDays": 2, "itemAmberDays": 2}
 
         def day(i, date, status="planned", taught=None, closed=False):
+            built = status in ("authored", "live")      # D-0052: an authored day has every artifact, it is only unreleased
             return {"id": i, "slot": 1, "date": date, "kind": "lesson", "title": i, "status": status, "taught": taught, "demoFormat": "py",
-                    "a": {"research": status == "live", "demos": {"planned": 2, "scripts": 2 if status == "live" else 0, "keys": 2 if status == "live" else 0},
-                          "notes": status == "live", "exercise": status == "live", "runbook": status == "live", "solutions": False, "published": False,
+                    "a": {"research": built, "demos": {"planned": 2, "scripts": 2 if built else 0, "keys": 2 if built else 0},
+                          "notes": built, "exercise": built, "runbook": built, "solutions": False, "published": False,
                           "closed": closed}}
 
         def week(n, start, days, plan):
@@ -223,10 +227,13 @@ class TrackerPageTests(unittest.TestCase):
             "rules": rules, "threads": [{"id": "t", "chainOk": True}],
             "weeks": [week(1, "2026-10-12", [day("w01d2", "2026-10-13", "live"), day("w01d3", "2026-10-14"),
                                                    day("w01d4", "2026-10-13", "live", closed=True)], True),
-                      week(2, "2026-10-19", [day("w02d1", "2026-10-19")], False),
+                      week(2, "2026-10-19", [day("w02d1", "2026-10-19"), day("w02d2", "2026-10-20", "authored")], False),
+                      week(3, "2026-10-26", [day("w03d1", "2026-10-26", "authored"), day("w03d2", "2026-10-27", "authored")], False),
+                      {**week(4, "2026-11-02", [day("w04d1", "2026-11-02", "authored")], True), "plan": {"exists": True, "ok": False, "problems": 2, "path": ""}},
                       week(5, "2026-11-09", [day("w05d1", "2026-11-09")], False)],
             "status": {"openItems": [{"id": "O-1", "closed": False, "due": "2026-10-13"}, {"id": "O-2", "closed": True, "due": "2026-10-01"},
-                                     {"id": "O-3", "closed": False, "due": None}]},
+                                     {"id": "O-3", "closed": False, "due": None}], "milestones": []},
+            "stages": [],
             "runs": [{"kind": "day-fanout", "week": 1, "days": ["w01d2"], "date": "2026-10-11", "flagged": 1, "resolved": False, "runId": "a"},
                      {"kind": "day-fanout", "week": 1, "days": ["w01d2"], "date": "2026-10-12", "flagged": 0, "resolved": False, "runId": "b"}],
         }
@@ -235,6 +242,10 @@ class TrackerPageTests(unittest.TestCase):
             "process.stdin.on('end',()=>{const i=JSON.parse(s);const sb={window:{}};vm.runInNewContext(i.src,sb);const TR=sb.window.TR;"
             "const out={};i.dates.forEach(t=>{out[t]=TR.alerts(i.data,t).map(a=>a.level+' '+a.kind+' '+a.id);});"
             "out.next=TR.nextUp(i.data,'2026-10-14').d.id;out.missing=TR.missing(i.data.weeks[0].days[1]);"
+            "const w2=i.data.weeks[1];out.texts=[TR.dayAlarm(w2,w2.days[0],'2026-10-16',i.data.rules).text,"
+            "TR.dayAlarm(w2,w2.days[0],'2026-10-14',i.data.rules).text,TR.dayAlarm(w2,w2.days[1],'2026-10-19',i.data.rules).text,"
+            "TR.dayAlarm(i.data.weeks[0],i.data.weeks[0].days[1],'2026-10-15',i.data.rules).text];"
+            "out.missingAuthored=TR.missing(w2.days[1]);const c=TR.counts(i.data,'2026-10-14');out.counts=[c.live,c.authored];"
             "process.stdout.write(JSON.stringify(out));});"
         )
         dates = ["2026-10-12", "2026-10-14", "2026-10-16", "2026-10-21"]
@@ -252,14 +263,33 @@ class TrackerPageTests(unittest.TestCase):
         self.assertIn("red plan week 2", wed)
         self.assertIn("amber close w01d2", wed)
         self.assertIn("red item O-1", wed)
-        # Friday before week 2: not live means late
+        # Friday before week 2: a planned day (not authored) is late; an authored day has met readiness (D-0052)
         self.assertIn("red day w02d1", fri)
         self.assertIn("red close w01d2", fri)
+        self.assertFalse([a for a in mon + wed + fri if "w02d2" in a], "an authored day raises no alarm before its week starts")
+        # the week-2 plan is still needed while w02d1 is planned; a week whose days are all authored needs none
+        for alerts in (mon, wed, fri):
+            self.assertTrue([a for a in alerts if a.endswith("plan week 2")], alerts)
+        for alerts in (mon, wed, fri, later):
+            self.assertFalse([a for a in alerts if "week 3" in a], "every week-3 day is authored: no plan alarm")
+            self.assertFalse([a for a in alerts if "w03d" in a], "authored days before their week raise nothing")
+            self.assertIn("red plan week 4", alerts, "a fully authored week whose plan fails plan_check stays red until it is live")
+        # Wednesday of week 2: the authored day was never released
+        self.assertIn("red day w02d2", later)
         for alerts in (mon, wed, fri, later):
             self.assertFalse([a for a in alerts if "close w01d4" in a], "a day with delivery.json raises no close alarm")
         self.assertFalse([a for a in later if "w05d1" in a], "a day three weeks out raises no alarm")
         self.assertEqual("w01d3", out["next"])
         self.assertEqual(["research", "demos", "notes", "exercise", "runbook"], out["missing"])
+        self.assertEqual([], out["missingAuthored"])
+        self.assertEqual(["not authored", "not authored, due Friday", "authored, not released", "date passed, never authored"], out["texts"])
+        self.assertEqual([2, 4], out["counts"], "counts: live, authored")
+
+    def test_authored_badge(self):
+        """D-0052: an authored (built, unreleased) day has its own badge class and style."""
+        shell = shell_html()
+        self.assertIn('h("span", { class: "badge authored", text: "authored" })', shell)
+        self.assertRegex(shell, r"\.badge\.authored\s*\{[^}]+\}")
 
 
 if __name__ == "__main__":

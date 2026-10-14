@@ -42,7 +42,8 @@ Rung rules (checked by plan_check.py): rungs numbered 1..n in teaching order; St
 rung of the thread's whole scope, otherwise EXACTLY the previous rung's key path trainer/<weekDir>/<slug>/demos/key/<Key>
 (the previous week's last rung for the first rung of a later week); Key is Demo + .py|.md|.ipynb; a .py key is the
 thread's whole end state at that rung and fits metrics.demos.maxLinesPerThreadKey; Adds fits
-metrics.demos.maxTypedLinesPerRung typed lines. A live day's rows are recorded as-is from its scripts on disk.
+metrics.demos.maxTypedLinesPerRung typed lines. An authored or live day's rows are recorded as-is from its scripts on
+disk (D-0052).
 -->
 
 ## Standalone demos

@@ -22,7 +22,8 @@ trainer/<rel>/demos/, if any, were the fallback and are never published) it:
 
 Re-running with --apply converges: files are recopied, delivery.json rewritten, the runbook section
 and the card are not duplicated. Thread days (py / nb: a rung diff against the demo repo) are not built
-yet and are refused.
+yet and are refused. A day that is not live (planned, or authored but its week not yet released by
+harness/release_week.py) is refused too: taught implies live (D-0052).
 
 Usage:
     python harness/close_day.py <week> <day>                      # dry run: print the plan, change nothing
@@ -59,6 +60,10 @@ def locate(week_no: int, day_no: int):
     if day.get("demoFormat") != "loose":
         raise SystemExit(f"{day['id']} is demoFormat {day.get('demoFormat')!r}: thread-day close (rung diff against demo-repo) "
                          "is not built yet; see docs/process/codify-plan.md Stage 4 and STATUS.md O-18")
+    # D-0052: taught implies live; closing an unreleased day would leave it taught but not live
+    if day.get("status") != "live":
+        raise SystemExit(f"{day['id']} is {day.get('status')!r}, not live: a day is closed only after its week is released. "
+                         f"Run python harness/release_week.py {week['week']} --today YYYY-MM-DD first. Nothing was written.")
     return cur, week, day, rel, cfg
 
 

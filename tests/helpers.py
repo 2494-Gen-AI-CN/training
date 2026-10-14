@@ -53,8 +53,16 @@ def all_days():
 
 
 def live_days():
+    """Days linked from the index (status live). Visibility tests use this."""
     for w, d, rel in all_days():
         if d.get("status") == "live":
+            yield w, d, rel
+
+
+def authored_days():
+    """Days whose artifacts all exist (status authored or live, D-0052). Artifact-contract tests use this."""
+    for w, d, rel in all_days():
+        if d.get("status") in ("authored", "live"):
             yield w, d, rel
 
 

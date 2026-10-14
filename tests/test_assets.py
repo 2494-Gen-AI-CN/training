@@ -8,7 +8,7 @@ import re
 import runpy
 import unittest
 
-from helpers import ALLOWED_JS, DOCS, FORBIDDEN_RE, TRAINER, ParsedPage, live_days
+from helpers import ALLOWED_JS, DOCS, FORBIDDEN_RE, TRAINER, ParsedPage, authored_days
 
 
 def _runner() -> dict:
@@ -61,7 +61,7 @@ class AssetTests(unittest.TestCase):
 
     def test_runnable_blocks_are_well_formed(self):
         """D-0042: a runnable block is <pre data-run="python"><code>; data-continues needs a runnable block above it."""
-        for _w, _d, rel in live_days():
+        for _w, _d, rel in authored_days():
             page = ParsedPage(DOCS / "weeks" / f"{rel}.html")
             above = 0
             for pre in page.root.find_all("pre"):
@@ -94,7 +94,7 @@ class PracticeTaskTests(unittest.TestCase):
 
     def test_tasks_are_well_formed_and_not_solved_by_their_starter(self):
         g = _runner()
-        for _w, _d, rel in live_days():
+        for _w, _d, rel in authored_days():
             page = ParsedPage(DOCS / "weeks" / f"{rel}.html")
             sections = page.root.find_all("section", "practice")
             tasks = page.root.find_all("div", "ix-task")
@@ -120,7 +120,7 @@ class PracticeTaskTests(unittest.TestCase):
     @unittest.skipUnless(TRAINER.exists(), "trainer/ (private repo) not present")
     def test_model_answers_pass_every_check(self):
         g = _runner()
-        for _w, _d, rel in live_days():
+        for _w, _d, rel in authored_days():
             tasks = _tasks(rel)
             if not tasks:
                 continue
@@ -137,7 +137,7 @@ class PracticeTaskTests(unittest.TestCase):
         pass every check, each known wrong answer is caught by the check meant for it, and every check on the
         page is failed by at least one wrong answer."""
         g = _runner()
-        for _w, _d, rel in live_days():
+        for _w, _d, rel in authored_days():
             tasks = _tasks(rel)
             if not tasks:
                 continue

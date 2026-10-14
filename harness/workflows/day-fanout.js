@@ -6,7 +6,8 @@
 //   Workflow({ scriptPath: "harness/workflows/day-fanout.js", args: <that JSON> })
 //
 // Pipeline:  Research (gate-tiered, all days in parallel) -> Demos (one day after the other, in day order:
-// each rung starts from the previous rung's key, D-0033) -> Materials (notes ∥ runbook ∥ exercise, all days
+// each rung starts from the previous rung's key, D-0033; then one series-review critic over a multi-day run,
+// flags only, D-0053) -> Materials (notes ∥ runbook ∥ exercise, all days
 // in parallel) -> Wire (serial, shared files) -> Record (run log + work tracker, D-0035)
 // -> Verify (unittest, ≤2 fix loops).
 // Demos (D-0030): walkthrough scripts + answer keys are authored to trainer/<rel>/demos/ (private) and
@@ -72,7 +73,7 @@ function tier(stage, pass, quiet) {
   return o
 }
 const tierLabel = (s) => { const t = tier(s, 0, true); return `${s}=${t.model || 'inherit'}/${t.effort || 'inherit'}` }
-const TIER_LABELS = ['research-light','research-full','demos','notes','notes-critic','notes-verify-light','notes-verify-full','humanize','exercise','runbook','critic','wire','verify','fix'].map(tierLabel).join(' · ')
+const TIER_LABELS = ['research-light','research-full','demos','notes','notes-critic','notes-verify-light','notes-verify-full','humanize','exercise','runbook','critic','series-review','wire','verify','fix'].map(tierLabel).join(' · ')
 const NOTES_ONLY = !!A.notesOnly
 const DAYS = A.days.map(d => ({
   ...d,
@@ -423,6 +424,7 @@ const researched = await parallel(DAYS.map(d => () => NOTES_ONLY ? researchDepth
 phase('Demos')
 const demoed = []
 let blockedBy = null
+let seriesReview = null
 if (NOTES_ONLY) {
   // D-0040: the day's scripts and keys are already on disk (args_for.py --notes-only checked); nothing is authored.
   for (const d of DAYS) demoed.push((d.noDemos || (d.loose && !(d.existingScripts || []).length))
@@ -437,6 +439,21 @@ if (NOTES_ONLY) {
     try { r = await demosStage(d) } catch (e) { log(`${d.id} demos stage threw: ${e && e.message}`) }
     demoed.push(r)
     if (!d.noDemos && !d.loose && !(r && r.result && (r.result.scripts || []).length)) blockedBy = `${d.id} demos`
+  }
+  // Series review (D-0053): once every day's demos are done, ONE critic reads the run's scripts as a series, in
+  // ladder order, against the week plan (story, Starts from chain, Weekly Epic, anti-spoiler, minutes, handoffs).
+  // Flags only: it never blocks a day and nothing is auto-fixed; its verdict reaches the run record and the return.
+  const scripted = DAYS.map((d, i) => ({ d, r: demoed[i] })).filter(x => x.r && x.r.result && (x.r.result.scripts || []).length)
+  if (DAYS.length > 1 && scripted.length >= 2) {
+    try {
+      seriesReview = await agent(
+        `SERIES REVIEW (D-0053). Read ${H}/critics/series-review.md and apply it to this run's demo scripts as ONE series against the week plan ${A.weekPlan || '(none: the --no-plan escape was used, so judge the scripts against each other only)'}.\n` +
+        `Days of this run in order, each with its script paths in ladder order (a day of the run that is not listed has no scripts and is skipped): ${J(scripted.map(x => ({ day: x.d.id, demoFormat: x.d.demoFormat, scripts: x.r.result.scripts.map(s => `${x.d.demoDir}/${/\.md$/.test(s.name) ? s.name : s.name + '.md'}`) })))}\n` +
+        `Each script's answer key sits under key/ beside it. Judge only what spans scripts or days; a problem inside one script belongs to the demos critic. Edit no file.\n` +
+        `Return pass, critiques (script path + the series-level problem + a concrete fix), one-sentence summary.`,
+        { schema: VERDICT, label:'series-review', phase:'Demos', ...tier('series-review') })
+    } catch (e) { log(`series review threw: ${e && e.message}`) }
+    if (seriesReview) log(`Series review: ${seriesReview.pass ? 'PASS' : 'FLAGGED (' + (seriesReview.critiques || []).length + ' critique(s))'}; flags only, no day blocked`)
   }
 }
 phase('Materials')
@@ -463,13 +480,18 @@ const glossaryAdds = []
 perDay.forEach(x => { if (x && x.research && x.research.result) (x.research.result.glossaryTerms || []).forEach(t => glossaryAdds.push({ day: x.d.id, ...t })) })
 // D-0040: the plan's Coverage map records the page step that teaches each subtopic; the author reports where
 // each one landed and the serial Wire step realigns the column (parallel authors never edit the plan).
+// D-0052: the status Wire writes, per day: live once the week has started (releaseOnWire) and authored ahead of it;
+// a day that is already live is never downgraded (d.status comes from args_for.py _day_base).
+const WIRE_STATUS = DAYS.map(d => ({ id: d.id, status: (d.status === 'live' || A.releaseOnWire) ? 'live' : 'authored' }))
 const stepMaps = perDay.filter(x => x && x.notes && x.notes.result && (x.notes.result.stepMap || []).length).map(x => ({ day: x.d.id, stepMap: x.notes.result.stepMap }))
 const wire = await agent(
   `WIRE step (serial, shared files). Days shipped this run: ${J(DAYS.map(d => ({ id:d.id, rel:d.rel, page:d.pageRel })))}.\n` +
   `1. Open ${ROOT}/docs/assets/js/glossary.js. Between "// GLOSSARY:BEGIN" and "// GLOSSARY:END" append these entries as { term, def, aka } lines, SKIPPING any whose term or aka already exists (case-insensitive, check both term and aka of existing entries): ${J(glossaryAdds)}. Keep the file valid JS (node --check).\n` +
-  `2. In ${H}/curriculum.json set "status": "live" for ${J(DAYS.map(d => d.id))} ONLY if that day's page ${'`'}docs/weeks/<rel>.html${'`'}, exercises/<rel>/README.md and (unless demoFormat is "none" or "loose") ${TRAINER}/<rel>/demos/key/README.md all exist on disk. Never touch the "taught" field.\n` +
+  `2. In ${H}/curriculum.json set "status" per day exactly as this list says: ${J(WIRE_STATUS)}, for each day ONLY if that day's page ${'`'}docs/weeks/<rel>.html${'`'}, exercises/<rel>/README.md and (unless demoFormat is "none" or "loose") ${TRAINER}/<rel>/demos/key/README.md all exist on disk. "authored" means the day is written but not linked from docs/index.html; harness/release_week.py makes it live (D-0052); a day already live stays live, which the list already reflects. Never touch the "taught" field.\n` +
   `3. Run: python ${H}/build_index.py   (it also rebuilds tracker.html, the work tracker, D-0035)\n` +
-  `4. For each shipped day whose previous day page exists, confirm the previous page's window.NEXT.href points at this day's filename; fix if not. And for each shipped day's own page: if its window.NEXT.href names a day page that does not exist on disk (a later day of this run was blocked or failed), set it to { label: "Back to program →", href: "../../index.html" }.\n` +
+  `4. For each shipped day whose previous day page exists, confirm the previous page's window.NEXT.href points at this day's filename; fix if not.` +
+  (A.releaseOnWire ? '' : ` EXCEPTION (D-0052): this run ships its days as "authored" (written, not linked), and a live page never links into an unreleased one. So when the previous page was NOT written by this run and its curriculum.json status is "live", leave its window.NEXT exactly as it is.`) +
+  ` And for each shipped day's own page: if its window.NEXT.href names a day page that does not exist on disk (a later day of this run was blocked or failed), set it to { label: "Back to program →", href: "../../index.html" }.\n` +
   `5. Publish step (D-0030): for each shipped day run "python ${H}/publish_demos.py <week> <day>" (${J(DAYS.map(d => `${A.week} ${d.day}`))}). It copies the answer keys to demos/<rel>/ and flips the notes demo card ONLY if curriculum.json carries taught:<date> for that day (set by the delivery-day close); otherwise it prints "not taught yet" and that is the expected outcome on an authoring run. A loose day prints "written by harness/close_day.py"; that too is expected. Never copy demo files by hand.\n` +
   `5b. Practice section (D-0047): for each shipped day run "python ${H}/practice_tasks.py insert <week> <day>" (${J(DAYS.map(d => `${A.week} ${d.day}`))}). A re-authored page comes back without its section.practice; this writes it again from harness/practice/<rel>.json and prints "no practice file" for a day that has none, which is the expected outcome for a newly authored day. Never write that section by hand.\n` +
   `6. Run ${ROOT}/docs/bump-css.sh --all if you changed glossary.js.\n` +
@@ -492,6 +514,8 @@ const report = perDay.map((x, i) => {
 })
 const flagged = []
 report.forEach(r => ['research','demos','notes','exercise','runbook'].forEach(k => { if (r[k] && r[k].status === 'flagged') flagged.push({ day:r.day, artifact:k, flags:r[k].flags }) }))
+// Series review (D-0053): a FAIL is one flagged item on the run's last day, in the same {day, artifact, flags} shape.
+if (seriesReview && !seriesReview.pass) flagged.push({ day: DAYS[DAYS.length - 1].id, artifact:'series-review', flags:(seriesReview.critiques || []).map(c => `series-review: ${c}`) })
 
 // ---------- RECORD (work tracker, D-0035) ----------
 // One record per run in harness/runs.jsonl, written before Verify so the run-log contract test sees it; the
@@ -534,4 +558,4 @@ for (let attempt = 1; attempt <= 3; attempt++) {
 }
 
 log(`Run complete: ${DAYS.length} day(s), ${flagged.length} flagged item(s), tests ${verify && verify.passed ? 'PASS' : 'FAIL'}; run log ${recorded ? 'recorded' : 'NOT recorded'} (add the run id with: python harness/log_run.py amend --last --run-id <wf_...>)`)
-return { week: A.week, days: DAYS.map(d => d.id), flaggedCount: flagged.length, flagged, verify, wire, report, recorded, glossaryAdded: glossaryAdds.length }
+return { week: A.week, days: DAYS.map(d => d.id), flaggedCount: flagged.length, flagged, seriesReview, verify, wire, report, recorded, glossaryAdded: glossaryAdds.length }

@@ -9,7 +9,7 @@ import subprocess
 import sys
 import unittest
 
-from helpers import HARNESS, ROOT, TRAINER, all_days, live_days, load_json, metrics
+from helpers import HARNESS, ROOT, TRAINER, all_days, authored_days, load_json, metrics
 
 TEST_FN_RE = re.compile(r"^\s*def (test_\w+)\(", re.M)
 
@@ -22,9 +22,9 @@ def _pytest(cwd, env_extra=None, timeout=120):
 
 
 class ExerciseTests(unittest.TestCase):
-    def test_every_live_exercise(self):
+    def test_every_authored_exercise(self):
         M = metrics()["exercise"]
-        for w, d, rel in live_days():
+        for w, d, rel in authored_days():  # D-0052: authored or live
             edir = ROOT / "exercises" / rel
             with self.subTest(rel=rel):
                 self.assertTrue((edir / "README.md").exists())

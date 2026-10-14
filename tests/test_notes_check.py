@@ -140,7 +140,37 @@ class CliTests(unittest.TestCase):
     def test_json_only_output(self):
         r = self._run(str(EXEMPLAR), "--counts", "--json")
         self.assertEqual(1, len(r.stdout.strip().splitlines()))
-        json.loads(r.stdout)
+        page = json.loads(r.stdout)["pages"][0]
+        self.assertIsInstance(page["findings"], list)
+        self.assertTrue(page["findings"], "the exemplar fails the word band")
+        self.assertTrue(all(isinstance(f, str) for f in page["findings"]))
+        self.assertEqual(len(page["findings"]), page["findingCount"])
+
+
+class PageSelectionTests(unittest.TestCase):
+    """--all-live sweeps live days only; --all-authored (D-0052) sweeps authored and live days."""
+    CUR = {"weeks": [{"dir": "week-01", "days": [
+        {"kind": "holiday"},
+        {"kind": "lesson", "slug": "day-2-a", "status": "live"},
+        {"kind": "lesson", "slug": "day-3-b", "status": "authored"},
+        {"kind": "lesson", "slug": "day-4-c", "status": "planned"}]}]}
+
+    def names(self, statuses):
+        return [p.name for p in notes_check.pages_with_status(statuses, cur=self.CUR, root=ROOT)]
+
+    def test_live_only(self):
+        self.assertEqual(["day-2-a.html"], self.names(("live",)))
+
+    def test_authored_and_live(self):
+        self.assertEqual(["day-2-a.html", "day-3-b.html"], self.names(("authored", "live")))
+
+    def test_helpers_use_the_right_statuses(self):
+        cur = json.loads((HARNESS / "curriculum.json").read_text(encoding="utf-8"))
+        days = [(w["dir"], d) for w in cur["weeks"] for d in w["days"] if d.get("kind") != "holiday"]
+        live = [ROOT / "docs" / "weeks" / wd / f"{d['slug']}.html" for wd, d in days if d.get("status") == "live"]
+        both = [ROOT / "docs" / "weeks" / wd / f"{d['slug']}.html" for wd, d in days if d.get("status") in ("authored", "live")]
+        self.assertEqual(live, notes_check.live_pages())
+        self.assertEqual(both, notes_check.authored_pages())
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-"""Notes-page contract for every live day (and the exemplar's structure)."""
+"""Notes-page contract for every authored or live day (D-0052) (and the exemplar's structure)."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import sys
 import unittest
 from pathlib import Path
 
-from helpers import DOCS, FORBIDDEN_RE, HARNESS, PAGE_SCRIPT_ORDER, ROOT, TRAINER, ParsedPage, live_days, metrics, node_exe, public_demos, trainer_demos
+from helpers import DOCS, FORBIDDEN_RE, HARNESS, PAGE_SCRIPT_ORDER, ROOT, TRAINER, ParsedPage, authored_days, metrics, node_exe, public_demos, trainer_demos
 
 sys.path.insert(0, str(HARNESS))
 import build_index  # noqa: E402
@@ -98,10 +98,11 @@ class ExemplarTests(unittest.TestCase):
             self.assertEqual(M["quizQuestions"], p["questions"])
 
 
-class LivePageTests(unittest.TestCase):
-    def test_every_live_page(self):
+class AuthoredPageTests(unittest.TestCase):
+    def test_every_authored_page(self):
+        """Every authored or live day's page (D-0052); the demo-card state below still turns on `taught`."""
         M = metrics()["notes"]
-        for w, d, rel in live_days():
+        for w, d, rel in authored_days():
             path = DOCS / "weeks" / f"{rel}.html"
             with self.subTest(rel=rel):
                 page = ParsedPage(path)

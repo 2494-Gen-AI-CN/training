@@ -11,8 +11,13 @@ so any change to tracked state without a rebuild fails the suite on the machine 
 Nothing here reads a clock: the block is a pure function of the files below. Everything
 relative to today's date (next up, overdue, readiness alarms) is computed in the browser.
 
+Day status (D-0052): planned -> authored -> live. `authored` means every artifact exists and passed but the
+page is not yet linked from the index (released the Friday before its week by harness/release_week.py);
+`taught` implies live, and trainer/<rel>/delivery.json marks a day closed. Status passes through unchanged;
+artifact flags are read from disk for every day, whatever its status.
+
 Sources:
-  harness/curriculum.json           calendar, days, status, taught
+  harness/curriculum.json           calendar, days, status (planned | authored | live, D-0052), taught
   harness/plans/week-WW.md          week plans: plan_check verdict, planned demos, thread rungs
   harness/research/, docs/weeks/, exercises/, demos/, trainer/<rel>/   per-day artifacts on disk
   trainer/<rel>/delivery.json       delivery record written by harness/close_day.py when a day is closed (D-0050)

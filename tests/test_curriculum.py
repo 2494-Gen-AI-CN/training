@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import datetime as dt
+import json
 import re
 import subprocess
 import sys
 import unittest
 
-from helpers import DOCS, HARNESS, ROOT, all_days, all_slots, curriculum, load_json
+from helpers import DOCS, HARNESS, ROOT, all_days, all_slots, authored_days, curriculum, load_json
 
 sys.path.insert(0, str(HARNESS))
 import build_index  # noqa: E402
@@ -54,7 +55,7 @@ class CurriculumTests(unittest.TestCase):
                 self.assertIn(d["kind"], ("lesson", "review"))
                 self.assertIn(d["gate"], ("full", "light"))
                 self.assertIn(d["demoFormat"], ("py", "nb", "none", "loose"))
-                self.assertIn(d["status"], ("planned", "live"))
+                self.assertIn(d["status"], ("planned", "authored", "live"))  # D-0052
                 if "taught" in d:  # D-0030: set by the delivery-day close, after the session
                     self.assertRegex(d["taught"], r"^20\d\d-\d\d-\d\d$")
                     self.assertEqual("live", d["status"], "a taught day must be live")
@@ -159,6 +160,47 @@ class CurriculumTests(unittest.TestCase):
         outside = html[:html.index(build_index.BEGIN)] + html[html.index(build_index.END) + len(build_index.END):]
         self.assertIsNone(re.search(r"\b20\d\d-\d\d-\d\d\b", outside), "hand-typed ISO date outside the generated block")
 
+    def test_index_links_no_authored_day(self):
+        """D-0052: an authored day's page exists but the index links nothing of it until release_week.py flips it live
+        (a hidden week, not access control). Passes vacuously while no day is authored."""
+        block = build_index.render(self.cur)
+        entries = self._index_entries(block)
+        for w, d, rel in all_days():
+            if d["status"] != "authored":
+                continue
+            with self.subTest(day=d["id"]):
+                entry = entries[d["id"]]
+                for k in ("href", "demo", "ex"):
+                    self.assertNotIn(k, entry, f"{d['id']} is authored, the index must not carry {k!r}")
+                self.assertNotIn(f"weeks/{rel}.html", block)
+
+    def test_render_hides_a_day_flipped_to_authored(self):
+        """The same rule on a copy of the curriculum: every live day, set to authored, loses its links (D-0052)."""
+        cur = json.loads(json.dumps(self.cur))
+        flipped = []
+        for w in cur["weeks"]:
+            for d in w["days"]:
+                if d.get("status") == "live":
+                    d["status"] = "authored"
+                    d.pop("taught", None)
+                    flipped.append(f"weeks/{w['dir']}/{d['slug']}.html")
+        block = build_index.render(cur)
+        for page in flipped:
+            self.assertNotIn(page, block)
+        for entry in self._index_entries(block).values():
+            self.assertNotIn("href", entry)
+
+    @staticmethod
+    def _index_entries(block: str) -> dict:
+        """Day id -> its WEEKS entry, parsed from the generated block (one JSON object per line)."""
+        out = {}
+        for ln in block.splitlines():
+            ln = ln.strip().rstrip(",")
+            if ln.startswith("{") and '"id": "' in ln:
+                entry = json.loads(ln)
+                out[entry["id"]] = entry
+        return out
+
     def test_args_for_runs_for_every_teaching_day_and_refuses_holidays(self):
         # Calendar/day-args machinery only; the week-plan gate (D-0034) is tested in test_plans.py, so weeks
         # without a plan use the logged --no-plan escape here.
@@ -178,10 +220,9 @@ class CurriculumTests(unittest.TestCase):
                     self.assertEqual(2, res.returncode, f"{w['dir']} day {d['day']} should be refused")
                     self.assertIn("holiday", res.stderr)
 
-    def test_live_days_have_all_public_artifacts(self):
-        for w, d, rel in all_days():
-            if d["status"] != "live":
-                continue
+    def test_authored_days_have_all_public_artifacts(self):
+        """D-0052: an authored day already has every artifact; only its index link waits for release_week.py."""
+        for w, d, rel in authored_days():
             with self.subTest(rel=rel):
                 self.assertTrue((DOCS / "weeks" / f"{rel}.html").exists())
                 # D-0030: answer keys are public only once taught; demoFormat none days never have a demos/ folder

@@ -14,7 +14,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from helpers import DOCS, HARNESS, ROOT, all_days, live_days, load_json, metrics, node_exe, run_node
+from helpers import DOCS, HARNESS, ROOT, all_days, authored_days, load_json, metrics, node_exe, run_node
 
 sys.path.insert(0, str(HARNESS))
 import args_for  # noqa: E402
@@ -171,7 +171,7 @@ class GateTests(unittest.TestCase):
         self.real, pt.PRACTICE = pt.PRACTICE, Path(self.tmp.name)
         self.addCleanup(lambda: setattr(pt, "PRACTICE", self.real))
         self.cur = bi.load_curriculum()
-        self.week, self.day, self.rel = next((w, d, rel) for w, d, rel in live_days())
+        self.week, self.day, self.rel = next((w, d, rel) for w, d, rel in authored_days())
         pt.save(self.rel, _proposal(self.rel, self.day["id"]))
 
     def _args(self, build: bool, days=None):
@@ -225,7 +225,7 @@ class GateTests(unittest.TestCase):
         self.assertTrue(any("already carries built tasks" in x for x in why), why)
 
     def test_a_day_that_is_not_authored_is_refused(self):
-        planned = next(((w, d) for w, d, rel in all_days() if d.get("status") != "live" and not pt.page_for(rel).is_file()), None)
+        planned = next(((w, d) for w, d, rel in all_days() if d.get("status") not in ("authored", "live") and not pt.page_for(rel).is_file()), None)
         if planned is None:
             self.skipTest("every day is authored")
         out, why = args_for.practice_args(self.cur, planned[0], [planned[1]["day"]], False, "2026-10-13", metrics(), CONFIG)
@@ -239,7 +239,7 @@ class CliTests(unittest.TestCase):
         both = run("1", "--practice", "--practice-build")
         self.assertEqual(2, both.returncode)
         self.assertIn("one mode at a time", both.stderr)
-        built = [(w, d) for w, d, rel in live_days() if pt.built(pt.load(rel))]
+        built = [(w, d) for w, d, rel in authored_days() if pt.built(pt.load(rel))]
         if built:
             w, d = built[0]
             r = run(str(w["week"]), str(d["day"]), "--practice", "--today", "2026-10-13")

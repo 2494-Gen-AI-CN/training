@@ -155,6 +155,7 @@ def render(cur: dict | None = None) -> str:
                 d = s["day"]
                 p = day_paths(w, d)
                 entry = {"t": d["title"], "s": d.get("subtitle", ""), "id": d["id"], "date": s["date"].isoformat()}
+                # D-0052: only live days are linked; an authored day's page exists but stays unlinked (hidden week, not access control).
                 if d.get("status") == "live":
                     entry["href"] = p["page"]
                     # D-0030: answer keys are public only once the day is taught (and the day has code demos at all);

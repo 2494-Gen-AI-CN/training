@@ -111,7 +111,7 @@ class TierTests(unittest.TestCase):
             used = set(re.findall(r"tier\('([\w-]+)'", src))
             self.assertTrue(used, label)
             self.assertEqual(set(), used - stages, f"{label} uses tiers config.json does not define")
-        for name in ("notes-critic", "notes-verify-light", "notes-verify-full"):
+        for name in ("notes-critic", "notes-verify-light", "notes-verify-full", "series-review"):
             self.assertIn(name, FANOUT[FANOUT.index("const TIER_LABELS"):FANOUT.index("const NOTES_ONLY")])
 
 

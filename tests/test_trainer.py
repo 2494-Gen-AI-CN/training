@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 import unittest
 
-from helpers import HARNESS, ROOT, TRAINER, live_days, load_json, metrics, trainer_demos
+from helpers import HARNESS, ROOT, TRAINER, authored_days, load_json, metrics, trainer_demos
 
 CONFIG = load_json(HARNESS / "config.json")
 REQUIRED = ["## Day at a glance", "## Objectives", "## Setup check", "## Notes page handoff",
@@ -14,9 +14,9 @@ REQUIRED = ["## Day at a glance", "## Objectives", "## Setup check", "## Notes p
 
 @unittest.skipUnless(TRAINER.exists(), "trainer/ private repo not cloned here")
 class TrainerTests(unittest.TestCase):
-    def test_every_live_runbook(self):
+    def test_every_authored_runbook(self):
         M = metrics()["runbook"]
-        for w, d, rel in live_days():
+        for w, d, rel in authored_days():  # D-0052: authored or live
             rb = TRAINER / rel / "runbook.md"
             with self.subTest(rel=rel):
                 self.assertTrue(rb.exists(), f"missing {rb}")

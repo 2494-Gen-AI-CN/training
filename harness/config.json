@@ -80,7 +80,7 @@
     "rule": "Model ids are resolved in the research brief from current docs, never from memory."
   },
   "models": {
-    "_comment": "Per-stage model and effort for harness/workflows/day-fanout.js, week-plan.js and practice-tasks.js (D-0026, D-0032, D-0040, D-0047). model: sonnet | haiku | opus; effort: low | medium | high | xhigh | max. Every stage is pinned: no stage inherits the session model (D-0040), and tests/test_notes_mode.py fails a null. A repass numbered >= escalateOn uses escalate instead of the stage tier, so a cheap first pass that fails its critic is retried on the strong tier. notes-critic judges the notes page; notes-verify-light runs harness/notes_check.py (links, stamps, citations) on every day; notes-verify-full adds WebFetch claim currency on full-gate and currency-flagged days. practice-suitability proposes practice tasks for an authored page and practice builds the approved ones (D-0047); their critic, verify and record agents use critic, verify and wire.",
+    "_comment": "Per-stage model and effort for harness/workflows/day-fanout.js, week-plan.js and practice-tasks.js (D-0026, D-0032, D-0040, D-0047). model: sonnet | haiku | opus; effort: low | medium | high | xhigh | max. Every stage is pinned: no stage inherits the session model (D-0040), and tests/test_notes_mode.py fails a null. A repass numbered >= escalateOn uses escalate instead of the stage tier, so a cheap first pass that fails its critic is retried on the strong tier. notes-critic judges the notes page; notes-verify-light runs harness/notes_check.py (links, stamps, citations) on every day; notes-verify-full adds WebFetch claim currency on full-gate and currency-flagged days. practice-suitability proposes practice tasks for an authored page and practice builds the approved ones (D-0047); their critic, verify and record agents use critic, verify and wire. series-review is the one critic that reads a multi-day run's demo scripts as a series at the end of the Demos phase, flags only (D-0053).",
     "escalateOn": 2,
     "escalate": { "model": "opus", "effort": "high" },
     "stages": {
@@ -101,7 +101,8 @@
       "week-plan": { "model": "opus", "effort": "high" },
       "week-plan-critic": { "model": "opus", "effort": "high" },
       "practice-suitability": { "model": "opus", "effort": "medium" },
-      "practice": { "model": "opus", "effort": "high" }
+      "practice": { "model": "opus", "effort": "high" },
+      "series-review": { "model": "opus", "effort": "medium" }
     }
   },
   "threads": {
@@ -115,7 +116,7 @@
     }
   },
   "tracker": {
-    "_comment": "Alarm thresholds for tracker.html (D-0035), in calendar days. Readiness follows the previous-Friday rule: a day that is not live turns amber dayAmberDaysBeforeWeek days before its week's Monday (the Wednesday before) and red dayRedDaysBeforeWeek days before (the Friday before). The browser applies these to today's date; harness/build_tracker.py only embeds them.",
+    "_comment": "Alarm thresholds for tracker.html (D-0035), in calendar days. Readiness follows the previous-Friday rule: a day that is still planned (neither authored nor live, D-0052) turns amber dayAmberDaysBeforeWeek days before its week's Monday (the Wednesday before) and red dayRedDaysBeforeWeek days before (the Friday before); an authored day that is not live turns red from its week's Monday (authored, not released). The browser applies these to today's date; harness/build_tracker.py only embeds them.",
     "dayAmberDaysBeforeWeek": 5,
     "dayRedDaysBeforeWeek": 3,
     "planAmberDaysBeforeWeek": 7,

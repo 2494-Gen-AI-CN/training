@@ -126,6 +126,7 @@ ul.plain .st { margin-right: 4px; }
 .mk.na { border-style: dotted; opacity: .5; }
 .badge { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; font-weight: 700; border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; color: var(--ink-soft); }
 .badge.live { border-color: var(--accent); color: var(--accent); }
+.badge.authored { border-style: dashed; border-color: var(--ink-soft); color: var(--ink); background: var(--surface-2); }   /* built, hidden until released (D-0052) */
 .c-alarm { font-size: 12px; }
 .plan { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px; font-size: 12.5px; display: flex; flex-direction: column; gap: 4px; }
 
@@ -253,12 +254,18 @@ window.TRACKER = null;
   };
   TR.has = function (d, name) { return name === "demos" ? TR.demosState(d) === "full" || TR.demosState(d) === "na" : !!d.a[name]; };
   TR.missing = function (d) { return ARTS.filter(function (a) { return !TR.has(d, a[0]); }).map(function (a) { return a[0]; }); };
+  // Day status (D-0052): planned -> authored (every artifact passed, page hidden) -> live (linked; released the
+  // Friday before its week by harness/release_week.py). taught implies live; delivery.json means closed.
+  TR.built = function (d) { return d.status === "authored" || d.status === "live"; };
   TR.dayAlarm = function (w, d, today, rules) {
     if (d.kind === "holiday") return null;
+    if (d.status === "authored") {             // readiness met; only the release is outstanding
+      return TR.diff(today, w.start) <= 0 ? { level: "red", text: "authored, not released" } : null;
+    }
     if (d.status !== "live") {
       var toWeek = TR.diff(today, w.start);
-      if (toWeek <= rules.dayRedDaysBeforeWeek) return { level: "red", text: TR.diff(today, d.date) < 0 ? "date passed, never live" : "not live" };
-      if (toWeek <= rules.dayAmberDaysBeforeWeek) return { level: "amber", text: "not live, due Friday" };
+      if (toWeek <= rules.dayRedDaysBeforeWeek) return { level: "red", text: TR.diff(today, d.date) < 0 ? "date passed, never authored" : "not authored" };
+      if (toWeek <= rules.dayAmberDaysBeforeWeek) return { level: "amber", text: "not authored, due Friday" };
       return null;
     }
     if (!d.taught && !d.a.closed) {            // delivery.json (close_day.py, D-0050) clears it as well as taught
@@ -269,8 +276,11 @@ window.TRACKER = null;
     return null;
   };
   TR.planAlarm = function (w, today, rules) {
-    if (!w.days.some(function (d) { return d.kind !== "holiday" && d.status !== "live"; })) return null;
+    var teach = w.days.filter(function (d) { return d.kind !== "holiday"; });
+    if (teach.every(function (d) { return d.status === "live"; })) return null;
+    // a failing plan matters until the whole week is live: release_week.py refuses a week whose plan fails
     if (w.plan.exists && !w.plan.ok) return { level: "red", text: "plan fails plan_check (" + w.plan.problems + ")" };
+    if (teach.every(TR.built)) return null;    // only planned days still need a plan to author from
     if (w.plan.exists) return null;
     var toWeek = TR.diff(today, w.start);
     if (toWeek <= rules.planRedDaysBeforeWeek) return { level: "red", text: "no week plan" };
@@ -324,7 +334,7 @@ window.TRACKER = null;
     var ms = data.status.milestones;
     var c = function (arr, f) { return arr.filter(f).length; };
     return {
-      days: days.length, live: c(days, function (d) { return d.status === "live"; }), taught: c(days, function (d) { return !!d.taught; }),
+      days: days.length, live: c(days, function (d) { return d.status === "live"; }), authored: c(days, function (d) { return d.status === "authored"; }), taught: c(days, function (d) { return !!d.taught; }),
       published: c(days, function (d) { return d.a.published; }),
       weeks: data.weeks.length, plans: c(data.weeks, function (w) { return w.plan.ok; }),
       msDone: c(ms, function (m) { return m.state === "done"; }), msPartial: c(ms, function (m) { return m.state === "partial"; }), ms: ms.length,
@@ -386,6 +396,7 @@ window.TRACKER = null;
     if (d.a.closed && !d.a.published) return h("span", { class: "badge live", text: "closed" });
     if (d.taught) return h("span", { class: "badge live", text: "taught" });
     if (d.status === "live") return h("span", { class: "badge live", text: "live" });
+    if (d.status === "authored") return h("span", { class: "badge authored", text: "authored" });
     return h("span", { class: "badge", text: d.kind === "review" ? "review" : "planned" });
   }
   function links(w, d) {
@@ -407,12 +418,12 @@ window.TRACKER = null;
     var n = TR.nextUp(D, today);
     if (!n) { fill("next", ["Training has ended: no teaching day on or after today."]); return; }
     var d = n.d, w = n.w, miss = TR.missing(d), away = TR.diff(today, d.date), alarm = TR.dayAlarm(w, d, today, D.rules);
-    var ready = d.status === "live";
+    var ready = TR.built(d);                   // authored or live: every artifact exists (D-0052)
     fill("next", [
       h("h3", { text: d.id.toUpperCase().replace("W0", "W").replace("D", "D") + " · " + d.title }),
       h("div", { class: "muted" }, [TR.fmt(d.date) + (away === 0 ? " (today)" : away === 1 ? " (tomorrow)" : " (in " + away + " days)") + " · week " + w.week + " · " + d.subtopics + " subtopics" +
         (d.demoMinutes ? " · " + d.demoMinutes + " demo min planned" : "")]),
-      h("div", { style: "margin-top:8px" }, [ready ? st("good", "live") : alarm ? st(alarm.level, alarm.text) : st("none", "not live yet"),
+      h("div", { style: "margin-top:8px" }, [d.status === "live" ? st("good", "live") : alarm ? st(alarm.level, alarm.text) : ready ? st("good", "authored, not released yet") : st("none", "not authored yet"),
         "  ", w.plan.ok ? st("good", "week plan ok") : st(w.plan.exists ? "red" : "none", w.plan.exists ? "week plan fails its check" : "no week plan")]),
       miss.length ? h("div", { style: "margin-top:8px" }, ["Missing: " + miss.join(", ") + "."]) : h("div", { style: "margin-top:8px" }, ["All five artifacts are on disk."]),
       ready ? null : h("div", { class: "cmd" }, [h("span", { class: "muted small", text: "Author it with one invocation: " }),
@@ -441,7 +452,7 @@ window.TRACKER = null;
         h("div", { class: "s" }, [s])]);
     }
     fill("tiles", [
-      tile("Days live", c.live, c.days, "taught " + c.taught + " · published " + c.published, c.live / c.days),
+      tile("Days live", c.live, c.days, "authored, not released " + c.authored + " · taught " + c.taught + " · published " + c.published, c.live / c.days),
       tile("Week plans", c.plans, c.weeks, "weeks with a passing plan", c.plans / c.weeks),
       tile("Alarms", al.length, null, red + " late · " + (al.length - red) + " due soon"),
       tile("Milestones", c.msDone, c.ms, c.msPartial + " in progress", c.msDone / c.ms),
@@ -466,7 +477,7 @@ window.TRACKER = null;
         if (d.kind === "holiday") { kids.push(h("div", { class: "cell hol" + (d.date === today ? " is-today" : "") }, [h("span", { text: TR.fmt(d.date) }), h("span", { text: d.label })])); return; }
         var a = TR.dayAlarm(w, d, today, D.rules);
         kids.push(h("button", { type: "button", class: "cell" + (a ? " lvl-" + a.level : "") + (d.date === today ? " is-today" : "") + (d.date < today && !a ? " past" : ""), "data-open": d.id,
-          "aria-label": d.id + ", " + TR.fmt(d.date) + ", " + d.title + ", " + (d.status === "live" ? "live" : "not live") + (a ? ", " + a.text : "") }, [
+          "aria-label": d.id + ", " + TR.fmt(d.date) + ", " + d.title + ", " + (d.status === "live" ? "live" : d.status === "authored" ? "authored, not released" : "not authored") + (a ? ", " + a.text : "") }, [
           h("span", { class: "c-top" }, [h("span", { text: TR.fmt(d.date) + (d.feedback ? " · fb" : "") }), badge(d)]),
           h("span", { class: "c-title", text: d.title }), marks(d),
           a ? h("span", { class: "c-alarm" }, [st(a.level, a.text)]) : null]));
@@ -601,7 +612,7 @@ window.TRACKER = null;
           r.flagged ? st(r.resolved ? "amber" : "red", r.flagged + " flagged") : st("good", "0 flagged"),
           h("div", { class: "dim", text: r.artifacts.map(function (a2) { return a2.name + (a2.passes == null ? "" : " " + a2.passes); }).join(" · ") })]);
       })) : h("div", { class: "dim", text: "No workflow run recorded for this day." }),
-      d.status === "live" ? null : h("div", { style: "margin-top:16px" }, [h("div", { class: "muted small", text: "Author with:" }),
+      TR.built(d) ? null : h("div", { style: "margin-top:16px" }, [h("div", { class: "muted small", text: "Author with:" }),
         h("code", { text: "python harness/args_for.py " + w.week + " " + d.slot + " --today " + today })])
     ]);
     lastFocus = document.activeElement;
