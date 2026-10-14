@@ -3,7 +3,7 @@
   "page": "docs/weeks/week-01/day-3-python-basics.html",
   "assessed": "2026-10-14",
   "verdict": "partial",
-  "summary": "The day lends itself to two checkable tasks, one on rebinding names and one on what and/or return and which binds first; its layout, comment and input/output steps are conventions, typed input or printed output, and the one checkable piece of input/output (an aligned f-string) is the exercise's summary_line.",
+  "summary": "The day lends itself to two checkable tasks, one on rebinding names and one on what and/or give back and which binds first; its layout, comment and input/output steps are conventions, typed input or printed output, and the one checkable piece of input/output (an aligned f-string) is the exercise's summary_line.",
   "steps": [
     {
       "step": 0,
@@ -30,7 +30,7 @@
       "step": 3,
       "title": "Operators: arithmetic, comparisons and boolean logic",
       "suitable": true,
-      "reason": "What and/or return and how and binds tighter than or show up in a return value, and the page names both mistakes. The exercise and demo 02 already take //, hours left, the breach flag, the priority check, the chained comparison, % 3 and round, so the task works on the rule they leave out: an open ticket that was reopened or is high priority. It uses a given signature, as the exercise's helpers do.",
+      "reason": "What and/or give back and how and binds tighter than or show up in a bound value, and the page names both mistakes. The exercise and demo 02 already take //, hours left, the breach flag, the priority check, the chained comparison, % 3 and round, so the task works on the rule they leave out: an open ticket that was reopened or is high priority. Functions are deferred to Friday, so it is a short script that binds names and rebinds them for a second ticket.",
       "task": "t2"
     },
     {
@@ -60,15 +60,16 @@
       "id": "t2",
       "title": "Operators",
       "step": 3,
-      "idea": "Write needs_escalation(is_open, reopen_count, priority), one return line built from comparisons, and, or and parentheses. It returns True when the ticket is open and has been reopened at least once or has priority \"high\", and False otherwise, so needs_escalation(True, 2, \"low\") is True and needs_escalation(False, 0, \"high\") is False.",
+      "idea": "A short script. The starter binds one ticket as flat variables (is_open = True, reopen_count = 2, priority = \"low\"). The reader binds needs_escalation to one expression built from comparisons, and, or and parentheses: True when the ticket is open and has been reopened at least once or has priority \"high\". Then the reader rebinds the three names to a closed high-priority ticket and binds closed_high to the same expression, which must be False.",
       "checks": [
-        "needs_escalation(True, 2, \"low\") returns True itself; writing reopen_count or ... hands back the count 2, because or returns one of its operands.",
-        "needs_escalation(False, 0, \"high\") returns False; leaving out the parentheses, as in is_open and reopen_count > 0 or priority == \"high\", lets a closed high-priority ticket through, because and binds tighter than or."
+        "needs_escalation is True itself for the open, reopened ticket; writing reopen_count or ... hands back the count 2, because or returns one of its operands.",
+        "closed_high is False for the closed high-priority ticket; leaving out the parentheses, as in is_open and reopen_count >= 1 or priority == \"high\", lets it through, because and binds tighter than or.",
+        "The three names end bound to the closed high-priority ticket, so closed_high was computed from the rebound names and not from typed-in values."
       ],
       "approved": true,
-      "q": "Write <code>needs_escalation(is_open, reopen_count, priority)</code>. It returns <code>True</code> when the ticket is open and has either been reopened at least once or has priority <code>\"high\"</code>, and <code>False</code> otherwise. So <code>needs_escalation(True, 2, \"low\")</code> is <code>True</code> and <code>needs_escalation(False, 0, \"high\")</code> is <code>False</code>. One <code>return</code> line built from comparisons, <code>and</code>, <code>or</code> and parentheses is enough.",
-      "starter": "def needs_escalation(is_open, reopen_count, priority):\n    ...",
-      "tests": "assert needs_escalation(True, 2, \"low\") == True, \"an open ticket that was reopened gives True itself, not the count\"\nassert needs_escalation(False, 0, \"high\") == False, \"a closed ticket gives False, even at high priority\"\nassert needs_escalation(True, 0, \"high\") == True, \"an open high-priority ticket gives True without a reopen\"\nassert needs_escalation(True, 0, \"low\") == False, \"an open ticket never reopened and not high gives False\""
+      "q": "The starter binds one ticket: open, reopened twice, priority <code>\"low\"</code>. Bind <code>needs_escalation</code> to one expression that is <code>True</code> when the ticket is open and has either been reopened at least once or has priority <code>\"high\"</code>, and <code>False</code> otherwise. Then rebind the three names to a closed ticket (<code>is_open = False</code>, <code>reopen_count = 0</code>, <code>priority = \"high\"</code>) and bind <code>closed_high</code> to the same expression. When the script ends, <code>needs_escalation</code> is <code>True</code> and <code>closed_high</code> is <code>False</code>. Comparisons, <code>and</code>, <code>or</code> and parentheses are enough.",
+      "starter": "is_open = True\nreopen_count = 2\npriority = \"low\"",
+      "tests": "assert needs_escalation == True, \"an open ticket that was reopened gives True itself, not the count\"\nassert closed_high == False, \"a closed ticket gives False, even at high priority\"\nassert is_open == False and reopen_count == 0 and priority == \"high\", \"the three names end bound to the closed high-priority ticket\""
     }
   ]
 }

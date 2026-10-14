@@ -1,7 +1,7 @@
 # w01d4 — Python data types
 
 gate: light
-verified: 2026-10-12
+verified: 2026-10-14
 week: 1 · Agile for developers, Git & Python fundamentals
 day: 4 · python-data-types
 

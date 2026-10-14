@@ -31,38 +31,42 @@
 
     <article class="reading-col">
       <div class="lede">
-        <h1>Control flow, functions &amp; classes: design choices in plain Python</h1>
+        <h1>Control flow, functions &amp; classes: choosing the right shape for a rule</h1>
         <div class="meta">
           <span><b>Week 1</b> · Day 5</span>
           <span>Fri Oct 16, 2026</span>
           <span>Agile for developers, Git &amp; Python fundamentals</span>
-          <span><b>~39 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span><b>~45 min</b> · reference notes @150 wpm · diagram · check</span>
           <span class="verified">Sources checked 2026-10-12 · python 3.15</span>
         </div>
-        <p class="summary">This page assumes Thursday's data types: a ticket stored as a dict, a queue of tuples
-        sorted by tuple order, and deadlines worked out with <code>datetime</code> and <code>timedelta</code>. It treats
-        control flow, functions and classes as design choices, covering if/elif/else and guard clauses, while and for loops,
-        functions and their two classic traps, lambda sort keys, arrays and lists, OOP concepts, classes and objects,
-        inheritance, iterators and scope. Each section shows a runnable example, names the trade-off and ends with the words
-        to say when an interviewer asks. Afterwards you can explain why a mutable default is a bug, what a for loop does
-        underneath, how <code>super()</code> and <code>isinstance</code> behave, and why <code>next_id += 1</code> inside a
-        function raises <code>UnboundLocalError</code>.</p>
+        <p class="summary">This page assumes Thursday's data types: a ticket stored as a dict, a queue of
+        <code>(rank, id, title)</code> tuples sorted by tuple order, truthiness, and deadlines worked out with
+        <code>datetime</code> and <code>timedelta</code>. It teaches Python's control flow, functions and classes from the
+        syntax up, then when to choose each: if/elif/else and guard clauses, while and for loops, functions and their two
+        classic traps, lambda sort keys, lists and arrays, what objects and classes are, inheritance, iterators and scope.
+        Each section shows a runnable example with its output, names the trade-off and ends with the words to say when an
+        interviewer asks. Afterwards you can explain why a mutable default is a bug, what a for loop does underneath, how
+        <code>super()</code> and <code>isinstance</code> behave, and why <code>next_id += 1</code> inside a function raises
+        <code>UnboundLocalError</code>.</p>
         <div class="ix-legend"></div>
       </div>
 
       <section class="step" data-diagram="0" data-step="0">
         <div class="tag">Control flow</div>
         <h2>Branching with if, elif and else</h2>
-        <p>An <code>if</code> statement runs a block only when a test is true. This step covers Python's form of it, then
-        the question a team asks: which shape of branch makes the rule easiest to read and hardest to break when the
-        next person edits it.</p>
-        <h3>One branch runs: the first whose test is true</h3>
-        <p>An <code>if</code> statement with <code>elif</code> and <code>else</code> parts runs at most one block. Python
-        tests the conditions from the top, runs the block of the first one that is true and skips the rest; the
-        <code>else</code> block runs only when none of them was true.<sup class="cite"><a href="#src-1">1</a></sup> Blocks
-        are marked by indentation alone, and PEP 8 sets four spaces per level.<sup class="cite"><a href="#src-2">2</a></sup>
-        A ticket's status is a good example, because it has three answers and exactly one of them applies.</p>
-<pre><code>from datetime import datetime, timedelta
+        <p>A branch runs some code only when a test passes. Up to now the ticket-desk script has had one plain
+        <code>if</code>, the guard around its prompts, and its breach check has been a boolean stored in a variable. This
+        step covers Python's full branch statement and then the question a team cares about: which shape of branch keeps a
+        rule easy to read and hard to break when the next person edits it.</p>
+        <h3>if, elif and else: the first true test wins</h3>
+        <p>The statement starts with <code>if</code>, a condition and a colon, followed by an indented block. Any number of
+        <code>elif</code> ("else if") parts can follow, each with its own condition, and one optional <code>else</code> at
+        the end. Python tests the conditions from the top, runs the block of the first one that is true and skips the rest;
+        the <code>else</code> block runs only when none of them was true.<sup class="cite"><a href="#src-1">1</a></sup>
+        Blocks are marked by indentation alone, the rule from Wednesday, and PEP 8 sets four spaces per
+        level.<sup class="cite"><a href="#src-2">2</a></sup> A ticket's status suits this shape, because it has three
+        possible answers and exactly one applies.</p>
+<pre data-run="python"><code>from datetime import datetime, timedelta
 
 NOW = datetime(2026, 10, 16, 12, 0)
 deadline = datetime(2026, 10, 16, 13, 30)
@@ -74,39 +78,37 @@ elif deadline - NOW &lt; timedelta(hours=2):
 else:
     status = "on time"
 print(status)</code></pre>
-        <p>This prints <code>at risk</code>. The deadline has not passed, so the first test is false, and ninety minutes is
+        <p>This prints <code>at risk</code>. The deadline has not passed, so the first test is false; ninety minutes is
         under two hours, so the <code>elif</code> block runs and the <code>else</code> is skipped. The order of the tests
-        carries meaning. A breached ticket also has less than two hours left (a negative amount), so if the "at risk" test
-        came first, a breached ticket would be reported as at risk and the breach branch would never run. Put the strictest
-        test first.</p>
-        <p>That is also the difference between <code>elif</code> and a second <code>if</code>. Two separate
-        <code>if</code> statements are tested independently, so both can run and the second can overwrite what the first
-        set. An <code>elif</code> is tested only when everything above it was false. The trade-off of a long chain is that
-        it grows one branch per case and has to be edited for each new value.<sup class="cite"><a href="#src-1">1</a></sup>
-        When every branch only compares the same variable to a constant, a dict such as
+        matters. A breached ticket also has less than two hours left (a negative amount), so if the "at risk" test
+        came first, every breached ticket would be reported as at risk and the breach branch would never run. Put the
+        strictest test first.</p>
+        <p>That is also what <code>elif</code> gives you over a second <code>if</code>. Two separate <code>if</code>
+        statements are tested independently, so both can run and the second can overwrite what the first set. An
+        <code>elif</code> is tested only when everything above it was false. A long chain has a cost: it grows by one
+        branch per case and has to be edited for each new value.<sup class="cite"><a href="#src-1">1</a></sup> When every
+        branch only compares one variable to a constant, a dict such as
         <code>SLA_HOURS = {"high": 4, "normal": 24, "low": 72}</code> keeps the table as data and one lookup replaces the
-        chain. The chain keeps one ability the dict lacks: each branch can test a different, arbitrary condition, as the
-        status example does.</p>
-        <h3>What counts as false</h3>
-        <p>A condition does not have to be a <code>bool</code>. Empty containers, <code>0</code>, <code>0.0</code>,
-        <code>""</code> and <code>None</code> are false in a test, and most other objects are
-        true.<sup class="cite"><a href="#src-3">3</a></sup></p>
-<pre><code>for value in [0, 0.0, "", None, [], {}, "0", [0]]:
-    print(repr(value), bool(value))</code></pre>
-        <p>The first six lines end in <code>False</code>. The last two end in <code>True</code>: <code>"0"</code> is a
-        non-empty string and <code>[0]</code> is a list with one item in it. So <code>if queue:</code> reads as "if the
-        queue has anything in it", which is the idiomatic test. The operators <code>and</code> and <code>or</code>
-        short-circuit and return one of their operands, which is not necessarily a
-        <code>bool</code>.<sup class="cite"><a href="#src-4">4</a></sup> That is why
-        <code>assignee or "unassigned"</code> evaluates to <code>"unassigned"</code> when <code>assignee</code> is
-        <code>None</code>. The limit of truthiness is that it lumps values together: if <code>0</code> is a valid ticket
-        count, <code>if count:</code> treats it the same as a missing count. When you mean "is missing", say so. PEP 8 asks
-        for comparisons to <code>None</code> to use <code>is</code> or <code>is not</code>, never
+        chain. The chain keeps one thing the dict cannot do: each branch may test a different condition, as the status
+        example does.</p>
+        <div class="ix-predict" data-q="Swap the first two tests, so the chain checks deadline - NOW &lt; timedelta(hours=2) before NOW &gt; deadline. What status does a ticket that breached an hour ago get?" data-a="at risk. A breached ticket has a negative time left, which is less than two hours, so the first test is true and the chain stops there. The breach branch can never run."></div>
+        <h3>What a condition can be</h3>
+        <p>A condition does not have to be a <code>bool</code>. Thursday's truthiness rules apply here: empty containers,
+        <code>0</code>, <code>0.0</code>, <code>""</code> and <code>None</code> count as false, and most other objects count
+        as true.<sup class="cite"><a href="#src-3">3</a></sup> So <code>if queue:</code> reads as "if the queue has
+        anything in it", which is the usual way to write that test. <code>and</code> and <code>or</code> stop as soon as
+        the answer is known and return one of their operands, so <code>assignee or "unassigned"</code> gives
+        <code>"unassigned"</code> when <code>assignee</code> is <code>None</code>.<sup class="cite"><a href="#src-4">4</a></sup></p>
+        <p>The limit of truthiness is that it lumps values together. If <code>0</code> is a valid count, <code>if count:</code>
+        treats it the same as a missing one. When you mean "is missing", say so: PEP 8 asks for comparisons to
+        <code>None</code> to use <code>is</code> or <code>is not</code>, never
         <code>==</code>.<sup class="cite"><a href="#src-2">2</a></sup></p>
         <h3>Guard clauses instead of nesting</h3>
-        <p>A guard clause is an early <code>if</code> that handles a bad or special case and returns at once, so the main
-        logic sits unnested below it. Compare a nested version with a guarded one:</p>
-<pre><code>def describe_nested(ticket):
+        <p>A guard clause is an early <code>if</code> that handles a bad or special case and leaves at once, so the main
+        logic sits unnested below it. Here is the same rule nested and then guarded. Both are functions, which step 3 covers
+        properly; for now read <code>def</code> as "define a named block of code" and <code>return</code> as "hand this
+        value back and stop".</p>
+<pre data-run="python"><code>def describe_nested(ticket):
     if ticket is not None:
         if ticket["title"]:
             return f"#{ticket['id']} {ticket['title']}"
@@ -126,24 +128,26 @@ def describe(ticket):
 
 print(describe(None))
 print(describe({"id": 7, "title": ""}))
-print(describe({"id": 7, "title": "Printer jams"}))</code></pre>
-        <p>Both functions behave the same, and the three calls print <code>no ticket</code>, <code>untitled</code> and
-        <code>#7 Printer jams</code>. The guarded version reads top to bottom as a list of exclusions followed by the normal
-        case, and adding a fourth special case means adding two lines at the top instead of another level of indentation.
-        Nesting still has a place when both branches do real work of similar weight; a guard clause suits the case where one
-        branch is an exit. You recognise the pattern in other people's code as <code>if x is None: return</code>, or a
+print(describe({"id": 7, "title": "Printer jams"}))
+print(describe_nested({"id": 7, "title": "Printer jams"}))</code></pre>
+        <p>The four calls print <code>no ticket</code>, <code>untitled</code>, <code>#7 Printer jams</code> and
+        <code>#7 Printer jams</code> again: the two versions behave the same. The guarded one reads top to bottom as a list
+        of exclusions followed by the normal case, and a fourth special case costs two lines at the top instead of another
+        level of indentation. Nesting still fits when both branches do real work of similar weight; a guard clause fits
+        when one branch is an exit. In other people's code you spot it as <code>if x is None: return</code>, or a
         <code>continue</code> inside a loop, at the very top of a block.</p>
         <h3>The conditional expression</h3>
-        <p>The usual follow-up question is the expression form of the same branch:
-        <code>label = "late" if NOW &gt; deadline else "ok"</code>. It produces a value, so it fits inside an assignment, an
-        f-string or a function argument, and it always needs both halves. It reads well for a choice between two short
+        <p>The same branch also has an expression form:
+        <code>label = "late" if NOW &gt; deadline else "ok"</code>. It produces a value, so it fits inside an assignment,
+        an f-string or a function argument, and it always needs both halves.<sup class="cite"><a href="#src-4">4</a></sup> It reads well for a choice between two short
         values. Once either half needs its own logic, or a third case appears, the statement form is clearer.</p>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>An elif is only tested when every condition above it was false, so a chain runs exactly one branch, the first
-          true one. Two separate ifs are tested independently, so both can run. That's why I put the strictest test first.</p>
+          true one. Two separate ifs are tested independently, so both can run. That's why I put the strictest test
+          first.</p>
           <p>Zero, empty strings, empty containers and None are false in a condition, and almost everything else is true.
-          For None specifically I write "is None" rather than relying on truthiness or using double equals.</p>
+          When I mean "missing" I test for None with "is", so a real zero isn't treated as missing.</p>
           <p>A guard clause handles the special case at the top and returns early, so the main logic isn't nested. I use it
           when one branch is really an exit, and keep nesting for two branches that both do real work.</p>
         </div>
@@ -152,11 +156,13 @@ print(describe({"id": 7, "title": "Printer jams"}))</code></pre>
       <section class="step" data-diagram="0" data-step="1">
         <div class="tag">Control flow</div>
         <h2>Loops: while for a condition, for over a collection</h2>
-        <h3>While loops: repeat until the condition fails</h3>
-        <p>A <code>while</code> statement tests its condition before every pass and stops as soon as it is
+        <p>Python has two loop statements. <code>while</code> repeats as long as a condition holds; <code>for</code> runs
+        its block once for each item of a collection. Picking the right one avoids a common group of bugs.</p>
+        <h3>while: repeat until the condition fails</h3>
+        <p>A <code>while</code> statement tests its condition before every pass and stops as soon as the condition is
         false.<sup class="cite"><a href="#src-5">5</a></sup> Use it when you cannot say in advance how many passes there
-        will be, only what has to become true to stop. The natural example is input validation: keep asking until the answer
-        is acceptable.</p>
+        will be, only what has to become true for the loop to stop. Input validation is the standard example: keep asking
+        until the answer is acceptable.</p>
 <pre><code>SLA_HOURS = {"high": 4, "normal": 24, "low": 72}
 
 priority = input("Priority (high, normal, low): ")
@@ -167,15 +173,17 @@ print(f"priority set to {priority}")</code></pre>
         script prints <code>priority set to high</code>. The limit is the one every reviewer checks: the body must change
         something the condition reads. If the body forgot to reassign <code>priority</code>, the loop would run forever. A
         <code>for</code> loop over a finite collection cannot have that bug.<sup class="cite"><a href="#src-1">1</a></sup>
-        You recognise the shape on sight as <code>while value not in allowed: value = input(...)</code>.</p>
-        <h3>The re-ask loop, break, continue and the loop else</h3>
-        <p><code>break</code> leaves the nearest enclosing loop and <code>continue</code> jumps to its next
-        pass.<sup class="cite"><a href="#src-1">1</a></sup> <code>while True:</code> never fails its own test, so it runs
-        until a <code>break</code> inside the body ends it, which lets the exit test sit in the middle of the body instead
-        of at the top.<sup class="cite"><a href="#src-5">5</a></sup> A loop can also carry an <code>else</code> block,
-        which runs when the loop ends without a <code>break</code>.<sup class="cite"><a href="#src-1">1</a></sup> It reads
-        as "no break happened", which makes it a search's not-found branch:</p>
-<pre><code>queue = [(2, 102, "Printer jams"), (1, 101, "Login page returns 500")]
+        In someone else's code the shape looks like <code>while value not in allowed: value = input(...)</code>, or
+        <code>while True:</code> with a <code>break</code> inside.</p>
+        <h3>break, continue and the loop else</h3>
+        <p><code>break</code> leaves the nearest enclosing loop at once, and <code>continue</code> skips the rest of the
+        current pass and starts the next one.<sup class="cite"><a href="#src-1">1</a></sup> <code>while True:</code> never
+        fails its own test, so it runs until a <code>break</code> inside the body ends it, which lets the exit test sit in
+        the middle of the body instead of at the top.<sup class="cite"><a href="#src-5">5</a></sup> A loop can also carry an
+        <code>else</code> block, which runs only when the loop ends without a
+        <code>break</code>.<sup class="cite"><a href="#src-1">1</a></sup> Read it as "no break happened", which makes it a
+        search's not-found branch:</p>
+<pre data-run="python"><code>queue = [(2, 102, "Printer jams"), (1, 101, "Login page returns 500")]
 for rank, tid, text in queue:
     if tid == 105:
         print("found", text)
@@ -185,25 +193,27 @@ else:
         <p>No item matches, the loop runs to the end, and the <code>else</code> prints <code>no ticket 105</code>. Change
         <code>105</code> to <code>101</code> and the loop prints <code>found Login page returns 500</code>, breaks, and the
         <code>else</code> is skipped.</p>
-        <h3>For loops: walk any iterable</h3>
-        <p><code>for</code> takes items from any iterable in order and binds the loop variable on each
-        pass.<sup class="cite"><a href="#src-5">5</a></sup> A list, a tuple, a string, a dict, a file and a
-        <code>range</code> all qualify. <code>range(n)</code> yields <code>0</code> to <code>n-1</code> and does not build
-        a list of the numbers up front.<sup class="cite"><a href="#src-1">1</a></sup> When each item is a tuple, the loop
-        header can unpack it:</p>
-<pre><code>queue = [(2, 102, "Printer jams"), (1, 101, "Login page returns 500"), (3, 103, "Update footer year")]
+        <h3>for: one pass per item</h3>
+        <p>An iterable is any object that can hand out its items one at a time: a list, a tuple, a string, a dict, a set
+        and a <code>range</code> all are. <code>for</code> takes items from an iterable in order and binds the loop variable
+        to each one in turn.<sup class="cite"><a href="#src-5">5</a></sup> <code>range(n)</code> yields <code>0</code> to
+        <code>n-1</code> without building a list of the numbers first.<sup class="cite"><a href="#src-1">1</a></sup> When
+        each item is a tuple, the loop header can unpack it into several names:</p>
+<pre data-run="python"><code>queue = [(2, 102, "Printer jams"), (1, 101, "Login page returns 500"), (3, 103, "Update footer year")]
 for rank, tid, text in sorted(queue):
     print(rank, tid, text)</code></pre>
         <p>This prints <code>1 101 Login page returns 500</code>, then <code>2 102 Printer jams</code>, then
         <code>3 103 Update footer year</code>. One loop replaces one <code>print</code> per item, and it keeps working when
-        the queue grows to a hundred tickets.</p>
+        the queue grows to a hundred tickets. How <code>for</code> gets each item out of the iterable is step 8's
+        subject.</p>
         <h3>enumerate, zip and dict.items()</h3>
-        <p>A Python <code>for</code> keeps no counter of its own. When you need a position, <code>enumerate(iterable, start=0)</code> yields
-        <code>(index, item)</code> pairs.<sup class="cite"><a href="#src-6">6</a></sup> <code>zip</code> walks several
-        iterables side by side and stops at the shortest one unless <code>strict=True</code> is
-        passed.<sup class="cite"><a href="#src-6">6</a></sup> <code>dict.items()</code> yields key and value pairs that unpack
-        in the header.<sup class="cite"><a href="#src-7">7</a></sup></p>
-<pre><code>titles = ["Login page returns 500", "Printer jams"]
+        <p>A Python <code>for</code> keeps no counter of its own. When you need a position,
+        <code>enumerate(iterable, start=0)</code> yields <code>(index, item)</code>
+        pairs.<sup class="cite"><a href="#src-6">6</a></sup> <code>zip</code> walks several iterables side by side and stops
+        at the shortest unless <code>strict=True</code> is passed,<sup class="cite"><a href="#src-6">6</a></sup> and
+        <code>dict.items()</code> yields key and value pairs that unpack in the
+        header.<sup class="cite"><a href="#src-7">7</a></sup></p>
+<pre data-run="python"><code>titles = ["Login page returns 500", "Printer jams"]
 owners = ["lee", "dana", "sam"]
 for n, title in enumerate(titles, start=1):
     print(n, title)
@@ -216,21 +226,22 @@ for title, owner in zip(titles, owners):
         <h3>Changing a list while you loop over it</h3>
         <p>Adding or removing items from a list while a <code>for</code> loop walks it can skip elements or repeat
         them.<sup class="cite"><a href="#src-1">1</a></sup></p>
-<pre><code>ids = [101, 102, 102, 103]
+<pre data-run="python"><code>ids = [101, 102, 102, 103]
 for i in ids:
     if i == 102:
         ids.remove(i)
 print(ids)</code></pre>
-        <p>This prints <code>[101, 102, 103]</code>. Removing the first <code>102</code> shifts everything left, the loop
-        moves on to the next position, and the second <code>102</code> is never looked at. Loop over a copy,
+        <p>This prints <code>[101, 102, 103]</code>. Removing the first <code>102</code> shifts every later item one place
+        left, the loop moves on to the next position, and the second <code>102</code> is never looked at. Loop over a copy,
         <code>for i in ids.copy():</code>, and the result is <code>[101, 103]</code>; or build a new list of the items you
         want to keep.</p>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>I use while when I know the stopping condition but not the number of passes, like re-asking for input until
-          it's valid. I use for when I'm walking a collection, because it can't loop forever and it reads more directly.</p>
+          it's valid. I use for when I'm walking a collection, because it reads more directly and it can't loop
+          forever.</p>
           <p>Break leaves the nearest loop, continue skips to the next pass, and the else on a loop runs only if the loop
-          finished without a break. It's handy for a search's not-found case.</p>
+          finished without a break, which makes it handy for a search's not-found case.</p>
           <p>Removing items from a list while looping over it shifts the remaining items, so the loop skips some. I loop
           over a copy or build a new list instead.</p>
         </div>
@@ -240,15 +251,17 @@ print(ids)</code></pre>
         <div class="tag">Functions</div>
         <h2>Functions: naming a rule once</h2>
         <p>When the same rule appears in three places in a script, a change to it has to be made three times, and one of
-        them will be missed. A function gives the rule one name and one home.</p>
+        them will be missed. A function gives the rule one name and one home, and every caller uses that one copy.</p>
         <h3>def, parameters and arguments</h3>
-        <p><code>def</code> is a statement: when it runs, it creates a function object and binds it to the
-        name.<sup class="cite"><a href="#src-1">1</a></sup> The names in the <code>def</code> line are parameters; the
-        values a caller passes are arguments. If the first statement of the body is a string literal, it becomes the
-        function's docstring, readable as <code>__doc__</code>,<sup class="cite"><a href="#src-1">1</a></sup> and PEP 257
-        asks for a one-line docstring that ends with a period and states the effect as a command ("Return ...", not
+        <p>A function is defined with <code>def</code>, a name, a parameter list in parentheses and a colon, followed by an
+        indented body. <code>def</code> is a statement like any other: when Python runs it, it creates a function object
+        and binds it to the name.<sup class="cite"><a href="#src-1">1</a></sup> Nothing in the body runs until someone
+        calls the function. The names in the <code>def</code> line are parameters; the values a caller passes in are
+        arguments. If the first statement of the body is a string literal, it becomes the function's docstring, readable as
+        <code>__doc__</code>,<sup class="cite"><a href="#src-1">1</a></sup> and PEP 257 asks for a one-line docstring that
+        ends with a period and states the effect as a command ("Return ...", not
         "Returns ...").<sup class="cite"><a href="#src-8">8</a></sup></p>
-<pre><code>from datetime import datetime, timedelta
+<pre data-run="python"><code>from datetime import datetime, timedelta
 
 SLA_HOURS = {"high": 4, "normal": 24, "low": 72}
 
@@ -260,28 +273,30 @@ def deadline_for(priority, opened_at):
 
 print(deadline_for("high", datetime(2026, 10, 16, 9, 30)))
 print(deadline_for.__doc__)</code></pre>
-        <p>The first line prints <code>2026-10-16 13:30:00</code>, four hours after the ticket opened, and the second prints
-        the docstring. Functions are objects like any other value, so they can be passed as arguments and
-        returned,<sup class="cite"><a href="#src-9">9</a></sup> which is what makes the sort keys in the next section
-        possible.</p>
-        <h3>No return means None</h3>
-        <p>A function with no <code>return</code> statement, or with a bare <code>return</code>, gives back
+        <p>The first line prints <code>2026-10-16 13:30:00</code>, four hours after the ticket opened, and the second
+        prints the docstring. Because <code>def</code> produces an object, a function is a value like any other: it can be
+        passed as an argument and returned from another function.<sup class="cite"><a href="#src-9">9</a></sup> The sort
+        keys in the next step depend on exactly that.</p>
+        <h3>return, and the None you get without it</h3>
+        <p><code>return value</code> ends the call and hands the value back to the caller. A function with no
+        <code>return</code> statement, or with a bare <code>return</code>, gives back
         <code>None</code>.<sup class="cite"><a href="#src-1">1</a></sup></p>
-<pre><code>def log_ticket(title):
+<pre data-run="python"><code>def log_ticket(title):
     print(f"logged: {title}")
 
 
 result = log_ticket("Printer jams")
 print(result)</code></pre>
-        <p>This prints <code>logged: Printer jams</code> and then <code>None</code>. The bug it causes is quiet: a function
-        that prints its answer instead of returning it looks right when you run it by hand, and the caller that compares or
-        sorts on the result receives <code>None</code>. If a caller needs the value, return it and let the caller decide
-        whether to print.</p>
+        <p>This prints <code>logged: Printer jams</code> and then <code>None</code>. The bug it causes is quiet: a
+        function that prints its answer instead of returning it looks right when you try it by hand, and the caller that
+        compares or sorts on the result receives <code>None</code>. If a caller needs the value, return it and let the
+        caller decide whether to print.</p>
         <h3>The mutable default argument</h3>
-        <p>Default values are evaluated once, when the <code>def</code> statement runs, and not on each
+        <p>A parameter can have a default value, used when the caller leaves that argument out. Default values are
+        evaluated once, when the <code>def</code> statement runs, and not on each
         call.<sup class="cite"><a href="#src-1">1</a></sup> For an immutable default such as <code>0</code> or
-        <code>"normal"</code> that makes no difference. For a list it does:</p>
-<pre><code>def add_note(text, history=[]):
+        <code>"normal"</code> that makes no difference. For a list, which can be changed in place, it does:</p>
+<pre data-run="python"><code>def add_note(text, history=[]):
     history.append(text)
     return history
 
@@ -290,8 +305,8 @@ print(add_note("opened"))
 print(add_note("assigned"))</code></pre>
         <p>The first call prints <code>['opened']</code> and the second prints <code>['opened', 'assigned']</code>. Both
         calls appended to the one list created when <code>def</code> ran, so notes leak from one ticket into the next. The
-        fix is to default to None and build the list inside the body:</p>
-<pre><code>def add_note(text, history=None):
+        fix is to default to <code>None</code> and build the list inside the body:</p>
+<pre data-run="python"><code>def add_note(text, history=None):
     if history is None:
         history = []
     history.append(text)
@@ -300,21 +315,23 @@ print(add_note("assigned"))</code></pre>
 
 print(add_note("opened"))
 print(add_note("assigned"))</code></pre>
-        <p>Now the calls print <code>['opened']</code> and <code>['assigned']</code>. The cost of the idiom is one extra check
-        in the body, which is cheap next to a shared-state bug.<sup class="cite"><a href="#src-1">1</a></sup> Recognise it as
-        <code>def f(items=None):</code> followed by <code>if items is None: items = []</code>; a reviewer who sees
+        <p>Now the calls print <code>['opened']</code> and <code>['assigned']</code>. The idiom costs one extra check in
+        the body, which is cheap next to a shared-state bug.<sup class="cite"><a href="#src-1">1</a></sup> You recognise it
+        as <code>def f(items=None):</code> followed by <code>if items is None: items = []</code>, and a reviewer who sees
         <code>=[]</code> or <code>={}</code> in a signature will ask you to change it.</p>
+        <div class="ix-spot" data-snippet="def assign(ticket, agent, watchers=[]):&#10;    watchers.append(agent)&#10;    ticket[&quot;watchers&quot;] = watchers&#10;    return ticket" data-q="Two tickets are assigned with assign(t1, &quot;lee&quot;) and assign(t2, &quot;dana&quot;). What does t1[&quot;watchers&quot;] hold afterwards, and why?" data-a="['lee', 'dana']. The default list was created once, when def ran, and both calls appended to it, so both tickets share it. Default to None and create the list in the body."></div>
         <h3>Positional and keyword arguments</h3>
-        <p>The follow-up question is how callers may pass values. Arguments can be passed by position or by keyword, as in
+        <p>Arguments can be passed by position or by keyword, as in
         <code>deadline_for(priority="low", opened_at=start)</code>, and in a call a keyword argument may not come before a
-        positional one.<sup class="cite"><a href="#src-1">1</a></sup> Keywords cost a few characters and buy a call that
-        reads without the signature open beside it, which matters most when several parameters share a type and could be
-        swapped by mistake. The same tutorial section goes on to <code>*args</code> and <code>**kwargs</code>, which let a
-        function accept extra positional and keyword arguments.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        positional one.<sup class="cite"><a href="#src-1">1</a></sup> Keywords add a few characters and let the call be
+        read without the signature open beside it, which matters most when several parameters share a type and could be
+        swapped by mistake. The same section of the tutorial goes on to <code>*args</code> and <code>**kwargs</code>, the
+        forms a function uses to accept a variable number of positional and keyword
+        arguments.<sup class="cite"><a href="#src-1">1</a></sup></p>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
-          <p>A parameter is the name in the function definition; an argument is the value the caller passes in. Callers can
-          pass arguments by position or by keyword, and keywords make a call readable without the signature.</p>
+          <p>A parameter is the name in the function definition; an argument is the value the caller passes in. Callers
+          can pass arguments by position or by keyword, and keywords make a call readable without the signature.</p>
           <p>A function with no return statement returns None. The classic bug is printing the result instead of returning
           it, so the caller ends up comparing None.</p>
           <p>Default values are evaluated once, when def runs, so a list default is shared by every call that doesn't pass
@@ -325,23 +342,23 @@ print(add_note("assigned"))</code></pre>
       <section class="step" data-diagram="0" data-step="3">
         <div class="tag">Functions</div>
         <h2>Lambda and sort keys</h2>
-        <p>A list of tuples sorts by tuple order, first element first, which works only while the first element happens to
-        be the thing you want to sort by. Records stored as dicts have no natural order, so the sort has to be told what to
-        compare.</p>
-        <h3>Lambda: a function in one expression</h3>
-        <p><code>lambda args: expr</code> builds an anonymous function whose body is a single
+        <p>Thursday's queue of tuples sorted by tuple order, first element first. That works only while the first element
+        happens to be the thing you want to sort by. Records stored as dicts have no natural order at all, so the sort has
+        to be told what to compare, and the usual way to tell it is a lambda.</p>
+        <h3>lambda: a function in one expression</h3>
+        <p><code>lambda args: expr</code> builds a function with no name whose body is a single
         expression.<sup class="cite"><a href="#src-4">4</a></sup> <code>lambda t: t["priority"]</code> is the same function
-        as a two-line <code>def</code> that returns <code>t["priority"]</code>, written where it is used. Its limits come
-        from the same definition: one expression, no statements, no docstring, and no name to show in a
-        traceback.<sup class="cite"><a href="#src-1">1</a></sup> Anything longer, reused in two places or worth
-        documenting belongs in a <code>def</code>. PEP 8 also says to write <code>def f(x): ...</code> rather than assign a
-        lambda to a name, because a <code>def</code> gives the function a real name.<sup class="cite"><a href="#src-2">2</a></sup>
-        In practice lambdas appear in one place more than any other: the <code>key=</code> argument of a sort.</p>
-        <h3>Sorting records by a key</h3>
-        <p><code>sorted()</code> and <code>list.sort()</code> call the <code>key</code> function once per item and compare
-        the results instead of the items.<sup class="cite"><a href="#src-10">10</a></sup> A tuple key sorts by its first
-        element and uses the second only to break ties.<sup class="cite"><a href="#src-10">10</a></sup></p>
-<pre><code>from datetime import datetime
+        as a two-line <code>def</code> that returns <code>t["priority"]</code>, written at the spot where it is used. Its
+        limits follow from that definition: one expression, no statements, no docstring, and no name to show in an error
+        report.<sup class="cite"><a href="#src-1">1</a></sup> Anything longer, reused in two places or worth documenting
+        belongs in a <code>def</code>. PEP 8 also says to write <code>def f(x): ...</code> rather than assign a lambda to a
+        name, because a <code>def</code> gives the function a real name.<sup class="cite"><a href="#src-2">2</a></sup> In
+        practice lambdas turn up in one place more than any other: the <code>key=</code> argument of a sort.</p>
+        <h3>Sorting records with key=</h3>
+        <p><code>sorted()</code> and <code>list.sort()</code> accept a <code>key</code> function. They call it once per item
+        and compare the results instead of the items.<sup class="cite"><a href="#src-10">10</a></sup> A tuple key sorts by
+        its first element and uses the second only to break ties.<sup class="cite"><a href="#src-10">10</a></sup></p>
+<pre data-run="python"><code>from datetime import datetime
 
 PRIORITY_RANK = {"high": 1, "normal": 2, "low": 3}
 queue = [
@@ -356,53 +373,69 @@ print([t["id"] for t in by_text])
 
 queue.sort(key=lambda t: (PRIORITY_RANK[t["priority"]], t["opened_at"]))
 print([t["id"] for t in queue])</code></pre>
-        <p>The first print shows <code>[4, 2, 1, 3]</code>, and it is wrong. Sorting on the priority text compares strings
-        alphabetically, and <code>"high"</code> &lt; <code>"low"</code> &lt; <code>"normal"</code>, so the low ticket jumps
-        ahead of both normal ones. The second key maps the text to a rank first and breaks ties on the opening time, and it
-        prints <code>[4, 3, 1, 2]</code>: the high ticket, the older normal ticket, the newer normal ticket, then the low
-        one. In a code review you will see this shape as
+        <p>The prints use a list comprehension, <code>[t["id"] for t in by_text]</code>, which builds a list of each
+        ticket's id in one expression. The first shows <code>[4, 2, 1, 3]</code>, and it is wrong. Sorting on the priority
+        text compares strings alphabetically, and <code>"high"</code> &lt; <code>"low"</code> &lt; <code>"normal"</code>,
+        so the low ticket jumps ahead of both normal ones. The second key maps the text to a rank first and breaks ties on
+        the opening time, printing <code>[4, 3, 1, 2]</code>: the high ticket, the older normal ticket, the newer normal
+        ticket, then the low one. In a code review you will meet this shape as
         <code>sorted(rows, key=lambda r: (r.rank, r.opened_at))</code>.</p>
-        <p>The other common slip is calling the function instead of passing it. With a helper such as
+        <p>The other common slip is calling the function instead of passing it. With a helper named
         <code>rank_of</code>, <code>key=rank_of</code> passes the function so the sort can call it per item;
-        <code>key=rank_of()</code> calls it once and hands the sort its result instead.</p>
-        <div class="ix-predict" data-q="A teammate writes sorted(queue, key=lambda t: t[&quot;priority&quot;]) for the four tickets above. Where does the low-priority ticket land?" data-a="Second, straight after the high one. The key is the priority text, and &quot;low&quot; sorts before &quot;normal&quot; alphabetically. Mapping through PRIORITY_RANK fixes it."></div>
-        <h3>sorted() versus list.sort(), and stable sorting</h3>
-        <p><code>sorted()</code> takes any iterable and returns a new list, leaving the original alone; <code>list.sort()</code>
-        sorts the list in place.<sup class="cite"><a href="#src-10">10</a></sup> Use
-        <code>sorted()</code> when the original order still matters to someone else, or when the input is not a list at all.
-        Use <code>.sort()</code> when you own the list and want it reordered.</p>
-        <p>Python's sort is stable, so items with equal keys keep their original order.<sup class="cite"><a href="#src-10">10</a></sup>
-        You can see it in the first print above: tickets 1 and 3 have the same key, <code>"normal"</code>, and come out in
-        the order they went in.</p>
+        <code>key=rank_of()</code> calls it once, straight away, with no item to look at, so the sort never receives a
+        function at all.</p>
+        <div class="ix-predict" data-q="A teammate sorts the four tickets above with sorted(queue, key=lambda t: t[&quot;priority&quot;]). Where does the low-priority ticket land?" data-a="Second, straight after the high one. The key is the priority text, and &quot;low&quot; sorts before &quot;normal&quot; alphabetically. Mapping through PRIORITY_RANK fixes it."></div>
+        <h3>sorted() against list.sort(), and stable sorting</h3>
+        <p>As Thursday showed, <code>sorted()</code> takes any iterable and returns a new list, leaving the original alone,
+        while <code>list.sort()</code> reorders the list in place and returns
+        <code>None</code>.<sup class="cite"><a href="#src-10">10</a></sup> Use <code>sorted()</code> when someone else
+        still needs the original order, or when the input is not a list at all. Use <code>.sort()</code> when you own the
+        list and want it reordered.</p>
+        <p>Python's sort is stable: items with equal keys keep the order they had going
+        in.<sup class="cite"><a href="#src-10">10</a></sup> You can see it in the first print above. Tickets 1 and 3 have
+        the same key, <code>"normal"</code>, and come out in the order they went in. Stability is what makes sorting in two
+        passes work, and it is why a tie-breaker is needed only when the incoming order is not the one you want.</p>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
-          <p>A lambda is an anonymous function limited to one expression. I use it inline for short things like a sort key;
-          anything longer, reused or worth a docstring gets a def with a proper name.</p>
-          <p>To sort records by a field I pass a key function, usually a lambda, that returns a tuple: the main field first,
-          then the tie-breaker. If the field is text like a priority, I map it to a rank first so it doesn't sort
+          <p>A lambda is a function with no name, limited to one expression. I use it inline for short things like a sort
+          key; anything longer, reused or worth a docstring gets a def with a proper name.</p>
+          <p>To sort records by a field I pass a key function, usually a lambda, that returns a tuple: the main field
+          first, then the tie-breaker. If the field is text like a priority, I map it to a rank first so it doesn't sort
           alphabetically.</p>
-          <p>Key equals f passes the function so the sort can call it per item. Key equals f with parentheses calls it once,
-          immediately, and hands the sort the result instead.</p>
+          <p>Passing the function name lets the sort call it once per item. Putting parentheses after it calls it
+          immediately, and the sort gets the result instead of a function.</p>
         </div>
       </section>
 
       <section class="step" data-diagram="0" data-step="4">
         <div class="tag">Data</div>
         <h2>Arrays and lists</h2>
-        <h3>Is a Python list an array?</h3>
-        <p>Interviewers coming from Java or C ask this to see whether you know what a list is underneath. A Python list is a
-        mutable sequence of references, and the items it refers to may be of mixed
-        types.<sup class="cite"><a href="#src-7">7</a></sup> <code>[101, "Printer jams", 4.0, None]</code> is a perfectly
-        good list. In CPython it is implemented as a dynamic array of references to objects, so it is an array in the data
-        structures sense: indexing by position is fast, and it grows as you
-        append.<sup class="cite"><a href="#src-11">11</a></sup> What it does not store is the values themselves side by side.
-        Each slot holds a reference to a separate Python object, which is flexible and costs memory.</p>
-        <h3>Arrays: array.array for one numeric type</h3>
+        <p>"Is a Python list an array?" is a common interview question, and answering it takes a little data-structure
+        vocabulary. This step supplies that vocabulary, then shows the standard library's real typed array and what a list
+        costs at each end.</p>
+        <h3>What "array" means, and whether a list is one</h3>
+        <p>In data-structure terms, an array is a block of memory split into equal slots that sit side by side, so the
+        computer can jump straight to slot number <em>i</em> without walking past the slots before it. A dynamic array is
+        one that grows: when it runs out of slots it moves to a bigger block, and it keeps some spare room so that most
+        additions need no move.</p>
+        <p>A Python list is a mutable sequence of references, and the items it refers to may be of mixed
+        types.<sup class="cite"><a href="#src-7">7</a></sup> A reference here is the same thing a name is on Wednesday's
+        page: a pointer to an object that lives elsewhere. <code>[101, "Printer jams", 4.0, None]</code> is a perfectly good
+        list. In CPython, the standard Python interpreter, the one python.org distributes and the one that runs when you type
+        <code>python</code>, a list is implemented as a
+        dynamic array of those references, so the answer to the interview
+        question is yes, in the data-structure sense: indexing by position is fast, and the list grows as you
+        append.<sup class="cite"><a href="#src-11">11</a></sup> What it does not store is the values themselves side by
+        side. Each slot holds a reference to a separate Python object, which is flexible and costs memory. Slicing a list,
+        or calling <code>.copy()</code>, gives a new list of the same references, the shallow copy from
+        Thursday.<sup class="cite"><a href="#src-12">12</a></sup><sup class="cite"><a href="#src-7">7</a></sup></p>
+        <h3>array.array for one numeric type</h3>
         <p>The standard library's <code>array</code> module stores values of one fixed numeric type compactly. You choose
-        the type with a type code, and <code>"d"</code> is a C double.<sup class="cite"><a href="#src-12">12</a></sup> An
-        array supports indexing, slicing, <code>append</code> and <code>len()</code> like a list, and rejects a value of the
-        wrong type.<sup class="cite"><a href="#src-12">12</a></sup></p>
-<pre><code>from array import array
+        the type with a type code, and <code>"d"</code> is a C double, a floating-point
+        number.<sup class="cite"><a href="#src-13">13</a></sup> An array supports indexing, slicing, <code>append</code>
+        and <code>len()</code> like a list, and rejects a value of the wrong
+        type.<sup class="cite"><a href="#src-13">13</a></sup></p>
+<pre data-run="python"><code>from array import array
 
 ages = array("d", [3.0, 29.0, 6.0])
 ages.append(12.5)
@@ -410,61 +443,74 @@ print(ages[0], len(ages), ages[1:3])
 print(ages)
 ages.append("late")</code></pre>
         <p>The first print shows <code>3.0 4 array('d', [29.0, 6.0])</code> and the second
-        <code>array('d', [3.0, 29.0, 6.0, 12.5])</code>. The last line stops the script with an error, because a string is
-        not a double. That rejection is the trade-off. Packing values into a compact C buffer saves memory, which
-        matters for a few million readings and not for a queue of tickets, and the price is that the array accepts only its
-        type code and lacks list-only methods such as <code>sort()</code>.<sup class="cite"><a href="#src-12">12</a></sup>
-        You recognise one on sight by the type-code string as its first argument, <code>array("d", [1.5, 2.0])</code>. For
-        ordinary application data, a list is the default.</p>
-        <h3>Copies are shallow</h3>
-        <p>Slicing a list returns a new list,<sup class="cite"><a href="#src-13">13</a></sup> and <code>list.copy()</code>
-        does the same, but both are shallow copies: the new list holds references to the same objects, so nested objects
-        are shared between the copies.<sup class="cite"><a href="#src-7">7</a></sup></p>
-<pre><code>tickets = [{"id": 1, "tags": ["printer"]}]
-backup = tickets.copy()
-backup[0]["tags"].append("hardware")
-print(tickets[0]["tags"])
-print(backup is tickets, backup[0] is tickets[0])</code></pre>
-        <p>This prints <code>['printer', 'hardware']</code> and then <code>False True</code>. The two lists are different
-        objects, but they point at the same ticket dict, so a change made through the backup shows up in the original. Adding
-        or removing items affects only one list; changing an item that both lists share shows up in both.</p>
-        <h3>List performance: the cheap end and the expensive end</h3>
-        <p>Because a list is a dynamic array of references, <code>append</code> is amortised O(1): the array keeps spare
-        room and only occasionally has to grow.<sup class="cite"><a href="#src-11">11</a></sup> Inserting or removing at the
-        front is different. <code>insert(0, x)</code> and <code>pop(0)</code> are O(n), because every other element has to
-        shift one place.<sup class="cite"><a href="#src-7">7</a></sup> A list makes a good stack, adding and removing at the
-        end, and a slow queue once it is long. In code review the warning sign is <code>pop(0)</code> inside a loop over a
-        large list.</p>
+        <code>array('d', [3.0, 29.0, 6.0, 12.5])</code>. The last line stops the script with an error, because a string
+        is not a double. That rejection is the trade-off. Packing the raw numbers side by side in one block of
+        memory saves memory, which matters for a few million readings and not for a queue of tickets, and the price is that the array
+        accepts only its type code and lacks list-only methods such as
+        <code>sort()</code>.<sup class="cite"><a href="#src-13">13</a></sup> The error itself is an exception, Python's
+        way of reporting a problem while the program runs; when nothing handles it, the script stops and prints a
+        traceback, a report naming the failing line. Week 2 covers handling exceptions. You recognise one on sight by the type-code
+        string as its first argument, <code>array("d", [1.5, 2.0])</code>. For ordinary application data, a list is the
+        default.</p>
+        <h3>List performance: cheap at the end, slow at the front</h3>
+        <p>Interviewers describe the cost of an operation with big-O notation. O(1), "constant time", means the cost does
+        not grow as the list grows; O(n), "linear time", means the cost grows in step with n, the number of items. Because a
+        list is a dynamic array, <code>append</code> is amortised O(1): averaged over many appends the cost per append stays
+        constant, since the spare room means the list only occasionally has to move to a bigger
+        block.<sup class="cite"><a href="#src-11">11</a></sup> Inserting or removing at the front is different.
+        <code>insert(0, x)</code> and <code>pop(0)</code> are O(n), because every other item has to shift one
+        place.<sup class="cite"><a href="#src-7">7</a></sup></p>
+<pre data-run="python"><code>stack = ["Login page returns 500", "Printer jams"]
+stack.append("Wi-Fi drops")
+print(stack.pop())
+print(stack.pop(0))
+print(stack)</code></pre>
+        <p>This prints <code>Wi-Fi drops</code>, then <code>Login page returns 500</code>, then
+        <code>['Printer jams']</code>. With three items both pops are instant. With a million, <code>pop()</code> from the
+        end still is, while <code>pop(0)</code> moves every remaining item. So a list makes a good stack, adding and
+        removing at the end, and a slow queue (first in, first out: add at the end, take from the front) once it is long. In code review the warning sign is <code>pop(0)</code> or
+        <code>insert(0, ...)</code> inside a loop over a large list.</p>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>A Python list is a dynamic array of references, so it can hold mixed types, indexing is fast and appending is
           amortised constant time. Inserting or popping at the front is linear, because everything after it shifts.</p>
-          <p>I'd use array dot array when I have a lot of numbers of one type and memory matters. It packs the raw values into
-          a compact buffer instead of storing a reference to a separate object for each one, but it only accepts its one
-          type.</p>
+          <p>I'd use the array module's array when I have a lot of numbers of one type and memory matters. It packs the raw
+          numbers side by side in one block of memory instead of keeping a reference to a separate object for each one, but it only
+          accepts its one type.</p>
         </div>
       </section>
 
       <section class="step" data-diagram="0" data-step="5">
         <div class="tag">Classes</div>
         <h2>OOP concepts, classes and objects</h2>
-        <h3>OOP concepts in Python terms</h3>
-        <p>You met the vocabulary at university; here is how it maps onto Python. Encapsulation means keeping data together
-        with the rules that use it, behind methods. Python classes support it, along with inheritance, overriding and
-        multiple base classes, but all members are public by default.<sup class="cite"><a href="#src-14">14</a></sup> A
-        leading underscore, as in <code>self._tickets</code>, marks a name as internal by convention only, and the language
-        does not block access to it.<sup class="cite"><a href="#src-14">14</a></sup> Inheritance, a class built on another
-        class, has its own section next. Polymorphism in Python works by behaviour: any object that has the method a piece
-        of code calls will work there, whatever its class. The glossary calls this duck
+        <h3>Objects, classes and the ideas behind OOP</h3>
+        <p>Wednesday's page said every value in Python is an object, and a name is bound to one. An object carries data
+        and the operations that belong to it: a string holds its characters and also has methods such as
+        <code>.upper()</code>, which are functions attached to the object and called with a dot. A class is the definition
+        of a kind of object, and an object built from a class is called an instance of it. <code>str</code> is a class and
+        <code>"Printer jams"</code> is an instance. Object-oriented programming, OOP, means organising a program around
+        classes you write yourself, each one keeping some data together with the rules that use it.</p>
+        <p>Interviewers usually ask for three ideas by name. Encapsulation means keeping data together with the rules that
+        use it, so callers go through methods instead of reaching into the data. Python classes support it, but all members are public by
+        default.<sup class="cite"><a href="#src-14">14</a></sup> A leading underscore, as in <code>self._tickets</code>,
+        marks a name as internal by convention only; the language does not block access to
+        it.<sup class="cite"><a href="#src-14">14</a></sup> Inheritance means building one class on another, and the next
+        step covers it. Polymorphism means one piece of code works with several kinds of object. In Python it works by
+        behaviour: any object that has the method the code calls will do, whatever its class. The glossary calls this duck
         typing.<sup class="cite"><a href="#src-15">15</a></sup> A function that calls <code>ticket.deadline()</code> works
         for every kind of ticket that has a <code>deadline</code> method.</p>
-        <h3>Classes and objects: self, __init__ and __repr__</h3>
-        <p>A class is the definition; an object, or instance, is one value built from it. Calling the class creates an
-        instance and passes it as <code>self</code> to <code>__init__</code>,<sup class="cite"><a href="#src-14">14</a></sup>
-        which sets it up and must return <code>None</code>.<sup class="cite"><a href="#src-9">9</a></sup> In every method,
-        <code>self</code> is the instance the method was called on, passed automatically when you write
-        <code>obj.method()</code>.<sup class="cite"><a href="#src-14">14</a></sup></p>
-<pre><code>from datetime import datetime, timedelta
+        <h3>Writing a class: __init__, self and methods</h3>
+        <p>A class statement holds methods, written with <code>def</code> inside the class body. Names with two underscores
+        on each side, such as <code>__init__</code>, are special methods: Python calls them for you at particular moments.<sup class="cite"><a href="#src-9">9</a></sup>
+        Calling the class creates an instance and passes it as <code>self</code> to
+        <code>__init__</code>,<sup class="cite"><a href="#src-14">14</a></sup> which sets it up and must return
+        <code>None</code>.<sup class="cite"><a href="#src-9">9</a></sup> In every method, <code>self</code> is the instance
+        the method was called on, passed automatically when you write
+        <code>obj.method()</code>.<sup class="cite"><a href="#src-14">14</a></sup> Assigning <code>self.title = title</code>
+        creates an instance attribute, a value that belongs to that one object. A name assigned in the class body itself is
+        a class attribute, shared by every instance; step 9 shows why that difference
+        matters.<sup class="cite"><a href="#src-14">14</a></sup></p>
+<pre data-run="python"><code>from datetime import datetime, timedelta
 
 SLA_HOURS = {"high": 4, "normal": 24, "low": 72}
 
@@ -496,38 +542,43 @@ print(t)
 print(t.deadline())
 print(t.deadline)
 print(hasattr(t, "assignee"), vars(t)["assignee"])</code></pre>
-        <p>The prints show <code>Ticket(101, 'Login page returns 500')</code>, then <code>2026-10-16 13:30:00</code>, then
-        <code>&lt;bound method Ticket.deadline of Ticket(101, 'Login page returns 500')&gt;</code>, then
-        <code>True lee</code>. The first line comes from <code>__repr__</code>, which supplies the string
-        <code>print()</code> shows when the class has no <code>__str__</code>. Delete it and the same line reads
-        <code>&lt;__main__.Ticket object at 0x...&gt;</code>.<sup class="cite"><a href="#src-9">9</a></sup> The third line is
-        the trap reviewers spot: <code>t.deadline</code> without parentheses is the bound method object, and only
-        <code>t.deadline()</code> calls it.<sup class="cite"><a href="#src-14">14</a></sup> <code>vars(t)</code> returns the
-        instance's <code>__dict__</code> of attributes, and <code>hasattr(t, "assignee")</code> is true when the attribute
-        exists,<sup class="cite"><a href="#src-6">6</a></sup> which is how you inspect an object you did not write.</p>
-        <p>The follow-up after any class is <code>__str__</code> versus <code>__repr__</code>. <code>__repr__</code> is the
-        developer-facing text, the one the REPL and debugging output use, and <code>print()</code> falls back to it.<sup class="cite"><a href="#src-9">9</a></sup> Write
-        <code>__repr__</code> first; add <code>__str__</code> only when end users need a different, friendlier string.</p>
+        <p>The four prints show <code>Ticket(101, 'Login page returns 500')</code>, then <code>2026-10-16 13:30:00</code>,
+        then <code>&lt;bound method Ticket.deadline of Ticket(101, 'Login page returns 500')&gt;</code>, then
+        <code>True lee</code>. The third line is the trap reviewers spot: <code>t.deadline</code> without parentheses is the
+        bound method object, and only <code>t.deadline()</code> calls it.<sup class="cite"><a href="#src-14">14</a></sup>
+        The other classic slip is leaving <code>self</code> out of a method's parameters, which breaks the first call.
+        <code>vars(t)</code> returns the instance's <code>__dict__</code>, the dict that holds its attributes, and
+        <code>hasattr(t, "assignee")</code> is true when the attribute exists;<sup class="cite"><a href="#src-6">6</a></sup>
+        both help when inspecting someone else's object. In other people's code a class announces itself as
+        <code>def __init__(self, ticket_id, title):</code> followed by lines of <code>self.ticket_id = ticket_id</code>.</p>
+        <h3>__repr__ and __str__</h3>
+        <p>The first print came from <code>__repr__</code>, which supplies the string <code>print()</code> shows when the
+        class has no <code>__str__</code>. Delete it and the same line reads
+        <code>&lt;__main__.Ticket object at 0x...&gt;</code>.<sup class="cite"><a href="#src-9">9</a></sup>
+        <code>!r</code> inside an f-string applies <code>repr()</code> to the value, so a string shows with its quotes:
+        <code>'Login page returns 500'</code>.<sup class="cite"><a href="#src-6">6</a></sup>
+        <code>__repr__</code> is the developer-facing text, the one debugging output uses. Write it first, and
+        add <code>__str__</code> only when end users need a different, friendlier string.</p>
         <h3>When a class beats a dict</h3>
-        <p>A dict ticket and a set of loose functions that take it work until the rules multiply. A class bundles the data
+        <p>A dict ticket plus a few loose functions that take it works until the rules multiply. A class bundles the data
         with those rules, so a reader looking for how a ticket's deadline works finds it on the ticket, and a caller writes
-        <code>ticket.deadline()</code> without knowing which helper function to import. The cost is ceremony: an
+        <code>ticket.deadline()</code> instead of hunting for a helper. The cost is ceremony: an
         <code>__init__</code>, a <code>self</code> on every method, more lines. For a record with no behaviour, a dict or a
-        tuple is lighter, and since Python enforces privacy only by naming convention, hiding data is not a reason on its
-        own to write a class.<sup class="cite"><a href="#src-14">14</a></sup> The working rule: once two or more functions take the same
-        dict and reach into the same keys, the dict wants to be a class.</p>
+        tuple is lighter, and since Python enforces privacy only by naming convention, hiding data is not on its own a
+        reason to write a class.<sup class="cite"><a href="#src-14">14</a></sup> A working rule: once two or more functions
+        take the same dict and reach into the same keys, the dict wants to be a class.</p>
         <h3>Composition versus inheritance</h3>
-        <p>The question after the OOP principles is "has-a or is-a". An instance can store other objects in its data
-        attributes, which the tutorial calls instance variables,<sup class="cite"><a href="#src-14">14</a></sup> so a desk
-        that holds a list of tickets has tickets: that is composition. An urgent ticket is a ticket: that is inheritance.
-        If you cannot say "is a" truthfully, hold the object in an attribute instead of subclassing it.</p>
+        <p>A class can relate to another as "has-a" or as "is-a". An instance can store other objects in its attributes,
+        which the tutorial calls instance variables,<sup class="cite"><a href="#src-14">14</a></sup> so a desk holding a list
+        of tickets has tickets: that is composition. An urgent ticket is a ticket: that is inheritance. If you cannot say
+        "is a" truthfully, hold the object in an attribute instead of subclassing it.</p>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>Encapsulation keeps data and the rules that use it together behind methods. Inheritance builds a class on an
-          existing one. Polymorphism means code can call the same method on different kinds of objects; in Python that's
-          duck typing, so the object only needs the method, not a particular class.</p>
-          <p>A class is the definition and an object is one instance of it. Self is that instance, passed automatically when
-          I call a method on it.</p>
+          existing one. Polymorphism means the same call works on different kinds of objects; in Python that's duck typing,
+          so the object only needs the method, not a particular class.</p>
+          <p>A class is the definition and an object is one instance of it. Self is that instance, passed in automatically
+          when I call a method on it.</p>
           <p>I switch from a dict to a class when several functions keep reaching into the same keys. The class puts those
           rules next to the data. For a plain record with no behaviour, a dict is fine.</p>
         </div>
@@ -537,13 +588,14 @@ print(hasattr(t, "assignee"), vars(t)["assignee"])</code></pre>
         <div class="tag">Classes</div>
         <h2>Inheritance: one rule overridden</h2>
         <h3>Overriding a method and calling super()</h3>
-        <p>A derived class is written <code>class Derived(Base):</code>. When an attribute or method is missing on the
-        derived class, lookup falls through to the base.<sup class="cite"><a href="#src-14">14</a></sup> A subclass
-        overrides a method by defining one with the same name, and <code>super()</code> returns a proxy that delegates
-        method calls to the parent class, so the override can build on the parent's version instead of copying
-        it.<sup class="cite"><a href="#src-6">6</a></sup> Urgent tickets get half the usual time. Add this below the
-        <code>Ticket</code> class from the previous section:</p>
-<pre><code>class UrgentTicket(Ticket):
+        <p>Inheritance lets a new class start from an existing one. The existing class is the base, or parent; the new one
+        is the derived class, or subclass, written <code>class Derived(Base):</code>. When an attribute or method is missing
+        on the subclass, lookup falls through to the base.<sup class="cite"><a href="#src-14">14</a></sup> A subclass
+        overrides a method by defining one with the same name, and <code>super()</code> returns a proxy that passes method
+        calls on to the parent class, so the override can build on the parent's version instead of copying
+        it.<sup class="cite"><a href="#src-6">6</a></sup> Urgent tickets get half the usual time. This continues the
+        <code>Ticket</code> class from the previous step:</p>
+<pre data-run="python" data-continues><code>class UrgentTicket(Ticket):
     """A ticket that gets half the usual time."""
 
     def deadline(self):
@@ -554,27 +606,27 @@ u = UrgentTicket(102, "Printer jams", "normal", datetime(2026, 10, 16, 9, 0))
 print(u.deadline())
 print(u)
 print(isinstance(u, Ticket), type(u) == Ticket, issubclass(UrgentTicket, Ticket))</code></pre>
-        <p>A normal ticket gets 24 hours, so the parent's deadline is 09:00 the next day; halving the window prints
+        <p>A normal ticket gets 24 hours, so the parent's deadline is 09:00 the next day, and halving the window prints
         <code>2026-10-16 21:00:00</code>. The second line prints <code>Ticket(102, 'Printer jams')</code>, because
         <code>UrgentTicket</code> did not define <code>__repr__</code> and lookup fell through to the parent. The last line
-        prints <code>True False True</code>.</p>
+        prints <code>True False True</code>, explained below.</p>
         <p>The override reuses the SLA table through <code>super().deadline()</code>, so a contract change to
         <code>SLA_HOURS</code> reaches urgent tickets too. Copying the parent's formula into the subclass would work today
-        and silently drift the first time someone edits only one of them. You recognise the pattern in other people's code
-        as <code>class UrgentTicket(Ticket):</code> with a method whose body calls <code>super().method()</code>.</p>
+        and drift apart the first time someone edits only one copy. You recognise the pattern in other people's code as
+        <code>class UrgentTicket(Ticket):</code> with a method whose body calls <code>super().method()</code>.</p>
         <button class="code-cta" type="button" data-modal="code-w01d5-urgent"><span class="cc-ico">&lt;/&gt;</span> See the subclass and the rule function that accepts both kinds <span class="cc-meta">· 03_ticket_class.py</span></button>
         <h3>isinstance, issubclass and type</h3>
         <p><code>isinstance(obj, Cls)</code> is true for instances of <code>Cls</code> and of its
         subclasses;<sup class="cite"><a href="#src-6">6</a></sup> <code>issubclass(Sub, Base)</code> asks the same question
-        about two classes rather than an instance.<sup class="cite"><a href="#src-6">6</a></sup> That is the whole difference
-        from <code>type(x) == Ticket</code>, which is false for an <code>UrgentTicket</code>. A check written with
-        <code>type()</code> rejects every subclass, which is almost never what the author meant. Better still, a function
-        such as <code>is_overdue(ticket)</code> that only calls <code>ticket.deadline()</code> needs no type check at all:
-        both kinds of ticket have the method, and each runs its own version.</p>
+        about two classes rather than an instance.<sup class="cite"><a href="#src-6">6</a></sup> That is the whole
+        difference from <code>type(x) == Ticket</code>, which is false for an <code>UrgentTicket</code>. A check written
+        with <code>type()</code> rejects every subclass, which is seldom what the author meant. Often no check is needed at
+        all: a function such as <code>is_overdue(ticket)</code> that only calls <code>ticket.deadline()</code> works for
+        both kinds of ticket, and each runs its own version, which is the polymorphism from the previous step.</p>
         <h3>A subclass with its own __init__</h3>
         <p>If a subclass defines <code>__init__</code>, it must call the parent's <code>__init__</code> itself, or the
         parent's setup does not run.<sup class="cite"><a href="#src-9">9</a></sup></p>
-<pre><code>class EscalatedTicket(Ticket):
+<pre data-run="python" data-continues><code>class EscalatedTicket(Ticket):
     def __init__(self, ticket_id, title, priority, opened_at, manager):
         super().__init__(ticket_id, title, priority, opened_at)
         self.manager = manager
@@ -583,24 +635,23 @@ print(isinstance(u, Ticket), type(u) == Ticket, issubclass(UrgentTicket, Ticket)
 e = EscalatedTicket(103, "VPN down", "high", datetime(2026, 10, 16, 8, 0), "dana")
 print(e.manager, e.deadline())</code></pre>
         <p>This prints <code>dana 2026-10-16 12:00:00</code>. Leave out the <code>super().__init__</code> line and
-        <code>e.manager</code> still works, but <code>e.deadline()</code> fails, because <code>opened_at</code> and
-        <code>priority</code> were never set. Forgetting <code>super()</code> in an override is the general form of this
-        bug: the parent's rule is silently lost.</p>
-        <p>The trade-off is coupling. A subclass depends on the attributes and methods it inherits, and a base-class
-        method that calls another method on <code>self</code> may end up running the subclass's
-        override.<sup class="cite"><a href="#src-14">14</a></sup> A change in the parent
-        changes the child. Keep inheritance for a true is-a relation and prefer holding an object otherwise.</p>
-        <h3>Multiple bases and the method resolution order</h3>
-        <p>Python classes may list more than one base class.<sup class="cite"><a href="#src-14">14</a></sup> Python then
+        <code>e.manager</code> still works, but <code>e.deadline()</code> stops with an error, because
+        <code>opened_at</code> and <code>priority</code> were never set. Forgetting <code>super()</code> in any override is
+        the general form of this bug: the parent's rule is silently lost.</p>
+        <p>The trade-off of inheritance is coupling. A subclass depends on the attributes and methods it inherits, and a
+        base-class method that calls another method on <code>self</code> may end up running the subclass's
+        override.<sup class="cite"><a href="#src-14">14</a></sup> A change in the parent changes the child. Keep
+        inheritance for a true is-a relation, and hold an object in an attribute otherwise.</p>
+        <h3>Several base classes and the method resolution order</h3>
+        <p>A Python class may list more than one base class.<sup class="cite"><a href="#src-14">14</a></sup> Python then
         needs a fixed order in which to search the bases for a method, called the method resolution order, and it is the
-        question that follows once <code>super()</code> is explained. The single-base case is the starting point:
-        when a name is missing on the subclass, attribute lookup falls through to the base
-        class.<sup class="cite"><a href="#src-14">14</a></sup></p>
+        usual next question once <code>super()</code> is explained. The single-base case above is the starting point: when
+        a name is missing on the subclass, lookup moves on to the base.<sup class="cite"><a href="#src-14">14</a></sup></p>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>A subclass overrides a method by defining one with the same name. Inside it I call super() to reach the
           parent's version, so I build on the parent's rule instead of copying it.</p>
-          <p>Isinstance is true for the class and any of its subclasses, while comparing type with double equals only
+          <p>Isinstance is true for the class and any of its subclasses, while comparing the type with double equals only
           matches the exact class. So isinstance is usually what I want, and often I don't need a type check at all if the
           object has the method.</p>
         </div>
@@ -609,46 +660,49 @@ print(e.manager, e.deadline())</code></pre>
       <section class="step" data-diagram="0" data-step="7">
         <div class="tag">Mechanics</div>
         <h2>Iterators: what a for loop does underneath</h2>
+        <p>Step 2 said a <code>for</code> loop takes items from an iterable. This step opens that up: two built-in
+        functions and one exception do all the work, and a class of your own can join in by defining two special
+        methods.</p>
         <h3>iter(), next() and StopIteration</h3>
-        <p>A <code>for</code> loop calls <code>iter()</code> on its target once, then calls <code>next()</code> on the result
-        until <code>StopIteration</code> is raised, which ends the loop.<sup class="cite"><a href="#src-14">14</a></sup> You
-        can do the same steps by hand:</p>
-<pre><code>queue = ["Login page returns 500", "Printer jams"]
+        <p>A <code>for</code> loop calls <code>iter()</code> on its target once, which returns an iterator, an object that
+        remembers how far through the items it has got. The loop then calls <code>next()</code> on that iterator again and
+        again until it raises <code>StopIteration</code>, which ends the
+        loop.<sup class="cite"><a href="#src-14">14</a></sup> You can take the same steps by hand:</p>
+<pre data-run="python"><code>queue = ["Login page returns 500", "Printer jams"]
 it = iter(queue)
 print(next(it))
 print(next(it))
 print(next(it))</code></pre>
         <p>The first two calls print the two titles. The third finds nothing left and raises
-        <code>StopIteration</code>, so the script ends with a traceback.<sup class="cite"><a href="#src-16">16</a></sup>
+        <code>StopIteration</code>, so the script stops with a traceback.<sup class="cite"><a href="#src-16">16</a></sup>
         Inside a <code>for</code> loop the same exception is the normal, silent signal that the items have run out. The
         formal name for this arrangement is the iterator protocol: an iterable's <code>__iter__</code> returns an iterator,
         and the iterator provides <code>__next__</code>.<sup class="cite"><a href="#src-3">3</a></sup> In application code
-        you seldom step an iterator by hand; when you do meet <code>it = iter(items)</code> followed by
-        <code>next(it)</code>, someone wanted the first item, or wanted to consume a header row before looping over the
-        rest. Writing your own
-        <code>__next__</code>, or a generator with <code>yield</code>, is week 2 material.</p>
-        <h3>Iterables versus one-shot iterators</h3>
+        you seldom step an iterator by hand. When you do meet <code>it = iter(items)</code> followed by
+        <code>next(it)</code>, someone wanted the first item on its own, or wanted to skip a header row before looping over
+        the rest. Writing your own <code>__next__</code>, or a generator with <code>yield</code>, is week 2 material.</p>
+        <h3>Iterables and one-shot iterators</h3>
         <p>An iterable is something you can ask for an iterator; an iterator is the object that keeps a position and hands
         out the next item. A list is an iterable, and each <code>iter(list)</code> call returns a new, independent
         iterator.<sup class="cite"><a href="#src-3">3</a></sup> An iterator itself keeps one position and gives each item
         once. That saves memory, since nothing is copied, but it cannot be rewound or
         indexed.<sup class="cite"><a href="#src-14">14</a></sup></p>
-<pre><code>queue = ["Login page returns 500", "Printer jams"]
+<pre data-run="python"><code>queue = ["Login page returns 500", "Printer jams"]
 it = iter(queue)
 print(list(it))
 print(list(it))
 print(list(queue), list(queue))</code></pre>
         <p>The first line prints both titles and the second prints <code>[]</code>: the iterator was used up. The third
         prints both titles twice, because each pass over the list asked for a fresh iterator. Code that stores an iterator
-        in a variable and loops over it twice gets nothing the second time, so ask
-        the iterable for a new iterator for each pass.</p>
+        in a variable and loops over it twice gets nothing the second time, so ask the iterable for a new iterator for each
+        pass.</p>
         <div class="ix-spot" data-snippet="open_tickets = iter(queue)&#10;for t in open_tickets:&#10;    print(t)&#10;print(&quot;count:&quot;, len(list(open_tickets)))" data-q="queue holds three tickets. What does the last line print, and why?" data-a="count: 0. The for loop used up the iterator, so list() on it finds nothing. Loop over queue itself, or call iter(queue) again."></div>
         <h3>A class that works with for and len()</h3>
-        <p>A class that defines <code>__iter__</code> works in a <code>for</code> loop,<sup class="cite"><a href="#src-14">14</a></sup>
-        and <code>len()</code> on an object works only if its class defines
-        <code>__len__</code>.<sup class="cite"><a href="#src-9">9</a></sup> A desk that owns a list of tickets can delegate
-        both to the list:</p>
-<pre><code>class Desk:
+        <p>A class that defines <code>__iter__</code> works in a <code>for</code>
+        loop,<sup class="cite"><a href="#src-14">14</a></sup> and <code>len()</code> on an object works only if its class
+        defines <code>__len__</code>.<sup class="cite"><a href="#src-9">9</a></sup> A desk that owns a list of tickets can
+        hand both jobs to the list:</p>
+<pre data-run="python"><code>class Desk:
     def __init__(self):
         self._tickets = []
 
@@ -669,19 +723,18 @@ print(len(desk))
 for t in desk:
     print(t)
 print(sorted(desk))</code></pre>
-        <p>This prints <code>2</code>, the two titles, and then the sorted list of both. Because <code>__iter__</code> returns
-        a fresh <code>iter(self._tickets)</code> every time it is called, the desk can be looped over as often as you like,
-        and <code>sorted()</code> accepts it like any other iterable. Picture the other design, where <code>__init__</code>
-        builds one iterator up front and <code>__iter__</code> hands back that same object every time: the first loop
-        would print both titles and every later loop would print nothing, the one-shot problem from the previous
-        subsection built into the class. Without <code>__len__</code>, <code>len(desk)</code>
-        fails. The underscore on <code>_tickets</code> tells callers to go through the desk's methods. You recognise the
-        pattern on sight as <code>def __iter__(self): return iter(self._items)</code>.</p>
+        <p>This prints <code>2</code>, the two titles, and then the sorted list of both. Because <code>__iter__</code>
+        returns a fresh <code>iter(self._tickets)</code> each time it is called, the desk can be looped over as often as you
+        like, and <code>sorted()</code> accepts it like any other iterable. Picture the other design, where
+        <code>__init__</code> builds one iterator up front and <code>__iter__</code> hands back that same object every time:
+        the first loop would print both titles and every later loop would print nothing. Without <code>__len__</code>,
+        <code>len(desk)</code> fails. The underscore on <code>_tickets</code> tells callers to go through the desk's
+        methods. You recognise the pattern as <code>def __iter__(self): return iter(self._items)</code>.</p>
         <button class="code-cta" type="button" data-modal="code-w01d5-desk"><span class="cc-ico">&lt;/&gt;</span> See the full Desk class from the ticket-desk code <span class="cc-meta">· 04_desk_object.py</span></button>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
-          <p>An iterable is anything I can ask for an iterator, like a list. The iterator keeps a position and hands out one
-          item at a time, and once it's exhausted it stays empty.</p>
+          <p>An iterable is anything I can ask for an iterator, like a list. The iterator keeps a position and hands out
+          one item at a time, and once it's exhausted it stays empty.</p>
           <p>Under the hood a for loop calls iter on the object once, then next on the iterator again and again until it
           raises StopIteration, which the loop treats as the end.</p>
           <p>An iterator can only be consumed once because it only moves forward. If I need two passes, I ask the original
@@ -692,11 +745,14 @@ print(sorted(desk))</code></pre>
       <section class="step" data-diagram="0" data-step="8">
         <div class="tag">Mechanics</div>
         <h2>Scope: where a name is looked up</h2>
+        <p>Thursday's page introduced namespaces, the mappings from names to objects, and showed that a later binding
+        replaces an earlier one. Functions add a question: when a name is used inside a function, which namespace does
+        Python search? The answer is scope, and it explains a common interview puzzle in Python.</p>
         <h3>The LEGB rule</h3>
-        <p>When Python meets a name, it looks in four scopes in order: local (the current function), enclosing (any
+        <p>When Python meets a name, it searches four scopes in order: local (the current function), enclosing (any
         function wrapped around it), global (the module) and built-in.<sup class="cite"><a href="#src-14">14</a></sup> The
         first scope that has the name wins.</p>
-<pre><code>title = "Login page returns 500"
+<pre data-run="python"><code>title = "Login page returns 500"
 
 
 def label():
@@ -708,17 +764,17 @@ print(label(), "|", title)
 print(len(title))</code></pre>
         <p>This prints <code>shadowed | Login page returns 500</code> and then <code>22</code>. Inside
         <code>label()</code>, the local <code>title</code> shadows the module's, and the module's value is untouched.
-        <code>len</code> is found in none of the first three scopes, so it comes from the built-ins. Only modules,
-        functions (lambdas included), classes and comprehensions create scopes; <code>if</code>, <code>for</code> and
-        <code>while</code> blocks do not.<sup class="cite"><a href="#src-17">17</a></sup> A loop variable is still defined
+        <code>len</code> is in none of the first three scopes, so it comes from the built-ins. Only modules, functions
+        (lambdas included), classes and comprehensions create scopes; <code>if</code>, <code>for</code> and
+        <code>while</code> blocks do not.<sup class="cite"><a href="#src-17">17</a></sup> So a loop variable still exists
         after the loop ends, holding the last value it took, and a name first assigned inside an <code>if</code> belongs to
-        the surrounding function.</p>
+        the surrounding function or module.</p>
         <h3>global, nonlocal and UnboundLocalError</h3>
         <p>An assignment anywhere in a function makes that name local for the whole function, from its first
         line.<sup class="cite"><a href="#src-17">17</a></sup> Reading a module-level name inside a function needs no
-        declaration; rebinding it needs <code>global</code>.<sup class="cite"><a href="#src-18">18</a></sup> Put those two
-        rules together and you get the classic interview puzzle:</p>
-<pre><code>next_id = 1
+        declaration; rebinding it needs a <code>global</code> statement.<sup class="cite"><a href="#src-18">18</a></sup>
+        Put those two rules together and you get the classic puzzle:</p>
+<pre data-run="python"><code>next_id = 1
 
 
 def take_id():
@@ -727,20 +783,20 @@ def take_id():
 
 
 take_id()</code></pre>
-        <p>This ends in <code>UnboundLocalError</code>. The <code>+=</code> assigns to <code>next_id</code>, so the name is
-        local throughout <code>take_id</code>, and the read half of <code>+=</code> finds a local with no value yet. A plain
-        <code>next_id = 1</code> in the body would raise nothing and silently create a local, leaving the module's counter
-        unchanged, which is worse because nothing reports the mistake. Adding <code>global next_id</code> as the first line makes it
-        work. The trade-off is that the counter is now state any function in the file can change, in a place callers
-        cannot see.<sup class="cite"><a href="#src-14">14</a></sup> You recognise it on sight as <code>global counter</code>
-        at the top of a function body, and reviewers usually ask where the state should live instead.
-        <code>nonlocal</code> is the same idea one level in: it rebinds a name in the nearest enclosing function
+        <p>This stops with an <code>UnboundLocalError</code>. The <code>+=</code> assigns to <code>next_id</code>, so the
+        name is local throughout <code>take_id</code>, and the read half of <code>+=</code> finds a local with no value
+        yet. A plain <code>next_id = 1</code> in the body would raise nothing and silently create a local, leaving the
+        module's counter unchanged, which is worse because nothing reports the mistake. Adding <code>global next_id</code>
+        as the first line of the body makes it work. The trade-off is that the counter becomes state any function in the
+        file can change, kept where callers cannot see it.<sup class="cite"><a href="#src-14">14</a></sup> You recognise it
+        as <code>global counter</code> at the top of a function body, and reviewers usually ask where the state should live
+        instead. <code>nonlocal</code> is the same idea one level in: it rebinds a name in the nearest enclosing function
         scope.<sup class="cite"><a href="#src-18">18</a></sup></p>
         <h3>Class attributes in place of a global</h3>
-        <p>The usual answer is to put the state on an object or class, where the dependency is explicit. A class attribute
-        is shared by all instances, while <code>self.x</code> set in <code>__init__</code> belongs to one
+        <p>The usual answer is to put the state on an object or class, where the dependency is visible. As step 6 said, a
+        class attribute is shared by all instances, while <code>self.x</code> set in <code>__init__</code> belongs to one
         instance.<sup class="cite"><a href="#src-14">14</a></sup></p>
-<pre><code>class Desk:
+<pre data-run="python"><code>class Desk:
     next_id = 1
 
     def __init__(self):
@@ -758,19 +814,20 @@ b.add("Printer jams")
 print(Desk.next_id)
 b.next_id += 1
 print(Desk.next_id, b.next_id, a.next_id)</code></pre>
-        <p>The first print shows <code>3</code>: two desks, one shared counter. The last line answers a favourite
-        follow-up question. <code>b.next_id += 1</code> reads <code>3</code> through the instance, then assigns
-        <code>4</code> as a new instance attribute on <code>b</code> that hides the class attribute, so the line prints
-        <code>3 4 3</code>.<sup class="cite"><a href="#src-14">14</a></sup> This is why the method writes
+        <p>The first print shows <code>3</code>: two desks, one shared counter. The last line is a common follow-up
+        question. <code>b.next_id += 1</code> reads <code>3</code> through the instance, then assigns <code>4</code> as a new
+        instance attribute on <code>b</code> that hides the class attribute, so the line prints
+        <code>3 4 3</code>.<sup class="cite"><a href="#src-14">14</a></sup> That is why the method writes
         <code>Desk.next_id</code> explicitly. The same sharing makes a mutable class attribute, such as a list in the class
         body, a shared-state bug unless sharing is the point.</p>
+        <div class="ix-predict" data-q="After the code above, a third desk is created with c = Desk(). What does c.next_id give?" data-a="3. c has no next_id of its own, so the lookup falls through to the class attribute, which is still 3. Only b has the hiding instance attribute."></div>
         <h3>Closures</h3>
-        <p>The enclosing level of LEGB leads to the next question. A nested function can read a variable of the
-        function around it, because the enclosing function's scope sits between local and global in the lookup
-        order.<sup class="cite"><a href="#src-14">14</a></sup> A nested function that reads an enclosing variable is a
-        closure, and <code>nonlocal</code> rebinds a name in the nearest enclosing function scope, which lets the inner
-        function change the variable:<sup class="cite"><a href="#src-18">18</a></sup></p>
-<pre><code>def make_counter():
+        <p>The enclosing level of LEGB covers nested functions. A function defined inside another function can read the
+        outer function's variables, because the enclosing scope sits between local and global in the lookup
+        order.<sup class="cite"><a href="#src-14">14</a></sup> An inner function that uses a variable of the function around
+        it is called a closure, and <code>nonlocal</code> lets it rebind that
+        variable:<sup class="cite"><a href="#src-18">18</a></sup></p>
+<pre data-run="python"><code>def make_counter():
     count = 0
 
     def take():
@@ -783,8 +840,9 @@ print(Desk.next_id, b.next_id, a.next_id)</code></pre>
 
 take = make_counter()
 print(take(), take(), take())</code></pre>
-        <p>This prints <code>1 2 3</code>. Without the <code>nonlocal</code> line, <code>count += 1</code> would make
-        <code>count</code> local to <code>take</code> and fail with the same <code>UnboundLocalError</code> as before.</p>
+        <p>This prints <code>1 2 3</code>. The returned function keeps its own <code>count</code> between calls. Without the
+        <code>nonlocal</code> line, <code>count += 1</code> would make <code>count</code> local to <code>take</code> and
+        fail with the same <code>UnboundLocalError</code> as before.</p>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>LEGB is the order Python looks up a name: local, then any enclosing function, then the module's globals, then
@@ -905,11 +963,11 @@ assert [a(), b()] == [2, 50], "two counters count on their own"</code></pre>
         <h2>Check yourself</h2>
         <p>Ten retrieval questions, at least one per section. Answer each out loud before you open it.</p>
         <details class="check"><summary>A status chain tests "less than two hours left" before "past the deadline". What goes wrong for a breached ticket?</summary><p>A breached ticket has a negative time left, which is also less than two hours, so the first branch runs and reports it as at risk. Only the first true branch of an if/elif/else chain runs, so the breach branch is never reached. The strictest test goes first.</p></details>
-        <details class="check"><summary>Which values are false in an <code>if</code> test, and what does <code>assignee or "unassigned"</code> give when <code>assignee</code> is <code>None</code>?</summary><p><code>0</code>, <code>0.0</code>, <code>""</code>, <code>None</code> and empty containers are false; most other objects are true. <code>or</code> returns one of its operands, so the expression gives <code>"unassigned"</code>.</p></details>
+        <details class="check"><summary>Why write <code>if assignee is None:</code> instead of <code>if not assignee:</code> when you mean "missing"?</summary><p><code>not assignee</code> is also true for <code>0</code>, <code>""</code> and empty containers, so a real but empty value would be treated as missing. PEP 8 asks for comparisons to <code>None</code> to use <code>is</code> or <code>is not</code>.</p></details>
         <details class="check"><summary>When do you reach for <code>while</code> instead of <code>for</code>, and when does a loop's <code>else</code> block run?</summary><p>Use <code>while</code> when you know the stopping condition but not the number of passes, such as re-asking until the input is valid; use <code>for</code> to walk a collection. A loop's <code>else</code> runs when the loop finishes without a <code>break</code>.</p></details>
         <details class="check"><summary>Why does <code>def add_note(text, history=[])</code> leak notes between calls, and what is the fix?</summary><p>Default values are evaluated once, when <code>def</code> runs, so every call that omits <code>history</code> appends to the same list. Default to <code>None</code> and create a new list in the body when the argument is <code>None</code>.</p></details>
-        <details class="check"><summary>A teammate sorts tickets with <code>key=lambda t: t["priority"]</code>. What is wrong, and how do you fix it?</summary><p>The key is the priority text, which sorts alphabetically, so <code>"low"</code> lands before <code>"normal"</code>. Map the text to a rank first, and add the opening time as a tie-breaker: <code>key=lambda t: (PRIORITY_RANK[t["priority"]], t["opened_at"])</code>.</p></details>
-        <details class="check"><summary>Is a Python list an array, and when would you use <code>array.array</code>?</summary><p>In CPython a list is a dynamic array of references to objects, so it can mix types and appends are amortised O(1). <code>array.array</code> stores raw values of one numeric type code compactly, which saves memory for large amounts of numeric data, but it accepts only that type.</p></details>
+        <details class="check"><summary>A teammate sorts tickets with <code>key=lambda t: t["priority"]</code>. What is wrong, and how do you fix it?</summary><p>The key is the priority text, which sorts alphabetically, so <code>"low"</code> lands before <code>"normal"</code>. Map the text to a rank first and add the opening time as a tie-breaker: <code>key=lambda t: (PRIORITY_RANK[t["priority"]], t["opened_at"])</code>.</p></details>
+        <details class="check"><summary>Is a Python list an array, and why is <code>pop(0)</code> slow on a long list when <code>pop()</code> is not?</summary><p>In the standard interpreter from python.org (CPython), a list is a dynamic array of references to objects, so it can mix types and appends are amortised O(1). Removing from the front is O(n) because every remaining item shifts one place; removing from the end shifts nothing.</p></details>
         <details class="check"><summary>What does <code>self</code> refer to, and what is the difference between <code>t.deadline</code> and <code>t.deadline()</code>?</summary><p><code>self</code> is the instance the method was called on, passed automatically. <code>t.deadline</code> is the bound method object; only <code>t.deadline()</code> calls it and returns the datetime.</p></details>
         <details class="check"><summary>How does <code>UrgentTicket</code> reuse the parent's deadline rule, and why is <code>isinstance(u, Ticket)</code> true when <code>type(u) == Ticket</code> is false?</summary><p>Its <code>deadline</code> override calls <code>super().deadline()</code> and halves the window, so the SLA table stays in one place. <code>isinstance</code> is true for instances of subclasses, while comparing <code>type()</code> matches only the exact class.</p></details>
         <details class="check"><summary>What does a <code>for</code> loop do underneath, and why does a second pass over the same iterator print nothing?</summary><p>It calls <code>iter()</code> on the target once, then <code>next()</code> until <code>StopIteration</code> is raised. An iterator keeps one position and only moves forward, so once exhausted it stays empty; a class whose <code>__iter__</code> returns a fresh iterator can be looped over again.</p></details>
@@ -925,13 +983,13 @@ assert [a(), b()] == [2, 50], "two counters count on their own"</code></pre>
           <li id="src-4"><a href="https://docs.python.org/3/reference/expressions.html" target="_blank" rel="noopener">Language reference — Expressions</a> — how and and or short-circuit, and the lambda expression.</li>
           <li id="src-5"><a href="https://docs.python.org/3/reference/compound_stmts.html" target="_blank" rel="noopener">Language reference — Compound statements</a> — the exact rules of while and for.</li>
           <li id="src-6"><a href="https://docs.python.org/3/library/functions.html" target="_blank" rel="noopener">Built-in functions</a> — enumerate, zip, super, isinstance, issubclass, vars and hasattr.</li>
-          <li id="src-7"><a href="https://docs.python.org/3/tutorial/datastructures.html" target="_blank" rel="noopener">Python tutorial — Data Structures</a> — list methods, shallow copies, lists as queues and looping techniques.</li>
+          <li id="src-7"><a href="https://docs.python.org/3/tutorial/datastructures.html" target="_blank" rel="noopener">Python tutorial — Data Structures</a> — list methods, looping techniques and why a list makes a slow queue.</li>
           <li id="src-8"><a href="https://peps.python.org/pep-0257/" target="_blank" rel="noopener">PEP 257 — Docstring Conventions</a> — the shape of a one-line docstring.</li>
           <li id="src-9"><a href="https://docs.python.org/3/reference/datamodel.html" target="_blank" rel="noopener">Python data model</a> — functions as objects, __init__, __repr__ and __len__.</li>
           <li id="src-10"><a href="https://docs.python.org/3/howto/sorting.html" target="_blank" rel="noopener">Sorting Techniques (HOWTO)</a> — key functions, tuple keys, sorted against list.sort, and stability.</li>
           <li id="src-11"><a href="https://docs.python.org/3/faq/design.html" target="_blank" rel="noopener">Design and History FAQ</a> — how CPython implements lists, and what that means for append.</li>
-          <li id="src-12"><a href="https://docs.python.org/3/library/array.html" target="_blank" rel="noopener">array module</a> — type codes and what a typed array accepts.</li>
-          <li id="src-13"><a href="https://docs.python.org/3/tutorial/introduction.html" target="_blank" rel="noopener">Python tutorial — An Informal Introduction to Python</a> — slicing a list returns a new list.</li>
+          <li id="src-12"><a href="https://docs.python.org/3/tutorial/introduction.html" target="_blank" rel="noopener">Python tutorial — An Informal Introduction to Python</a> — slicing a list returns a new, shallow copy.</li>
+          <li id="src-13"><a href="https://docs.python.org/3/library/array.html" target="_blank" rel="noopener">array module</a> — type codes and what a typed array accepts.</li>
           <li id="src-14"><a href="https://docs.python.org/3/tutorial/classes.html" target="_blank" rel="noopener">Python tutorial — Classes</a> — scopes and namespaces, class and instance variables, method objects, inheritance, private names and iterators.</li>
           <li id="src-15"><a href="https://docs.python.org/3/glossary.html" target="_blank" rel="noopener">Python glossary</a> — duck typing in one paragraph.</li>
           <li id="src-16"><a href="https://docs.python.org/3/library/exceptions.html" target="_blank" rel="noopener">Built-in exceptions</a> — StopIteration and when next() raises it.</li>
@@ -1001,9 +1059,9 @@ assert [a(), b()] == [2, 50], "two counters count on their own"</code></pre>
     <ul class="goals-list">
       <li>Choose between an if/elif/else chain, a guard clause, a for loop and a while loop for a piece of logic, and say why the order of the tests in a chain matters</li>
       <li>Pull a repeated rule into a named function, avoid a missing return and a mutable default argument, and sort records with a lambda key</li>
-      <li>Say when a Python list is the right container and when a typed array.array is</li>
-      <li>Decide when a dict should become a class, write __init__, methods and __repr__, and override one method in a subclass through super()</li>
-      <li>Make a class work with len() and for, explain iter(), next() and StopIteration, and apply the LEGB rule to keep shared state on a class instead of in a global</li>
+      <li>Say what a Python list is underneath, what its operations cost, and when a typed array.array is the better container</li>
+      <li>Explain what a class and an object are, write __init__, methods and __repr__, and override one method in a subclass through super()</li>
+      <li>Make a class work with len() and for, explain iter(), next() and StopIteration, and use the LEGB rule to keep shared state on a class instead of in a global</li>
     </ul>
     <div class="ma-k">Today's exercise</div>
     <ul class="deliv-list check">
@@ -1027,15 +1085,15 @@ window.DIAGRAM = {
   width: 500, height: 600,
   nodes: [
     { id:"branch", step:0, x:24, y:14, w:200, h:56, label:"if / elif / else\n  first true branch runs\n  guard clause on top", detail:"Python tests from the top and runs only the first true branch, so the strictest test goes first. A guard clause handles the special case early and returns, keeping the main logic unnested." },
-    { id:"loops", step:1, x:276, y:14, w:200, h:56, label:"while · for\n  re-ask until valid\n  walk any iterable", detail:"while re-tests its condition before every pass; for takes items from any iterable and can unpack tuples in the header. break leaves the loop, and a loop's else runs only when no break happened." },
+    { id:"loops", step:1, x:276, y:14, w:200, h:56, label:"while · for\n  re-ask until valid\n  one pass per item", detail:"while re-tests its condition before every pass; for takes items from any iterable and can unpack tuples in the header. break leaves the loop, and a loop's else runs only when no break happened." },
     { id:"funcs", step:2, x:24, y:96, w:200, h:56, label:"Functions\n  def · return · docstring\n  history=None", detail:"No return statement means the caller gets None. Defaults are evaluated once, when def runs, so a list default is shared between calls; default to None instead." },
-    { id:"lambda", step:3, x:276, y:96, w:200, h:56, label:"lambda sort key\n  (rank, opened_at)\n  stable sort", detail:"key= takes a function called once per item. Priority text sorts alphabetically, so the key maps it to a rank and returns a tuple to break ties. Equal keys keep their order." },
-    { id:"array", step:4, x:276, y:178, w:200, h:56, label:"list vs array.array\n  references, any type\n  one type code, compact", detail:"A list is a dynamic array of references: append is amortised O(1), insert(0, x) and pop(0) are O(n). array('d', ...) packs doubles compactly and rejects other types." },
+    { id:"lambda", step:3, x:276, y:96, w:200, h:56, label:"lambda sort key\n  (rank, opened_at)\n  stable sort", detail:"key= takes a function that the sort calls once per item. Priority text sorts alphabetically, so the key maps it to a rank and returns a tuple to break ties. Equal keys keep their order." },
+    { id:"array", step:4, x:276, y:178, w:200, h:56, label:"list vs array.array\n  references, any type\n  one type code, compact", detail:"A list is a dynamic array of references: append is amortised O(1), while insert(0, x) and pop(0) are O(n). array('d', ...) packs doubles compactly and rejects other types." },
     { id:"ticket", step:5, x:24, y:262, w:200, h:72, label:"class Ticket\n  __init__ · self\n  deadline() · assign()\n  __repr__", detail:"Calling the class builds an instance and passes it to __init__ as self. Methods carry the rules; __repr__ supplies the text print() shows. t.deadline is the bound method, t.deadline() calls it." },
     { id:"urgent", step:6, x:276, y:262, w:200, h:72, label:"class UrgentTicket(Ticket)\n  deadline(): super(),\n  window halved", detail:"The subclass inherits everything and overrides one method. super().deadline() reaches the parent's rule, and isinstance(u, Ticket) is true where type(u) == Ticket is not." },
     { id:"desk", step:7, x:24, y:362, w:200, h:56, label:"class Desk\n  _tickets · add()\n  __len__ · __iter__", detail:"The desk owns its list. __len__ answers len(desk), and __iter__ returns a fresh iter(self._tickets) for every loop, so the desk can be looped over again and again." },
     { id:"iter", step:7, x:276, y:362, w:200, h:56, label:"for t in desk\n  iter() once, next() until\n  StopIteration", detail:"An iterable hands out iterators; an iterator keeps one position and is used up after one pass." },
-    { id:"scope", step:8, kind:"example", x:24, y:446, w:452, h:64, label:"SCOPE (LEGB)\n  local → enclosing → global → built-in\n  Desk.next_id in place of a global counter", detail:"Any assignment in a function makes the name local, which is why next_id += 1 raises UnboundLocalError. global and nonlocal rebind outer names; a class attribute keeps shared state explicit." },
+    { id:"scope", step:8, kind:"example", x:24, y:446, w:452, h:64, label:"SCOPE (LEGB)\n  local → enclosing → global → built-in\n  Desk.next_id in place of a global counter", detail:"Any assignment in a function makes the name local, which is why next_id += 1 raises UnboundLocalError. global and nonlocal rebind outer names; a class attribute keeps shared state visible." },
     { id:"check", step:9, x:24, y:536, w:452, h:44, label:"CHECK YOURSELF\n  answer out loud, then open" }
   ],
   edges: [
@@ -1055,10 +1113,10 @@ window.DIAGRAM = {
     "while repeats until a condition changes; for walks a collection and cannot loop forever.",
     "A function gives a rule one name. Watch for a missing return and a mutable default.",
     "A lambda key tells the sort what to compare: a rank first, then the opening time.",
-    "A list is a dynamic array of references; array.array packs one numeric type compactly.",
+    "A list is a dynamic array of references, cheap at the end and slow at the front; array.array packs one numeric type.",
     "The dict and its loose functions become a Ticket: the data and its rules in one class.",
-    "UrgentTicket inherits everything and overrides deadline() through super().",
-    "Desk owns the tickets. A for loop calls iter() once and next() until StopIteration.",
+    "UrgentTicket is a Ticket: it inherits everything and overrides deadline() through super().",
+    "Desk has tickets. A for loop calls iter() once and next() until StopIteration.",
     "Names resolve local, enclosing, global, built-in; shared state sits on the class as Desk.next_id.",
     "You can now explain each choice: branch or guard, while or for, function or lambda, list or array, dict or class, global or class attribute."
   ]
@@ -1071,24 +1129,24 @@ window.QUIZ = {
       options: ["breached", "at risk", "on time", "at risk, then on time, because the else always runs last"], answer: 1,
       explain: "The deadline has not passed, so the first test is false. Ninety minutes is under two hours, so the elif runs. A chain runs at most one branch, so the else is skipped." },
     { type: "scq", stem: "add_note(text, history=[]) appends text to history and returns it. It is called twice with only the text: first \"opened\", then \"assigned\". What does the second call return?",
-      options: ["['assigned']", "['opened', 'assigned']", "None", "It raises an error because history was not passed"], answer: 1,
+      options: ["['assigned']", "['opened', 'assigned']", "None", "It stops with an error because history was not passed"], answer: 1,
       explain: "Default values are evaluated once, when def runs, so both calls append to the same list. The idiom is history=None plus a check in the body that creates a new list." },
     { type: "tf", stem: "isinstance(u, Ticket) is False when u is an UrgentTicket, because UrgentTicket is a different class.", answer: false,
       explain: "isinstance() is true for instances of subclasses. It is type(u) == Ticket that is False for an UrgentTicket." },
-    { type: "mcq", stem: "Which statements about iteration are true? Select all that apply.",
-      options: ["A for loop calls iter() on its target, then next() until StopIteration", "next(it) raises StopIteration once the iterator is exhausted", "An exhausted iterator starts again from the first item on the next pass", "A class that defines __iter__ works in a for loop"], answer: [0, 1, 3],
-      explain: "An iterator keeps one position and is used up after one pass, so a second pass yields nothing. A class whose __iter__ returns a fresh iter(self._tickets) can be looped over repeatedly." },
+    { type: "mcq", stem: "Which statements about Python lists and arrays are true? Select all that apply.",
+      options: ["A list holds references, so one list can mix ints, strings and None", "append on a list is amortised O(1)", "pop(0) on a long list is as cheap as pop() from the end", "array(\"d\", ...) rejects a value that is not a double"], answer: [0, 1, 3],
+      explain: "A list is a dynamic array of references, so appends are cheap and types can mix. pop(0) is O(n) because every remaining item shifts. A typed array accepts only its type code." },
     { type: "match", stem: "Match each term to what it means.",
       pairs: [
         { l: "guard clause", r: "an early if that handles a special case and returns at once" },
-        { l: "lambda", r: "a one-expression anonymous function, often passed as key= to sorted()" },
+        { l: "lambda", r: "a one-expression function with no name, often passed as key= to sorted()" },
         { l: "class attribute", r: "one value shared by every instance, such as Desk.next_id" },
-        { l: "method override", r: "a subclass redefining a method it inherited, optionally calling super()" }
+        { l: "iterator", r: "an object that keeps a position and hands out the next item until StopIteration" }
       ],
-      explain: "A guard clause keeps the main logic unnested. A lambda is a sort key written on the spot. A class attribute is shared, where self.x set in __init__ belongs to one object. An override replaces the inherited method for the subclass's objects." },
+      explain: "A guard clause keeps the main logic unnested. A lambda is a sort key written on the spot. A class attribute is shared, where self.x set in __init__ belongs to one object. An iterator is used up after one pass." },
     { type: "open", stem: "In two or three sentences: why does next_id += 1 inside a function fail when a module-level next_id exists, and where would you keep the counter instead?",
       hint: "Think about what any assignment does to a name inside a function.",
-      model: "Assigning to next_id anywhere in the function makes the name local for the whole function, so the += reads a local that has no value yet and Python raises UnboundLocalError. global next_id makes it run but hides the state at module level; a class attribute such as Desk.next_id, updated as Desk.next_id += 1, keeps the shared counter explicit." }
+      model: "Assigning to next_id anywhere in the function makes the name local for the whole function, so the += reads a local that has no value yet and Python raises UnboundLocalError. global next_id makes it run but hides the state at module level; a class attribute such as Desk.next_id, updated as Desk.next_id += 1, keeps the shared counter visible." }
   ]
 };
 window.SURVEY = {

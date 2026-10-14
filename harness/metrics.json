@@ -16,7 +16,7 @@
     "codePopupsMin": 0, "codePopupsMax": 2,
     "sourcesMin": 6,
     "deliveryPhrases": ["the trainer", "in class", "you watched", "you saw", "this morning", "this afternoon", "today's demo", "today's session", "typed live", "live demo", "the room", "in the room", "code-along", "after class", "during the demo", "earlier today"],
-    "assumptionPhrases": ["you already", "already know", "from coursework", "from university", "from your degree", "since your first", "first programming course", "as you know", "you will recall", "you may recall", "you may remember", "you might remember", "you are familiar", "you're familiar", "by now you", "syntax from zero"]
+    "assumptionPhrases": ["you already", "already know", "from coursework", "in coursework", "for coursework", "from university", "from your degree", "since your first", "first programming course", "as you know", "you will recall", "you may recall", "you may remember", "you might remember", "you are familiar", "you're familiar", "by now you", "syntax from zero"]
   },
   "demos": { "scriptsMin": 2, "scriptsMax": 5, "minutesPerScriptMin": 15, "minutesPerScriptMax": 45, "maxLinesPerFile": 90, "maxLinesPerThreadKey": 200, "maxTypedLinesPerRung": 60 },
   "practice": { "_comment": "D-0047: practice tasks on a notes page (harness/practice_tasks.py verify, harness/critics/practice.md). At most one task per teaching step.", "checksPerTaskMin": 2, "checksPerTaskMax": 4, "acceptMin": 1, "starterLinesMax": 12, "modelLinesMax": 15 },

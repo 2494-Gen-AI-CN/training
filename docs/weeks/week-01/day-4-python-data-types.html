@@ -36,12 +36,13 @@
           <span><b>Week 1</b> · Day 4</span>
           <span>Thu Oct 15, 2026</span>
           <span>Agile for developers, Git &amp; Python fundamentals</span>
-          <span><b>~36 min</b> · reference notes @150 wpm · diagram · check</span>
-          <span class="verified">Sources checked 2026-10-12 · python 3.15</span>
+          <span><b>~40 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span class="verified">Sources checked 2026-10-14 · python 3.15</span>
         </div>
-        <p class="summary">This page assumes Wednesday's conventions: PEP 8 names, <code>input()</code> and
-        <code>print()</code> with f-string formats, and a ticket-desk script whose ticket is still a handful of flat
-        variables. It works through Python's built-in types in the order a ticket record needs them: strings, casting and
+        <p class="summary">This page assumes only Wednesday's lesson: Python's indented blocks, variables as names bound
+        to objects, the operators including <code>is</code>, PEP 8 names, and <code>input()</code> and <code>print()</code>
+        with f-string formats, applied to a ticket-desk script whose ticket is still a handful of flat variables. Anything
+        it borrows from a later day gets a one-line explanation where it appears. It works through Python's built-in types in the order a ticket record needs them: strings, casting and
         truthiness for typed text; lists, tuples, <code>range</code> and sets for a queue; <code>bytes</code>,
         <code>None</code> and dicts for the record; then numbers, <code>datetime</code> and the namespaces that hold every
         name. Each section gives a runnable example with its output, the trade-off, how the idiom looks in someone else's
@@ -58,8 +59,13 @@
         stores a title, it cleans the text, and every tool for that is a string method or a slice. In the ticket-desk code
         that grows through this week, the typed title and priority are normalised once, straight after they are read, so
         every later line sees clean text.</p>
+        <p>A method is a function that belongs to a value and is called with a dot after it: <code>title.strip()</code>
+        calls the <code>strip</code> method of the string in <code>title</code>. This page uses methods on every type it
+        covers, and Friday's page shows how to write your own.</p>
         <h3>Immutable strings and the methods that return new ones</h3>
-        <p>A Python <code>str</code> is an immutable sequence of Unicode code points. Methods such as
+        <p>Unicode is the standard that gives every character a number, called a code point, and a Python
+        <code>str</code> is a sequence of those code points. It is also immutable: once a string exists, nothing can change
+        its characters. Methods such as
         <code>strip()</code>, <code>lower()</code> and <code>replace()</code> build and return a new string, and the original
         stays exactly as it was.<sup class="cite"><a href="#src-1">1</a></sup> That answers the most common opening
         question about strings: <code>s.upper()</code> on a line of its own changes nothing, because it makes an upper-case
@@ -101,7 +107,7 @@ print("abc"[:40])</code></pre>
         <p>This prints <code>Login page returns 500</code>, then <code>500 0</code>, then <code>005</code>, then
         <code>abc</code>. The title is shorter than 40 characters, so <code>clean[:40]</code> is the whole title, which is
         exactly why the slice is safe for display code. A step of <code>-1</code> walks the string backwards, so
-        <code>[::-1]</code> is the standard one-expression reversal. The pattern you will meet in real code is
+        <code>[::-1]</code> is the standard one-expression reversal. The pattern that turns up in real code is
         <code>text[:40] + "..."</code> to truncate a long value for a table or a log line. Its limit is that it adds the dots
         even when nothing was cut, so careful code checks <code>len(text)</code> first.</p>
         <h3>Building a long string: join and f-strings</h3>
@@ -132,7 +138,7 @@ print(f"{line} {hours_open:.2f}h")</code></pre>
         <div class="tag">Conversion</div>
         <h2>Casting and truthiness</h2>
         <p>Casting turns a value of one type into another, and truthiness is the cast Python performs on its own whenever a
-        value sits in a condition. Both are a frequent source of bugs that pass a quick read, because the code looks
+        value sits in a condition. Both cause bugs that survive a quick read: the code looks
         right and runs without an error.</p>
         <h3>Casting with int(), float() and str()</h3>
         <p><code>input()</code> always returns a <code>str</code>, so a number typed at the prompt is text until you cast
@@ -172,15 +178,18 @@ int("²")</code></pre>
         <p>The first line prints <code>False False True</code>, even though <code>int(" 42 ")</code> and
         <code>int("-7")</code> both succeed. The second prints <code>True</code>, and the third raises
         <code>ValueError</code>. The reliable test is to attempt the cast and catch <code>ValueError</code> with
-        <code>try</code> and <code>except</code>,<sup class="cite"><a href="#src-7">7</a></sup> which a later lesson on error
-        handling covers.</p>
+        <code>try</code> and <code>except</code>:<sup class="cite"><a href="#src-7">7</a></sup> <code>try</code> runs a
+        block, and an <code>except ValueError</code> block below it runs instead of stopping the program if that error is
+        raised. A later lesson on error handling covers both properly.</p>
         <h3>Truthiness and the bool type</h3>
         <p>Every object has a truth value. <code>None</code>, <code>False</code>, zero of any numeric type and empty
         sequences and collections are false; an object is also false when it defines <code>__bool__</code> returning
         <code>False</code> or <code>__len__</code> returning 0; everything else is
-        true.<sup class="cite"><a href="#src-12">12</a></sup> So <code>bool("False")</code> and <code>bool("0")</code> are
-        both <code>True</code>: they are non-empty strings, and <code>bool()</code> does not read the words. <code>bool</code>
-        is a subclass of <code>int</code>, which makes <code>True == 1</code> true and
+        true.<sup class="cite"><a href="#src-12">12</a></sup> (<code>__bool__</code> and <code>__len__</code> are special
+        methods a class can define to answer "am I true?" and "how long am I?"; classes arrive on Friday.) So
+        <code>bool("False")</code> and <code>bool("0")</code> are both <code>True</code>: they are non-empty strings, and
+        <code>bool()</code> does not read the words. As Wednesday's page noted, <code>bool</code> is a subclass of
+        <code>int</code>, a specialised kind of integer, which makes <code>True == 1</code> true and
         <code>sum([True, False, True])</code> equal to 2.<sup class="cite"><a href="#src-13">13</a></sup></p>
 <pre data-run="python"><code>print(bool("False"), bool(""), bool(0), bool([]), bool(None))
 print(True + True, sum([True, False, True]), isinstance(True, int))
@@ -195,7 +204,8 @@ print(2 == True, bool(2))</code></pre>
         value.</p>
         <div class="ix-spot" data-snippet="hours_logged = 0&#10;label = hours_logged or &quot;not logged&quot;&#10;print(label)" data-q="The engineer did log zero hours. What does this print, and why is it wrong?" data-a="It prints not logged. 0 is falsy, so or skips it and returns the second operand. When zero is a real value, test for the missing case explicitly with hours_logged is None."></div>
         <h3>and and or hand back an operand</h3>
-        <p><code>and</code> and <code>or</code> return one of their operands rather than a <code>bool</code>, and they stop
+        <p>Wednesday's operators lesson introduced this rule, and truthiness is what drives it. <code>and</code> and
+        <code>or</code> return one of their operands rather than a <code>bool</code>, and they stop
         evaluating as soon as the result is known.<sup class="cite"><a href="#src-15">15</a></sup> <code>a and b</code>
         returns <code>a</code> if it is falsy and otherwise <code>b</code>; <code>a or b</code> returns <code>a</code> if it
         is truthy and otherwise <code>b</code>.</p>
@@ -248,7 +258,8 @@ print(queue.sort())</code></pre>
         did sort <code>queue</code>, in place, and returned nothing, which is why <code>queue = queue.sort()</code> is a bug
         that replaces your list with <code>None</code>. Both sorts are stable, so items that compare equal keep their
         original order.<sup class="cite"><a href="#src-17">17</a></sup> Sorting by something other than tuple order needs a
-        key function, which Friday's <code>lambda</code> supplies.</p>
+        key function, a small function that tells the sort which value to compare for each item; Friday's
+        <code>lambda</code> supplies one.</p>
         <p>Assignment never copies. <code>backup = queue</code> binds a second name to the same list object, so a change
         through either name shows through both; <code>queue.copy()</code> makes a new
         list.<sup class="cite"><a href="#src-18">18</a></sup></p>
@@ -258,14 +269,16 @@ print(len(queue), backup is queue)
 safe = queue.copy()
 safe.append((8, 888, "late"))
 print(len(queue), len(safe))</code></pre>
-        <p>This prints <code>4 True</code>, then <code>4 5</code>. The trade-off of a list is at its front:
+        <p>This prints <code>4 True</code>, then <code>4 5</code>. The trade-off of a list is at its front.
         <code>pop(0)</code> and <code>insert(0, x)</code> shift every other element, so they cost O(n), which makes a list a
-        poor queue for large data. <code>collections.deque</code> adds and removes at both ends in
+        poor queue for large data. O(n), read "order n", is shorthand for work that grows in step with the number of
+        items n: twice the list, roughly twice the time. O(1) means a fixed cost whatever the size, and
+        <code>collections.deque</code> adds and removes at both ends in
         O(1).<sup class="cite"><a href="#src-19">19</a></sup><sup class="cite"><a href="#src-20">20</a></sup></p>
         <h3>Shallow and deep copies</h3>
         <p>The next question after aliasing is what <code>copy()</code> actually copies. It copies the outer list only, so
-        any lists inside it are still shared. <code>copy.deepcopy</code> copies nested objects
-        recursively.<sup class="cite"><a href="#src-21">21</a></sup> A related trap is <code>[x] * n</code>, which repeats
+        any lists inside it are still shared. <code>copy.deepcopy</code> copies nested objects at every level, the lists
+        inside the lists included.<sup class="cite"><a href="#src-21">21</a></sup> A related trap is <code>[x] * n</code>, which repeats
         references to the same object, so mutable elements end up shared.<sup class="cite"><a href="#src-3">3</a></sup></p>
 <pre data-run="python"><code>rows = [[0] * 3] * 3
 rows[0][0] = 1
@@ -283,7 +296,8 @@ print(shallow[0], deep[0])</code></pre>
         <p>A tuple is an immutable sequence, used for a fixed record whose positions mean something, where a list holds a
         varying number of similar things. The comma makes the tuple, not the parentheses: <code>(1)</code> is the integer 1,
         <code>(1,)</code> is a one-element tuple, and <code>()</code> is the empty
-        tuple.<sup class="cite"><a href="#src-22">22</a></sup> Tuples compare lexicographically, so <code>(1, 9) &lt; (2,
+        tuple.<sup class="cite"><a href="#src-22">22</a></sup> Tuples compare lexicographically, the way a dictionary
+        orders words: the first elements decide, and only a tie moves on to the second, so <code>(1, 9) &lt; (2,
         0)</code>.<sup class="cite"><a href="#src-17">17</a></sup> They support <code>count()</code> and
         <code>index()</code> and have no method that changes them.<sup class="cite"><a href="#src-23">23</a></sup></p>
 <pre data-run="python"><code>print(type((1)), type((1,)))
@@ -299,12 +313,14 @@ hash(pair)</code></pre>
         <code>101 1 [101, 'Login page returns 500']</code>. Unpacking needs as many targets as items unless a starred target
         absorbs the rest.<sup class="cite"><a href="#src-22">22</a></sup> The tuple <code>pair</code> prints as
         <code>(1, [2, 3])</code>: a tuple is immutable only at its own level, so a list inside it can still change. That is
-        also why the last line raises <code>TypeError</code>. A tuple is hashable, and so usable as a dict key, only if
+        also why the last line raises <code>TypeError</code>. <code>hash()</code> computes a hash, a number derived from
+        the value, and an object is hashable when that number stays fixed for the object's whole life; sets and dicts use
+        it to find things fast, as the next two sections show.<sup class="cite"><a href="#src-24">24</a></sup> A tuple is hashable, and so usable as a dict key, only if
         every element is hashable.<sup class="cite"><a href="#src-24">24</a></sup> In real code you recognise tuples by
         unpacking such as <code>rank, tid, text = row</code>, or a trailing comma such as <code>SIZE = (640,)</code>.</p>
         <h3>range: integers computed on demand</h3>
         <p><code>range(start, stop, step)</code> excludes <code>stop</code>, and a negative step counts
-        down.<sup class="cite"><a href="#src-25">25</a></sup> In Python 3 a <code>range</code> is not a list. It is an
+        down.<sup class="cite"><a href="#src-25">25</a></sup> A <code>range</code> is not a list. It is an
         immutable sequence that stores only start, stop and step and computes items on demand, so <code>len()</code>,
         indexing and <code>in</code> work without building the values, and a range of a billion numbers takes the same
         small memory as a range of three.<sup class="cite"><a href="#src-26">26</a></sup></p>
@@ -333,9 +349,9 @@ range(0.5, 3)</code></pre>
       <section class="step" data-diagram="0" data-step="3">
         <div class="tag">Sets &amp; bytes</div>
         <h2>Sets and binary types</h2>
-        <p>Sets and bytes have little in common except that people reach for a list or a string when they should not.
+        <p>Sets and bytes have little in common, except that people reach for a list or a string when a set or bytes fits better.
         A set answers "have I seen this before?" quickly, and <code>bytes</code> is the form text takes the moment it
-        leaves your program for a file, a socket or an HTTP response.</p>
+        leaves your program for a file, a network connection or a web server's reply.</p>
         <h3>Sets: distinct, hashable, fast to search</h3>
         <p>A set is an unordered collection of distinct hashable objects, built for fast membership testing. It locates an
         element by its hash value, while <code>x in some_list</code> compares <code>x</code> against the items one by
@@ -371,12 +387,13 @@ print(sorted(reporters - watchers), sorted(reporters ^ watchers))</code></pre>
         <code>sorted()</code> calls are there because a set has no order of its own: <code>sorted</code> returns a list, so
         the output reads the same on every run.</p>
         <h3>bytes: what text becomes after encoding</h3>
-        <p>A <code>str</code> holds Unicode code points; a <code>bytes</code> object holds raw bytes. <code>str.encode()</code>
-        returns <code>bytes</code>, using UTF-8 unless you name another codec, and <code>bytes.decode()</code> reverses
-        it.<sup class="cite"><a href="#src-29">29</a></sup> <code>len</code> counts code points for a <code>str</code> and
+        <p>A <code>str</code> holds Unicode code points; a <code>bytes</code> object holds raw bytes, each a number from 0
+        to 255. An encoding, also called a codec, is the rule that turns code points into bytes and back, and UTF-8 is the
+        common one. <code>str.encode()</code> returns <code>bytes</code>, using UTF-8 unless you name another codec, and
+        <code>bytes.decode()</code> reverses it.<sup class="cite"><a href="#src-29">29</a></sup> <code>len</code> counts code points for a <code>str</code> and
         bytes for a <code>bytes</code>, and indexing a <code>bytes</code> object returns an <code>int</code> from 0 to
         255.<sup class="cite"><a href="#src-30">30</a></sup> UTF-8 uses one to four bytes per character, so
-        <code>"café"</code> has 4 characters and 5 bytes, because <code>é</code> takes two. Python 3 never mixes the two
+        <code>"café"</code> has 4 characters and 5 bytes, because <code>é</code> takes two. Python never mixes the two
         types implicitly, so <code>b"a" + "b"</code> raises <code>TypeError</code>.<sup class="cite"><a href="#src-31">31</a></sup></p>
 <pre data-run="python"><code>title = "Café menu crashes"
 raw = title.encode("utf-8")
@@ -386,8 +403,8 @@ print(raw[0], raw.decode() == title)
 print(b"caf\xc3\xa9".decode("latin-1"))
 print(b"\xff".decode("utf-8", errors="replace"))
 b"a" + "b"</code></pre>
-        <p>The first print shows <code>b'Caf\xc3\xa9 menu crashes'</code>, the two bytes of <code>é</code> written as hex
-        escapes. Then come <code>4 5</code> and <code>67 True</code>: the first byte is the integer code for
+        <p>The first print shows <code>b'Caf\xc3\xa9 menu crashes'</code>, with the two bytes of <code>é</code> written as
+        hex escapes: <code>\xc3</code> is one byte written as a two-digit hexadecimal (base 16) number. Then come <code>4 5</code> and <code>67 True</code>: the first byte is the integer code for
         <code>C</code>, and the round trip gives back the same string. The next line decodes UTF-8 bytes as latin-1 and
         prints <code>cafÃ©</code>. Decoding with the wrong codec either raises <code>UnicodeDecodeError</code> or, as here,
         silently produces the wrong characters, because latin-1 accepts every byte. <code>errors="replace"</code> puts the
@@ -397,10 +414,10 @@ b"a" + "b"</code></pre>
         <p>The limit to keep in mind is that byte length is not character count. Code that cuts a byte string at a fixed
         position, say to fit a 255-byte field, can split a character in half, and decoding the result
         fails.<sup class="cite"><a href="#src-31">31</a></sup> You recognise <code>bytes</code> on sight as a
-        <code>b"..."</code> literal, or as <code>payload.decode("utf-8")</code> on data that came from a file, a socket or an
-        HTTP response.</p>
+        <code>b"..."</code> literal, or as <code>payload.decode("utf-8")</code> on data that came from a file, a network
+        connection or a web server's reply.</p>
         <h3>bytearray, the mutable variant</h3>
-        <p>Once you know <code>bytes</code> is immutable, the next question is what to use when the bytes must change.
+        <p>A <code>bytes</code> object is immutable, so the next question is what to use when the bytes must change.
         <code>bytearray</code> is the mutable counterpart, so its items can be reassigned in
         place.<sup class="cite"><a href="#src-29">29</a></sup></p>
 <pre data-run="python"><code>buf = bytearray(b"abc")
@@ -430,7 +447,8 @@ print(buf)</code></pre>
         reliable.<sup class="cite"><a href="#src-32">32</a></sup> PEP 8 says comparisons to singletons such as
         <code>None</code> should use <code>is</code> or <code>is not</code>, never the equality
         operators.<sup class="cite"><a href="#src-14">14</a></sup> Many calls hand back <code>None</code> because they do
-        their work as a side effect: <code>print()</code> returns <code>None</code>,<sup class="cite"><a href="#src-33">33</a></sup>
+        their work as a side effect, something they change or show, such as text on the screen or a reordered list, rather
+        than a value they hand back: <code>print()</code> returns <code>None</code>,<sup class="cite"><a href="#src-33">33</a></sup>
         and so do the in-place list methods such as <code>sort()</code>.<sup class="cite"><a href="#src-16">16</a></sup></p>
 <pre data-run="python"><code>assignee = None
 print(assignee is None, type(assignee))
@@ -477,8 +495,10 @@ ticket["owner"]</code></pre>
         <p>Replacing three constants with <code>SLA_HOURS</code> turns a choice between names into a lookup, so a fourth
         priority is one more entry in the table. The trade-off is that a dict gives fast lookup by key at the cost of memory,
         and offers no lookup by value at all.<sup class="cite"><a href="#src-36">36</a></sup> In other people's code you
-        will meet <code>config.get("timeout", 30)</code>, and registries written as
-        <code>by_id = {t["id"]: t for t in tickets}</code>, a dict comprehension you only need to recognise for now.</p>
+        will find <code>config.get("timeout", 30)</code>, and registries written as
+        <code>by_id = {t["id"]: t for t in tickets}</code>. That second form is a dict comprehension, a loop written
+        inside the braces that builds one entry per ticket; you only need to recognise it for now, and Friday's loops make
+        it readable.</p>
         <h3>Views, order and the hash table underneath</h3>
         <p><code>.keys()</code>, <code>.values()</code> and <code>.items()</code> return views, live windows that reflect
         later changes to the dict, so <code>list(d.items())</code> is how you take a snapshot that stays
@@ -493,8 +513,10 @@ print(list(ticket))</code></pre>
         <p>Continuing with the same ticket, this prints <code>6</code>, then <code>7</code>: the view saw the new key
         without being asked again. The last line lists the keys in the order they were added, from <code>'id'</code> to
         <code>'status'</code>.</p>
-        <p>Underneath, a dict is a hash table. Python hashes the key to find its slot, which gives average constant-time
-        lookup, insertion and deletion however large the dict grows.<sup class="cite"><a href="#src-20">20</a></sup> The
+        <p>Underneath, a dict is a hash table: a block of numbered slots, where Python computes the key's hash and turns it
+        into the slot to look in, so it never has to scan the other keys. That gives average constant-time lookup,
+        insertion and deletion, meaning a lookup in a dict of ten million keys takes about as long as in a dict of
+        ten.<sup class="cite"><a href="#src-20">20</a></sup> The
         same mechanism powers sets, which is why both need hashable members: if a key's hash could change after insertion,
         the table would look in the wrong slot.<sup class="cite"><a href="#src-24">24</a></sup></p>
         <button class="code-cta" type="button" data-modal="code-w01d4-dict"><span class="cc-ico">&lt;/&gt;</span> See the ticket record as the desk code builds it <span class="cc-meta">· 03_ticket_dict.py</span></button>
@@ -515,9 +537,10 @@ print(list(ticket))</code></pre>
         and is it past its deadline? The ticket-desk code replaces a hard-coded hours figure with one computed from two
         datetimes, and the float pitfalls show up in that same computation.</p>
         <h3>int, float and the two divisions</h3>
-        <p>A <code>float</code> is a binary floating-point number, and binary floating point cannot represent 0.1 exactly.
-        The tiny error in 0.1 and in 0.2 does not cancel out when they are added, so <code>0.1 + 0.2 == 0.3</code> is
-        <code>False</code>.<sup class="cite"><a href="#src-39">39</a></sup> An <code>int</code>, by contrast, has arbitrary
+        <p>Wednesday's page showed the symptom; this section gives the cause and the fixes. A <code>float</code> is a
+        binary floating-point number: it stores a value as a fraction in base 2, and just as 1/3 has no exact decimal
+        form, 0.1 has no exact binary one. The tiny error in 0.1 and in 0.2 does not cancel out when they are added, so
+        <code>0.1 + 0.2 == 0.3</code> is <code>False</code>.<sup class="cite"><a href="#src-39">39</a></sup> An <code>int</code>, by contrast, has arbitrary
         precision, so integer overflow does not happen in Python; an <code>int</code> grows as large as memory
         allows.<sup class="cite"><a href="#src-40">40</a></sup> <code>/</code> is true division and always returns a float,
         while <code>//</code> is floor division and rounds down, so <code>-7 // 2</code> is -4 rather than
@@ -534,13 +557,17 @@ print(2 ** 100, 1_000_000)</code></pre>
         <code>10 / 5</code> is the float <code>2.0</code> even though the division is exact. The fourth prints
         <code>(1, 4) 2 4</code>: 28 hours is one day and four hours, and <code>round()</code> rounds half to even, so 2.5
         goes down to 2 and 3.5 up to 4.<sup class="cite"><a href="#src-43">43</a></sup> The last line prints a 31-digit
-        integer and <code>1000000</code>; the underscores in a numeric literal are ignored by the interpreter and exist only
-        for the reader.<sup class="cite"><a href="#src-44">44</a></sup></p>
+        integer and <code>1000000</code>; Python ignores the underscores in a numeric literal, and they exist only for the
+        reader.<sup class="cite"><a href="#src-44">44</a></sup></p>
         <p>You recognise careful float code on sight by <code>abs(a - b) &lt; 1e-9</code> where a naive version would have
         <code>==</code>. Week 2's <code>math</code> module adds a named helper for the same comparison.</p>
         <h3>Exact decimal arithmetic with decimal</h3>
         <p>When an interviewer asks how you would handle money, the expected answer is the <code>decimal</code> module.
-        <code>Decimal</code> works in base ten, so the sum that failed above succeeds.<sup class="cite"><a href="#src-45">45</a></sup></p>
+        <code>Decimal</code> works in base ten, so the sum that failed above succeeds.<sup class="cite"><a href="#src-45">45</a></sup>
+        The import line uses the <code>from</code> form: <code>from decimal import Decimal</code> loads the
+        <code>decimal</code> module and binds just the name <code>Decimal</code>, so the code can write
+        <code>Decimal(...)</code> without the module name in front.<sup class="cite"><a href="#src-50">50</a></sup> The last section of this page returns to what that
+        binding means.</p>
 <pre data-run="python"><code>from decimal import Decimal
 print(Decimal("0.1") + Decimal("0.2") == Decimal("0.3"))</code></pre>
         <p>This prints <code>True</code>. Each value is built from a string, so it holds exactly the digits written. The
@@ -606,11 +633,13 @@ print(parsed == opened_at)</code></pre>
         <code>NOW</code>. This last one is about the names themselves: where they live, how to list them, how to remove
         one, and how one ordinary line can make a name point at something else.</p>
         <h3>Namespaces, dir() and del</h3>
-        <p>A namespace is a mapping from names to objects. Python keeps several: the built-in names such as
-        <code>len</code> and <code>list</code>, the global names of each module, and the local names of each function
+        <p>A module is one Python file loaded as a unit, either the file you run or one brought in with
+        <code>import</code>. A namespace is a mapping from names to objects. Python keeps several: the built-in names such
+        as <code>len</code> and <code>list</code>, the global names of each module, and the local names of each function
         call.<sup class="cite"><a href="#src-50">50</a></sup> When a line uses a name, Python looks it up in these
         namespaces to find the object. <code>dir()</code> with no arguments lists the names in the current
-        scope,<sup class="cite"><a href="#src-51">51</a></sup> and <code>del name</code> removes a binding. It does not
+        scope,<sup class="cite"><a href="#src-51">51</a></sup> which at the top level of a file means the module's global
+        names (Friday's page looks at scope inside functions). <code>del name</code> removes a binding. It does not
         necessarily destroy the object, which is freed only when no names refer to it any
         more.<sup class="cite"><a href="#src-52">52</a></sup></p>
 <pre data-run="python"><code>queue = [(1, 101, "Login page returns 500")]
@@ -624,7 +653,7 @@ print("backup" in dir(), len(queue))</code></pre>
         <code>del</code> in real code as tidying a name that should not be used again, such as <code>del backup</code>
         after the copy it held has served its purpose.</p>
         <h3>__name__ and the main guard</h3>
-        <p>Every module has a global name <code>__name__</code>. It is <code>"__main__"</code> when the file is run
+        <p>Every module has a global name <code>__name__</code>, read aloud as "dunder name" for its double underscores. It is <code>"__main__"</code> when the file is run
         directly, and the module's own name when the file is imported.<sup class="cite"><a href="#src-53">53</a></sup> That
         difference is what the line at the bottom of so many scripts tests.</p>
 <pre data-run="python"><code>print(__name__)
@@ -634,7 +663,7 @@ if __name__ == "__main__":
         <code>__main__</code> and then <code>running as a script</code>. If another file runs
         <code>import ticket_desk</code> instead, the first line prints <code>ticket_desk</code> and the guarded line is
         skipped.<sup class="cite"><a href="#src-53">53</a></sup> That is the point of the guard: code beneath it runs when the
-        file is the program and stays quiet when the file is used as a library. The trade-off is small but real: anything
+        file is the program and stays quiet when the file is used as a library. The trade-off is that anything
         a script does outside the guard also happens on import, so a module that prints or prompts at top level does so
         for every file that imports it.</p>
         <h3>Shadowing: the later binding wins</h3>
