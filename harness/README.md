@@ -22,6 +22,8 @@ harness/
                        (Sources checked vs the brief), --citations (sup.cite -> li#src-N, URLs in the brief), --links
                        (liveness); --all-live covers every live page; author, humanizer, verify agent, critic and tests call it
   publish_demos.py     copies trainer/<rel>/demos/key/ to demos/<rel>/ and flips the notes demo card once the day is taught (D-0030)
+  practice_browser.py  browser pass for a page's practice tasks (D-0043): re-checks every case under CPython, then serves docs/ with the cases and
+                       practice_browser.js so an agent with browser tools can drive the real page through them (AGENTS.md has the five steps)
   build_tracker.py     writes ../tracker.html (the work tracker; local, gitignored, D-0036) = templates/tracker.html + a data block
                        read from repo state; --check in tests (D-0035)
   log_run.py           add / amend one record per workflow run in runs.jsonl; `tests` records the suite result in last-tests.json

@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import json
 import re
+import runpy
 import unittest
 
 from helpers import ALLOWED_JS, DOCS, FORBIDDEN_RE, TRAINER, ParsedPage, live_days
@@ -18,10 +19,15 @@ def _runner() -> dict:
     return g
 
 
-def _solves(g: dict, code: str, checks: str) -> bool:
-    """True when code runs to its end and passes every check, as the page's Check button would report it."""
+def _check(g: dict, code: str, checks: str) -> tuple[bool, list[dict]]:
+    """What the page's Check button gets: did code run to its end, and one {ok, label, detail} per check."""
     finished = g["_tc_run"](lambda kind, text: None, code, [])
-    results = json.loads(g["_tc_check"](checks)) if finished else []
+    return finished, (json.loads(g["_tc_check"](checks)) if finished else [])
+
+
+def _solves(g: dict, code: str, checks: str) -> bool:
+    """True when code runs to its end and passes every check, as the page would mark it Solved."""
+    finished, results = _check(g, code, checks)
     return finished and bool(results) and all(r["ok"] for r in results)
 
 
@@ -124,6 +130,43 @@ class PracticeTaskTests(unittest.TestCase):
             for t in tasks:
                 with self.subTest(rel=rel, task=t.attrs.get("data-id")):
                     self.assertTrue(_solves(g, code, t.find("pre", "task-tests").text()))
+
+    @unittest.skipUnless(TRAINER.exists(), "trainer/ (private repo) not present")
+    def test_checks_pass_right_answers_and_catch_wrong_ones(self):
+        """The checks are tested themselves, from trainer/<rel>/solutions/practice_cases.py: other right answers
+        pass every check, each known wrong answer is caught by the check meant for it, and every check on the
+        page is failed by at least one wrong answer."""
+        g = _runner()
+        for _w, _d, rel in live_days():
+            tasks = _tasks(rel)
+            if not tasks:
+                continue
+            path = TRAINER / rel / "solutions" / "practice_cases.py"
+            self.assertTrue(path.is_file(), f"{rel}: the page has tasks, so the trainer repo needs solutions/practice_cases.py")
+            cases = runpy.run_path(str(path))["CASES"]
+            self.assertEqual({t.attrs["data-id"] for t in tasks}, set(cases), f"{rel}: practice_cases.py covers exactly the page's tasks")
+            for t in tasks:
+                tid, source = t.attrs["data-id"], t.find("pre", "task-tests").text()
+                labels = [n.msg.value for n in ast.parse(source).body if isinstance(n, ast.Assert)]
+                caught: set[str] = set()
+                for i, code in enumerate(cases[tid]["accept"]):
+                    with self.subTest(rel=rel, task=tid, accept=i):
+                        finished, results = _check(g, code, source)
+                        self.assertTrue(finished, "a right answer stopped with an error")
+                        self.assertEqual([], [f"{r['label']} — {r['detail']}" for r in results if not r["ok"]], "a right answer fails a check")
+                for i, (code, label) in enumerate(cases[tid]["reject"]):
+                    with self.subTest(rel=rel, task=tid, reject=i):
+                        finished, results = _check(g, code, source)
+                        failed = [r["label"] for r in results if not r["ok"]]
+                        caught.update(failed)
+                        if label is None:
+                            self.assertFalse(finished, "this entry is meant to stop with an error before the checks")
+                            continue
+                        self.assertIn(label, labels, "the label names no check of this task")
+                        self.assertTrue(finished, "this entry is meant to run to its end and fail a check")
+                        self.assertIn(label, failed, "the wrong answer got past the check meant to catch it")
+                with self.subTest(rel=rel, task=tid, what="every check is failed by some wrong answer"):
+                    self.assertEqual([], [x for x in labels if x not in caught])
 
 
 if __name__ == "__main__":
