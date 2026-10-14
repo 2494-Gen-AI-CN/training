@@ -764,6 +764,10 @@ a.snav-btn:hover { border-color:var(--accent); color:var(--accent); }
 .side-dgm-close:hover { color:var(--accent); border-color:var(--accent); }
 
 @media screen {
+  /* Full: the index still scrolls, without drawing its scroll bar */
+  html:not([data-view]) .toc { scrollbar-width:none; }
+  html:not([data-view]) .toc::-webkit-scrollbar { display:none; }
+
   /* both views: the rail's cards and navigation become one run of small buttons */
   html[data-view] .side { height:auto; gap:8px; }
   html[data-view] .side-cards, html[data-view] .side-nav { display:contents; }
