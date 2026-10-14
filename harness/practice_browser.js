@@ -1,7 +1,7 @@
 /* practice_browser.js — the browser half of the practice-task pass (D-0043). See harness/practice_browser.py,
    which serves this file as /__practice_browser.js next to the page.
 
-   An agent runs ONE line in the page (…?run=1) with its JavaScript tool:
+   An agent runs ONE line in the page with its JavaScript tool:
 
        await (await import("/__practice_browser.js")).default()
 

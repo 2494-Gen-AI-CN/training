@@ -10,6 +10,7 @@ Newest first.
 
 | ID | Date | Status | Decision | Affects | Supersedes |
 |---|---|---|---|---|---|
+| D-0045 | 2026-10-13 | accepted | Python in the page is switched on for every reader: the ?run=1 gate is removed (amends D-0042) | docs/assets/js/widgets.js; harness/practice_browser.py, practice_browser.js; AGENTS.md; STATUS.md | — |
 | D-0044 | 2026-10-13 | accepted | Day pages get a Full / Compact / Focus view switch in the top bar, remembered in the browser (localStorage tc_view) | docs/assets/js/theme.js, glossary.js; docs/assets/css/style.css; docs/bump-css.sh; tests/test_view_modes.py; AGENTS.md; STATUS.md | — |
 | D-0043 | 2026-10-13 | accepted | Practice tasks with hidden checks on notes pages (ix-task in section.practice), piloted on W1D4; editor is CodeMirror 5.65.21 from a pinned jsDelivr URL (extends D-0042) | harness/critics/notes.md items 5d and 17; tests/test_assets.py; docs/assets/js/widgets.js, pyworker.js, scrolly.js; docs/assets/css/style.css; docs/weeks/week-01/day-4-python-data-types.html; AGENTS.md; STATUS.md; trainer/week-01/day-4-python-data-types/solutions/practice.py | — |
 | D-0042 | 2026-10-13 | accepted | Runnable Python blocks on notes pages (pre data-run), piloted on W1D4; runtime is Pyodide 314.0.7 from a pinned jsDelivr URL | harness/critics/notes.md item 17; tests/helpers.py ALLOWED_JS; tests/test_assets.py; docs/assets/js/widgets.js and new docs/assets/js/pyworker.js; docs/assets/css/style.css; docs/weeks/week-01/day-4-python-data-types.html; AGENTS.md; STATUS.md | — |

@@ -15,8 +15,7 @@
       every top-level assert in task-tests is one check and its message is the label shown.
 
    4 and 5 run Python in pyworker.js (Pyodide), fetched on the first Run or Check click, and edit in
-   CodeMirror, fetched when an editor is first needed. Pilot: both are off unless the URL carries ?run=1 or
-   localStorage tc_run is "1". A load failure is shown as it is; nothing falls back.
+   CodeMirror, fetched when an editor is first needed. A load failure is shown as it is; nothing falls back.
 */
 (function () {
   const SELF = document.currentScript ? document.currentScript.src : "";
@@ -54,25 +53,19 @@
   }
 
   function legend(elist) {
-    const on = runOn();
     elist.forEach(el => {
       el.innerHTML =
         `<span class="ixl-lead">This page is interactive —</span>` +
         `<span class="ixl-chip">Predict</span>` +
         `<span class="ixl-chip">🔍 Spot the problem</span>` +
         `<span class="ixl-chip">✓ Check</span>` +
-        (on && document.querySelector("pre[data-run]") ? `<span class="ixl-chip">▶ Run the code</span>` : "") +
-        (on && document.querySelector(".ix-task") ? `<span class="ixl-chip">✎ Practice</span>` : "") +
+        (document.querySelector("pre[data-run]") ? `<span class="ixl-chip">▶ Run the code</span>` : "") +
+        (document.querySelector(".ix-task") ? `<span class="ixl-chip">✎ Practice</span>` : "") +
         `<span class="ixl-chip">click diagram nodes</span>`;
     });
   }
 
   // ---- running Python (D-0042, D-0043) -----------------------------------------
-  function runOn() {
-    if (/[?&]run=1(&|$)/.test(location.search)) return true;
-    try { return localStorage.getItem("tc_run") === "1"; } catch (e) { return false; }
-  }
-
   // One worker, one job at a time. A job is { id, code, prelude, tests, bar, out, onChecks }.
   // A failure is shown where the reader clicked and logged; nothing is retried.
   const py = { worker: null, job: null, queue: [], timer: 0, seq: 0 };
@@ -346,16 +339,15 @@
     near.observe(section);
   }
 
-  // The practice section is hidden in the markup. Show it now, before scrolly.js builds the table of contents.
-  if (runOn()) document.querySelectorAll("section.practice[hidden]").forEach(s => { s.hidden = false; });
+  // The practice section is hidden in the markup, so it stays out of the way where scripts do not run.
+  // Show it now, before scrolly.js builds the table of contents.
+  document.querySelectorAll("section.practice[hidden]").forEach(s => { s.hidden = false; });
 
   document.addEventListener("DOMContentLoaded", () => {
     legend(document.querySelectorAll(".ix-legend"));
     predict(document.querySelectorAll(".ix-predict"));
     spot(document.querySelectorAll(".ix-spot"));
-    if (runOn()) {
-      run(document.querySelectorAll('pre[data-run="python"]'));
-      task(document.querySelectorAll(".practice .ix-task"));
-    }
+    run(document.querySelectorAll('pre[data-run="python"]'));
+    task(document.querySelectorAll(".practice .ix-task"));
   });
 })();

@@ -14,7 +14,7 @@ the outcome CPython gave for each task, and /__practice_browser.js, the driver i
 Nothing is written to either repo and the answers stay on this machine.
 
 The agent then, with its browser tools (Claude in Chrome):
-  1. opens the URL this script prints (it carries ?run=1);
+  1. opens the URL this script prints;
   2. runs this one line in that page with the JavaScript tool:
          await (await import("/__practice_browser.js")).default()
   3. reads the JSON it returns: "ok" must be true, which means no problem was found and every task line is the
@@ -151,7 +151,7 @@ def main(argv: list[str]) -> int:
         def log_message(self, *args):   # keep the terminal for the lines above
             pass
 
-    print(f"Open in the browser:  http://127.0.0.1:{port}/weeks/{rel}.html?run=1")
+    print(f"Open in the browser:  http://127.0.0.1:{port}/weeks/{rel}.html")
     print('Then run in that page:  await (await import("/__practice_browser.js")).default()')
     print("Ctrl+C stops this server.", flush=True)
     http.server.ThreadingHTTPServer(("127.0.0.1", port), functools.partial(Handler, directory=str(ROOT / "docs"))).serve_forever()
