@@ -197,18 +197,17 @@
       "days": [
         {
           "day": 1,
-          "slug": "day-1-modules-and-packaging",
+          "slug": "day-1-modules-packaging-and-pip",
           "id": "w02d1",
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "loose",
           "status": "planned",
-          "title": "Modules & packaging",
-          "subtitle": "math · logging · json · regex · pip · pylint · writing modules",
+          "title": "Modules, packaging & pip",
+          "subtitle": "math · logging · regex · pip · pylint · writing your own module",
           "subtopics": [
             "Math module",
             "Logging",
-            "JSON",
             "Regex",
             "pip and installing packages",
             "pylint",
@@ -217,14 +216,14 @@
         },
         {
           "day": 2,
-          "slug": "day-2-exceptions-and-file-handling",
+          "slug": "day-2-exceptions-files-and-json",
           "id": "w02d2",
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "loose",
           "status": "planned",
-          "title": "Exceptions & file handling",
-          "subtitle": "errors · try/except · read, write, create, delete files",
+          "title": "Exceptions, files & JSON",
+          "subtitle": "errors · try/except · read, write, create, delete files · JSON",
           "subtopics": [
             "Errors",
             "Exception handling",
@@ -232,62 +231,68 @@
             "File handling",
             "Read files",
             "Write and create files",
-            "Delete files"
+            "Delete files",
+            "JSON"
           ]
         },
         {
           "day": 3,
-          "slug": "day-3-pytest-and-data-libraries",
+          "slug": "day-3-pytest-and-numpy",
           "id": "w02d3",
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "loose",
           "status": "planned",
-          "title": "Testing with pytest & data libraries",
-          "subtitle": "unit testing · pytest · matplotlib · pandas · numpy · interview mindset pt 1",
+          "title": "Testing with pytest & NumPy",
+          "subtitle": "testing overview · unit testing · pytest · NumPy · interview mindset pt 1",
           "subtopics": [
             "Testing overview",
             "Unit testing",
             "Pytest",
-            "Overview of data visualization",
-            "Matplotlib",
-            "Pandas",
             "Numpy",
             "Interview mindset - 1st part"
-          ]
+          ],
+          "notes": "DAY SHAPE (D-0054): two headlines, testing and NumPy. The morning teaches testing on the desk's own rules (overview, unit testing, pytest); the afternoon teaches NumPy as a library of its own, against W1D4's lists: an array of ticket resolution hours where a list was, with the vectorised arithmetic, dtype and shape differences shown and then tested with pytest. NumPy gets at least two notes steps and at least one demo rung of its own; it is never a mention inside the testing steps. Interview mindset part 1 is a facilitation block, not a demo."
         },
         {
           "day": 4,
-          "slug": "day-4-collections-module",
+          "slug": "day-4-collections-and-pandas",
           "id": "w02d4",
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "loose",
           "status": "planned",
-          "title": "The collections module",
-          "subtitle": "Counter · namedtuple · OrderedDict",
+          "title": "Collections & pandas",
+          "subtitle": "Counter · namedtuple · OrderedDict · collections · pandas",
           "subtopics": [
             "Counters",
             "Named tuples",
             "Ordered dicts",
-            "Collections module"
-          ]
+            "Collections module",
+            "Pandas"
+          ],
+          "notes": "DAY SHAPE (D-0054): two headlines, the collections module and pandas. The morning teaches Counter, namedtuple and OrderedDict on the ticket records; the afternoon teaches pandas as a library of its own, against the morning's Counter and namedtuple and Tuesday's JSON files: a DataFrame of tickets loaded from the desk's JSON file, grouped and counted where Counter was, columns where namedtuple fields were. pandas gets at least two notes steps and at least one demo rung of its own; it is never a mention inside the collections steps."
         },
         {
           "day": 5,
-          "slug": "day-5-python-review",
+          "slug": "day-5-review-matplotlib-and-mini-project",
           "id": "w02d5",
-          "kind": "review",
+          "kind": "lesson",
           "gate": "light",
           "demoFormat": "loose",
           "status": "planned",
-          "title": "Python review",
-          "subtitle": "weeks 1–2 recap · cumulative check · mini-project",
+          "title": "Review, Matplotlib & mini-project",
+          "subtitle": "data visualisation · Matplotlib · Python review · mini-project",
+          "exerciseKind": "rubric",
           "subtopics": [
+            "Overview of data visualization",
+            "Matplotlib",
             "Python review"
-          ]
+          ],
+          "notes": "DAY SHAPE (D-0054): Matplotlib is a headline of the day, taught against Thursday's DataFrame: the overview of data visualisation first, then a Matplotlib chart of tickets per status drawn from the DataFrame, saved to a file. Matplotlib gets at least two notes steps and at least one demo rung of its own; it is never a mention inside the review. The Python review is the rest of the day: a recap of weeks 1-2 folded into a rubric mini-project (exerciseKind rubric, D-0025) that uses the week's modules, JSON file, tests, arrays, DataFrame and chart; no pytest starter module."
         }
-      ]
+      ],
+      "notes": "WEEK ARC (D-0054): the week turns last week's single-file ticket desk into a small professional codebase, one library at a time, each library a headline of its own day. Audience (D-0048): some programming in any language, no Python, Git, terminal or CS theory beyond what week 1 taught, so: Mon assumes W1D5's functions and classes and teaches modules and packaging from first principles (import, the math module, logging, regex, pip and installing a package, pylint, then splitting the desk into a module of its own); Tue assumes Mon's modules and teaches errors and exception handling, then file handling (read, write and create, delete) and JSON as the file format the desk saves tickets in; Wed assumes Tue's JSON-backed desk and teaches testing (overview, unit testing, pytest) against the desk's rules, then NumPy taught against W1D4's lists: an array of resolution hours where a list was, with the difference shown and tested; Thu assumes Wed's tests and arrays and teaches the collections module (Counter, namedtuple, OrderedDict) on the ticket records, then pandas taught against Thu's Counter and namedtuple and Tue's JSON files: a DataFrame of tickets loaded from the JSON file, grouped and counted where Counter was; Fri assumes Thu's DataFrame and teaches data visualisation (overview, then Matplotlib charting the DataFrame as tickets per status), then a Python review folded into a rubric mini-project. NumPy, pandas and Matplotlib each get their own notes steps and their own demo rungs, never a mention inside another library's step. Every notes page opens by naming in one sentence what it assumes from earlier days of this course and never claims the reader knows anything from outside it."
     },
     {
       "week": 3,
