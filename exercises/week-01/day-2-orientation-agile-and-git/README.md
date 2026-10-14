@@ -11,11 +11,11 @@ Suggested time-box: 10 min set-up and first push · 15 min backlog and feature b
 
 ## Deliverable
 
-The HTTPS URL of a **private** GitHub repository named `<FirstnameLastname>` (your first and last name as on the class roster, run together, plain letters only, for example `GraceHopper`), owned by the `2494-Gen-AI-CN` organisation and not by your personal account, default branch `main`, submitted the way your trainer announces. Its history, as cloned by the trainer at the end of today, must show every acceptance criterion below; nothing on your laptop counts unless it was pushed. Be ready to open the repository on screen and walk through `git log --oneline --graph --all` in under two minutes.
+The HTTPS URL of a **public** GitHub repository named `<FirstnameLastname>` (your first and last name as on the class roster, run together in PascalCase, plain letters and digits; a hyphen or underscore between the names is fine, for example `GraceHopper` or `Grace-Hopper`), owned by the `2494-Gen-AI-CN` organisation and not by your personal account, default branch `main`, submitted the way your trainer announces. Its history, as cloned by the trainer at the end of today, must show every acceptance criterion below; nothing on your laptop counts unless it was pushed. Be ready to open the repository on screen and walk through `git log --oneline --graph --all` in under two minutes.
 
 ## Acceptance criteria
 
-- [ ] **AC1 Remote.** The repository is private, lives in the `2494-Gen-AI-CN` organisation as `<FirstnameLastname>`, its default branch is `main`, and your local `origin` points at it (`git remote -v` shows `https://github.com/2494-Gen-AI-CN/<FirstnameLastname>.git`).
+- [ ] **AC1 Remote.** The repository is public, lives in the `2494-Gen-AI-CN` organisation as `<FirstnameLastname>`, its default branch is `main`, and your local `origin` points at it (`git remote -v` shows `https://github.com/2494-Gen-AI-CN/<FirstnameLastname>.git`).
 - [ ] **AC2 Clean first commit.** The first commit contains `hello.py` and a `.gitignore` listing at least `__pycache__/`, `*.pyc` and `.venv/`; no `.pyc` file or `__pycache__/` folder is tracked anywhere in the history.
 - [ ] **AC3 Backlog with points.** `README.md` on `main` contains a Sprint Backlog table of 3–5 items, each sized with a story point from the 1-2-3-5-8-13 scale; one row is "this exercise" and one sentence names which item was the reference item everything else was compared against.
 - [ ] **AC4 Feature branch, fast-forwarded.** A branch named `feature/<something>` with at least one commit was merged into `main` as a fast-forward (no merge commit) and was pushed, so it appears under `origin/` too.
@@ -28,7 +28,7 @@ The HTTPS URL of a **private** GitHub repository named `<FirstnameLastname>` (yo
 
 | Criterion | Meets | Partial | Missing |
 |---|---|---|---|
-| AC1 Remote | Private repo `2494-Gen-AI-CN/<FirstnameLastname>`, default branch `main`, `origin` set, local `main` fully pushed | Repo exists but sits under your personal account, is public, is wrongly named, has default branch `master`, or local has unpushed commits | No repository on GitHub, or the trainer cannot open the URL |
+| AC1 Remote | Public repo `2494-Gen-AI-CN/<FirstnameLastname>`, default branch `main`, `origin` set, local `main` fully pushed | Repo exists but sits under your personal account, is not named after you (a hyphen or underscore between first and last name is fine; a clash with a classmate gets a trailing digit), has default branch `master`, or local has unpushed commits | No repository on GitHub, or the trainer cannot open the URL |
 | AC2 Clean first commit | First commit = `hello.py` + `.gitignore` with all three patterns; nothing in `__pycache__/` ever tracked | `.gitignore` added in a later commit, or missing one pattern, but no `.pyc` tracked | `.pyc`/`__pycache__/` committed at any point, or no `.gitignore` |
 | AC3 Backlog with points | 3–5 rows, every row sized from the 1-2-3-5-8-13 scale, "this exercise" present, reference item named | Table present but a row uses hours/days or an off-scale number, or the reference item is not named | No backlog table in `README.md` |
 | AC4 Feature branch, fast-forwarded | `feature/*` branch pushed, merged into `main`, exactly one *feature* merge commit in the whole history (the AC5 one; a `Merge branch 'main' of github.com/...` commit created by `git pull` in AC6 does not count against you) | Branch exists and is merged but was not pushed, or the feature merge created an unneeded merge commit, or the branch is named `feature` with no `/<something>` | No feature branch; all work committed straight onto `main` |
@@ -56,7 +56,7 @@ git init
 git status
 
 # first commit: hello.py + .gitignore, then push to an EMPTY repo you create on github.com
-# (New repository -> Owner 2494-Gen-AI-CN -> name <FirstnameLastname> -> Private -> no README/.gitignore/licence)
+# (New repository -> Owner 2494-Gen-AI-CN -> name <FirstnameLastname> -> Public -> no README/.gitignore/licence)
 git add .
 git commit -m "Add hello script and Python .gitignore"
 git remote add origin https://github.com/2494-Gen-AI-CN/<FirstnameLastname>.git
@@ -90,7 +90,7 @@ git status                       # expect: nothing to commit, up to date with 'o
 
 ## Hints
 
-- On GitHub's "New repository" page the **Owner** dropdown starts on your personal account. Change it to `2494-Gen-AI-CN` before you click Create, and choose Private. If the organisation is not in the list, you have not accepted the invitation e-mail yet: accept it, then reload the page. A repository created under your own account can be moved afterwards (Settings → Transfer ownership), but it is quicker to get it right the first time.
+- On GitHub's "New repository" page the **Owner** dropdown starts on your personal account. Change it to `2494-Gen-AI-CN` before you click Create, and choose Public. If the organisation is not in the list, you have not accepted the invitation e-mail yet: accept it, then reload the page. A repository created under your own account can be moved afterwards (Settings → Transfer ownership), but it is quicker to get it right the first time.
 - This repository outlives today. It is marked as it stands at the end of today, and from Wednesday on each day's work goes in its own folder inside it, so leave `hello.py`, `.gitignore` and `README.md` where they are at the top level.
 - `git status` before every commit. The two silent mistakes of the day are `git branch x` without `git switch x` (your "feature" commits land on `main`) and `git commit -m` without `git add` ("no changes added to commit"). `git switch -c` does both steps at once; `git commit -am` stages *modified* files only, never new ones.
 - A conflict only happens when **both** branches changed the **same** lines after they diverged. If `git merge` says "Fast-forward" or "Merge made by the 'ort' strategy" with no CONFLICT, `main` did not change that line: make a commit on `main` that touches the same line and merge again. Changing the same line of `hello.py` on both sides, as Demo 2 does with the `print(greet(...))` line, is the simplest shape; copy the shape, not the names or the identity: your branches must be `feature/<something>` (AC4) and your commits must carry your own name and e-mail, not the demo's (AC8).

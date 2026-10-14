@@ -41,7 +41,7 @@ test result, anything left undone and why.
 | ~~2~~ | ~~Stage 3 Re-author W1D2 demos + promote page~~ | ~~Tue 2026-10-13 is W1D2; must be taught from the new contract~~ | ~~1 session, ~20 agents~~ done 2026-10-12, D-0031 |
 | ~~3~~ | ~~Stage 2 Week plan artifact + demo threads~~ | ~~W1D3–W1D5 are still unauthored: plan week 1 (demo ladder, anti-spoiler ledger, coverage map, stop points) and make the demos one growing thread (rungs that extend the previous rung's key) before any of them is written. Must land before Wed 2026-10-14 morning; if it cannot, run W1D3 first and Stage 2 before W1D4~~ | ~~1 long session, ~3 agents; amends the demo contract (`demo_check.py`, demos critic, demo-script template, metrics)~~ done 2026-10-12, D-0033 (demo threads) + D-0034 (week plan); `harness/plans/week-01.md` written by `week-plan.js` |
 | ~~4~~ | ~~Week-1 batch run W1D3–W1D5 (milestone 6)~~ | ~~Wed 2026-10-14 needs its material; first use of the week batch (D-0038): demos in day order, the rest in parallel~~ | ~~1 session, ~60 agents (approved 2026-10-12)~~ done 2026-10-12, run `wf_55423fc5-aa6`, 67 agents, 0 flagged |
-| 5 | Stage 4 Daily close audit | Needed Tue 2026-10-13 evening after the first delivery; audits the classroom repo against the keys, sets `taught`, carries unreached steps to the next day, re-checks later rungs | 1 session, no agents |
+| ~~5~~ | ~~Stage 4 Daily close audit~~ | ~~Needed Tue 2026-10-13 evening after the first delivery; audits the classroom repo against the keys, sets `taught`, carries unreached steps to the next day, re-checks later rungs~~ | ~~1 session, no agents~~ loose close built 2026-10-14, D-0050 (`close_day.py`; W1D2 and W1D3 closed); the rung-diff close for thread days is deferred to week 3 (O-18) |
 | 6 | Stage 8 Hidden week, Friday gate, series review, drift check | Week-ahead authoring needs pages that stay unlinked until the Friday release; by Thu 2026-10-15 | 1 session, no agents |
 | 7 | Week-2 plan and batch | By Fri 2026-10-16; settle O-11 and O-12 first | 2 sessions, ~5 + ~100 agents (ask first) |
 | ~~8~~ | ~~Stage 7 Notes depth (interview sections)~~ | ~~Fits the persona; touches critic + template. Notes keep their delivery references for now (trainer decision 2026-10-12: wait for learner feedback)~~ | ~~1 session~~ done 2026-10-13, D-0040, widened to the reference-notes rework (4500–7000 words, Check yourself, citations, no delivery references) + notes QC (`notes_check.py`, notes-verify agent, pinned tiers); the stance of 2026-10-12 was reversed by the trainer on 2026-10-13 |
@@ -225,12 +225,12 @@ After the run:
 Exit: W1D3 to W1D5 are `live`, tests green, both repos pushed, run record complete.
 ```
 
-## Stage 4 — Daily close audit (catalog D16, A15, D19, A26, A28, E6, B8; replaces the 2026-10-11 Stage 4 draft)
+## Stage 4 — Daily close audit (loose close done 2026-10-14, D-0050; rung-diff close for thread days: later, week 3) (catalog D16, A15, D19, A26, A28, E6, B8; replaces the 2026-10-11 Stage 4 draft)
 
 ```
-STAGE 4 — Daily close audit: what actually reached the room, checked against the classroom repo.
+STAGE 4 — Daily close audit: what actually reached the room, checked against the demo repo.
 Decisions already taken by the trainer (2026-10-12), do not re-ask: the truth is the trainer's live classroom
-repository (team-repo), diffed by script; a step that was not reached goes to the next teaching day's opening
+repository (the public demo repo `2494-Gen-AI-CN/demos`, cloned at `demo-repo/`), diffed by script; a step that was not reached goes to the next teaching day's opening
 slot; classroom reality wins when the typed code differs from the key; taught days are frozen and fixed forward.
 Read catalog rows D16, A15, D19, A26, A28, E6. Read harness/demo_check.py (reuse _header, _steps,
 script_commands, transcript_commands, carried_lines), harness/plan_check.py day_rows() (thread rows carry
@@ -238,17 +238,19 @@ commitMessage, key, startsFrom), harness/plans/week-01.md line 29 (the stop rule
 pasted from the key before the rung's commit, so "not reached" never changes a key; only "diverged" does),
 harness/publish_demos.py, harness/log_run.py (kind `manual` exists), tests/test_demos.py ThreadChainTests.
 Build (stdlib Python, no agents):
-- config.json threads.<id>: add `repoDir` ("team-repo") and `file` ("ticket_desk.py") beside the free-text
-  `repo`, so a .py key can be compared with the repository file. Decision entry.
-- harness/close_check.py <week> <day> --classroom <path> (read-only; exit 1 on findings). Per demo of the day,
-  in ladder order: find the rung's closing commit in the classroom repo by its plan commit message
+- config.json threads.<id>: add `repoDir` and `file`, so a .py key can be compared with the repository file.
+  DONE in D-0050.
+- harness/close_check.py <week> <day> (read-only; exit 1 on findings; no --classroom path, it reads `demo-repo/`).
+  Per demo of the day, in ladder order: find the rung's closing commit in the demo repo by its plan commit message
   (`git log --format=%H%x09%ct%x09%s`). .py key: `git show <sha>:<thread file>` against the key as stripped
   non-blank line sets -> reached | diverged (lines only in class / only in key). Transcript key: every
   `git commit -m` subject from script_commands() must be in the log in order -> reached | stopped after step n
   (step from _steps) | diverged (unexpected subjects). No closing commit -> not reached. Standalone demos leave
   no commit: `assumed reached`, overridable with --not-reached NN_slug. Actual minutes per rung from commit
   timestamps beside the ladder minutes.
-- harness/close_day.py <week> <day> --classroom <path> [--apply]. Dry run prints the report. --apply:
+- harness/close_day.py <week> <day> [--apply]. `close_day.py` already exists for loose days (D-0050); this stage adds
+  the thread mode that reads `demo-repo/<repoDir>/<file>` at each rung's closing commit (found by the plan's
+  commit message). Dry run prints the report. --apply:
   (1) writes trainer/<rel>/delivery.json (per demo: status, sha, minutes, unreached steps, diverged lines);
   (2) appends "## Delivery record (<the day's date from build_index.slot_date>)" to the runbook;
   (3) for each diverged .py rung, overwrites the key with the classroom file and prints the script lines that
@@ -268,7 +270,7 @@ Build (stdlib Python, no agents):
 - harness/build_tracker.py: a day with delivery.json shows `closed`; the existing close alarms clear on it.
 - tests/test_close.py: build a throwaway git repo in a temp dir (tempfile, not /tmp) and drive close_check
   through reached, diverged, stopped and not reached. ThreadChainTests: every authored day, not only live.
-Then run the first real close for W1D2 against the trainer's team-repo (ask for its path).
+Then run the first thread-day close against `demo-repo/` (week 3).
 Exit: tests green; W1D2 closed (taught, published, delivery record); checklist committed; both repos pushed.
 ```
 
@@ -295,7 +297,7 @@ Build:
   `authored`; new red alarm "authored, not released" from the week's Monday. Extend the alarm tests.
 - harness/release_week.py <week> --today <date> [--check]: the Friday gate. Preconditions: the week's plan
   passes plan_check; every teaching day of that week is `authored`; harness/last-tests.json is green; every
-  teaching day of the current week dated on or before --today has trainer/<rel>/delivery.json. Then flip
+  teaching day of the current week dated on or before --today has trainer/<rel>/delivery.json (written by `close_day.py`, D-0050). Then flip
   authored -> live, run build_index.py, print a STATUS.md line.
 - Series review: one critic agent at the end of the Demos phase when a run covers more than one day; it reads
   the plan and every script in ladder order and checks that the series tells one story and the last rung
@@ -305,7 +307,7 @@ Build:
     are findings (network ones soft unless --strict);
   decisions index rows match files and IDs are sequential; stale markers (TBD, OWED, pending, blocked until) in
   live docs outside decisions/ and docs/process/*catalog*; untracked files and unstaged deletions in both
-  repos; taught days with no Delivery record; days `taught` but not `live`; a stale tracker.
+  repos; taught days with no Delivery record or no delivery.json; days `taught` but not `live`; a stale tracker.
 Decision entries (new status, critic wording). Exit: `release_week.py 2 --check --today 2026-10-16` refuses
 while a week-2 day is not `authored`; tests green; pushed.
 ```

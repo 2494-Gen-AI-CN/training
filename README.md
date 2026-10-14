@@ -21,7 +21,7 @@ So week 1 is Tue–Fri, week 7 (Nov 23–27) is Mon–Wed, and week 11 (Dec 21�
 
 ## How each day works
 
-1. **Code-along demos** — the trainer types the day's examples live, step by step; you type along. After the session the finished files (the answer key) are published to `demos/<week>/<day>/` with a README that lists them in order, so you can replay anything you missed.
+1. **Code-along demos** — the trainer types the day's examples live, step by step; you type along. After the session the finished files (the answer key) are published to `demos/<week>/<day>/` with a README that lists them in order, so you can replay anything you missed. On a day the trainer improvised, the folder holds the files typed in class, as committed to the public demo repo `2494-Gen-AI-CN/demos`.
 2. **Notes page** — on the site, one page per day: the ideas behind the demo, a live diagram, and a 6-question self-check. Finishing the check unlocks the next day's page.
 3. **Exercise** — in `exercises/<week>/<day>/`. Implement the starter file until the tests pass.
 

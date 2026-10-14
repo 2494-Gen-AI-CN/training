@@ -1,5 +1,5 @@
 {
-  "_comment": "Single source of truth for the 11-week calendar. Transcribed from Curricula/Weeks/week1..11.png; weeks 1, 7 and 11 redistributed for holidays (decisions D-0015..D-0017). Every other path is derived as {week.dir}/{day.slug}. Calendar dates derive from startDate + week index + weekday slot (day 1=Mon..5=Fri); a slot whose date is in holidays is {day, kind: holiday} only. The weekly feedback form is the last teaching day of each week (derived, never hand-set). status flips planned->live when the harness Wire step ships a day. demoFormat: py | nb | none (none = concept day with no code demo; the runbook carries facilitation scripts, D-0030). taught: YYYY-MM-DD, set by the delivery-day close after the session; harness/publish_demos.py copies the answer keys from trainer/<rel>/demos/key/ to demos/<rel>/ only when it is set (D-0030).",
+  "_comment": "Single source of truth for the 11-week calendar. Transcribed from Curricula/Weeks/week1..11.png; weeks 1, 7 and 11 redistributed for holidays (decisions D-0015..D-0017). Every other path is derived as {week.dir}/{day.slug}. Calendar dates derive from startDate + week index + weekday slot (day 1=Mon..5=Fri); a slot whose date is in holidays is {day, kind: holiday} only. The weekly feedback form is the last teaching day of each week (derived, never hand-set). status flips planned->live when the harness Wire step ships a day. demoFormat: py | nb | none | loose (none = concept day with no code demo; the runbook carries facilitation scripts, D-0030. loose = the trainer improvises; a plan ladder's scripts and keys are an optional fallback and harness/close_day.py publishes what was typed from the demo repo, D-0050). taught: YYYY-MM-DD, set ONLY by harness/close_day.py after the session; harness/publish_demos.py copies the answer keys from trainer/<rel>/demos/key/ to demos/<rel>/ only when it is set (D-0030).",
   "cohort": "2494-Gen-AI-CN",
   "siteTitle": "2494 · Gen-AI Python",
   "startDate": "2026-10-13",
@@ -91,7 +91,7 @@
           "id": "w01d2",
           "kind": "lesson",
           "gate": "light",
-          "demoFormat": "py",
+          "demoFormat": "loose",
           "status": "live",
           "title": "Orientation, Agile & Git fundamentals",
           "subtitle": "SDLC · Scrum · story pointing · git init/commit/branch/merge/push/pull",
@@ -114,7 +114,8 @@
             "Pushing to a remote repository",
             "Git exercise"
           ],
-          "notes": "DAY SHAPE (D-0024): the first 30 minutes are an on-ramp, not a lesson: orientation (what/why Python, professionalism at Revature) and a tooling check (interpreter vs compiler, REPL, Jupyter, where Python sits in the full stack) explained briefly from first principles (D-0048: none of it is assumed), enough to confirm the setup works and nothing more. The day's real content is how software teams work: SDLC -> Agile vs waterfall -> Scrum -> story pointing -> Git as the team's workflow -> Git exercise. Notes page: at most ONE step on the on-ramp, every other step on team practice; do not teach Python syntax or pytest (that is Wed-Fri). Demos: at most one on the on-ramp. EXERCISE (D-0025, exerciseKind rubric): the Git exercise IS the exercise: a real repository on GitHub with a feature branch, a merge, one resolved conflict and well-written commit messages, marked against a rubric. No pytest, no starter module."
+          "notes": "DAY SHAPE (D-0024): the first 30 minutes are an on-ramp, not a lesson: orientation (what/why Python, professionalism at Revature) and a tooling check (interpreter vs compiler, REPL, Jupyter, where Python sits in the full stack) explained briefly from first principles (D-0048: none of it is assumed), enough to confirm the setup works and nothing more. The day's real content is how software teams work: SDLC -> Agile vs waterfall -> Scrum -> story pointing -> Git as the team's workflow -> Git exercise. Notes page: at most ONE step on the on-ramp, every other step on team practice; do not teach Python syntax or pytest (that is Wed-Fri). Demos: at most one on the on-ramp. EXERCISE (D-0025, exerciseKind rubric): the Git exercise IS the exercise: a real repository on GitHub with a feature branch, a merge, one resolved conflict and well-written commit messages, marked against a rubric. No pytest, no starter module.",
+          "taught": "2026-10-13"
         },
         {
           "day": 3,
@@ -122,7 +123,7 @@
           "id": "w01d3",
           "kind": "lesson",
           "gate": "light",
-          "demoFormat": "py",
+          "demoFormat": "loose",
           "status": "live",
           "title": "Python basics",
           "subtitle": "syntax · comments · variables & datatypes · operators · input/output",
@@ -132,7 +133,8 @@
             "Variables and datatypes",
             "Operators",
             "User input and output"
-          ]
+          ],
+          "taught": "2026-10-14"
         },
         {
           "day": 4,
@@ -140,7 +142,7 @@
           "id": "w01d4",
           "kind": "lesson",
           "gate": "light",
-          "demoFormat": "py",
+          "demoFormat": "loose",
           "status": "live",
           "title": "Python data types",
           "subtitle": "strings · casting · bool · list · tuple · range · set · dict · numbers · datetime",
@@ -166,7 +168,7 @@
           "id": "w01d5",
           "kind": "lesson",
           "gate": "light",
-          "demoFormat": "py",
+          "demoFormat": "loose",
           "status": "live",
           "title": "Control flow, functions & classes",
           "subtitle": "if/else · loops · functions · lambda · arrays · OOP · inheritance · iterators · scope",
@@ -199,7 +201,7 @@
           "id": "w02d1",
           "kind": "lesson",
           "gate": "light",
-          "demoFormat": "py",
+          "demoFormat": "loose",
           "status": "planned",
           "title": "Modules & packaging",
           "subtitle": "math · logging · json · regex · pip · pylint · writing modules",
@@ -219,7 +221,7 @@
           "id": "w02d2",
           "kind": "lesson",
           "gate": "light",
-          "demoFormat": "py",
+          "demoFormat": "loose",
           "status": "planned",
           "title": "Exceptions & file handling",
           "subtitle": "errors · try/except · read, write, create, delete files",
@@ -239,7 +241,7 @@
           "id": "w02d3",
           "kind": "lesson",
           "gate": "light",
-          "demoFormat": "nb",
+          "demoFormat": "loose",
           "status": "planned",
           "title": "Testing with pytest & data libraries",
           "subtitle": "unit testing · pytest · matplotlib · pandas · numpy · interview mindset pt 1",
@@ -260,7 +262,7 @@
           "id": "w02d4",
           "kind": "lesson",
           "gate": "light",
-          "demoFormat": "py",
+          "demoFormat": "loose",
           "status": "planned",
           "title": "The collections module",
           "subtitle": "Counter · namedtuple · OrderedDict",
@@ -277,7 +279,7 @@
           "id": "w02d5",
           "kind": "review",
           "gate": "light",
-          "demoFormat": "py",
+          "demoFormat": "loose",
           "status": "planned",
           "title": "Python review",
           "subtitle": "weeks 1–2 recap · cumulative check · mini-project",

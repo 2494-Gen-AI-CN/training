@@ -353,6 +353,8 @@ def check_plan(path: Path, metrics: dict | None = None, root: Path = ROOT) -> li
         if d.get("status") != "live" or d.get("demoFormat") == "none" or not trainer.exists():
             continue
         ddir = trainer / wk["dir"] / d["slug"] / "demos"
+        if d.get("demoFormat") == "loose" and not ddir.is_dir():
+            continue  # D-0050: a loose live day without fallback scripts has nothing to compare to the ladder
         on_disk = {}
         for s in sorted(ddir.glob("*.md")):
             if re.match(r"^\d{2}_", s.name):

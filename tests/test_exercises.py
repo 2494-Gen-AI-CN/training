@@ -59,7 +59,7 @@ class ExerciseTests(unittest.TestCase):
 
 
 class LearnerRepoTests(unittest.TestCase):
-    """D-0037: one private FirstnameLastname repo per trainee in the cohort organisation, recorded once in
+    """D-0037, D-0051: one public FirstnameLastname repo per trainee in the cohort organisation, recorded once in
     config.json learnerRepo and carried to the exercise and runbook prompts through args."""
 
     def setUp(self):
@@ -69,11 +69,13 @@ class LearnerRepoTests(unittest.TestCase):
     def test_config_records_the_convention(self):
         org = re.fullmatch(r"https://github\.com/([^/]+)/[^/]+", self.cfg["repoUrl"]).group(1)
         self.assertEqual(org, self.lr["org"], "learner repos live in the same organisation as the training repo")
-        self.assertEqual("private", self.lr["visibility"])
+        self.assertEqual("public", self.lr["visibility"])
         self.assertRegex(self.lr["name"], r"^[A-Za-z]+$", "the name placeholder is plain letters (it is quoted inside <...>)")
         for k in ("nameRule", "createdIn", "handIn"):
             self.assertTrue(self.lr.get(k), f"learnerRepo lacks {k}")
-        self.assertEqual({"root", "exercises", "codeAlong", "scratch"}, set(self.lr["layout"]))
+        self.assertIn("PascalCase", self.lr["nameRule"])
+        self.assertIn("hyphen or underscore", self.lr["nameRule"], "the rule tolerates a separator between the names")
+        self.assertEqual({"root", "exercises", "codeAlong", "scratch", "hackathon"}, set(self.lr["layout"]))
         self.assertIn(self.lr["createdIn"], {d["id"] for w, d, rel in all_days()}, "createdIn must be a curriculum day id")
 
     def test_args_carry_it_to_the_workflows(self):
@@ -100,7 +102,9 @@ class LearnerRepoTests(unittest.TestCase):
         for name in ("exercise-README.md", "exercise-rubric-README.md", "runbook.md"):
             self.assertIn(f"<{self.lr['name']}>", (HARNESS / "templates" / name).read_text(encoding="utf-8"), name)
         for name in ("exercise.md", "runbook.md"):
-            self.assertIn("D-0037", (HARNESS / "critics" / name).read_text(encoding="utf-8"), name)
+            text = (HARNESS / "critics" / name).read_text(encoding="utf-8")
+            self.assertIn("D-0037", text, name)
+            self.assertIn("D-0051", text, name)
 
     def test_the_creating_exercise_asks_for_the_learner_repo(self):
         rel = next(rel for w, d, rel in all_days() if d["id"] == self.lr["createdIn"])
@@ -109,8 +113,8 @@ class LearnerRepoTests(unittest.TestCase):
             self.skipTest(f"{rel} is not authored yet")
         text = readme.read_text(encoding="utf-8")
         self.assertIn(f"https://github.com/{self.lr['org']}/<{self.lr['name']}>.git", text)
-        self.assertRegex(text, r"\*\*private\*\* GitHub repository")
-        self.assertNotRegex(text, r"\*\*public\*\*|github\.com/<you>/", "the deliverable is the organisation's private learner repo")
+        self.assertRegex(text, r"\*\*public\*\* GitHub repository")
+        self.assertNotRegex(text, r"\*\*private\*\*|github\.com/<you>/", "the deliverable is the organisation's public learner repo (D-0051)")
         self.assertNotIn(f"{self.lr['createdIn']}-team-repo", text, "the per-day repo name was replaced by the learner repo")
 
 

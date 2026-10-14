@@ -63,7 +63,7 @@ class TrackerDataTests(unittest.TestCase):
         self.assertEqual(len(cur["holidays"]), len(days) - len(teaching))
         self.assertEqual(len(list(live_days())), sum(1 for d in teaching if d["status"] == "live"))
         for d in teaching:
-            self.assertEqual({"research", "demos", "notes", "exercise", "runbook", "solutions", "published"}, set(d["a"]), d["id"])
+            self.assertEqual({"research", "demos", "notes", "exercise", "runbook", "solutions", "published", "closed"}, set(d["a"]), d["id"])
             self.assertEqual({"planned", "scripts", "keys"}, set(d["a"]["demos"]), d["id"])
         for w, d, rel in live_days():
             td = next(x for x in teaching if x["id"] == d["id"])
@@ -162,7 +162,8 @@ class WiringTests(unittest.TestCase):
         self.assertIn("log_run.py amend --last --match-days", day, "Verify records the test result on this run's record")
 
     def test_state_writing_scripts_rebuild(self):
-        for path in (HARNESS / "build_index.py", HARNESS / "publish_demos.py", HARNESS / "log_run.py", ROOT / "decisions" / "new.py"):
+        for path in (HARNESS / "build_index.py", HARNESS / "publish_demos.py", HARNESS / "log_run.py", HARNESS / "close_day.py",
+                     ROOT / "decisions" / "new.py"):
             with self.subTest(script=path.name):
                 src = path.read_text(encoding="utf-8")
                 self.assertRegex(src, r"(build_tracker|bt)\.build\(", f"{path.name} must rebuild tracker.html when it changes tracked state")
@@ -209,17 +210,19 @@ class TrackerPageTests(unittest.TestCase):
         rules = {"dayAmberDaysBeforeWeek": 5, "dayRedDaysBeforeWeek": 3, "planAmberDaysBeforeWeek": 7, "planRedDaysBeforeWeek": 5,
                  "closeAmberDays": 1, "closeRedDays": 2, "itemAmberDays": 2}
 
-        def day(i, date, status="planned", taught=None):
+        def day(i, date, status="planned", taught=None, closed=False):
             return {"id": i, "slot": 1, "date": date, "kind": "lesson", "title": i, "status": status, "taught": taught, "demoFormat": "py",
                     "a": {"research": status == "live", "demos": {"planned": 2, "scripts": 2 if status == "live" else 0, "keys": 2 if status == "live" else 0},
-                          "notes": status == "live", "exercise": status == "live", "runbook": status == "live", "solutions": False, "published": False}}
+                          "notes": status == "live", "exercise": status == "live", "runbook": status == "live", "solutions": False, "published": False,
+                          "closed": closed}}
 
         def week(n, start, days, plan):
             return {"week": n, "start": start, "end": start, "plan": {"exists": plan, "ok": plan, "problems": 0, "path": ""}, "days": days}
 
         data = {
             "rules": rules, "threads": [{"id": "t", "chainOk": True}],
-            "weeks": [week(1, "2026-10-12", [day("w01d2", "2026-10-13", "live"), day("w01d3", "2026-10-14")], True),
+            "weeks": [week(1, "2026-10-12", [day("w01d2", "2026-10-13", "live"), day("w01d3", "2026-10-14"),
+                                                   day("w01d4", "2026-10-13", "live", closed=True)], True),
                       week(2, "2026-10-19", [day("w02d1", "2026-10-19")], False),
                       week(5, "2026-11-09", [day("w05d1", "2026-11-09")], False)],
             "status": {"openItems": [{"id": "O-1", "closed": False, "due": "2026-10-13"}, {"id": "O-2", "closed": True, "due": "2026-10-01"},
@@ -252,6 +255,8 @@ class TrackerPageTests(unittest.TestCase):
         # Friday before week 2: not live means late
         self.assertIn("red day w02d1", fri)
         self.assertIn("red close w01d2", fri)
+        for alerts in (mon, wed, fri, later):
+            self.assertFalse([a for a in alerts if "close w01d4" in a], "a day with delivery.json raises no close alarm")
         self.assertFalse([a for a in later if "w05d1" in a], "a day three weeks out raises no alarm")
         self.assertEqual("w01d3", out["next"])
         self.assertEqual(["research", "demos", "notes", "exercise", "runbook"], out["missing"])

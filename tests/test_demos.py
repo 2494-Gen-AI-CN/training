@@ -2,7 +2,9 @@
 
 A demo is a walkthrough script the trainer types (trainer/<rel>/demos/NN_<slug>.md) plus an answer key
 (trainer/<rel>/demos/key/NN_<slug>.py|.md). Answer keys are published to demos/<rel>/ only once the day
-carries `taught` in curriculum.json. demoFormat "none" days have no demos at all.
+carries `taught` in curriculum.json. demoFormat "none" days have no demos at all. demoFormat "loose" days (D-0050)
+publish whatever the trainer typed in the demo repo (harness/close_day.py); their authored scripts, when present, are
+only a fallback that still passes demo_check and is never published.
 """
 
 from __future__ import annotations
@@ -35,6 +37,8 @@ class DemoScriptTests(unittest.TestCase):
                 if not TRAINER.exists():
                     continue
                 ddir = trainer_demos(rel)
+                if d["demoFormat"] == "loose" and not ddir.is_dir():
+                    continue  # D-0050: a loose day's fallback scripts are optional
                 self.assertTrue(ddir.is_dir(), f"missing {ddir}")
                 problems = demo_check.check_dir(ddir, metrics()["demos"])
                 self.assertEqual([], problems, "\n".join(problems))
@@ -74,6 +78,8 @@ class ThreadChainTests(unittest.TestCase):
             if d["demoFormat"] == "none":
                 continue
             ddir = trainer_demos(rel)
+            if d["demoFormat"] == "loose" and not ddir.is_dir():
+                continue  # D-0050: no fallback scripts for this loose day
             for script in sorted(ddir.glob("*.md")):
                 if not KEY_RE.match(script.name):
                     continue
@@ -106,10 +112,13 @@ class PublishStateTests(unittest.TestCase):
                 if d.get("taught") and d["demoFormat"] != "none":
                     pub = public_demos(rel)
                     readme = (pub / "README.md").read_text(encoding="utf-8")
-                    for p in pub.iterdir():
-                        if p.is_file() and KEY_RE.match(p.name):
-                            self.assertIn(p.name, readme, f"published README does not list {p.name}")
-                            self.assertIsNone(SECRET_RE.search(p.read_text(encoding="utf-8")), f"secret-looking string in {p.name}")
+                    if d["demoFormat"] == "loose":  # D-0050: any filename the trainer typed, subfolders included
+                        files = [(f.relative_to(pub).as_posix(), f) for f in publish_demos.bi.published_files(pub)]
+                    else:
+                        files = [(f.name, f) for f in pub.iterdir() if f.is_file() and KEY_RE.match(f.name)]
+                    for name, f in files:
+                        self.assertIn(name, readme, f"published README does not list {name}")
+                        self.assertIsNone(SECRET_RE.search(f.read_text(encoding="utf-8", errors="replace")), f"secret-looking string in {name}")
 
 
 class DemoCheckSelfTests(unittest.TestCase):
@@ -161,8 +170,8 @@ class DemoCheckSelfTests(unittest.TestCase):
             self.assertTrue(any("command sequences differ" in p for p in probs), probs)
 
     START = "trainer/week-00/day-1-start/demos/key/01_start.py"
-    TWO_STEPS = ("## Step 1 — add (10 min)\n\ncwd: `team-repo/`\n\n```python\ny = 2\n```\n\n"
-                 "## Step 2 — print (10 min)\n\ncwd: `team-repo/`\n\n```python\nprint(y)\n```\n")
+    TWO_STEPS = ("## Step 1 — add (10 min)\n\ncwd: `ticket-desk/`\n\n```python\ny = 2\n```\n\n"
+                 "## Step 2 — print (10 min)\n\ncwd: `ticket-desk/`\n\n```python\nprint(y)\n```\n")
 
     def _thread_root(self, root: Path) -> Path:
         """A scratch repo root with a previous rung's .py key at START; returns this rung's demo dir."""
@@ -186,14 +195,14 @@ class DemoCheckSelfTests(unittest.TestCase):
             self.assertTrue(any("carried line" in p and "print(x)" in p for p in probs), probs)
             # ... unless the rung shows it in a ```python replaced block
             self._fixture(rung, "x = 1\ny = 2\nprint(y)\n",
-                          "## Step 1 — drop (10 min)\n\ncwd: `team-repo/`\n\n```python replaced\nprint(x)\n```\n\n```python\ny = 2\n```\n\n"
-                          "## Step 2 — print (10 min)\n\ncwd: `team-repo/`\n\n```python\nprint(y)\n```\n",
+                          "## Step 1 — drop (10 min)\n\ncwd: `ticket-desk/`\n\n```python replaced\nprint(x)\n```\n\n```python\ny = 2\n```\n\n"
+                          "## Step 2 — print (10 min)\n\ncwd: `ticket-desk/`\n\n```python\nprint(y)\n```\n",
                           thread="p0-demo", starts=self.START)
             self.assertEqual([], demo_check.check_dir(rung, self.M, root=root))
             # a replaced line that the start key never had fails
             self._fixture(rung, "x = 1\nprint(x)\ny = 2\nprint(y)\n",
-                          "## Step 1 — bogus (10 min)\n\ncwd: `team-repo/`\n\n```python replaced\nz = 9\n```\n\n```python\ny = 2\n```\n\n"
-                          "## Step 2 — print (10 min)\n\ncwd: `team-repo/`\n\n```python\nprint(y)\n```\n",
+                          "## Step 1 — bogus (10 min)\n\ncwd: `ticket-desk/`\n\n```python replaced\nz = 9\n```\n\n```python\ny = 2\n```\n\n"
+                          "## Step 2 — print (10 min)\n\ncwd: `ticket-desk/`\n\n```python\nprint(y)\n```\n",
                           thread="p0-demo", starts=self.START)
             probs = demo_check.check_dir(rung, self.M, root=root)
             self.assertTrue(any("replaced line is not in the Starts from key" in p for p in probs), probs)
@@ -286,6 +295,26 @@ class FlipCardTests(unittest.TestCase):
         self.assertIn("/demos/week-00/day-0-example/02_b.md", out)
         self.assertNotIn(publish_demos.PENDING_TEXT, out)
         self.assertIn(publish_demos.PUBLISHED_META, out)
+
+    def test_loose_card_variants(self):
+        """D-0050: a loose day's card links any typed file (subfolders too), or says there was no code demo."""
+        html = (HARNESS / "templates" / "day.exemplar.html").read_text(encoding="utf-8")
+        rel = "week-00/day-0-example"
+        out = publish_demos.flip_card(html, CONFIG["repoUrl"], "main", rel, ["hello.py", "notes/scratch.py"], meta=publish_demos.LOOSE_META)
+        self.assertIn(publish_demos.CARD_PUBLISHED, out)
+        self.assertIn(f"/demos/{rel}/hello.py", out)
+        self.assertIn(f"/demos/{rel}/notes/scratch.py", out)
+        self.assertIn(publish_demos.LOOSE_META, out)
+        self.assertNotIn(publish_demos.PENDING_TEXT, out)
+        out = publish_demos.flip_card_none(html)
+        self.assertIn(publish_demos.CARD_NONE, out)
+        self.assertIn(publish_demos.NONE_TEXT, out)
+        self.assertNotIn(publish_demos.CARD_PENDING, out)
+        start = out.index(publish_demos.CARD_NONE)
+        card = out[start:out.index(publish_demos.NONE_META, start) + len(publish_demos.NONE_META)]
+        self.assertNotIn("<a ", card)
+        with self.assertRaises(ValueError):
+            publish_demos.flip_card_none(out)
 
 
 if __name__ == "__main__":

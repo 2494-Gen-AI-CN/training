@@ -15,6 +15,7 @@ Sources:
   harness/curriculum.json           calendar, days, status, taught
   harness/plans/week-WW.md          week plans: plan_check verdict, planned demos, thread rungs
   harness/research/, docs/weeks/, exercises/, demos/, trainer/<rel>/   per-day artifacts on disk
+  trainer/<rel>/delivery.json       delivery record written by harness/close_day.py when a day is closed (D-0050)
   harness/config.json               threads, tracker alarm thresholds
   STATUS.md                         phase line, milestones, open items, latest log lines
   docs/process/codify-plan.md       codify stages (order table)
@@ -213,6 +214,22 @@ def _demo_files(rel: str) -> tuple[list[str], list[str]]:
     return scripts, keys
 
 
+def _delivery(path: Path) -> dict | None:
+    """Summary of trainer/<rel>/delivery.json (written by harness/close_day.py, D-0050), None when absent."""
+    if not path.is_file():
+        return None
+    try:
+        rec = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(rec, dict):
+            raise ValueError("not an object")
+        files = rec.get("files") or []
+        return {"date": rec.get("date"), "format": rec.get("format"),
+                "files": len(files) if isinstance(files, list) else 0,
+                "sha": str(rec.get("demoRepoSha") or "")[:7]}
+    except ValueError:
+        return {"date": None, "format": "unreadable", "files": 0, "sha": ""}
+
+
 def _day(cur: dict, week: dict, slot: dict, plan_info: dict | None) -> dict:
     if slot["kind"] == "holiday":
         return {"slot": slot["slot"], "date": slot["date"].isoformat(), "kind": "holiday", "label": slot["label"]}
@@ -226,7 +243,11 @@ def _day(cur: dict, week: dict, slot: dict, plan_info: dict | None) -> dict:
     if rows and rows["ladderRows"]:
         minutes = sum(int(r["Minutes"]) for r in rows["ladderRows"] if r["Minutes"].isdigit())
     pub = p["demos"]
-    published = pub.is_dir() and any(f.is_file() and KEYFILE_RE.match(f.name) for f in pub.iterdir())
+    if d["demoFormat"] == "loose":
+        published = bool(bi.published_files(pub))
+    else:
+        published = pub.is_dir() and any(f.is_file() and KEYFILE_RE.match(f.name) for f in pub.iterdir())
+    delivery = _delivery(p["trainer"] / "delivery.json")
     rubric = d.get("exerciseKind", "pytest") == "rubric"
     sol = p["trainer"] / "solutions"
     solutions = (sol / "RUBRIC.md").is_file() if rubric else (sol.is_dir() and any(sol.glob("*.py")))
@@ -244,7 +265,9 @@ def _day(cur: dict, week: dict, slot: dict, plan_info: dict | None) -> dict:
             "runbook": (p["trainer"] / "runbook.md").is_file(),
             "solutions": bool(solutions),
             "published": bool(published),
+            "closed": delivery is not None,
         },
+        "delivery": delivery,
         "coverage": len(rows["weekPlanRows"]) if rows else None,
         "demoMinutes": minutes,
         "rows": [{"thread": r["thread"], "rung": r["rung"], "demo": r["demo"], "key": r["key"],

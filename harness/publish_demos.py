@@ -8,6 +8,15 @@ page's demo card from "Published after class" (data-demo="pending") to the file 
 (data-demo="published"). Without `taught` it publishes nothing. Idempotent; the Wire step
 and the delivery close both run it.
 
+`demoFormat: "loose"` days (D-0050) are different: the trainer improvises in the public demo repo
+(config.json `demoRepo`, cloned at demo-repo/), and the authored scripts and keys under
+trainer/<rel>/demos/, when they exist, are only a fallback that is never published. For those days
+harness/close_day.py is the only writer: it copies the files typed on the day into demos/<rel>/ with a
+README, sets `taught` and flips the card to links (or to "No code demo this day" when nothing was saved).
+Here `publish` does nothing for a loose day and `--check` verifies that state: untaught means no
+published files and a pending card; taught means a README, and a card that links every published file
+or says there was no code demo.
+
 Usage:
     python harness/publish_demos.py <week> <day>            # publish if taught, else no-op
     python harness/publish_demos.py <week> <day> --check    # report drift, write nothing (exit 1 on drift)
@@ -30,6 +39,11 @@ CARD_PENDING = '<div class="activity-card demo-card" data-demo="pending">'
 CARD_PUBLISHED = '<div class="activity-card demo-card" data-demo="published">'
 PENDING_TEXT = '<div class="ac-t">Published after class</div>'
 PUBLISHED_META = '<div class="ac-meta">answer keys from the session · README has the run order</div>'
+# loose days (D-0050): the card links whatever was typed live, or says there was no code demo
+CARD_NONE = '<div class="activity-card demo-card" data-demo="none">'
+NONE_TEXT = '<div class="ac-t">No code demo this day</div>'
+NONE_META = '<div class="ac-meta">nothing was saved from the live walk-through</div>'
+LOOSE_META = '<div class="ac-meta">files typed live in the session · README lists them</div>'
 META_RE = re.compile(r'<div class="ac-meta">.*?</div>', re.S)
 KEY_FILE_RE = re.compile(r"^\d{2}_")
 
@@ -49,20 +63,32 @@ def card_links(repo_url: str, branch: str, rel: str, names: list[str]) -> str:
     return '<div class="ac-t">\n            ' + " ·\n            ".join(links) + "\n          </div>"
 
 
-def flip_card(html: str, repo_url: str, branch: str, rel: str, names: list[str]) -> str:
-    """Turn the pending demo card into the published one. Raises if the page does not carry the pending card."""
+def _flip(html: str, opener: str, text: str, meta: str) -> str:
     if CARD_PENDING not in html:
         raise ValueError("page has no pending demo card (data-demo=\"pending\")")
     start = html.index(CARD_PENDING)
     head, rest = html[:start], html[start:]
-    rest = rest.replace(CARD_PENDING, CARD_PUBLISHED, 1)
+    rest = rest.replace(CARD_PENDING, opener, 1)
     if PENDING_TEXT not in rest:
         raise ValueError("pending demo card lacks the 'Published after class' line")
-    rest = rest.replace(PENDING_TEXT, card_links(repo_url, branch, rel, names), 1)
+    rest = rest.replace(PENDING_TEXT, text, 1)
     m = META_RE.search(rest)  # the first .ac-meta after the card opener is the card's own
     if m:
-        rest = rest[:m.start()] + PUBLISHED_META + rest[m.end():]
+        rest = rest[:m.start()] + meta + rest[m.end():]
     return head + rest
+
+
+def flip_card(html: str, repo_url: str, branch: str, rel: str, names: list[str], meta: str = PUBLISHED_META) -> str:
+    """Turn the pending demo card into the published one. Raises if the page does not carry the pending card.
+
+    `meta` replaces the card's meta line: PUBLISHED_META for answer keys, LOOSE_META for a loose day (D-0050).
+    """
+    return _flip(html, CARD_PUBLISHED, card_links(repo_url, branch, rel, names), meta)
+
+
+def flip_card_none(html: str) -> str:
+    """Turn the pending demo card into "No code demo this day" (a loose day that saved no files, D-0050)."""
+    return _flip(html, CARD_NONE, NONE_TEXT, NONE_META)
 
 
 def _locate(week_no: int, day_no: int):
@@ -73,7 +99,31 @@ def _locate(week_no: int, day_no: int):
     if day.get("kind") == "holiday":
         raise SystemExit(f"week {week_no} day {day_no} is a holiday")
     rel = f"{week['dir']}/{day['slug']}"
-    return cfg, day, rel
+    return cfg, day, rel, cur, week  # day is the dict inside cur (close_day.py edits it in place)
+
+
+def _check_loose(day: dict, rel: str, pub: Path, page: Path, html: str) -> list[str]:
+    """A loose day (D-0050): demos/<rel>/ and the card are close_day.py's; the trainer fallback is never published."""
+    p: list[str] = []
+    files = [f.relative_to(pub).as_posix() for f in bi.published_files(pub)]
+    if not day.get("taught"):
+        if files:
+            p.append(f"demos/{rel}: published before the day was taught (no `taught` date in curriculum.json)")
+        if html and CARD_PENDING not in html:
+            p.append(f"{page.name}: demo card must be data-demo=\"pending\" until the day is taught")
+        return p
+    if not (pub / "README.md").exists():
+        p.append(f"demos/{rel}/README.md missing: run python harness/close_day.py {int(day['id'][1:3])} {day['day']} --apply ({day['id']})")
+    if html:
+        if files:
+            if CARD_PUBLISHED not in html:
+                p.append(f"{page.name}: demo card must be data-demo=\"published\" once taught (files were published)")
+            for n in files:
+                if f"/demos/{rel}/{n}\"" not in html:
+                    p.append(f"{page.name}: demo card does not link {n}")
+        elif CARD_NONE not in html or NONE_TEXT not in html:
+            p.append(f"{page.name}: taught with no published files, so the demo card must be data-demo=\"none\" (\"No code demo this day\")")
+    return p
 
 
 def check(day: dict, rel: str, cfg: dict) -> list[str]:
@@ -89,6 +139,8 @@ def check(day: dict, rel: str, cfg: dict) -> list[str]:
         if html and 'class="activity-card demo-card"' in html:
             p.append(f"{page.name}: demoFormat none but the page carries a demo card")
         return p
+    if day.get("demoFormat") == "loose":
+        return _check_loose(day, rel, pub, page, html)
     if not day.get("taught"):
         if pub.exists() and any(KEY_FILE_RE.match(f.name) for f in pub.iterdir()):
             p.append(f"demos/{rel}: published before the day was taught (no `taught` date in curriculum.json)")
@@ -122,11 +174,13 @@ def check(day: dict, rel: str, cfg: dict) -> list[str]:
 
 
 def publish(week_no: int, day_no: int, dry: bool = False) -> list[str]:
-    cfg, day, rel = _locate(week_no, day_no)
+    cfg, day, rel, _, _ = _locate(week_no, day_no)
     if dry:
         return check(day, rel, cfg)
     if day.get("demoFormat") == "none":
         return [f"{rel}: demoFormat none, nothing to publish"]
+    if day.get("demoFormat") == "loose":
+        return [f"{rel}: demoFormat loose; demos/{rel} and the demo card are written by harness/close_day.py (D-0050), nothing to publish"]
     if not day.get("taught"):
         return [f"{rel}: not taught yet (no `taught` date in curriculum.json); nothing published"]
     key_dir = TRAINER / rel / "demos" / "key"

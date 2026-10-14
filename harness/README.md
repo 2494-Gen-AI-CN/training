@@ -6,7 +6,7 @@ Agent-driven pipeline that turns one curriculum day into five reviewed artifacts
 harness/
   curriculum.json      source of truth: weeks, days, slugs, gate, demoFormat, status
   metrics.json         quality bars (word band, steps, quiz count, test counts, day minutes)
-  config.json          site title, repo URL, feedback form, LLM provider defaults, learner repo convention (D-0037)
+  config.json          site title, repo URL, feedback form, LLM provider defaults, learner repo convention (public, D-0051) and demo repo (D-0050)
   build_index.py       curriculum.json -> CAL/WEEKS block in docs/index.html (--check in tests); owns all calendar arithmetic
   args_for.py          prints the Workflow args for <week> <day...> (day = weekday slot; holiday slots refused; BLOCKED until the
                        week's plan exists, escape --no-plan) or, with <week> --plan, the args for the week-plan workflow (D-0034)
@@ -21,7 +21,10 @@ harness/
                        Check yourself, code blocks, citations, quiz, minutes), --phrases (classroom references), --stamps
                        (Sources checked vs the brief), --citations (sup.cite -> li#src-N, URLs in the brief), --links
                        (liveness); --all-live covers every live page; author, humanizer, verify agent, critic and tests call it
-  publish_demos.py     copies trainer/<rel>/demos/key/ to demos/<rel>/ and flips the notes demo card once the day is taught (D-0030)
+  publish_demos.py     copies trainer/<rel>/demos/key/ to demos/<rel>/ and flips the notes demo card once the day is taught (D-0030); loose days are published by close_day.py
+  close_day.py         closes a loose demo day (D-0050): `<week> <day> [--date YYYY-MM-DD] [--files ...] [--notes "..."] [--no-pull] [--apply]`; the only writer
+                       of `taught`; pulls demo-repo/, copies the day's committed files to demos/<rel>/ with a README, writes trainer/<rel>/delivery.json,
+                       flips the demo card, appends the runbook Delivery record, logs a manual run, rebuilds index and tracker; dry run without --apply
   practice_browser.py  browser pass for a page's practice tasks (D-0043): re-checks every case under CPython, then serves docs/ with the cases and
                        practice_browser.js so an agent with browser tools can drive the real page through them (AGENTS.md has the five steps)
   practice_tasks.py    practice tasks as a stage after authoring (D-0047): show / approve the proposals in practice/<week>/<day>.json, insert the page's
@@ -58,10 +61,10 @@ Decisions that shaped any of this (and every later schedule/scope change) are lo
 | Stage | Author writes | Critic checks (spec) | Gate |
 |---|---|---|---|
 | Research | `harness/research/<week>/<day>.md` (Claims, a `## Notes depth` block per subtopic, Sources, Glossary, Pitfalls, Demo hints) | `critics/research.md` | `full`: URLs fetched; `light`: structure + stamps; covers the plan's rows; Notes depth per subtopic (D-0040) |
-| Demos | `trainer/<week>/<day>/demos/NN_<slug>.md` scripts + `key/` answer keys (skipped on `demoFormat: none`); the plan's thread rows decide the demos, each rung extends its `Starts from` key | `critics/demos.md` | `demo_check.py` OK (format, both-ways with carried lines), every key runs, pre-flight walk, rung matches its plan row |
+| Demos | `trainer/<week>/<day>/demos/NN_<slug>.md` scripts + `key/` answer keys (skipped on `none`; optional fallback on `loose`); the plan's thread rows decide the demos, each rung extends its `Starts from` key | `critics/demos.md` | `demo_check.py` OK (format, both-ways with carried lines), every key runs, pre-flight walk, rung matches its plan row |
 | Notes ∥ Exercise | `docs/weeks/<week>/<day>.html` (reference/study material, D-0040: 4500–7000 words, h3 subsections, an interview callout per step, a Check-yourself step, inline citations, a Sources-checked stamp, no classroom references), `exercises/<week>/<day>/` + `trainer/.../solutions/` | `critics/notes.md` (+ a notes-verify agent: `notes_check.py` every day, WebFetch currency on full-gate and currency-flagged days; its findings bind the critic), `critics/exercise.md` | metrics bands via `notes_check.py`; demo card pending; starter fails / solution passes |
 | Runbook | `trainer/<week>/<day>/runbook.md` | `critics/runbook.md` | headings, minutes, one pointer section per script + a Facilitation block per concept subtopic |
-| Wire (serial) | glossary.js append, `status: live`, `build_index.py`, NEXT links, `publish_demos.py` (no-op until `taught`), `build_tracker.py` | — | — |
+| Wire (serial) | glossary.js append, `status: live`, `build_index.py`, NEXT links, `publish_demos.py` (no-op until `taught`; loose days: `close_day.py`), `build_tracker.py` | — | — |
 | Record | one line in `runs.jsonl` via `log_run.py add` (agents, passes, flags, tiers); `tracker.html` rebuilt (D-0035) | — | — |
 | Verify | test result amended onto the run record | `python -m unittest discover -s tests` (includes the tracker staleness test) | ≤2 fix loops |
 
@@ -94,7 +97,7 @@ Paste the JSON as `args`:
 ```
 Workflow({ scriptPath: "harness/workflows/day-fanout.js", args: { ...json... } })
 ```
-Then `python -m unittest discover -s tests -v`, open `docs/weeks/<week>/<day>.html` via `cd docs && python -m http.server 8000`, and rehearse `trainer/<week>/<day>/runbook.md` with the demo scripts in `trainer/<week>/<day>/demos/`. After the session, the delivery-day close sets `taught` on the day and runs `python harness/publish_demos.py <week> <day>` so the answer keys reach `demos/<week>/<day>/` and the notes page links them.
+Then `python -m unittest discover -s tests -v`, open `docs/weeks/<week>/<day>.html` via `cd docs && python -m http.server 8000`, and rehearse `trainer/<week>/<day>/runbook.md` with the demo scripts in `trainer/<week>/<day>/demos/`. After the session, the delivery-day close sets `taught`: `python harness/close_day.py <week> <day> --apply` for a loose day (the files typed in class reach `demos/<week>/<day>/` and the notes page links them), `python harness/publish_demos.py <week> <day>` for a py/nb day.
 
 When the run finishes, complete its record with what the script cannot see, then look at the tracker:
 ```

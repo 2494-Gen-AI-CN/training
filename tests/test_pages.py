@@ -106,6 +106,7 @@ class LivePageTests(unittest.TestCase):
             with self.subTest(rel=rel):
                 page = ParsedPage(path)
                 no_demos = d["demoFormat"] == "none"
+                loose = d["demoFormat"] == "loose"  # D-0050: publishes what was typed live, never the authored keys
                 taught = bool(d.get("taught")) and not no_demos
                 _structure_checks(self, page, d["id"], build_index.is_feedback(w, d), demo_card=not no_demos)
                 steps = page.root.find_all("section", "step")
@@ -125,8 +126,10 @@ class LivePageTests(unittest.TestCase):
                 self.assertGreaterEqual(len(src_links), M["sourcesMin"])
                 popups = page.root.find_all("button", "code-cta")
                 self.assertTrue(M["codePopupsMin"] <= len(popups) <= M["codePopupsMax"])
-                # code popups excerpt a real answer key: public once taught, else the private key/ (checked when trainer/ is here)
-                key_dirs = [public_demos(rel)] if taught else ([trainer_demos(rel) / "key"] if TRAINER.exists() else [])
+                # code popups excerpt a real answer key: public once taught, else the private key/ (checked when trainer/ is here);
+                # a loose day's popups always excerpt the authored fallback key/, taught or not (D-0050)
+                private_keys = [trainer_demos(rel) / "key"] if TRAINER.exists() else []
+                key_dirs = private_keys if loose else ([public_demos(rel)] if taught else private_keys)
                 if no_demos:
                     self.assertEqual([], popups, "demoFormat none: no code popups")
                 for btn in popups:
@@ -138,11 +141,19 @@ class LivePageTests(unittest.TestCase):
                 if not no_demos:
                     card = page.root.find(class_name="demo-card")
                     demo_links = [a.attrs["href"] for a in card.find_all("a")]
-                    if taught:
+                    published = build_index.published_files(public_demos(rel)) if loose else None
+                    if taught and loose and not published:
+                        # D-0050: taught, nothing saved from the live walk-through
+                        self.assertEqual("none", card.attrs.get("data-demo"), "a taught loose day with no files says so")
+                        self.assertEqual([], demo_links, "a no-demo card links nothing")
+                        self.assertIn("No code demo this day", card.text())
+                    elif taught:
                         self.assertEqual("published", card.attrs.get("data-demo"))
                         self.assertTrue(demo_links, "published demo card must link the answer keys")
+                        marker = f"/demos/{rel}/"
                         for href in demo_links:
-                            name = href.rstrip("/").rsplit("/", 1)[-1]
+                            # loose files may sit in a subfolder: the name is everything after /demos/<rel>/
+                            name = href.split(marker, 1)[1] if loose and marker in href else href.rstrip("/").rsplit("/", 1)[-1]
                             self.assertTrue((public_demos(rel) / name).exists(), f"demo link {href} not on disk")
                     else:
                         self.assertEqual("pending", card.attrs.get("data-demo"), "demo card must be pending until the day is taught")

@@ -34,19 +34,32 @@
     ]
   },
   "learnerRepo": {
-    "_comment": "Learner repo convention (D-0037): one private repository per trainee inside the cohort organisation, created in the W1D2 Git exercise and kept for the whole course. Reaches every exercise and runbook author/critic prompt through args_for.py and day-fanout.js (learnerCtx). The trainer's demo-thread repo (threads.*.repo) is a different repository and keeps its own name. Change via a decision entry.",
+    "_comment": "Learner repo convention (D-0051, supersedes D-0037): one PUBLIC repository per trainee inside the cohort organisation, created in the W1D2 Git exercise and kept for the whole course. Reaches every exercise and runbook author/critic prompt through args_for.py and day-fanout.js (learnerCtx). The trainer's live demo repository is demoRepo below, a different repository. Change via a decision entry.",
     "org": "2494-Gen-AI-CN",
     "name": "FirstnameLastname",
-    "nameRule": "the trainee's first and last name as on the class roster, run together in PascalCase, ASCII letters and digits only; a clash gets a trailing digit",
-    "visibility": "private",
+    "nameRule": "the trainee's first and last name as on the class roster, run together in PascalCase, ASCII letters and digits; a hyphen or underscore between the names is tolerated; a clash gets a trailing digit",
+    "visibility": "public",
     "createdIn": "w01d2",
     "layout": {
       "root": "hello.py, .gitignore and README.md from the W1D2 Git exercise stay at the top level",
       "exercises": "<week-dir>/<day-slug>/, the same relative path the exercise has under exercises/ in the training repo",
-      "codeAlong": "one folder per demo thread at the top level, named after the thread id without its project prefix (p0-ticket-desk -> ticket-desk/)",
+      "hackathon": "<week-dir>/hackathon/ for the week's hackathon deliverable, due on the week's last teaching day unless the trainer says otherwise",
+      "codeAlong": "optional: code-along/<week-dir>/<day-slug>/ for the trainee's own copy of what was typed in class; never marked",
       "scratch": "scratch/ for explorations; never marked"
     },
     "handIn": "commit and push to main; the trainer reads the day's folder in the trainee's repository"
+  },
+  "demoRepo": {
+    "_comment": "The trainer's live demo repository (D-0050): a PUBLIC GitHub repo separate from this one, cloned at localDir (gitignored, like trainer/). Loose days (demoFormat loose) are typed under layout.loose; thread code from week 3 lives under threads.<id>.repoDir. harness/close_day.py reads it to close a day. Replaces the team-repo wording of D-0033 and D-0037. Change via a decision entry.",
+    "org": "2494-Gen-AI-CN",
+    "name": "demos",
+    "url": "https://github.com/2494-Gen-AI-CN/demos",
+    "branch": "main",
+    "localDir": "demo-repo",
+    "layout": {
+      "loose": "<week-dir>/<day-slug>/ (the day's rel, the same path as everywhere else); any filenames",
+      "thread": "<threads.<id>.repoDir>/ at the top level, e.g. ticket-desk/ticket_desk.py, one commit per rung"
+    }
   },
   "llm": {
     "default": {
@@ -92,12 +105,13 @@
     }
   },
   "threads": {
-    "_comment": "Demo threads (D-0033, D-0034): one demo codebase per project block that grows rung by rung across days and weeks. args_for.py --plan passes the threads whose week range covers the week; the week-plan author may not invent a thread. Add P1/P2 threads via a decision entry before their first week is planned.",
+    "_comment": "Demo threads (D-0033, D-0034, D-0050): one demo codebase per project block that grows rung by rung across days and weeks. repoDir and file name where the thread lives inside demoRepo (one commit per rung, the rung-diff close reads it from week 3). args_for.py --plan passes the threads whose week range covers the week; the week-plan author may not invent a thread. Add P1/P2 threads via a decision entry before their first week is planned.",
     "p0-ticket-desk": {
       "domain": "A support-ticket desk for a small software team: tickets with a title, priority, status and history, filed by customers and triaged by agents. Week 1 keeps tickets in Python variables, lists, dicts and classes; week 2 splits the desk into modules with logging, JSON files, regex on ticket text and pytest; week 3 moves tickets, customers and agents into MySQL tables with joins and transactions on assignment; week 4 loads ticket events into a BigQuery star schema through an ETL job; week 5 sends tickets to an LLM for triage, summaries and draft replies.",
       "project": "P0",
       "weeks": [1, 5],
-      "repo": "team-repo (created in W1D2 demo 02_local_git_loop; every rung ends in a commit whose message is the rung's commit message)"
+      "repoDir": "ticket-desk",
+      "file": "ticket_desk.py"
     }
   },
   "tracker": {

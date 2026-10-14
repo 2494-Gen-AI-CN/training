@@ -34,7 +34,9 @@ class TrainerTests(unittest.TestCase):
                 if d["kind"] == "review":
                     self.assertIn("## Review agenda", text)
                 # D-0030: one "## Demo N: <script>" per walkthrough script in trainer/<rel>/demos/; concept days facilitate
-                if d["demoFormat"] == "none":
+                if d["demoFormat"] == "loose" and not trainer_demos(rel).is_dir():
+                    pass  # D-0050: a loose day without fallback scripts owes no Demo sections
+                elif d["demoFormat"] == "none":
                     self.assertNotRegex(text, re.compile(r"^## Demo \d+:", re.M), "demoFormat none: no Demo sections")
                     self.assertRegex(text, re.compile(r"^## Facilitation \d+: .+\(\d+ min\)", re.M), "demoFormat none day needs timed Facilitation sections")
                 else:

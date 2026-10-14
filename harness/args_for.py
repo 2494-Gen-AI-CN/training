@@ -18,9 +18,12 @@ Usage:
     python harness/args_for.py 1 2 --skip-research   # reuse the committed brief; demos onward run live
     python harness/args_for.py 1 3 --no-plan         # ESCAPE: ship a day without a week plan (logged)
     python harness/args_for.py 1 --plan --today 2026-10-12   # week-plan args for week 1
+    python harness/args_for.py 2 --plan --cold --today 2026-10-14   # D-0050: previousEndState {} + coldRestart, every
+                                                     # thread starts cold (the previous week's ladder was not delivered)
     python harness/args_for.py 1 2 3 --notes-only    # D-0040: research depth + notes page only; the brief, demo
-                                                     # scripts and keys must already be on disk; exercise and
-                                                     # runbook are untouched
+                                                     # scripts and keys must already be on disk (a demoFormat loose
+                                                     # day, D-0050, needs neither: no key README only warns);
+                                                     # exercise and runbook are untouched
     python harness/args_for.py 1 2 --notes-only --template harness/templates/day.exemplar.html
                                                      # override the config template (pilot of a new page shape)
     python harness/args_for.py 2 --practice          # D-0047: practice-tasks.js, suitability pass over the week's
@@ -43,7 +46,7 @@ import plan_check  # noqa: E402
 import practice_tasks as pt  # noqa: E402
 
 ROOT = bi.ROOT
-CONFIG_KEYS = ("cohort", "siteTitle", "brand", "repoUrl", "repoBranch", "siteUrl", "feedbackFormUrl", "python", "audience", "learnerRepo")
+CONFIG_KEYS = ("cohort", "siteTitle", "brand", "repoUrl", "repoBranch", "siteUrl", "feedbackFormUrl", "python", "audience", "learnerRepo", "demoRepo")
 
 
 def plan_path(week_no: int) -> Path:
@@ -101,9 +104,11 @@ def _common(cur: dict, week: dict, ew: dict, today: str | None, metrics: dict, c
     }
 
 
-def plan_args(cur: dict, week: dict, today: str | None, metrics: dict, config: dict) -> dict:
+def plan_args(cur: dict, week: dict, today: str | None, metrics: dict, config: dict, cold: bool = False) -> dict:
     """Args for harness/workflows/week-plan.js: every teaching day of the week, the thread policy for this week,
-    the previous week's plan and end state, and the model tiers exactly as day args carry them."""
+    the previous week's plan and end state, and the model tiers exactly as day args carry them.
+    cold (--cold, after loose days D-0050): previousEndState is empty and coldRestart is set, so every thread's
+    first rung starts cold."""
     ew = bi.expand_week(cur, week)
     by_slot = {s["slot"]: s for s in ew["slots"]}
     days = []
@@ -126,8 +131,13 @@ def plan_args(cur: dict, week: dict, today: str | None, metrics: dict, config: d
             pass
     threads = {tid: t for tid, t in (config.get("threads") or {}).items()
                if isinstance(t, dict) and (not t.get("weeks") or t["weeks"][0] <= week_no <= t["weeks"][1])}
+    cold_args = {}
+    if cold:
+        prev_end = {}
+        cold_args = {"coldRestart": "the previous week's ladder was not delivered (loose days); every thread starts cold this week"}
     return {
         **_common(cur, week, ew, today, metrics, config),
+        **cold_args,
         "days": days,
         "projects": cur.get("projects", {}),
         "threads": threads,
@@ -239,7 +249,7 @@ def main(argv: list[str]) -> int:
         i = argv.index("--template")
         template_override = argv[i + 1]
         del argv[i:i + 2]
-    flags = {f: f in argv for f in ("--skip-research", "--plan", "--no-plan", "--notes-only", "--practice", "--practice-build")}
+    flags = {f: f in argv for f in ("--skip-research", "--plan", "--no-plan", "--notes-only", "--practice", "--practice-build", "--cold")}
     argv = [a for a in argv if a not in flags]
     skip_research, plan_mode, no_plan, notes_only = flags["--skip-research"], flags["--plan"], flags["--no-plan"], flags["--notes-only"]
     nums = [int(a) for a in argv]
@@ -254,7 +264,7 @@ def main(argv: list[str]) -> int:
         if week is None:
             print(f"no week {nums[0]}", file=sys.stderr)
             return 2
-        print(json.dumps(plan_args(cur, week, today, metrics, config), indent=2, ensure_ascii=False))
+        print(json.dumps(plan_args(cur, week, today, metrics, config, cold=flags["--cold"]), indent=2, ensure_ascii=False))
         return 0
     if flags["--practice"] or flags["--practice-build"]:
         week = next((w for w in cur["weeks"] if w["week"] == nums[0]), None) if nums else None
@@ -328,7 +338,13 @@ def main(argv: list[str]) -> int:
         if notes_only:
             # D-0040: the notes page is re-authored on top of the day's existing demo scripts and keys.
             scripts = _existing_scripts(rel)
-            if d.get("demoFormat") != "none" and (not scripts or not (ROOT / "trainer" / rel / "demos" / "key" / "README.md").is_file()):
+            fmt = d.get("demoFormat")
+            has_readme = (ROOT / "trainer" / rel / "demos" / "key" / "README.md").is_file()
+            if fmt == "loose":
+                # D-0050: loose days may have no scripts at all; fallback scripts without a key README only warn.
+                if scripts and not has_readme:
+                    print(f"WARNING: loose day {rel} has fallback scripts but no key/README.md under trainer/{rel}/demos/; continuing", file=sys.stderr)
+            elif fmt != "none" and (not scripts or not has_readme):
                 print(f"--notes-only needs the day's demo scripts and key/README.md on disk under trainer/{rel}/demos/", file=sys.stderr)
                 return 2
             day_args["existingScripts"] = scripts

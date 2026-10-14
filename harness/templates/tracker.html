@@ -245,8 +245,8 @@ window.TRACKER = null;
     return out;
   };
   TR.demosState = function (d) {
-    if (d.demoFormat === "none") return "na";
     var a = d.a.demos;
+    if (d.demoFormat === "none" || (d.demoFormat === "loose" && !a.scripts)) return "na";
     if (!a.scripts) return "none";
     if ((a.planned != null && a.scripts < a.planned) || a.keys < a.scripts) return "partial";
     return "full";
@@ -261,7 +261,7 @@ window.TRACKER = null;
       if (toWeek <= rules.dayAmberDaysBeforeWeek) return { level: "amber", text: "not live, due Friday" };
       return null;
     }
-    if (!d.taught) {
+    if (!d.taught && !d.a.closed) {            // delivery.json (close_day.py, D-0050) clears it as well as taught
       var since = TR.diff(d.date, today);
       if (since >= rules.closeRedDays) return { level: "red", text: "delivery close missing" };
       if (since >= rules.closeAmberDays) return { level: "amber", text: "delivery close due" };
@@ -373,7 +373,7 @@ window.TRACKER = null;
       var cls = "mk", label = a[1], state = "missing";
       if (a[0] === "demos") {
         var ds = TR.demosState(d), dm = d.a.demos;
-        if (ds === "na") { cls += " na"; label = "–"; state = "not applicable (no code demo)"; }
+        if (ds === "na") { cls += " na"; label = "–"; state = d.demoFormat === "loose" ? "loose day (no fallback scripts)" : "not applicable (no code demo)"; }
         else if (ds === "full") { cls += " on"; state = dm.scripts + " of " + (dm.planned == null ? dm.scripts : dm.planned) + " authored"; }
         else if (ds === "partial") { cls += " part"; label = dm.scripts + "/" + (dm.planned == null ? "?" : dm.planned); state = "partial"; }
         else if (dm.planned != null) { label = "0/" + dm.planned; state = "0 of " + dm.planned + " planned demos authored"; }
@@ -383,6 +383,7 @@ window.TRACKER = null;
   }
   function badge(d) {
     if (d.a.published) return h("span", { class: "badge live", text: "published" });
+    if (d.a.closed && !d.a.published) return h("span", { class: "badge live", text: "closed" });
     if (d.taught) return h("span", { class: "badge live", text: "taught" });
     if (d.status === "live") return h("span", { class: "badge live", text: "live" });
     return h("span", { class: "badge", text: d.kind === "review" ? "review" : "planned" });
@@ -575,10 +576,15 @@ window.TRACKER = null;
       h("table", {}, [h("tbody", {}, [
         art("week plan", w.plan.ok, L.plan, w.plan.exists ? "fails plan_check" : "no plan for this week"),
         art("research brief", d.a.research, L.research),
-        d.demoFormat === "none" ? art("demos", true, null) : art("demos (" + dm.scripts + " of " + (dm.planned == null ? "?" : dm.planned) + " scripts, " + dm.keys + " keys)", TR.demosState(d) === "full", L.demos),
+        d.demoFormat === "none" ? art("demos", true, null) :
+          d.demoFormat === "loose" && !dm.scripts ? art("demos", true, null, "loose day, no fallback scripts") : art("demos (" + dm.scripts + " of " + (dm.planned == null ? "?" : dm.planned) + " scripts, " + dm.keys + " keys)", TR.demosState(d) === "full", L.demos),
         art("notes page", d.a.notes, L.notes), art("exercise", d.a.exercise, L.exercise), art("runbook", d.a.runbook, L.runbook),
         art(d.exerciseKind === "rubric" ? "marking guide" : "solutions", d.a.solutions, "trainer/" + d.rel + "/solutions/"),
-        art("taught", !!d.taught, null, d.taught || "delivery close not run"), art("demos published", d.a.published, "demos/" + d.rel + "/", "published after the delivery close")])]),
+        art("taught", !!d.taught, null, d.taught || "delivery close not run"),
+        art("delivery record", d.a.closed, "trainer/" + d.rel + "/delivery.json", "close_day.py not run"),
+        d.delivery ? h("tr", {}, [h("td", { colspan: "2", class: "small muted",
+          text: d.delivery.format + " · " + d.delivery.files + " file(s) · demo-repo@" + d.delivery.sha })]) : null,
+        art("demos published", d.a.published, "demos/" + d.rel + "/", "published after the delivery close")])]),
       h("h4", { text: "From the week plan" }),
       d.coverage == null ? h("div", { class: "dim", text: "This week has no plan yet." }) :
         h("div", { class: "small" }, [d.coverage + " of " + d.subtopics + " subtopics mapped" + (d.demoMinutes ? " · " + d.demoMinutes + " demo minutes" : "")]),

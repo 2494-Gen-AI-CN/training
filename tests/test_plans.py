@@ -130,7 +130,7 @@ class PlanArgsTests(unittest.TestCase):
                     self.assertTrue(a["weekPlan"].endswith(f"harness/plans/week-{wk['week']:02d}.md"))
                     day = a["days"][0]
                     self.assertEqual(len(d["subtopics"]), len(day["weekPlanRows"]), "one coverage row per subtopic")
-                    if d["demoFormat"] != "none":
+                    if d["demoFormat"] not in ("none", "loose") or day["threadRows"]:
                         self.assertTrue(day["threadRows"], "a demo day needs thread/standalone rows")
                         for r in day["threadRows"]:
                             self.assertIn("startsFrom", r)

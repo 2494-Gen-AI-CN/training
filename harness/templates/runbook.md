@@ -68,7 +68,7 @@ By the end of today trainees can:
 
 - Task in one sentence: ...
 - Acceptance: all tests in `exercises/{{rel}}/tests/` pass.
-- Where trainees work and hand in: `{{rel}}/` in their own `<FirstnameLastname>` repository (D-0037), committed and pushed to `main`.
+- Where trainees work and hand in: `{{rel}}/` in their own public `<FirstnameLastname>` repository (D-0051), committed and pushed to `main`.
 - Where trainees get stuck: ...
 - Rubric hints (trainer-only): ...
 - Solution: trainer/{{rel}}/solutions/
@@ -92,3 +92,5 @@ By the end of today trainees can:
 
 - Cumulative quiz, mini-project walkthrough, Q&A ...
 {{/if}}
+
+<!-- "## Delivery record (<date>)" is appended by harness/close_day.py after the day (D-0050); authors never write it. -->

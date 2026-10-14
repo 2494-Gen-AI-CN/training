@@ -2,6 +2,8 @@
 Reference-Example/
 # Trainer-only material lives in its own private repo cloned here
 trainer/
+# The trainer's live demo repo (public GitHub repo 2494-Gen-AI-CN/demos) cloned here; harness/close_day.py reads it (D-0050)
+demo-repo/
 # Python
 __pycache__/
 *.pyc

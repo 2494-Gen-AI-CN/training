@@ -39,9 +39,7 @@
           <span><b>~34 min</b> · reference notes @150 wpm · diagram · check</span>
           <span class="verified">Sources checked 2026-10-12 · python 3.15</span>
         </div>
-        <p class="summary">This page assumes Tuesday's tooling check passed: your shell runs Python 3.15 and
-        <code>team-repo</code> is a Git repository you can branch from. It assumes no Python beyond Tuesday's five-line
-        <code>hello.py</code>, and teaches the syntax from first principles together with the conventions a team expects: how a block is marked, the layout and naming
+        <p class="summary">This page assumes only that Python 3.15 is installed and runs from your shell, and it teaches the syntax from first principles together with the conventions a team expects: how a block is marked, the layout and naming
         PEP 8 asks for, comments that record a reason, variables as names bound to objects, what each operator returns, and input and output that behave at a
         terminal and in a pipe. Afterwards you can explain how Python marks a block, what <code>a = b</code> really does,
         why <code>x == "a" or "b"</code> always passes, and why a warning belongs on stderr.</p>
@@ -64,7 +62,7 @@ if hours_open &gt; 4:
     print("over the high-priority limit")
     print("tell the on-call developer")
 print("checked")</code></pre>
-        <p>Run the file with <code>python</code> and its name, as Tuesday's <code>hello.py</code> was run, and it prints all three lines. <code>print</code>
+        <p>Run the file with <code>python</code> and its name, the way any script such as <code>hello.py</code> is run, and it prints all three lines. <code>print</code>
         writes its values to the screen as one line of text. The two indented calls belong to the <code>if</code> and
         run because 5.5 is greater than 4, and <code>checked</code> runs either way because it sits back at the outer
         level. Move the second indented line two spaces to the left and Python reports
@@ -601,10 +599,12 @@ assert is_open == False and reopen_count == 0 and priority == "high", "the three
       </div>
 
       <div class="side-cards">
-        <div class="activity-card demo-card" data-demo="pending">
+        <div class="activity-card demo-card" data-demo="published">
           <div class="ac-k">⌨ Code-along files</div>
-          <div class="ac-t">Published after class</div>
-          <div class="ac-meta">typed live in the session · the answer key lands in demos/ afterwards</div>
+          <div class="ac-t">
+            <a href="https://github.com/2494-Gen-AI-CN/training/tree/main/demos/week-01/day-3-python-basics/hello.py" target="_blank" rel="noopener">hello.py</a>
+          </div>
+          <div class="ac-meta">files typed live in the session · README lists them</div>
         </div>
 
         <button class="activity-card accent" type="button" data-modal="quiz-modal">
@@ -654,9 +654,7 @@ assert is_open == False and reopen_count == 0 and priority == "high", "the three
     </ul>
     <div class="ma-k">Demos today</div>
     <ul class="deliv-list">
-      <li>Demo 1 — start the ticket desk on a feature branch in PEP 8 shape (docstring, UPPER_CASE constants, snake_case variables), decide which comments to keep, and print one ticket record with an f-string</li>
-      <li>Demo 2 — compute a ticket's age, time left and breach flag with arithmetic, comparison and boolean operators, and predict what each one prints, including the <code>or</code> pitfall</li>
-      <li>Demo 3 — read a title and a priority from the prompt when a person is at the terminal, print an aligned board with <code>print</code> options and f-string formats, send a warning to the error stream, and merge the feature branch into <code>main</code></li>
+      <li>One live walk through the day's topics, built in front of the class and shaped by its questions; the files it produces are published in the demos folder afterwards</li>
     </ul>
     <p class="goals-foot">Thursday assumes these names and operators. Finish the check to unlock the next page.</p>
   </div>
