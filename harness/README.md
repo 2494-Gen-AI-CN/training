@@ -24,15 +24,20 @@ harness/
   publish_demos.py     copies trainer/<rel>/demos/key/ to demos/<rel>/ and flips the notes demo card once the day is taught (D-0030)
   practice_browser.py  browser pass for a page's practice tasks (D-0043): re-checks every case under CPython, then serves docs/ with the cases and
                        practice_browser.js so an agent with browser tools can drive the real page through them (AGENTS.md has the five steps)
+  practice_tasks.py    practice tasks as a stage after authoring (D-0047): show / approve the proposals in practice/<week>/<day>.json, insert the page's
+                       section.practice from that file (generated, never hand-edited), check page and file agree, verify one day under CPython
+  practice/<week>/<day>.json   per day: which teaching steps take a task and why, the proposed tasks, the trainer's answer, and the built task text,
+                       starter and checks (committed; the model answers and cases are in the trainer repo)
   build_tracker.py     writes ../tracker.html (the work tracker; local, gitignored, D-0036) = templates/tracker.html + a data block
                        read from repo state; --check in tests (D-0035)
   log_run.py           add / amend one record per workflow run in runs.jsonl; `tests` records the suite result in last-tests.json
   runs.jsonl           the run log (committed): agents, passes per artifact, flagged items, tiers, test result per run
   workflows/week-plan.js    once per week, before the first day: author + critic write plans/week-WW.md, then a Record agent (<=5 agents)
   workflows/day-fanout.js   the per-day Workflow-tool script
+  workflows/practice-tasks.js   after a week is authored: suitability pass (one assessor per page), then, once the trainer approved, the build (author + critic per day)
   plans/week-WW.md     the week plans (committed): Weekly Epic, Threads rung table, demo ladder, per-day shape, ledgers, coverage map
   templates/           tracker.html (work-tracker shell, no data), day.exemplar.html, week-plan.md, research.md, runbook.md, demo-script.md, demo-README.md, exercise-README.md, conftest.py
-  critics/             PASS criteria each critic agent reads: week-plan, research, demos, notes, runbook, exercise
+  critics/             PASS criteria each critic agent reads: week-plan, research, demos, notes, runbook, exercise, practice
   research/<week>/<day>.md   research briefs (committed; the audit trail for every claim)
 ```
 
@@ -65,6 +70,20 @@ Each gated artifact: author → critic → up to 3 repair passes → else **flag
 A humanizer agent (`humanizer:humanizer`, file mode, tier `humanize`) runs between author and critic on three artifacts: the notes page (D-0029) and the trainer's delivery wording, which is the day's demo scripts and the runbook (D-0039). On every one of them it changes prose only and proves it: `python harness/prose_guard.py snapshot <files>` before, `python harness/prose_guard.py check <snapshot dir> <files>` after (html mode for a page, D-0040). No critic item judges the wording of trainer files, so the pass adds agents (two per day, more on a repass) without moving the bar. For a hand pass on committed files use `python harness/prose_guard.py git <files>`.
 
 Notes-only mode (D-0040): `python harness/args_for.py <week> <day...> --notes-only` runs a research DEPTH pass (a research agent extends the committed brief's `## Notes depth` section, judged by the research critic), then the notes page on top of the demo scripts and keys already on disk; exercise and runbook are untouched. `--template <path>` points the authors at another page shape (used to pilot a new template). Every stage tier in `config.json` `models` is pinned to opus, sonnet or haiku; none inherits the session model.
+
+## Practice tasks (after the week's days are authored, D-0047)
+
+```
+python harness/args_for.py 1 --practice --today 2026-10-13        # suitability args: the week's authored pages that carry no built task
+Workflow({ scriptPath: "harness/workflows/practice-tasks.js", args: { ...json... } })
+python harness/practice_tasks.py show 1                           # the proposals, to put in front of the trainer
+python harness/practice_tasks.py approve 1 5 t1 t3 t4             # the trainer's answer, per day (--all, --none)
+python harness/args_for.py 1 --practice-build --today 2026-10-13  # build args; refused while a proposed task has no answer
+Workflow({ scriptPath: "harness/workflows/practice-tasks.js", args: { ...json... } })
+python harness/practice_browser.py 1 5                            # then the browser pass, per built day (AGENTS.md)
+```
+
+The suitability pass reads each page against `critics/practice.md`: what the browser runtime can run (standard library, no typed input, no packages, one file) and what a check can see (names and return values). It proposes at most one task per teaching step and says why a step takes none. Nothing reaches a page without the trainer's answer. The build writes the task text, starter and checks into `practice/<week>/<day>.json`, the model answers and cases into the trainer repo, and the page's section through `practice_tasks.py insert`; the section is generated, so a re-authored page gets it back from the same command (the Wire step runs it). Agents: one per day plus two for the suitability pass; two to six per day plus two for the build.
 
 ## Running a day
 

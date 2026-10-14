@@ -1,0 +1,137 @@
+{
+  "day": "w01d4",
+  "page": "docs/weeks/week-01/day-4-python-data-types.html",
+  "assessed": "2026-10-13",
+  "verdict": "full",
+  "summary": "Extracted from the page: these tasks were written by hand before the practice stage existed.",
+  "steps": [
+    {
+      "step": 0,
+      "title": "Strings: immutable text and the methods that clean it",
+      "suitable": true,
+      "reason": "carries a task since before D-0047",
+      "task": "t1"
+    },
+    {
+      "step": 1,
+      "title": "Casting and truthiness",
+      "suitable": true,
+      "reason": "carries a task since before D-0047",
+      "task": "t2"
+    },
+    {
+      "step": 2,
+      "title": "Lists, tuples and range",
+      "suitable": true,
+      "reason": "carries a task since before D-0047",
+      "task": "t3"
+    },
+    {
+      "step": 3,
+      "title": "Sets and binary types",
+      "suitable": true,
+      "reason": "carries a task since before D-0047",
+      "task": "t4"
+    },
+    {
+      "step": 4,
+      "title": "None and dictionaries",
+      "suitable": true,
+      "reason": "carries a task since before D-0047",
+      "task": "t5"
+    },
+    {
+      "step": 5,
+      "title": "Numbers and datetime",
+      "suitable": true,
+      "reason": "carries a task since before D-0047",
+      "task": "t6"
+    },
+    {
+      "step": 6,
+      "title": "Namespaces: which object a name means",
+      "suitable": true,
+      "reason": "carries a task since before D-0047",
+      "task": "t7"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "title": "Strings",
+      "step": 0,
+      "idea": "",
+      "checks": [],
+      "approved": true,
+      "q": "Write <code>ticket_line(ticket_id, title, priority)</code>. It returns one line of text such as <code>#101 Login page returns 500 [high]</code>: the id after a <code>#</code>, the title with the whitespace around it removed, and the priority in lower case inside square brackets. Return the text; do not print it.",
+      "starter": "def ticket_line(ticket_id, title, priority):\n    ...",
+      "tests": "assert ticket_line(101, \"Login page returns 500\", \"high\") == \"#101 Login page returns 500 [high]\", \"builds the line from the three values\"\nassert ticket_line(7, \"  Printer jams \\n\", \"low\") == \"#7 Printer jams [low]\", \"removes the whitespace around the title\"\nassert ticket_line(102, \"Wi-Fi drops\", \"HIGH\") == \"#102 Wi-Fi drops [high]\", \"puts the priority in lower case\""
+    },
+    {
+      "id": "t2",
+      "title": "Casting and truthiness",
+      "step": 1,
+      "idea": "",
+      "checks": [],
+      "approved": true,
+      "q": "Write <code>hours_label(hours)</code>. <code>hours</code> is a number, or <code>None</code> when nothing was logged. Return <code>\"not logged\"</code> for <code>None</code>, and otherwise the number followed by <code>h</code>, such as <code>\"2.5h\"</code>. Zero is a real value: <code>0</code> gives <code>\"0h\"</code>.",
+      "starter": "def hours_label(hours):\n    ...",
+      "tests": "assert hours_label(2.5) == \"2.5h\", \"a number becomes text that ends in h\"\nassert hours_label(None) == \"not logged\", \"None means nothing was logged\"\nassert hours_label(0) == \"0h\", \"zero hours is a real value, not a missing one\""
+    },
+    {
+      "id": "t3",
+      "title": "Lists, tuples and range",
+      "step": 2,
+      "idea": "",
+      "checks": [],
+      "approved": true,
+      "q": "Write <code>add_ticket(queue, ticket)</code>. It returns a new list that holds every ticket in <code>queue</code> followed by <code>ticket</code>. The caller's list must be left as it was.",
+      "starter": "def add_ticket(queue, ticket):\n    ...",
+      "tests": "rows = [(1, 101, \"Login page returns 500\")]\nresult = add_ticket(rows, (2, 102, \"Printer jams\"))\nassert result == [(1, 101, \"Login page returns 500\"), (2, 102, \"Printer jams\")], \"returns the tickets with the new one at the end\"\nassert rows == [(1, 101, \"Login page returns 500\")], \"leaves the caller's list as it was\"\nassert result is not rows, \"returns a new list, not the same object\""
+    },
+    {
+      "id": "t4",
+      "title": "Sets and binary types",
+      "step": 3,
+      "idea": "",
+      "checks": [],
+      "approved": true,
+      "q": "Write <code>new_reporters(today, known)</code>. Both arguments are lists of reporter names as typed, so the same person can appear with different capitals or stray spaces. Return a <code>set</code> of the names that are in <code>today</code> and not in <code>known</code>, each one stripped and lower-cased.",
+      "starter": "def new_reporters(today, known):\n    ...",
+      "tests": "result = new_reporters([\"Dana\", \" lee \", \"SAM\", \"dana\"], [\"Lee\"])\nassert isinstance(result, set), \"returns a set\"\nassert result == {\"dana\", \"sam\"}, \"keeps who is new, each name once and cleaned up\"\nassert new_reporters([\"Lee\"], [\"lee \"]) == set(), \"nobody new gives an empty set\""
+    },
+    {
+      "id": "t5",
+      "title": "None and dictionaries",
+      "step": 4,
+      "idea": "",
+      "checks": [],
+      "approved": true,
+      "q": "A ticket is a dict. Write <code>assignee_of(ticket)</code>. It returns the value under <code>\"assignee\"</code>, or <code>\"unassigned\"</code> when the key is missing or its value is <code>None</code>.",
+      "starter": "def assignee_of(ticket):\n    ...",
+      "tests": "assert assignee_of({\"id\": 101, \"assignee\": \"dana\"}) == \"dana\", \"returns the assignee when there is one\"\nassert assignee_of({\"id\": 102}) == \"unassigned\", \"a missing key gives unassigned\"\nassert assignee_of({\"id\": 103, \"assignee\": None}) == \"unassigned\", \"a key that holds None gives unassigned\""
+    },
+    {
+      "id": "t6",
+      "title": "Numbers and datetime",
+      "step": 5,
+      "idea": "",
+      "checks": [],
+      "approved": true,
+      "q": "Write <code>hours_between(opened, closed)</code>. Both arguments are <code>datetime</code> values. Return the time between them in hours as a <code>float</code>, so 90 minutes is <code>1.5</code> and a ticket open for a day and two hours is <code>26.0</code>.",
+      "starter": "from datetime import datetime, timedelta\n\n\ndef hours_between(opened, closed):\n    ...",
+      "tests": "from datetime import datetime\nopened = datetime(2026, 10, 15, 9, 30)\nassert hours_between(opened, datetime(2026, 10, 15, 11, 0)) == 1.5, \"90 minutes is 1.5 hours\"\nassert hours_between(opened, datetime(2026, 10, 16, 11, 30)) == 26.0, \"counts the whole days too\"\nassert type(hours_between(opened, opened)) is float, \"returns a float\""
+    },
+    {
+      "id": "t7",
+      "title": "Namespaces",
+      "step": 6,
+      "idea": "",
+      "checks": [],
+      "approved": true,
+      "q": "This script stops with <code>TypeError: 'list' object is not callable</code>: its first line gives the name <code>list</code> to a list of tags, which hides the builtin. Change the script so the tags live under the name <code>tags</code>, the builtin <code>list</code> is left alone, and <code>count</code> ends up as <code>3</code>.",
+      "starter": "list = [\"printer\", \"hardware\"]\nletters = list(\"abc\")\ncount = len(letters)\nprint(list, count)",
+      "tests": "import builtins\nassert list is builtins.list, \"list still names the builtin\"\nassert tags == [\"printer\", \"hardware\"], \"the tags live under the name tags\"\nassert count == 3, \"count is 3\""
+    }
+  ]
+}

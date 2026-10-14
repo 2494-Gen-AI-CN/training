@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="tc-day" content="w01d3">
 <title>W1·D3 — Python basics | 2494 · Gen-AI Python</title>
-<link rel="stylesheet" href="../../assets/css/style.css?v=20261013-11">
-<script src="../../assets/js/theme.js?v=20261013-11"></script>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261014-1">
+<script src="../../assets/js/theme.js?v=20261014-1"></script>
 </head>
 <body>
 <a class="skip-link" href="#reading-main">Skip to content</a>
@@ -511,6 +511,27 @@ python ticket_desk.py 2&gt; err.txt</code></pre>
         </div>
       </section>
 
+      <section class="practice" id="practice" hidden>
+        <div class="tag">Practice</div>
+        <h2>Practice</h2>
+        <div class="ix-task" data-id="t1" data-title="Variables" data-q="Write a short script that hands a ticket to a new owner. It starts with &lt;code&gt;assignee = &quot;dana&quot;&lt;/code&gt; and &lt;code&gt;hours_open = 5.5&lt;/code&gt;. Keep the current owner under the name &lt;code&gt;previous&lt;/code&gt;, rebind &lt;code&gt;assignee&lt;/code&gt; to &lt;code&gt;&quot;lee&quot;&lt;/code&gt; and add half an hour to &lt;code&gt;hours_open&lt;/code&gt;. Then build &lt;code&gt;note&lt;/code&gt; with the f-string &lt;code&gt;f&quot;{previous} -&amp;gt; {assignee} at {hours_open}h&quot;&lt;/code&gt;, so that when the script ends &lt;code&gt;note&lt;/code&gt; is &lt;code&gt;&quot;dana -&amp;gt; lee at 6.0h&quot;&lt;/code&gt;.">
+<pre class="task-starter"><code>assignee = "dana"
+hours_open = 5.5</code></pre>
+<pre class="task-tests" hidden><code>assert previous == "dana", "previous keeps the owner the ticket had first"
+assert assignee == "lee", "assignee is bound to the new owner"
+assert hours_open == 6.0, "hours_open has the extra half hour"
+assert note == "dana -&gt; lee at 6.0h", "note shows the handover and the hours as they end up"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t2" data-title="Operators" data-q="Write &lt;code&gt;needs_escalation(is_open, reopen_count, priority)&lt;/code&gt;. It returns &lt;code&gt;True&lt;/code&gt; when the ticket is open and has either been reopened at least once or has priority &lt;code&gt;&quot;high&quot;&lt;/code&gt;, and &lt;code&gt;False&lt;/code&gt; otherwise. So &lt;code&gt;needs_escalation(True, 2, &quot;low&quot;)&lt;/code&gt; is &lt;code&gt;True&lt;/code&gt; and &lt;code&gt;needs_escalation(False, 0, &quot;high&quot;)&lt;/code&gt; is &lt;code&gt;False&lt;/code&gt;. One &lt;code&gt;return&lt;/code&gt; line built from comparisons, &lt;code&gt;and&lt;/code&gt;, &lt;code&gt;or&lt;/code&gt; and parentheses is enough.">
+<pre class="task-starter"><code>def needs_escalation(is_open, reopen_count, priority):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert needs_escalation(True, 2, "low") == True, "an open ticket that was reopened gives True itself, not the count"
+assert needs_escalation(False, 0, "high") == False, "a closed ticket gives False, even at high priority"
+assert needs_escalation(True, 0, "high") == True, "an open high-priority ticket gives True without a reopen"
+assert needs_escalation(True, 0, "low") == False, "an open ticket never reopened and not high gives False"</code></pre>
+        </div>
+      </section>
+
       <section class="step" data-diagram="0" data-step="5">
         <div class="tag">Check yourself</div>
         <h2>Check yourself</h2>
@@ -731,12 +752,12 @@ print(f&quot;warning: ticket {ticket_id} breached={is_breached}&quot;, file=sys.
   </div>
 </div>
 
-<script src="../../assets/js/diagram.js?v=20261013-11"></script>
-<script src="../../assets/js/scrolly.js?v=20261013-11"></script>
-<script src="../../assets/js/modals.js?v=20261013-11"></script>
-<script src="../../assets/js/quiz.js?v=20261013-11"></script>
-<script src="../../assets/js/widgets.js?v=20261013-11"></script>
-<script src="../../assets/js/glossary.js?v=20261013-11"></script>
-<script src="../../assets/js/codeviewer.js?v=20261013-11"></script>
+<script src="../../assets/js/diagram.js?v=20261014-1"></script>
+<script src="../../assets/js/scrolly.js?v=20261014-1"></script>
+<script src="../../assets/js/modals.js?v=20261014-1"></script>
+<script src="../../assets/js/quiz.js?v=20261014-1"></script>
+<script src="../../assets/js/widgets.js?v=20261014-1"></script>
+<script src="../../assets/js/glossary.js?v=20261014-1"></script>
+<script src="../../assets/js/codeviewer.js?v=20261014-1"></script>
 </body>
 </html>

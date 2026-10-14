@@ -117,7 +117,11 @@
     } else if (msg.type === "done") {
       finish(job);
     } else if (msg.type === "fatal") {
-      fail(msg.text);
+      // Pyodide cannot run again after a fatal error (an endless recursion overflows the browser's stack),
+      // so drop the worker: the next Run starts a fresh one instead of failing until the page is reloaded.
+      py.worker.terminate();
+      py.worker = null;
+      fail(msg.text + "\n\nPython stopped. Endless recursion is the usual cause. Run again to restart it.");
     }
   }
 

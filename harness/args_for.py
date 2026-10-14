@@ -23,6 +23,10 @@ Usage:
                                                      # runbook are untouched
     python harness/args_for.py 1 2 --notes-only --template harness/templates/day.exemplar.html
                                                      # override the config template (pilot of a new page shape)
+    python harness/args_for.py 2 --practice          # D-0047: practice-tasks.js, suitability pass over the week's
+                                                     # authored pages (name day slots to narrow it)
+    python harness/args_for.py 2 --practice-build    # D-0047: practice-tasks.js, build the tasks the trainer approved
+                                                     # (refused while a proposed task has no answer)
 """
 from __future__ import annotations
 
@@ -36,6 +40,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import build_index as bi  # noqa: E402
 import demo_check  # noqa: E402
 import plan_check  # noqa: E402
+import practice_tasks as pt  # noqa: E402
 
 ROOT = bi.ROOT
 CONFIG_KEYS = ("cohort", "siteTitle", "brand", "repoUrl", "repoBranch", "siteUrl", "feedbackFormUrl", "python", "audience", "learnerRepo")
@@ -136,6 +141,88 @@ def plan_args(cur: dict, week: dict, today: str | None, metrics: dict, config: d
     }
 
 
+def practice_args(cur: dict, week: dict, day_nos: list[int], build: bool, today: str | None, metrics: dict, config: dict) -> tuple[dict | None, list[str]]:
+    """Args for harness/workflows/practice-tasks.js (D-0047), or None with the reasons on the second value.
+
+    Suitability (build False): the week's days whose notes page is authored and that carry no built task yet;
+    named days must qualify, unnamed ones are skipped with a note. Build: the days whose proposal has approved
+    tasks still to build. It is refused while any task of a chosen day has no answer from the trainer."""
+    ew = bi.expand_week(cur, week)
+    by_slot = {s["slot"]: s for s in ew["slots"]}
+    week_no = week["week"]
+    notes: list[str] = []
+    plan = None
+    if plan_path(week_no).is_file():
+        try:
+            plan = plan_check.load_plan(plan_path(week_no))
+        except ValueError:
+            notes.append(f"week {week_no} plan does not parse; no anti-spoiler rows passed")
+    teaching = bi.teaching_days(week)
+    unknown = [n for n in day_nos if n not in {d["day"] for d in teaching}]
+    if unknown:
+        return None, [f"week {week_no} has no teaching day {unknown}"]
+    days, refused, exemplar = [], [], None
+    for w in cur["weeks"]:   # the accepted shape to copy: the first day in the course with built tasks
+        for d in bi.teaching_days(w):
+            rel = f"{w['dir']}/{d['slug']}"
+            if exemplar is None and pt.built(pt.load(rel)):
+                exemplar = {"day": d["id"], "page": f"docs/weeks/{rel}.html", "file": _fwd(pt.path_for(rel)),
+                            "answers": f"trainer/{rel}/solutions/practice.py", "cases": f"trainer/{rel}/solutions/practice_cases.py"}
+    for d in teaching:
+        named = d["day"] in day_nos
+        if day_nos and not named:
+            continue
+        rel = f"{week['dir']}/{d['slug']}"
+        doc = pt.load(rel)
+        why = None
+        if not pt.page_for(rel).is_file() or d.get("status") != "live":
+            why = "its notes page is not authored yet (practice tasks come after the day's other content)"
+        elif not build and pt.built(doc):
+            why = "it already carries built tasks (to change them, edit its file under harness/practice/ and run insert)"
+        elif build and doc is None:
+            why = "it has no proposal (run the suitability pass first)"
+        elif build and any(t["approved"] is None for t in doc["tasks"]):
+            why = f"BLOCKED: the trainer has not answered every proposed task (python harness/practice_tasks.py show {week_no} {d['day']}, then approve)"
+            named = True   # an unanswered proposal stops the build; it is never skipped silently
+        elif build and not any(t["approved"] for t in doc["tasks"]):
+            why = "no task of it was approved"
+        elif build and not named and all(pt.is_built(t) for t in doc["tasks"] if t["approved"]):
+            why = "every approved task is built (name the day to rebuild it)"
+        if why:
+            (refused if named else notes).append(f"{d['id']}: {why}")
+            continue
+        brief = ROOT / "harness" / "research" / f"{rel}.md"
+        readme = ROOT / "exercises" / rel / "README.md"
+        day = {
+            **_day_base(cur, week, d, by_slot[d["day"]]),
+            "pageFile": _fwd(pt.page_for(rel)), "pageRel": f"docs/weeks/{rel}.html",
+            "practiceFile": _fwd(pt.path_for(rel)), "practiceRel": f"harness/practice/{rel}.json",
+            "researchBrief": _fwd(brief) if brief.is_file() else None,
+            "exerciseReadme": _fwd(readme) if readme.is_file() else None,
+            "solutionsDir": f"trainer/{rel}/solutions",
+            "spoilerRows": plan_check.day_rows(plan, d["id"]).get("spoilerRows", []) if plan else [],
+        }
+        if build:
+            day["tasks"] = [{k: t[k] for k in ("id", "title", "step", "idea", "checks")} | {"built": pt.is_built(t)} for t in doc["tasks"] if t["approved"]]
+        days.append(day)
+    if refused:
+        return None, refused + notes
+    if not days:
+        return None, notes + [f"week {week_no}: no day to {'build' if build else 'assess'}"]
+    worker = (ROOT / "docs" / "assets" / "js" / "pyworker.js").read_text(encoding="utf-8")
+    pyodide = re.search(r"pyodide@(\d+\.\d+\.\d+)", worker)
+    return {
+        **_common(cur, week, ew, today, metrics, config),
+        "mode": "build" if build else "suitability",
+        "days": days,
+        "threads": {tid: t for tid, t in (config.get("threads") or {}).items()
+                    if isinstance(t, dict) and (not t.get("weeks") or t["weeks"][0] <= week_no <= t["weeks"][1])},
+        "critic": _fwd(ROOT / "harness" / "critics" / "practice.md"),
+        "exemplar": exemplar,
+        "runtime": {"pyodide": pyodide.group(1) if pyodide else None, "worker": "docs/assets/js/pyworker.js", "widgets": "docs/assets/js/widgets.js"},
+    }, notes
+
+
 def main(argv: list[str]) -> int:
     for stream in (sys.stdout, sys.stderr):
         try:
@@ -152,7 +239,7 @@ def main(argv: list[str]) -> int:
         i = argv.index("--template")
         template_override = argv[i + 1]
         del argv[i:i + 2]
-    flags = {f: f in argv for f in ("--skip-research", "--plan", "--no-plan", "--notes-only")}
+    flags = {f: f in argv for f in ("--skip-research", "--plan", "--no-plan", "--notes-only", "--practice", "--practice-build")}
     argv = [a for a in argv if a not in flags]
     skip_research, plan_mode, no_plan, notes_only = flags["--skip-research"], flags["--plan"], flags["--no-plan"], flags["--notes-only"]
     nums = [int(a) for a in argv]
@@ -168,6 +255,18 @@ def main(argv: list[str]) -> int:
             print(f"no week {nums[0]}", file=sys.stderr)
             return 2
         print(json.dumps(plan_args(cur, week, today, metrics, config), indent=2, ensure_ascii=False))
+        return 0
+    if flags["--practice"] or flags["--practice-build"]:
+        week = next((w for w in cur["weeks"] if w["week"] == nums[0]), None) if nums else None
+        if week is None or (flags["--practice"] and flags["--practice-build"]):
+            print("--practice and --practice-build take a week number and optional day slots, one mode at a time", file=sys.stderr)
+            return 2
+        out, notes = practice_args(cur, week, nums[1:], flags["--practice-build"], today, metrics, config)
+        for n in notes:
+            print(("" if out is None else "note: ") + n, file=sys.stderr)
+        if out is None:
+            return 2
+        print(json.dumps(out, indent=2, ensure_ascii=False))
         return 0
     if len(nums) < 2:
         print(__doc__, file=sys.stderr)

@@ -1,0 +1,195 @@
+{
+  "day": "w01d5",
+  "page": "docs/weeks/week-01/day-5-control-flow-functions-and-classes.html",
+  "assessed": "2026-10-14",
+  "verdict": "partial",
+  "summary": "Eight of the nine steps teach rules that show up as return values and object state (branch order, loop mutation, defaults, sort keys, classes, super(), iterators, closures); Arrays and lists teaches what a list is underneath and what it costs, which no check can see.",
+  "steps": [
+    {
+      "step": 0,
+      "title": "Branching with if, elif and else",
+      "suitable": true,
+      "reason": "A branch chain shows up as the label a function returns, and the page names three mistakes a check catches: the looser test placed first, a truthiness guard that lumps 0 with None, and a missing guard for None. The task labels a ticket's age so it stays off the exercise's four-way status function.",
+      "task": "t1"
+    },
+    {
+      "step": 1,
+      "title": "Loops: while for a condition, for over a collection",
+      "suitable": true,
+      "reason": "Removing items from a list while a for loop walks it leaves the list in a state a check can see, and the page shows the skipped duplicate. The while re-ask loop is ruled out because it needs input(), which meets end-of-file in the page.",
+      "task": "t2"
+    },
+    {
+      "step": 2,
+      "title": "Functions: naming a rule once",
+      "suitable": true,
+      "reason": "The mutable default argument and the missing return both show up in what two calls return. A sibling of the page's add_note, on tags, keeps the page's example from being the answer.",
+      "task": "t3"
+    },
+    {
+      "step": 3,
+      "title": "Lambda and sort keys",
+      "suitable": true,
+      "reason": "A sort key shows up as the order of the returned list, and the page names the alphabetical-text key, the missing tie-breaker and sorting the caller's list in place. The exercise sorts by priority rank, so the task sorts by status rank instead.",
+      "task": "t4"
+    },
+    {
+      "step": 4,
+      "title": "Arrays and lists",
+      "suitable": false,
+      "reason": "The step teaches what a list is underneath, what array.array saves and what insert(0) and pop(0) cost; none of that is behaviour a check can tell apart. Its one behavioural trap, the shallow copy, needs a deep-copy idiom the page does not teach.",
+      "task": null
+    },
+    {
+      "step": 5,
+      "title": "OOP concepts, classes and objects",
+      "suitable": true,
+      "reason": "A small class shows up as instance state, method return values and its __repr__ text, and the page names a missing __repr__ and printing instead of returning. The task builds an Agent so it stays off the exercise's Ticket.",
+      "task": "t5"
+    },
+    {
+      "step": 6,
+      "title": "Inheritance: one rule overridden",
+      "suitable": true,
+      "reason": "An override and a subclass __init__ show up as attributes and return values, and the page names the forgotten super().__init__ and the override that drops the parent's rule. The base class fits in the starter, and the override is a label, not the exercise's halved deadline.",
+      "task": "t6"
+    },
+    {
+      "step": 7,
+      "title": "Iterators: what a for loop does underneath",
+      "suitable": true,
+      "reason": "iter() and next() on a plain iterable show up in what a function returns, and the page names the two mistakes a check catches: indexing something that is only an iterator, and asking a list for a second, fresh iterator. A class with __iter__ and __len__ is left alone because it is the exercise's Desk.",
+      "task": "t7"
+    },
+    {
+      "step": 8,
+      "title": "Scope: where a name is looked up",
+      "suitable": true,
+      "reason": "A closure counter shows up in what successive calls return, and the page names the UnboundLocalError from a missing nonlocal and the shared state of a global. The exercise's counter is the class attribute Desk.next_id, so a closure stays off it.",
+      "task": "t8"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "title": "Branching",
+      "step": 0,
+      "idea": "The reader writes age_label(hours_open), where hours_open is a number or None when the opening time is unknown. It returns \"unknown\" for None, \"stale\" from 72 hours, \"aging\" from 24 hours and \"fresh\" below that, so age_label(30) is \"aging\" and age_label(0) is \"fresh\".",
+      "checks": [
+        "80 hours gives \"stale\", which fails a chain that tests the 24-hour bound first.",
+        "30 hours gives \"aging\".",
+        "0 hours gives \"fresh\", which fails a guard written as `if not hours_open`.",
+        "None gives \"unknown\", which fails a chain with no guard for None."
+      ],
+      "approved": true,
+      "q": "Write <code>age_label(hours_open)</code>. <code>hours_open</code> is how long a ticket has been open, in hours, or <code>None</code> when its opening time is unknown. Return <code>\"unknown\"</code> for <code>None</code>, <code>\"stale\"</code> from 72 hours up, <code>\"aging\"</code> from 24 hours up, and <code>\"fresh\"</code> below 24. So <code>age_label(30)</code> is <code>\"aging\"</code> and <code>age_label(0)</code> is <code>\"fresh\"</code>.",
+      "starter": "def age_label(hours_open):\n    ...",
+      "tests": "assert age_label(72) == \"stale\", \"72 hours is already stale\"\nassert age_label(24) == \"aging\", \"24 hours is already aging\"\nassert age_label(0) == \"fresh\", \"0 hours is fresh, not unknown\"\nassert age_label(None) == \"unknown\", \"None is unknown\""
+    },
+    {
+      "id": "t2",
+      "title": "Loops",
+      "step": 1,
+      "idea": "The reader writes drop_ids(ids, closed): it removes from the list ids, in place, every id that is in closed, and keeps the rest in their order. With ids = [101, 102, 102, 103] and closed = {102}, ids ends up as [101, 103].",
+      "checks": [
+        "Two equal ids next to each other are both removed, which fails ids.remove() inside a for loop over ids.",
+        "The ids that stay keep their original order.",
+        "The caller's list object is the one that changes, which fails a body that only rebinds the local name ids to a new list."
+      ],
+      "approved": true,
+      "q": "Write <code>drop_ids(ids, closed)</code>. It removes from the list <code>ids</code> every id that is in <code>closed</code>, and the ids that stay keep their order. Change the caller's list itself; the function does not need to return anything. With <code>ids = [101, 102, 102, 103]</code>, calling <code>drop_ids(ids, {102})</code> leaves <code>ids</code> as <code>[101, 103]</code>.",
+      "starter": "def drop_ids(ids, closed):\n    ...",
+      "tests": "pair = [101, 102, 102, 103]\ndrop_ids(pair, {102})\nassert pair == [101, 103], \"removes two equal ids that sit next to each other\"\nmixed = [105, 101, 104, 103]\ndrop_ids(mixed, {101})\nassert mixed == [105, 104, 103], \"keeps the other ids in their order\"\nqueue = [201, 202, 203]\ndrop_ids(queue, {202})\nassert queue == [201, 203], \"changes the caller's list, not a copy of it\""
+    },
+    {
+      "id": "t3",
+      "title": "Functions",
+      "step": 2,
+      "idea": "The reader writes add_tag(tag, tags=None): it appends tag to tags and returns the list, starting a new list when no tags are passed. add_tag(\"printer\") returns [\"printer\"], and a second add_tag(\"vpn\") returns [\"vpn\"].",
+      "checks": [
+        "A second call without tags returns a list holding only its own tag, which fails a tags=[] default.",
+        "Passing a list appends to that list and returns it.",
+        "The function returns the list, which fails a body that prints it and returns None."
+      ],
+      "approved": true,
+      "q": "Write <code>add_tag(tag, tags)</code>, where callers may leave <code>tags</code> out, so give it a default. The function appends <code>tag</code> to the list <code>tags</code> and returns that list; when no list is passed, it starts a new one. So <code>add_tag(\"printer\")</code> returns <code>[\"printer\"]</code>, and a second call, <code>add_tag(\"vpn\")</code>, returns <code>[\"vpn\"]</code>.",
+      "starter": "def add_tag(tag, tags):\n    ...",
+      "tests": "add_tag(\"printer\")\nassert add_tag(\"vpn\") == [\"vpn\"], \"a second call without a list starts a list of its own\"\nmine = []\nresult = add_tag(\"printer\", mine)\nassert result is mine and mine == [\"printer\"], \"appends to the list you pass and returns that list\"\nassert add_tag(\"lan\", [\"vpn\"]) == [\"vpn\", \"lan\"], \"returns the list with the new tag at the end\""
+    },
+    {
+      "id": "t4",
+      "title": "Lambda and sort keys",
+      "step": 3,
+      "idea": "The reader writes by_status(tickets) for ticket dicts with \"id\" and \"status\" keys, using STATUS_RANK = {\"breached\": 1, \"at risk\": 2, \"on time\": 3}. It returns a new list sorted by that rank, ties broken by id, so breached tickets come first.",
+      "checks": [
+        "A breached ticket comes before an at-risk one, which fails a key on the status text (\"at risk\" sorts first alphabetically).",
+        "Two tickets with the same status come out in id order, which fails a key without the tie-breaker when they start out of order.",
+        "The caller's list keeps its order, which fails tickets.sort()."
+      ],
+      "approved": true,
+      "q": "Each ticket is a dict with <code>\"id\"</code> and <code>\"status\"</code> keys, and <code>STATUS_RANK</code> in the starter gives each status a rank. Write <code>by_status(tickets)</code>. It returns a new list of the tickets sorted by that rank, so breached tickets come first, then at-risk ones, then on-time ones, and tickets with the same status come out in id order. The caller's list keeps its own order. For <code>[{\"id\": 2, \"status\": \"on time\"}, {\"id\": 1, \"status\": \"breached\"}]</code> it returns ticket 1 first, then ticket 2.",
+      "starter": "STATUS_RANK = {\"breached\": 1, \"at risk\": 2, \"on time\": 3}\n\n\ndef by_status(tickets):\n    ...",
+      "tests": "mixed = [{\"id\": 1, \"status\": \"at risk\"}, {\"id\": 2, \"status\": \"breached\"}]\nassert [t[\"id\"] for t in by_status(mixed)] == [2, 1], \"a breached ticket comes before an at-risk one\"\nsame = [{\"id\": 9, \"status\": \"on time\"}, {\"id\": 4, \"status\": \"on time\"}]\nassert [t[\"id\"] for t in by_status(same)] == [4, 9], \"tickets with the same status come out in id order\"\nqueue = [{\"id\": 2, \"status\": \"on time\"}, {\"id\": 1, \"status\": \"breached\"}]\nby_status(queue)\nassert [t[\"id\"] for t in queue] == [2, 1], \"leaves the caller's list in its order\""
+    },
+    {
+      "id": "t5",
+      "title": "Classes and objects",
+      "step": 5,
+      "idea": "The reader writes a class Agent: Agent(name) stores name and starts an empty list of ticket ids, take(ticket_id) adds one, load() returns how many the agent holds, and repr(agent) is text such as Agent('lee', 2).",
+      "checks": [
+        "load() returns the number of tickets taken, which fails a method that prints the count.",
+        "Two agents keep separate ticket lists, which fails a list made once in the class body.",
+        "repr() gives the name and load in the form Agent('lee', 2), which fails a class with no __repr__."
+      ],
+      "approved": true,
+      "q": "Write a class <code>Agent</code>. <code>Agent(name)</code> makes an agent with that name and no tickets yet, and every agent keeps its own tickets. <code>take(ticket_id)</code> gives the agent one more ticket id, and <code>load()</code> returns how many ticket ids the agent holds. <code>repr()</code> of an agent named lee who holds two tickets is <code>Agent('lee', 2)</code>.",
+      "starter": "class Agent:\n    def __init__(self, name):\n        ...\n\n    def take(self, ticket_id):\n        ...\n\n    def load(self):\n        ...",
+      "tests": "lee = Agent(\"lee\")\nlee.take(101)\nlee.take(102)\ndana = Agent(\"dana\")\ndana.take(103)\nassert lee.load() == 2, \"load() returns how many tickets the agent took\"\nassert dana.load() == 1, \"each agent keeps its own tickets\"\nassert repr(lee) == \"Agent('lee', 2)\", \"repr() shows the name and the load\""
+    },
+    {
+      "id": "t6",
+      "title": "Inheritance",
+      "step": 6,
+      "idea": "The starter holds a small Ticket(ticket_id, title) whose label() returns \"#101 VPN down\". The reader writes SecurityTicket(Ticket) whose __init__ also takes cve and whose label() returns the parent's label with \"[security] \" in front, so the result is \"[security] #101 VPN down\".",
+      "checks": [
+        "A SecurityTicket is a Ticket for isinstance().",
+        "The title set by the parent's __init__ is there, which fails a subclass __init__ that skips super().__init__.",
+        "label() returns the parent's label with the prefix, which fails an override that drops the parent's text.",
+        "The cve is stored on the instance."
+      ],
+      "approved": true,
+      "q": "The starter holds a small <code>Ticket</code> class. Write <code>SecurityTicket</code>, a subclass of <code>Ticket</code>. <code>SecurityTicket(ticket_id, title, cve)</code> sets up everything a <code>Ticket</code> has and also keeps the <code>cve</code> argument as the attribute <code>cve</code>. Its <code>label()</code> returns the parent's label with <code>\"[security] \"</code> in front, so <code>SecurityTicket(101, \"VPN down\", \"CVE-2026-1234\").label()</code> returns <code>\"[security] #101 VPN down\"</code>.",
+      "starter": "class Ticket:\n    def __init__(self, ticket_id, title):\n        self.ticket_id = ticket_id\n        self.title = title\n\n    def label(self):\n        return f\"#{self.ticket_id} {self.title}\"\n\n\nclass SecurityTicket(Ticket):\n    ...",
+      "tests": "s = SecurityTicket(101, \"VPN down\", \"CVE-2026-1234\")\nassert isinstance(s, Ticket), \"a SecurityTicket is a Ticket\"\nassert s.title == \"VPN down\", \"the parent's __init__ still sets the title\"\nassert s.label() == \"[security] #101 VPN down\", \"label() puts [security] in front of the parent's label\"\nassert s.cve == \"CVE-2026-1234\", \"keeps the cve on the ticket\""
+    },
+    {
+      "id": "t7",
+      "title": "Iterators",
+      "step": 7,
+      "idea": "The reader writes first_and_rest(titles), which takes any iterable of titles that is not empty and returns a tuple of the first title and a list of the rest, using iter() and next(). first_and_rest([\"Login page returns 500\", \"Printer jams\"]) returns (\"Login page returns 500\", [\"Printer jams\"]).",
+      "checks": [
+        "A list gives the first title and the rest.",
+        "The rest leaves out the first title, which fails a body that calls iter() on the list a second time.",
+        "An iterator passed in works too, which fails titles[0] and titles[1:]."
+      ],
+      "approved": true,
+      "q": "Write <code>first_and_rest(titles)</code>. <code>titles</code> is a list of ticket titles, or an iterator over them, with at least one title in it. Return a tuple of the first title and a list of the titles after it: <code>first_and_rest([\"Login page returns 500\", \"Printer jams\"])</code> returns <code>(\"Login page returns 500\", [\"Printer jams\"])</code>. An iterator can be read only once and cannot be indexed, so reach for <code>iter()</code> and <code>next()</code>.",
+      "starter": "def first_and_rest(titles):\n    ...",
+      "tests": "result = first_and_rest([\"Login page returns 500\", \"Printer jams\", \"VPN down\"])\nassert isinstance(result, tuple) and result[0] == \"Login page returns 500\", \"returns a tuple that starts with the first title\"\nassert result[1] == [\"Printer jams\", \"VPN down\"], \"the rest leaves out the first title\"\nassert first_and_rest(iter([\"Printer jams\", \"VPN down\"])) == (\"Printer jams\", [\"VPN down\"]), \"works on an iterator too\""
+    },
+    {
+      "id": "t8",
+      "title": "Scope",
+      "step": 8,
+      "idea": "The reader writes make_id_counter(start), which returns a function that hands out start, then start + 1, and so on, one id per call. With take = make_id_counter(100), three calls return 100, 101 and 102.",
+      "checks": [
+        "Successive calls return start, start + 1 and start + 2, which fails an inner function without nonlocal (UnboundLocalError).",
+        "Two counters made separately count on their own, which fails a counter kept in a global."
+      ],
+      "approved": true,
+      "q": "Write <code>make_id_counter(start)</code>. It returns a function that takes no arguments and hands out one id per call: <code>start</code> on the first call, then <code>start + 1</code>, and so on. With <code>take = make_id_counter(100)</code>, three calls to <code>take()</code> return <code>100</code>, <code>101</code> and <code>102</code>. Two counters made by separate calls count on their own.",
+      "starter": "def make_id_counter(start):\n    ...",
+      "tests": "take = make_id_counter(100)\nassert [take(), take(), take()] == [100, 101, 102], \"successive calls hand out 100, 101 and 102\"\na = make_id_counter(1)\nb = make_id_counter(50)\na()\nassert [a(), b()] == [2, 50], \"two counters count on their own\""
+    }
+  ]
+}

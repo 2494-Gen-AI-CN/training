@@ -1,0 +1,66 @@
+{
+  "day": "w01d2",
+  "page": "docs/weeks/week-01/day-2-orientation-agile-and-git.html",
+  "assessed": "2026-10-14",
+  "verdict": "none",
+  "summary": "The day teaches tooling, team practice and Git commands, which the page practises through predict and spot-the-mistake prompts and the rubric-marked Git exercise, and it gives a browser Python task nothing to check, since any such task would also be the Python the week plan defers to w01d3.",
+  "steps": [
+    {
+      "step": 0,
+      "title": "Python, the job, and a setup you can trust",
+      "suitable": false,
+      "reason": "The step teaches a tooling check (python --version, py -0p, where.exe, the REPL, Jupyter), and each of those runs in a shell on the reader's own laptop; Pyodide in the browser shows none of it. A task on sys.executable or the REPL's _ would check the browser's interpreter, not the reader's setup, and would be Python beyond hello.py, which the week plan defers to w01d3.",
+      "task": null
+    },
+    {
+      "step": 1,
+      "title": "The software development life cycle, waterfall and Agile",
+      "suitable": false,
+      "reason": "SDLC phases, waterfall, the Agile Manifesto and the Definition of Done are concepts with no return value to check; the page already practises them with a predict prompt and the Check yourself questions.",
+      "task": null
+    },
+    {
+      "step": 2,
+      "title": "Scrum: three accountabilities, five events, three artifacts",
+      "suitable": false,
+      "reason": "Scrum's roles, events, time-boxes and artifacts are vocabulary to recall, and the bar names Scrum as a concept that does not fit; a lookup table of time-boxes would test typing the Guide's numbers back, and no mistake the page names would fail it.",
+      "task": null
+    },
+    {
+      "step": 3,
+      "title": "Story points: sizing work by comparison",
+      "suitable": false,
+      "reason": "The mistakes the page names (points read as hours, velocity compared between teams, the loudest voice setting the number) are judgement errors, and no function's return value catches them; an average-velocity function would be arithmetic the page does not teach, and Python code is deferred to w01d3.",
+      "task": null
+    },
+    {
+      "step": 4,
+      "title": "Version control and the three areas",
+      "suitable": false,
+      "reason": "The working tree, index and .git directory, git init and git config are Git commands run in a terminal; the runtime has no subprocess and no git, and a Python model of the three areas would teach a simulation rather than the tool.",
+      "task": null
+    },
+    {
+      "step": 5,
+      "title": "Commit, branch, merge and conflicts",
+      "suitable": false,
+      "reason": "Branching, fast-forward and merge are Git behaviour the runtime cannot run. A Python function that finds leftover conflict markers would restate the exercise's AC5 check (no marker survives) and duplicate git diff --check, which the page teaches for that job.",
+      "task": null
+    },
+    {
+      "step": 6,
+      "title": "Remotes: push, fetch and pull",
+      "suitable": false,
+      "reason": "Remotes, upstreams, fetch and pull need a second repository and, for GitHub, a network and sign-in; the runtime has neither, and the bar rules out a task whose point is a network call or a server.",
+      "task": null
+    },
+    {
+      "step": 7,
+      "title": "The Git exercise: a history a reviewer can read",
+      "suitable": false,
+      "reason": "Commit-message shape is a convention, and a Python checker for imperative summary lines would hand over the exercise's AC7 criterion and use string handling the week plan defers to w01d3; the page's spot-the-mistake prompt on the four-commit log already practises it.",
+      "task": null
+    }
+  ],
+  "tasks": []
+}

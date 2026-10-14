@@ -62,7 +62,7 @@
     "rule": "Model ids are resolved in the research brief from current docs, never from memory."
   },
   "models": {
-    "_comment": "Per-stage model and effort for harness/workflows/day-fanout.js and week-plan.js (D-0026, D-0032, D-0040). model: sonnet | haiku | opus; effort: low | medium | high | xhigh | max. Every stage is pinned: no stage inherits the session model (D-0040), and tests/test_notes_mode.py fails a null. A repass numbered >= escalateOn uses escalate instead of the stage tier, so a cheap first pass that fails its critic is retried on the strong tier. notes-critic judges the notes page; notes-verify-light runs harness/notes_check.py (links, stamps, citations) on every day; notes-verify-full adds WebFetch claim currency on full-gate and currency-flagged days.",
+    "_comment": "Per-stage model and effort for harness/workflows/day-fanout.js, week-plan.js and practice-tasks.js (D-0026, D-0032, D-0040, D-0047). model: sonnet | haiku | opus; effort: low | medium | high | xhigh | max. Every stage is pinned: no stage inherits the session model (D-0040), and tests/test_notes_mode.py fails a null. A repass numbered >= escalateOn uses escalate instead of the stage tier, so a cheap first pass that fails its critic is retried on the strong tier. notes-critic judges the notes page; notes-verify-light runs harness/notes_check.py (links, stamps, citations) on every day; notes-verify-full adds WebFetch claim currency on full-gate and currency-flagged days. practice-suitability proposes practice tasks for an authored page and practice builds the approved ones (D-0047); their critic, verify and record agents use critic, verify and wire.",
     "escalateOn": 2,
     "escalate": { "model": "opus", "effort": "high" },
     "stages": {
@@ -81,7 +81,9 @@
       "verify": { "model": "haiku", "effort": "low" },
       "fix": { "model": "sonnet", "effort": "medium" },
       "week-plan": { "model": "opus", "effort": "high" },
-      "week-plan-critic": { "model": "opus", "effort": "high" }
+      "week-plan-critic": { "model": "opus", "effort": "high" },
+      "practice-suitability": { "model": "opus", "effort": "medium" },
+      "practice": { "model": "opus", "effort": "high" }
     }
   },
   "threads": {

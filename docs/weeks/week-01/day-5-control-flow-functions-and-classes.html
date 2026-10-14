@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="tc-day" content="w01d5">
 <title>W1·D5 — Control flow, functions &amp; classes | 2494 · Gen-AI Python</title>
-<link rel="stylesheet" href="../../assets/css/style.css?v=20261013-11">
-<script src="../../assets/js/theme.js?v=20261013-11"></script>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261014-1">
+<script src="../../assets/js/theme.js?v=20261014-1"></script>
 </head>
 <body>
 <a class="skip-link" href="#reading-main">Skip to content</a>
@@ -795,6 +795,111 @@ print(take(), take(), take())</code></pre>
         </div>
       </section>
 
+      <section class="practice" id="practice" hidden>
+        <div class="tag">Practice</div>
+        <h2>Practice</h2>
+        <div class="ix-task" data-id="t1" data-title="Branching" data-q="Write &lt;code&gt;age_label(hours_open)&lt;/code&gt;. &lt;code&gt;hours_open&lt;/code&gt; is how long a ticket has been open, in hours, or &lt;code&gt;None&lt;/code&gt; when its opening time is unknown. Return &lt;code&gt;&quot;unknown&quot;&lt;/code&gt; for &lt;code&gt;None&lt;/code&gt;, &lt;code&gt;&quot;stale&quot;&lt;/code&gt; from 72 hours up, &lt;code&gt;&quot;aging&quot;&lt;/code&gt; from 24 hours up, and &lt;code&gt;&quot;fresh&quot;&lt;/code&gt; below 24. So &lt;code&gt;age_label(30)&lt;/code&gt; is &lt;code&gt;&quot;aging&quot;&lt;/code&gt; and &lt;code&gt;age_label(0)&lt;/code&gt; is &lt;code&gt;&quot;fresh&quot;&lt;/code&gt;.">
+<pre class="task-starter"><code>def age_label(hours_open):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert age_label(72) == "stale", "72 hours is already stale"
+assert age_label(24) == "aging", "24 hours is already aging"
+assert age_label(0) == "fresh", "0 hours is fresh, not unknown"
+assert age_label(None) == "unknown", "None is unknown"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t2" data-title="Loops" data-q="Write &lt;code&gt;drop_ids(ids, closed)&lt;/code&gt;. It removes from the list &lt;code&gt;ids&lt;/code&gt; every id that is in &lt;code&gt;closed&lt;/code&gt;, and the ids that stay keep their order. Change the caller&#x27;s list itself; the function does not need to return anything. With &lt;code&gt;ids = [101, 102, 102, 103]&lt;/code&gt;, calling &lt;code&gt;drop_ids(ids, {102})&lt;/code&gt; leaves &lt;code&gt;ids&lt;/code&gt; as &lt;code&gt;[101, 103]&lt;/code&gt;.">
+<pre class="task-starter"><code>def drop_ids(ids, closed):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>pair = [101, 102, 102, 103]
+drop_ids(pair, {102})
+assert pair == [101, 103], "removes two equal ids that sit next to each other"
+mixed = [105, 101, 104, 103]
+drop_ids(mixed, {101})
+assert mixed == [105, 104, 103], "keeps the other ids in their order"
+queue = [201, 202, 203]
+drop_ids(queue, {202})
+assert queue == [201, 203], "changes the caller's list, not a copy of it"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t3" data-title="Functions" data-q="Write &lt;code&gt;add_tag(tag, tags)&lt;/code&gt;, where callers may leave &lt;code&gt;tags&lt;/code&gt; out, so give it a default. The function appends &lt;code&gt;tag&lt;/code&gt; to the list &lt;code&gt;tags&lt;/code&gt; and returns that list; when no list is passed, it starts a new one. So &lt;code&gt;add_tag(&quot;printer&quot;)&lt;/code&gt; returns &lt;code&gt;[&quot;printer&quot;]&lt;/code&gt;, and a second call, &lt;code&gt;add_tag(&quot;vpn&quot;)&lt;/code&gt;, returns &lt;code&gt;[&quot;vpn&quot;]&lt;/code&gt;.">
+<pre class="task-starter"><code>def add_tag(tag, tags):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>add_tag("printer")
+assert add_tag("vpn") == ["vpn"], "a second call without a list starts a list of its own"
+mine = []
+result = add_tag("printer", mine)
+assert result is mine and mine == ["printer"], "appends to the list you pass and returns that list"
+assert add_tag("lan", ["vpn"]) == ["vpn", "lan"], "returns the list with the new tag at the end"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t4" data-title="Lambda and sort keys" data-q="Each ticket is a dict with &lt;code&gt;&quot;id&quot;&lt;/code&gt; and &lt;code&gt;&quot;status&quot;&lt;/code&gt; keys, and &lt;code&gt;STATUS_RANK&lt;/code&gt; in the starter gives each status a rank. Write &lt;code&gt;by_status(tickets)&lt;/code&gt;. It returns a new list of the tickets sorted by that rank, so breached tickets come first, then at-risk ones, then on-time ones, and tickets with the same status come out in id order. The caller&#x27;s list keeps its own order. For &lt;code&gt;[{&quot;id&quot;: 2, &quot;status&quot;: &quot;on time&quot;}, {&quot;id&quot;: 1, &quot;status&quot;: &quot;breached&quot;}]&lt;/code&gt; it returns ticket 1 first, then ticket 2.">
+<pre class="task-starter"><code>STATUS_RANK = {"breached": 1, "at risk": 2, "on time": 3}
+
+
+def by_status(tickets):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>mixed = [{"id": 1, "status": "at risk"}, {"id": 2, "status": "breached"}]
+assert [t["id"] for t in by_status(mixed)] == [2, 1], "a breached ticket comes before an at-risk one"
+same = [{"id": 9, "status": "on time"}, {"id": 4, "status": "on time"}]
+assert [t["id"] for t in by_status(same)] == [4, 9], "tickets with the same status come out in id order"
+queue = [{"id": 2, "status": "on time"}, {"id": 1, "status": "breached"}]
+by_status(queue)
+assert [t["id"] for t in queue] == [2, 1], "leaves the caller's list in its order"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t5" data-title="Classes and objects" data-q="Write a class &lt;code&gt;Agent&lt;/code&gt;. &lt;code&gt;Agent(name)&lt;/code&gt; makes an agent with that name and no tickets yet, and every agent keeps its own tickets. &lt;code&gt;take(ticket_id)&lt;/code&gt; gives the agent one more ticket id, and &lt;code&gt;load()&lt;/code&gt; returns how many ticket ids the agent holds. &lt;code&gt;repr()&lt;/code&gt; of an agent named lee who holds two tickets is &lt;code&gt;Agent(&#x27;lee&#x27;, 2)&lt;/code&gt;.">
+<pre class="task-starter"><code>class Agent:
+    def __init__(self, name):
+        ...
+
+    def take(self, ticket_id):
+        ...
+
+    def load(self):
+        ...</code></pre>
+<pre class="task-tests" hidden><code>lee = Agent("lee")
+lee.take(101)
+lee.take(102)
+dana = Agent("dana")
+dana.take(103)
+assert lee.load() == 2, "load() returns how many tickets the agent took"
+assert dana.load() == 1, "each agent keeps its own tickets"
+assert repr(lee) == "Agent('lee', 2)", "repr() shows the name and the load"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t6" data-title="Inheritance" data-q="The starter holds a small &lt;code&gt;Ticket&lt;/code&gt; class. Write &lt;code&gt;SecurityTicket&lt;/code&gt;, a subclass of &lt;code&gt;Ticket&lt;/code&gt;. &lt;code&gt;SecurityTicket(ticket_id, title, cve)&lt;/code&gt; sets up everything a &lt;code&gt;Ticket&lt;/code&gt; has and also keeps the &lt;code&gt;cve&lt;/code&gt; argument as the attribute &lt;code&gt;cve&lt;/code&gt;. Its &lt;code&gt;label()&lt;/code&gt; returns the parent&#x27;s label with &lt;code&gt;&quot;[security] &quot;&lt;/code&gt; in front, so &lt;code&gt;SecurityTicket(101, &quot;VPN down&quot;, &quot;CVE-2026-1234&quot;).label()&lt;/code&gt; returns &lt;code&gt;&quot;[security] #101 VPN down&quot;&lt;/code&gt;.">
+<pre class="task-starter"><code>class Ticket:
+    def __init__(self, ticket_id, title):
+        self.ticket_id = ticket_id
+        self.title = title
+
+    def label(self):
+        return f"#{self.ticket_id} {self.title}"
+
+
+class SecurityTicket(Ticket):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>s = SecurityTicket(101, "VPN down", "CVE-2026-1234")
+assert isinstance(s, Ticket), "a SecurityTicket is a Ticket"
+assert s.title == "VPN down", "the parent's __init__ still sets the title"
+assert s.label() == "[security] #101 VPN down", "label() puts [security] in front of the parent's label"
+assert s.cve == "CVE-2026-1234", "keeps the cve on the ticket"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t7" data-title="Iterators" data-q="Write &lt;code&gt;first_and_rest(titles)&lt;/code&gt;. &lt;code&gt;titles&lt;/code&gt; is a list of ticket titles, or an iterator over them, with at least one title in it. Return a tuple of the first title and a list of the titles after it: &lt;code&gt;first_and_rest([&quot;Login page returns 500&quot;, &quot;Printer jams&quot;])&lt;/code&gt; returns &lt;code&gt;(&quot;Login page returns 500&quot;, [&quot;Printer jams&quot;])&lt;/code&gt;. An iterator can be read only once and cannot be indexed, so reach for &lt;code&gt;iter()&lt;/code&gt; and &lt;code&gt;next()&lt;/code&gt;.">
+<pre class="task-starter"><code>def first_and_rest(titles):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>result = first_and_rest(["Login page returns 500", "Printer jams", "VPN down"])
+assert isinstance(result, tuple) and result[0] == "Login page returns 500", "returns a tuple that starts with the first title"
+assert result[1] == ["Printer jams", "VPN down"], "the rest leaves out the first title"
+assert first_and_rest(iter(["Printer jams", "VPN down"])) == ("Printer jams", ["VPN down"]), "works on an iterator too"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t8" data-title="Scope" data-q="Write &lt;code&gt;make_id_counter(start)&lt;/code&gt;. It returns a function that takes no arguments and hands out one id per call: &lt;code&gt;start&lt;/code&gt; on the first call, then &lt;code&gt;start + 1&lt;/code&gt;, and so on. With &lt;code&gt;take = make_id_counter(100)&lt;/code&gt;, three calls to &lt;code&gt;take()&lt;/code&gt; return &lt;code&gt;100&lt;/code&gt;, &lt;code&gt;101&lt;/code&gt; and &lt;code&gt;102&lt;/code&gt;. Two counters made by separate calls count on their own.">
+<pre class="task-starter"><code>def make_id_counter(start):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>take = make_id_counter(100)
+assert [take(), take(), take()] == [100, 101, 102], "successive calls hand out 100, 101 and 102"
+a = make_id_counter(1)
+b = make_id_counter(50)
+a()
+assert [a(), b()] == [2, 50], "two counters count on their own"</code></pre>
+        </div>
+      </section>
+
       <section class="step" data-diagram="0" data-step="9">
         <div class="tag">Check yourself</div>
         <h2>Check yourself</h2>
@@ -1052,13 +1157,13 @@ def is_overdue(ticket, now=NOW):
   </div>
 </div>
 
-<script src="../../assets/js/diagram.js?v=20261013-11"></script>
-<script src="../../assets/js/scrolly.js?v=20261013-11"></script>
-<script src="../../assets/js/modals.js?v=20261013-11"></script>
-<script src="../../assets/js/quiz.js?v=20261013-11"></script>
-<script src="../../assets/js/widgets.js?v=20261013-11"></script>
-<script src="../../assets/js/glossary.js?v=20261013-11"></script>
-<script src="../../assets/js/codeviewer.js?v=20261013-11"></script>
-<script src="../../assets/js/survey.js?v=20261013-11"></script>
+<script src="../../assets/js/diagram.js?v=20261014-1"></script>
+<script src="../../assets/js/scrolly.js?v=20261014-1"></script>
+<script src="../../assets/js/modals.js?v=20261014-1"></script>
+<script src="../../assets/js/quiz.js?v=20261014-1"></script>
+<script src="../../assets/js/widgets.js?v=20261014-1"></script>
+<script src="../../assets/js/glossary.js?v=20261014-1"></script>
+<script src="../../assets/js/codeviewer.js?v=20261014-1"></script>
+<script src="../../assets/js/survey.js?v=20261014-1"></script>
 </body>
 </html>

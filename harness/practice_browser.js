@@ -80,6 +80,16 @@ export default async function practicePass() {
       t.querySelector('[data-act="reset"]').click();
     }
   }
+  // A reader's endless recursion kills Pyodide (the browser's stack overflows before Python's limit);
+  // the page must say so and run the next Check on a fresh runtime, not fail until a reload.
+  if (!report.problems.length && tasks.length) {
+    const t = tasks[0];
+    let r = await check(t, "class Loop:\n    def m(self):\n        pass\n    def __repr__(self):\n        return f'Loop({self.m})'\nrepr(Loop())\n");
+    if (!r.out.includes("Python stopped")) problem("recovery", "an endless recursion did not end in the restart note", r);
+    r = await check(t, data.model);
+    if (!(r.solved && r.rows.length > 0 && r.rows.every((x) => x.ok))) problem("recovery", "the model answer did not pass on a fresh runtime after the crash", r);
+    t.querySelector('[data-act="reset"]').click();
+  }
   await wait(600);   // let the editors' debounced save run, then leave no trace on this origin
   try { localStorage.removeItem("tc_practice"); } catch (e) {}
   report.seconds = Math.round((performance.now() - started) / 100) / 10;

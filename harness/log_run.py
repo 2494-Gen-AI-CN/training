@@ -20,7 +20,7 @@ Commands:
     python harness/log_run.py tests
         Rebuild the tracker, run the contract tests, write harness/last-tests.json, rebuild again.
 
-Record fields: kind (day-fanout | week-plan | manual), date (YYYY-MM-DD), week, days[] (curriculum ids,
+Record fields: kind (day-fanout | week-plan | practice | manual), date (YYYY-MM-DD), week, days[] (curriculum ids,
 empty for a week plan), runId, agents, minutes, tokens, tiers {labels, verified}, artifacts[] {day, name,
 status, passes}, flagged, flags[] {day, artifact, flags[]}, tests (pass | fail | null), resolved, note.
 """

@@ -65,7 +65,7 @@ DECISION_ROW_RE = re.compile(r"^\| (D-\d{4}) \| (\d{4}-\d{2}-\d{2}) \| (\w+) \| 
 MILESTONE_HEADER = "| # | Milestone | Done | Notes |"
 OPEN_HEADER = "| ID | Item | Owner | Needed by | Notes |"
 STAGE_HEADER = "| Order | Stage | Why first | Size |"
-RUN_KINDS = ("day-fanout", "week-plan", "manual")
+RUN_KINDS = ("day-fanout", "week-plan", "practice", "manual")
 
 
 class TrainerMissing(RuntimeError):

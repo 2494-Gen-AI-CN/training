@@ -1,0 +1,13 @@
+# D-0047 — Practice tasks are a stage of their own after a week's days are authored: a suitability pass proposes tasks per page, the trainer approves each one, a build writes them; the page's practice section is generated from harness/practice/<week>/<day>.json
+
+- Date: 2026-10-13
+- Status: accepted
+- Decision: Practice tasks are a stage of their own after a week's days are authored: a suitability pass proposes tasks per page, the trainer approves each one, a build writes them; the page's practice section is generated from harness/practice/<week>/<day>.json
+- Why: Trainer decision 2026-10-13, settling two questions D-0046 left open on O-17. Who writes the tasks: neither the notes author nor a hand edit of the page, but a separate stage that runs once the day's other content exists, because whether a day lends itself to tasks can only be judged against the finished page and the browser runtime (standard library, no typed input, no packages, one file, checks see names and return values). Who decides: the trainer, per task, between the two runs; nothing is built for a task without an answer. Generating the section from a file closes the known hole that a notes re-author drops hand-written tasks.
+- Affects: harness/practice_tasks.py, harness/practice/, harness/workflows/practice-tasks.js, harness/args_for.py (--practice, --practice-build), harness/critics/practice.md, harness/critics/notes.md item 17, harness/metrics.json practice, harness/config.json models (practice-suitability, practice), harness/workflows/day-fanout.js Wire step 5b, harness/build_tracker.py run kind practice, tests/test_practice.py, AGENTS.md, harness/README.md, STATUS.md O-17
+- Supersedes: —
+- Superseded-by: —
+
+## Notes
+
+Extends D-0043 (task markup, model answers, cases, browser pass: all unchanged) and D-0046. The W1D4 section was extracted into harness/practice/week-01/day-4-python-data-types.json and renders back byte for byte, so the page did not change. New tiers: practice-suitability opus/medium (one assessor per page; its output is what the trainer decides on) and practice opus/high (the week-1 batch showed every sonnet first pass failing its critic); critic, verify and record reuse critic, verify and wire. Tune at the week-1 retrospective with the others. Bars in metrics.json practice: 2 to 4 checks per task, at least 1 other right answer, starter at most 12 lines, model answer at most 15, at most one task per teaching step. Not decided here: which days get tasks (the suitability pass and the trainer answer that per week), runnable-example attributes (data-run, still by hand), and how practice sits with the exercise rework (O-14). Still open on O-17: a notes_check.py --run phase, typed input for input() blocks, multi-file tasks, Pyodide 315.
