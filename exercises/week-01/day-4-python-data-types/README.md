@@ -46,6 +46,6 @@ If you ran pytest inside the training clone before copying, the copy can bring `
 - Strings are immutable: `strip()` and slicing return new strings, so use the returned value.
 - `int()` already raises `ValueError` for `"3.5"`; you do not need to check the text yourself.
 - `sorted()` returns a new list and leaves its argument alone; `list.sort()` does the opposite and returns `None`.
-- Today's demos built a set with a literal and `.add`. You know comprehensions from coursework; a set comprehension builds the set in one line.
+- Today's demos built a set with a literal and `.add`. A set comprehension builds it in one line: `{w.lower() for w in words}` computes the expression before `for` once per item and keeps the distinct results.
 - `dict.get(key, default)` gives you the fallback without a `KeyError`.
 - Adding a `timedelta(hours=n)` to a `datetime` gives a later `datetime`.

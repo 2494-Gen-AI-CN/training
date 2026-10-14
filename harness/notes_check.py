@@ -6,7 +6,8 @@ A notes page is reference/study material: 4500-7000 prose words, 6-10 section.st
 one "Say it in an interview" callout per teaching step, a closing "Check yourself" step, inline citations
 <sup class="cite"><a href="#src-N">N</a></sup> to <li id="src-N"> in section.reading-sources, and a
 "Sources checked <date>" stamp copied from the research brief. Prose never refers to the classroom
-(metrics.notes.deliveryPhrases).
+(metrics.notes.deliveryPhrases) and never claims the reader knows something from outside the course
+(metrics.notes.assumptionPhrases, D-0048).
 
 Usage (from the repo root):
   python harness/notes_check.py <page.html> [...] [--counts] [--phrases] [--stamps] [--citations] [--links] [--json]
@@ -394,6 +395,8 @@ def check_page(page: Path, phases: set[str], m: dict | None = None, tolerance: i
         if "phrases" in phases:
             rep["phrases"] = phrase_hits(text, m.get("deliveryPhrases", []))
             rep["findings"] += [f"delivery phrase {h['phrase']!r} in {h['where']}: {h['sentence']}" for h in rep["phrases"]]
+            rep["assumptions"] = phrase_hits(text, m.get("assumptionPhrases", []))
+            rep["findings"] += [f"assumption phrase {h['phrase']!r} in {h['where']}: {h['sentence']}" for h in rep["assumptions"]]
         if "stamps" in phases:
             rep["findings"] += stamp_findings(text, brief_text) if brief_text is not None else ["no research brief for this page (stamps not checked)"]
         if "citations" in phases:

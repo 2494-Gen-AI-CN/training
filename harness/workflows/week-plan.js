@@ -63,7 +63,7 @@ const fix = (cr) => cr && cr.length ? ('\n\nThis is a REPASS. The critic flagged
 const header =
   `WEEK ${A.week} "${A.theme}" (phase ${A.phase}, project ${A.project}; projects: ${J(A.projects || {})}). Dates ${A.weekStart} to ${A.weekEnd} (${A.timezone}); today ${A.today}. Use these dates only; never invent one.\n` +
   (A.weekNotes ? `Week note (binding): ${A.weekNotes}\n` : '') +
-  (CFG.audience ? `Audience: ${CFG.audience.summary} Assume already known: ${(CFG.audience.assumeKnown || []).join('; ')}. Emphasise: ${(CFG.audience.emphasise || []).join('; ')}.\n` : '') +
+  (CFG.audience ? `Audience: ${CFG.audience.summary} Assume known: ${(CFG.audience.assumeKnown || []).join('; ')}. Do NOT assume: ${(CFG.audience.assumeNotKnown || []).join('; ')}. ${CFG.audience.rule || ''} Emphasise: ${(CFG.audience.emphasise || []).join('; ')}.\n` : '') +
   `Teaching days (id, date, title, subtopics in curriculum order, day note, demoFormat, exerciseKind, status, scripts already on disk, research brief if any): ${J(A.days)}\n` +
   `Threads in scope this week (config.json threads; the thread id, domain and week range are fixed): ${J(A.threads || {})}\n` +
   `Previous week's plan: ${A.previousPlan || 'none (first week)'}; previous end state per thread: ${J(A.previousEndState || {})}.\n` +

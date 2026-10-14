@@ -14,18 +14,23 @@
   "template": "docs/weeks/week-01/day-2-orientation-agile-and-git.html",
   "_templateComment": "Notes-page template the authors copy (D-0031): the promoted W1D2 page. args_for.py passes it as args.template; when the file is missing it falls back to harness/templates/day.exemplar.html, which stays the structure gold standard for the tests.",
   "audience": {
-    "_comment": "Learner persona (D-0023). Reaches every author/critic prompt as 'Audience'. Change via a decision entry.",
-    "summary": "Recent computer-science graduates (University of Toronto cohort) with no industry experience.",
+    "_comment": "Learner persona (D-0023, superseded by D-0048). Reaches every author/critic prompt as 'Audience'. Change via a decision entry.",
+    "summary": "Recent computer-science graduates (University of Toronto cohort) with no industry experience. Backgrounds vary and what each trainee retained is unknown.",
     "assumeKnown": [
-      "Python syntax and the standard data types from coursework",
-      "basic git commands from coursework (clone, add, commit, push)",
-      "general CS theory: compilers vs interpreters, data structures, OOP"
+      "general programming ideas from any language: a variable, a branch, a loop, a function"
     ],
+    "assumeNotKnown": [
+      "Python: its syntax, types, idioms and standard library",
+      "Git and GitHub, including clone, add, commit and push",
+      "the terminal: shells, paths, running a program from a prompt",
+      "CS theory: compilers vs interpreters, data structures, OOP"
+    ],
+    "rule": "Never write that the reader already knows something, met it in coursework or remembers it. Teach each idea on its home day; an idea used before its home day gets a one-line explanation where it is used.",
     "emphasise": [
       "how professional teams actually work: SDLC, Scrum, code review, written communication",
-      "idioms, conventions and pitfalls rather than syntax from zero",
-      "team Git workflow: branches, merges, conflicts, remotes, commit hygiene",
-      "theory they already know gets a two-minute recap, then practice"
+      "Python from first principles: the syntax first, then the idioms, conventions and pitfalls a team expects",
+      "Git from first principles, then the team workflow: branches, merges, conflicts, remotes, commit hygiene",
+      "theory taught briefly and concretely, then practice"
     ]
   },
   "learnerRepo": {

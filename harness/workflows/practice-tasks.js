@@ -79,7 +79,7 @@ const fix = (cr) => cr && cr.length ? ('\n\nThis is a REPASS. The critic flagged
 
 const context = (d) =>
   `DAY ${d.id} "${d.title}" (week ${A.week} "${A.theme}", ${d.dateLabel}); subtopics: ${(d.subtopics || []).join('; ')}.\n` +
-  (CFG.audience ? `Audience: ${CFG.audience.summary} Assume already known: ${(CFG.audience.assumeKnown || []).join('; ')}.\n` : '') +
+  (CFG.audience ? `Audience: ${CFG.audience.summary} Assume known: ${(CFG.audience.assumeKnown || []).join('; ')}. Do NOT assume: ${(CFG.audience.assumeNotKnown || []).join('; ')}. ${CFG.audience.rule || ''}\n` : '') +
   `Notes page (already authored, the reader's only material): ${d.pageFile}\n` +
   `Practice file (the one source of this page's tasks): ${d.practiceFile}\n` +
   `Research brief (Pitfalls and Notes depth name the mistakes worth catching): ${d.researchBrief || 'none'}\n` +

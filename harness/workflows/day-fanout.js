@@ -149,7 +149,7 @@ const dayHeader = (d) =>
   (A.weekNotes ? `Week note: ${A.weekNotes}\n` : '') +
   (d.notes ? `Day note: ${d.notes}\n` : '') +
   planCtx(d) +
-  (CFG.audience ? `Audience: ${CFG.audience.summary} Assume already known: ${(CFG.audience.assumeKnown || []).join('; ')}. Emphasise: ${(CFG.audience.emphasise || []).join('; ')}.\n` : '') +
+  (CFG.audience ? `Audience: ${CFG.audience.summary} Assume known: ${(CFG.audience.assumeKnown || []).join('; ')}. Do NOT assume: ${(CFG.audience.assumeNotKnown || []).join('; ')}. ${CFG.audience.rule || ''} Emphasise: ${(CFG.audience.emphasise || []).join('; ')}.\n` : '') +
   `Exercise kind: ${d.exerciseKind || 'pytest'}.\n` +
   `Today's date for stamps: ${A.today}. Python ${CFG.python}. LLM config for this week: ${J(LLM)}.\n` +
   `Root: ${ROOT}. Metrics: ${J(M)}.\n`
@@ -235,7 +235,7 @@ const humanizeTrainer = (d, kind, files, phaseName) => agent(
   `The trainer reads these files in front of the room and says the ${kind === 'demos' ? 'talking points aloud while typing' : 'questions, framing lines and answers aloud'}. Wording that sounds machine-written has to be reworded live, which is clunky. Make it read like a person's own speaking notes and change nothing a demo depends on.\n` +
   `1. FIRST, from ${ROOT}, run: python harness/prose_guard.py snapshot <the files>   and keep the snapshot directory it prints.\n` +
   `2. Load the humanizer skill with the Skill tool ("humanizer:humanizer") and apply it in FILE MODE to each file; read the whole file before editing it. Reference voice: a trainer's delivery notes, plain and technical. Lines said to the room are sentences a person can say without rephrasing them; instructions to the trainer stay short imperatives. Light touch: leave a sentence that already sounds spoken. The edits that usually help: split a run-on or a chain of clauses joined by semicolons or colons into short sentences, cut a stock phrase, give a clipped fragment its subject.\n` +
-  `   Do NOT flatten good spoken wording: a contrast that corrects what the room really assumes ("review comments, not taste"; "conventions, not syntax from zero") stays, and so does a short line the trainer would say as it is. Add no joke, warmth, example or fact, and drop no fact. In a logistics sentence (a stop point, what moves where, what is pasted from which key, which commit waits) every fact survives in the same order; when unsure, leave the sentence.\n` +
+  `   Do NOT flatten good spoken wording: a contrast that corrects what the room really assumes ("review comments, not taste"; "a merge conflict is two edits to one line, not a broken repository") stays, and so does a short line the trainer would say as it is. Add no joke, warmth, example or fact, and drop no fact. In a logistics sentence (a stop point, what moves where, what is pasted from which key, which commit waits) every fact survives in the same order; when unsure, leave the sentence.\n` +
   `3. FROZEN, byte for byte: every fenced block and the section it sits in; every inline code span (same spans, same count); every heading line; ` +
   (kind === 'demos'
     ? `everything above the first "## " heading (title, date line, the header bullets: a checker parses them and other files quote the Objective); every line starting with "cwd:"; the lines that introduce a block ("Talking points while typing:", "Check (expected output):"); the header row, the separator row and the number of rows of every table; `

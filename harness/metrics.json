@@ -1,7 +1,7 @@
 {
   "_comment": "Quality bars for every generated day. Tests and critics read this file; the workflow passes wordMin/wordMax as args overrides.",
   "notes": {
-    "_comment": "D-0040: a notes page is reference/study material at junior-interview depth. Per-step bars apply to TEACHING steps (every step but the last 'Check yourself' step). deliveryPhrases are forbidden in .reading-col prose, quiz strings and diagram captions (harness/notes_check.py --phrases).",
+    "_comment": "D-0040: a notes page is reference/study material at junior-interview depth. Per-step bars apply to TEACHING steps (every step but the last 'Check yourself' step). deliveryPhrases are forbidden in .reading-col prose, quiz strings and diagram captions (harness/notes_check.py --phrases). assumptionPhrases (D-0048) are forbidden in the same places and in exercise READMEs and trainer scripts and runbooks (tests): the page never claims the reader knows something from outside the course.",
     "wordMin": 4500, "wordMax": 7000, "wordTolerance": 250,
     "readingWpm": 150,
     "stepsMin": 6, "stepsMax": 10,
@@ -15,7 +15,8 @@
     "goalsMin": 3, "goalsMax": 5,
     "codePopupsMin": 0, "codePopupsMax": 2,
     "sourcesMin": 6,
-    "deliveryPhrases": ["the trainer", "in class", "you watched", "you saw", "this morning", "this afternoon", "today's demo", "today's session", "typed live", "live demo", "the room", "in the room", "code-along", "after class", "during the demo", "earlier today"]
+    "deliveryPhrases": ["the trainer", "in class", "you watched", "you saw", "this morning", "this afternoon", "today's demo", "today's session", "typed live", "live demo", "the room", "in the room", "code-along", "after class", "during the demo", "earlier today"],
+    "assumptionPhrases": ["you already", "already know", "from coursework", "from university", "from your degree", "since your first", "first programming course", "as you know", "you will recall", "you may recall", "you may remember", "you might remember", "you are familiar", "you're familiar", "by now you", "syntax from zero"]
   },
   "demos": { "scriptsMin": 2, "scriptsMax": 5, "minutesPerScriptMin": 15, "minutesPerScriptMax": 45, "maxLinesPerFile": 90, "maxLinesPerThreadKey": 200, "maxTypedLinesPerRung": 60 },
   "practice": { "_comment": "D-0047: practice tasks on a notes page (harness/practice_tasks.py verify, harness/critics/practice.md). At most one task per teaching step.", "checksPerTaskMin": 2, "checksPerTaskMax": 4, "acceptMin": 1, "starterLinesMax": 12, "modelLinesMax": 15 },

@@ -91,6 +91,7 @@ class ExemplarTests(unittest.TestCase):
         self.assertTrue(all(n >= M["citationsPerStepMin"] for n in c["citations"]), c["citations"])
         self.assertEqual([], notes_check.citation_findings(notes_check.citation_report(page.raw, None)))
         self.assertEqual([], notes_check.phrase_hits(page.raw, M["deliveryPhrases"]))
+        self.assertEqual([], notes_check.phrase_hits(page.raw, M["assumptionPhrases"]))  # D-0048
         if node_exe():
             p = page.probe()
             self.assertEqual(p["captions"], len(page.root.find_all("section", "step")))

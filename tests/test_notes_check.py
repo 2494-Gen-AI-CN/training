@@ -89,6 +89,14 @@ class PhraseStampCitationTests(unittest.TestCase):
         quiz = self.text.replace('stem: "Second single-choice question?"', 'stem: "What did you see in class?"', 1)
         self.assertEqual([("in class", "inline-js")], [(h["phrase"], h["where"]) for h in notes_check.phrase_hits(quiz, self.phrases)])
 
+    def test_assumption_phrases(self):  # D-0048
+        phrases = metrics()["notes"]["assumptionPhrases"]
+        self.assertEqual([], notes_check.phrase_hits(self.text, phrases))
+        hit = self.text.replace("<h3>First subtopic as an h3</h3>", "<h3>First subtopic as an h3</h3>\n<p>You already write Python. A list already knows its length.</p>", 1)
+        self.assertEqual(["you already"], [h["phrase"] for h in notes_check.phrase_hits(hit, phrases)])
+        rep = notes_check.check_page(EXEMPLAR, {"phrases"}, dict(metrics()["notes"], assumptionPhrases=["first subtopic"]))
+        self.assertTrue(any(f.startswith("assumption phrase 'first subtopic'") for f in rep["findings"]), rep["findings"])
+
     def test_stamps_against_the_brief(self):
         self.assertEqual([], notes_check.stamp_findings(self.text, BRIEF))
         self.assertEqual([], notes_check.stamp_findings(self.text.replace("python 3.15</span>", "python 3.15 · git 2.50</span>"), BRIEF))

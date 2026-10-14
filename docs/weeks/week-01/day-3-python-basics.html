@@ -40,9 +40,9 @@
           <span class="verified">Sources checked 2026-10-12 · python 3.15</span>
         </div>
         <p class="summary">This page assumes Tuesday's tooling check passed: your shell runs Python 3.15 and
-        <code>team-repo</code> is a Git repository you can branch from. Since you already know Python's syntax, the page
-        is about the conventions a team expects on top of it: the layout and naming PEP 8 asks for, comments that record
-        a reason, variables as names bound to objects, what each operator returns, and input and output that behave at a
+        <code>team-repo</code> is a Git repository you can branch from. It assumes no Python beyond that, and teaches the
+        syntax together with the conventions a team expects: how a block is marked, the layout and naming
+        PEP 8 asks for, comments that record a reason, variables as names bound to objects, what each operator returns, and input and output that behave at a
         terminal and in a pipe. Afterwards you can explain how Python marks a block, what <code>a = b</code> really does,
         why <code>x == "a" or "b"</code> always passes, and why a warning belongs on stderr.</p>
         <div class="ix-legend"></div>
@@ -51,8 +51,8 @@
       <section class="step" data-diagram="0" data-step="0">
         <div class="tag">Syntax</div>
         <h2>Python syntax: blocks, lines and the layout PEP 8 asks for</h2>
-        <p>You already write Python, so this section is about the shape of a file: how Python reads blocks and lines,
-        and the layout rules a reviewer checks before reading what the code does.</p>
+        <p>This section is about the shape of a Python file: how Python reads blocks and lines, and the layout rules a
+        reviewer checks before reading what the code does.</p>
         <h3>Indentation marks a block</h3>
         <p>Python has no braces. A compound statement such as <code>if</code> ends its header line with a colon, and the
         statements that belong to it are the lines below it indented further than the header. The block ends at the first

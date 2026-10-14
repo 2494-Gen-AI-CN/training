@@ -6,7 +6,7 @@ Week {{week}} · Day {{day}} · `{{id}}` · Demo {{N}} of {{total}} · {{dateLab
 - Time: 30 min
 - Before the room arrives: terminal open at the scratch folder, font at 18 pt, `python --version` already run, previous demo's files closed.
 - Delivery mode: typed
-- Audience: who is in the room and what they already know (from the Audience line of the day).
+- Audience: who is in the room and what earlier days of the course taught them (from the Audience line of the day; never what they may have learned before the course, D-0048).
 - Prerequisite reading: notes page section(s) or the previous demo this one assumes; "none" on the first demo of the day.
 - Answer key: key/{{NN}}_{{slug}}.py
 - Hand-typed files: {{NN}}_{{slug}}.py
