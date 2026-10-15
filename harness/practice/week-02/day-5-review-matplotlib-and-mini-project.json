@@ -59,7 +59,7 @@
         "A file holding text that is not JSON raises json.JSONDecodeError; a bare except or except Exception that returns [] for it fails, since that would start an empty desk and lose the day's tickets at the next save.",
         "A valid file returns only the tickets whose status is not \"closed\", in file order, as dicts read with json.load."
       ],
-      "approved": null,
+      "approved": true,
       "q": "",
       "starter": "",
       "tests": ""
@@ -74,7 +74,7 @@
         "The result is a list with one boolean per input value, in the same order, and an empty list gives [].",
         "The comparison uses the limit argument, so breached([3.0, 5.0], 4) returns [False, True]; a 24 copied from the page's example gives the wrong answer."
       ],
-      "approved": null,
+      "approved": true,
       "q": "",
       "starter": "",
       "tests": ""

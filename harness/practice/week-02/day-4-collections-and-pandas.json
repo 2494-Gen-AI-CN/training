@@ -59,7 +59,7 @@
         "A status that never appears reads 0 from the result; a plain dict raises KeyError on that read.",
         "An empty list of days gives an empty Counter, equal to {}."
       ],
-      "approved": null,
+      "approved": true,
       "q": "",
       "starter": "",
       "tests": ""
@@ -74,7 +74,7 @@
         "The row passed in still has status \"assigned\" and hours None afterwards, so the function built a new row.",
         "The result is a TicketRow whose fields sit in the order ticket_id, priority, status, hours, so result[2] is \"closed\"; returning a dict or a reordered namedtuple fails."
       ],
-      "approved": null,
+      "approved": true,
       "q": "",
       "starter": "",
       "tests": ""
@@ -89,7 +89,7 @@
         "With urgent None the oldest ticket, 4, comes off; popitem() with its default last=True takes the newest.",
         "After the call the served ticket is gone and the rest keep their order, so list(queue) is [4, 6] in the first case."
       ],
-      "approved": null,
+      "approved": true,
       "q": "",
       "starter": "",
       "tests": ""
@@ -103,7 +103,7 @@
         "The result lists the agents with an empty list and the agents missing from groups, in the order of names.",
         "groups still has two keys after the call and \"Lee\" in groups is False; reading groups[name] to check it inserts Lee with an empty list."
       ],
-      "approved": null,
+      "approved": true,
       "q": "",
       "starter": "",
       "tests": ""

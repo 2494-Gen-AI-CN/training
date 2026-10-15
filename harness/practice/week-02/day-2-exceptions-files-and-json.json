@@ -65,7 +65,7 @@
         "parse_ids([\"7\", \"TD-7\", \"12\"]) returns [7, 12]; a try wrapped around the whole loop stops at \"TD-7\" and loses 12.",
         "parse_ids([\"7\", None]) lets the TypeError from int(None) reach the caller; a bare except or except Exception swallows it, the too-wide handler the page warns about."
       ],
-      "approved": null,
+      "approved": true,
       "q": "",
       "starter": "",
       "tests": ""
@@ -80,7 +80,7 @@
         "The last field of each row is \"closed\" or \"open\" with no line ending; looping over the file object or using readlines() keeps the \"\\n\".",
         "A missing path raises FileNotFoundError instead of returning an empty list."
       ],
-      "approved": null,
+      "approved": true,
       "q": "",
       "starter": "",
       "tests": ""
@@ -95,7 +95,7 @@
         "A second call on the same path raises FileExistsError; mode \"w\" or \"a\" lets it through.",
         "After the failed second call the file still holds the first call's text; mode \"w\" empties it the moment it is opened."
       ],
-      "approved": null,
+      "approved": true,
       "q": "",
       "starter": "",
       "tests": ""
@@ -110,7 +110,7 @@
         "A missing path in the middle of the list raises nothing and the file after it is still deleted; an unguarded unlink() stops at the missing one.",
         "After the call none of the existing files is left on disk."
       ],
-      "approved": null,
+      "approved": true,
       "q": "",
       "starter": "",
       "tests": ""
@@ -125,7 +125,7 @@
         "A record holding a tuple gives False, because the tuple comes back as a list; comparing the two JSON texts instead of the values gives True.",
         "A record holding a datetime lets the TypeError from dumps reach the caller; wrapping the call in a wide except that returns False hides it."
       ],
-      "approved": null,
+      "approved": true,
       "q": "",
       "starter": "",
       "tests": ""

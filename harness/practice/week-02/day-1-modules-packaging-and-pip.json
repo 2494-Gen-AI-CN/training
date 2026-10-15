@@ -59,7 +59,7 @@
         "hours_match([0.1, 0.2, -0.3], 0) is True; math.isclose without abs_tol gives False, because a tolerance relative to zero is zero.",
         "hours_match([1.5, 2.0], 4.0) is False; an answer that always says True, or passes an abs_tol as large as 1, lets half an hour of difference through."
       ],
-      "approved": null,
+      "approved": true,
       "q": "",
       "starter": "",
       "tests": ""
@@ -75,7 +75,7 @@
         "first_tag(\"[urgent] Login page returns 500\") is the string \"urgent\"; returning the match object instead of match.group(1) fails it.",
         "first_tag(\"Login page returns 500\") is None; calling group(1) straight on the result stops with an error there, because search, like match on the page, returns None when nothing matches."
       ],
-      "approved": null,
+      "approved": true,
       "q": "",
       "starter": "",
       "tests": ""

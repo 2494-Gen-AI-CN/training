@@ -66,7 +66,7 @@
         "With deadline swapped by the check for one that returns opened_at unchanged, the test raises AssertionError; a test that calls deadline and asserts nothing passes anyway, which is the page's point that a test that never fails may not be checking anything.",
         "With deadline swapped for one that gives every priority 4 hours, the test raises AssertionError; a test copied from the page's high-priority case passes, because it never checks the normal rule."
       ],
-      "approved": null,
+      "approved": true,
       "q": "",
       "starter": "",
       "tests": ""
@@ -81,7 +81,7 @@
         "is_high({\"priority\": \"high\", \"assignee\": None}) returns True; a rule that appends and returns nothing leaves is_high bound to None, so the call raises TypeError.",
         "rule applied by hand to a new function returns that same function and adds its name to the end of TRIAGE_RULES, so @name is shorthand for f = name(f)."
       ],
-      "approved": null,
+      "approved": true,
       "q": "",
       "starter": "",
       "tests": ""
@@ -97,7 +97,7 @@
         "longest_breach([], 4) returns None; max() over an empty sequence without default= stops with ValueError: max() iterable argument is empty.",
         "longest_breach([3.0], -1) raises ValueError; checking the limit with assert raises AssertionError instead, and the page says assert belongs in tests while a function that must reject bad input raises an exception."
       ],
-      "approved": null,
+      "approved": true,
       "q": "",
       "starter": "",
       "tests": ""
