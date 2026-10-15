@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w02d2">
+<title>W2·D2 — Exceptions, files &amp; JSON | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261015">
+<script src="../../assets/js/theme.js?v=20261015"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises" target="_blank" rel="noopener">Exercises</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>Exceptions, files &amp; JSON: code that fails clearly and remembers its data</h1>
+        <div class="meta">
+          <span><b>Week 2</b> · Day 2</span>
+          <span>Tue Oct 20, 2026</span>
+          <span>Python advanced</span>
+          <span><b>~35 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span class="verified">Sources checked 2026-10-15 · python 3.15</span>
+        </div>
+        <p class="summary">This page assumes the ticket desk as the first day of week 2 left it: a <code>desk</code>
+        module holding <code>Ticket</code> and <code>Desk</code>, imported by a script whose <code>main()</code> sets up
+        logging. It teaches how Python reports errors and how to read a traceback, how to raise exceptions and handle them
+        with <code>try</code>, <code>except</code>, <code>else</code> and <code>finally</code>, how to read, write, create
+        and delete text files, and how to save objects as JSON and load them back. Afterwards you can explain what
+        <code>KeyError</code>, <code>ValueError</code> and <code>TypeError</code> each mean, say what <code>finally</code>
+        guarantees and why a bare <code>except</code> is a code smell, choose between the <code>"w"</code>,
+        <code>"a"</code> and <code>"x"</code> modes, and describe how a date survives a JSON round trip.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="0">
+        <div class="tag">Errors</div>
+        <h2>Errors and how to read a traceback</h2>
+        <p>Every program meets bad input, missing files and plain typing mistakes. Python reports each of them in the same
+        format, and reading that report quickly is the first skill this page builds, because every later section produces
+        one on purpose.</p>
+        <h3>What an exception is</h3>
+        <p>An exception is an object Python creates when a line cannot do what it was asked to do, such as looking up a
+        dictionary key that is not there. Python abandons that line and looks for code that has said it handles that kind
+        of exception. If it finds none, the program stops and Python prints a traceback, the report of where things went
+        wrong. A raised exception that nothing handles ends the program with a non-zero exit
+        status.<sup class="cite"><a href="#src-1">1</a></sup> The exit status is the number a program hands back to
+        whatever started it, and a non-zero status marks the run as failed.</p>
+        <p>The word "error" is used loosely. Strictly, Python separates syntax errors, found while the file is being read,
+        from exceptions, raised while the code runs.<sup class="cite"><a href="#src-1">1</a></sup> Most of this page is
+        about the second kind, because those are the ones a program can respond to.</p>
+        <h3>Reading a traceback from the bottom up</h3>
+        <p>A traceback lists the chain of calls that led to the failure with the most recent call last, so the line you
+        read first is the final one: it holds the exception's type and its message.<sup class="cite"><a href="#src-1">1</a></sup>
+        Each pair of lines above it names a file, a line number and the function that was running, and shows the source
+        line. You read upward until you reach a line in a file you wrote, which is usually where the bad value came from.
+        <code>python -c</code> runs the quoted text as a one-line program, which makes it handy for trying a single
+        expression against the <code>desk</code> module the ticket-desk code was split into:</p>
+<pre><code>python -c "from desk import SLA_HOURS; SLA_HOURS['urgent']"</code></pre>
+        <p>The output is a five-line traceback:</p>
+<pre><code>Traceback (most recent call last):
+  File "&lt;string&gt;", line 1, in &lt;module&gt;
+    from desk import SLA_HOURS; SLA_HOURS['urgent']
+                                ~~~~~~~~~^^^^^^^^^^
+KeyError: 'urgent'</code></pre>
+        <p>The last line says <code>KeyError: 'urgent'</code>. <code>SLA_HOURS</code> maps the priorities
+        <code>high</code>, <code>normal</code> and <code>low</code> to hours, and <code>urgent</code> is not one of its
+        keys. <code>File "&lt;string&gt;"</code> appears because the code came from <code>-c</code>; in a real script that
+        line names the file and the function, as in <code>File "desk.py", line 12, in &lt;module&gt;</code>, and the row
+        of <code>~</code> and <code>^</code> marks the part of the line that failed. In a bug report or a chat message,
+        that last line is the first thing a teammate asks you to paste.</p>
+        <div class="ix-predict" data-q="A traceback has three frames: main() in ticket_desk.py, then load_desk in storage.py, then a file inside Python's own json package. Which line do you read first, and which frame are you most likely to change?" data-a="The last line, with the exception type and message. Then walk up to the lowest frame in a file you wrote, here storage.py: the library frame is where the bad value arrived, and your code is where it came from."></div>
+        <h3>KeyError, ValueError and TypeError</h3>
+        <p>Three built-in exceptions turn up most often, and each has a precise meaning. A
+        <code>KeyError</code> is raised when a mapping (a dictionary) is asked for a key it does not
+        hold.<sup class="cite"><a href="#src-2">2</a></sup> A <code>ValueError</code> is raised when an argument has the
+        right type but an unacceptable value; <code>int("TD-7")</code> is the classic case, because <code>int()</code>
+        accepts a string and this string does not spell a number.<sup class="cite"><a href="#src-2">2</a></sup> A
+        <code>TypeError</code> is raised when an operation is applied to the wrong type altogether, as in
+        <code>len(5)</code>: a whole number has no length.<sup class="cite"><a href="#src-2">2</a></sup></p>
+<pre><code>python -c "int('TD-7')"
+python -c "len(5)"</code></pre>
+        <p>The first command ends with <code>ValueError: invalid literal for int() with base 10: 'TD-7'</code> and the
+        second with <code>TypeError: object of type 'int' has no len()</code>. Telling the three apart is a quick
+        diagnosis. A <code>KeyError</code> points at the data, a missing entry. A <code>ValueError</code> points at the
+        content of a value. A <code>TypeError</code> usually means the code passed the wrong kind of thing, such as a
+        number where a list was expected.</p>
+        <h3>SyntaxError: the error found before anything runs</h3>
+        <p>Python reads and parses the whole file before it runs any of it, and a <code>SyntaxError</code> is raised
+        during that reading, so not a single line has run when you see it.<sup class="cite"><a href="#src-1">1</a></sup>
+        Leave the colon off a function definition and the report shows the file, the line and a caret under the spot where
+        the parser gave up:<sup class="cite"><a href="#src-1">1</a></sup></p>
+<pre><code>  File "ticket_desk.py", line 8
+    def main()
+              ^
+SyntaxError: expected ':'</code></pre>
+        <p>There is no list of calls above it, because no call was running. For the same reason, a <code>try</code> statement
+        in the same file cannot catch the error: it is found before the program starts, so that statement never begins
+        to run.<sup class="cite"><a href="#src-1">1</a></sup> The only fix is to correct the
+        source.</p>
+        <h3>The exception hierarchy</h3>
+        <p>Exception types are classes arranged in a family tree. <code>BaseException</code> sits at the top, and
+        <code>Exception</code> under it is the parent of nearly every error a program should handle.
+        <code>KeyboardInterrupt</code>, raised when you press Ctrl+C, and <code>SystemExit</code> sit beside
+        <code>Exception</code> rather than under it.<sup class="cite"><a href="#src-2">2</a></sup> <code>OSError</code>
+        groups failures reported by the operating system, and <code>FileNotFoundError</code> and
+        <code>FileExistsError</code> are both its subclasses.<sup class="cite"><a href="#src-2">2</a></sup> The tree
+        decides what a handler matches: a handler written for a parent type also catches every child, which is why the
+        next step insists on naming the narrowest type you can deal with.</p>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I read a traceback from the bottom. The last line gives me the exception type and the message, and the lines
+          above are the calls that led there, most recent last, so I walk up until I reach a line in my own code.</p>
+          <p>A KeyError means a dictionary lookup used a key that isn't there. A ValueError means the type was right but the
+          value wasn't usable, like turning the text TD-7 into an integer. A TypeError means the operation doesn't work on
+          that type at all, like asking a number for its length.</p>
+          <p>A SyntaxError is found while Python parses the file, before any line runs, so a try in that same file never
+          even starts. Exceptions raised while the program runs are the ones try can catch.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">Exception handling</div>
+        <h2>Raising and handling exceptions with try and except</h2>
+        <p>Exception handling has two halves. Code that finds a problem raises an exception, and code that can do something
+        about the problem catches it. They are often in different files, written by different people.</p>
+        <h3>Raising an exception yourself</h3>
+        <p>The <code>raise</code> statement takes an exception instance, stops the current function at once and unwinds
+        through the callers until it reaches the nearest handler for that type.<sup class="cite"><a href="#src-3">3</a></sup>
+        Here is the ticket-desk rule that a priority must be one of the known ones, cut down so it runs on its own:</p>
+<pre><code>SLA_HOURS = {"high": 4, "normal": 24, "low": 72}
+
+
+class Ticket:
+    """One support ticket."""
+    def __init__(self, ticket_id, title, priority):
+        if priority not in SLA_HOURS:
+            raise ValueError(f"unknown priority: {priority!r}")
+        self.ticket_id = ticket_id
+        self.title = title
+        self.priority = priority
+
+
+Ticket(7, "Refund charged twice", "urgent")</code></pre>
+        <p>Run as a file, this ends with a traceback whose last line is
+        <code>ValueError: unknown priority: 'urgent'</code>, quotes included, which shows exactly what value arrived. The
+        three assignments below the check never run. <code>ValueError</code> is the right type to raise because the
+        argument is a string, as it should be, and only its value is wrong.<sup class="cite"><a href="#src-2">2</a></sup></p>
+        <h3>Validating at the boundary</h3>
+        <p>Putting the check at the very top of <code>__init__</code> is a design decision with a name: validate at the
+        boundary. If the constructor refuses bad input, no invalid <code>Ticket</code> ever exists, so no other method has
+        to wonder whether <code>self.priority</code> is usable. The pattern is an <code>if</code>
+        guard followed by <code>raise ValueError(...)</code> as the first lines of a constructor or a public function.
+        Raise when your code is handed something it cannot work with and the caller is better placed to decide what happens
+        next. Code that silently "fixes" bad input, say by quietly treating <code>urgent</code> as <code>high</code>, hides
+        the mistake from the person who made it.</p>
+        <h3>try and except</h3>
+        <p>A <code>try</code> statement runs its body. If the body raises an exception that matches an
+        <code>except</code> clause, that clause runs; the first matching clause wins and the rest are
+        skipped.<sup class="cite"><a href="#src-1">1</a></sup> <code>except ValueError as err</code> binds the exception
+        object to the name <code>err</code>, and only inside that clause.<sup class="cite"><a href="#src-4">4</a></sup> One
+        clause can name a tuple, <code>except (KeyError, ValueError):</code>, to catch either
+        type.<sup class="cite"><a href="#src-1">1</a></sup> A handler often logs the problem and carries on, and
+        <code>Logger.error</code> records an ERROR-level message without stopping the
+        program.<sup class="cite"><a href="#src-5">5</a></sup></p>
+<pre><code>import logging
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+log = logging.getLogger(__name__)
+
+
+def parse_id(text):
+    try:
+        number = int(text)
+    except ValueError as err:
+        log.error("rejected id: %s", err)
+        return None
+    else:
+        log.info("accepted id %s", number)
+        return number
+    finally:
+        log.info("parse done")
+
+
+print(parse_id("7"))
+print(parse_id("TD-7"))</code></pre>
+        <p>The first call logs <code>INFO __main__: accepted id 7</code>, then <code>INFO __main__: parse done</code>, then
+        prints <code>7</code>. The second logs
+        <code>ERROR __main__: rejected id: invalid literal for int() with base 10: 'TD-7'</code>, then
+        <code>parse done</code>, then prints <code>None</code>. The second call returns <code>None</code> and the script
+        carries on to its next line.</p>
+        <h3>else and finally</h3>
+        <p>The <code>else</code> clause runs only when the <code>try</code> body raised nothing, and the
+        <code>finally</code> clause runs on every path, whether or not an exception occurred and even if a handler itself
+        raises.<sup class="cite"><a href="#src-1">1</a></sup> In the example, <code>parse done</code> is logged before each
+        <code>return</code> completes. That guarantee is what <code>finally</code> is for: closing, releasing or logging
+        "done" whatever happened. <code>else</code> answers a subtler need. Keep only the risky line inside
+        <code>try</code> and put the follow-up work in <code>else</code>, so a <code>ValueError</code> raised by the
+        follow-up code is never mistaken for the one you meant to handle. The ticket desk uses the same four-part shape
+        around adding a ticket: a rejected ticket is logged as an error, an accepted one as information, and "intake done"
+        is logged either way.</p>
+        <button class="code-cta" type="button" data-modal="code-w02d2-intake"><span class="cc-ico">&lt;/&gt;</span> See the ticket intake with try, except, else and finally <span class="cc-meta">· 01_ticket_errors.md</span></button>
+        <h3>Catch narrow: the bare except problem</h3>
+        <p>A bare <code>except:</code> with no type catches everything, including <code>KeyboardInterrupt</code> and
+        <code>SystemExit</code>, so Ctrl+C stops working inside it; name the type you
+        expect.<sup class="cite"><a href="#src-1">1</a></sup> <code>except Exception</code> is narrower, because those two
+        sit outside <code>Exception</code> in the hierarchy,<sup class="cite"><a href="#src-2">2</a></sup> but it still
+        catches errors from bugs in the code along with the one you meant. A handler that
+        is too wide hides real bugs, so catch the narrowest type the code can actually recover
+        from.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <div class="ix-spot" data-snippet="try:&#10;    desk.add(Ticket(7, &quot;Refund charged twice&quot;, &quot;urgent&quot;, NOW))&#10;except:&#10;    pass" data-q="A reviewer will not approve this. What is wrong, and what should it say?" data-a="The bare except with pass swallows every failure silently, including a typo in the code and Ctrl+C. Catch only ValueError, the type the constructor raises, and log it: except ValueError as err: log.error(&quot;rejected ticket: %s&quot;, err)."></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I raise an exception when my code is handed something it can't work with and the caller is better placed to
+          decide what to do. A constructor is the usual place: if the priority isn't one we know, I raise a ValueError
+          before the object exists, so no invalid ticket is ever created.</p>
+          <p>The try body runs first. If it raises, the first matching except clause runs; if it doesn't, else runs.
+          finally runs last on every path, even when a handler raises again, so that's where cleanup goes.</p>
+          <p>A bare except catches everything, including Ctrl+C and SystemExit, so it hides real bugs. I name the narrowest
+          exception I can actually recover from, and I log it rather than pass.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">Files</div>
+        <h2>Opening and reading files</h2>
+        <p>A program that forgets everything when it stops is not much use. Files are the simplest way to keep data
+        between runs, and the ticket-desk code gains a <code>storage</code> module whose first job is reading a text
+        file.</p>
+        <h3>open(), file objects and the with statement</h3>
+        <p><code>open()</code> returns a file object, and in text mode that object converts the bytes on disk into Python
+        strings using an encoding.<sup class="cite"><a href="#src-6">6</a></sup> A file you open has to be closed again,
+        and the reliable way to do that is a <code>with</code> statement: the file is closed when the block ends, even if
+        an exception is raised inside it.<sup class="cite"><a href="#src-7">7</a></sup> An object that sets something up on
+        entry to a <code>with</code> block and cleans it up on exit is called a context manager, and an open file is the
+        one you will meet most.</p>
+<pre><code>def read_lines(path):
+    """Return the lines of a text file without their line endings."""
+    with open(path, encoding="utf-8") as f:
+        return f.read().splitlines()
+
+
+print(read_lines("requirements.txt"))
+print(read_lines("missing.txt"))</code></pre>
+        <p>With a <code>requirements.txt</code> holding the single line <code>pylint==4.0.0</code>, the first call prints
+        <code>['pylint==4.0.0']</code>. The second ends the program with a traceback whose last line is
+        <code>FileNotFoundError: [Errno 2] No such file or directory: 'missing.txt'</code>.
+        <code>FileNotFoundError</code> is a subclass of <code>OSError</code>,<sup class="cite"><a href="#src-2">2</a></sup>
+        and it is the error the JSON storage later on this page handles on purpose. The
+        <code>return</code> sits inside the <code>with</code> block, and the file is still closed on the way out.</p>
+        <h3>Text mode and the encoding argument</h3>
+        <p>The default mode is <code>"r"</code>, read text, so <code>open(path)</code> with no mode reads
+        text.<sup class="cite"><a href="#src-6">6</a></sup> Adding <code>b</code> to the mode, as in <code>"rb"</code>,
+        opens the file in binary mode, which returns raw <code>bytes</code> with no decoding; images and other non-text
+        files are read that way.<sup class="cite"><a href="#src-6">6</a></sup> Text mode needs an encoding to turn bytes
+        into characters, and when you leave the <code>encoding</code> argument out, Python uses a default that depends on
+        the platform.<sup class="cite"><a href="#src-6">6</a></sup> Reviewers look for this: without <code>encoding="utf-8"</code>, the same code can read the same file differently on a Windows
+        laptop and on a Linux server, and a title such as "Zoë can't log in" comes back garbled on one of them. You will
+        see <code>with open(path, encoding="utf-8") as f:</code> in nearly every codebase that handles text files.</p>
+        <h3>Reading the whole file, or one line at a time</h3>
+        <p><code>f.read()</code> returns the whole content as one string, and <code>f.readline()</code> returns the next
+        single line.<sup class="cite"><a href="#src-7">7</a></sup> <code>str.splitlines()</code> then splits text at line
+        boundaries and drops the line endings, unlike <code>readlines()</code>, which keeps
+        them.<sup class="cite"><a href="#src-8">8</a></sup> It also gives no empty last item when the text ends with a
+        newline,<sup class="cite"><a href="#src-8">8</a></sup> which is where it differs from splitting on
+        <code>"\n"</code>:</p>
+<pre><code>text = "high\nnormal\n"
+print(text.split("\n"))
+print(text.splitlines())</code></pre>
+        <p>The first line prints <code>['high', 'normal', '']</code>, with a stray empty string at the end, and the second
+        prints <code>['high', 'normal']</code>. Text files written by programs nearly always end in a newline, so
+        <code>splitlines()</code> is the one to reach for, and <code>return f.read().splitlines()</code> is a line you will
+        recognise in other people's code.</p>
+        <p>The limit of <code>read()</code> is memory: it loads the entire file at once, which is fine for a small file and
+        wrong for one of several gigabytes.<sup class="cite"><a href="#src-7">7</a></sup> Looping over the file object
+        itself yields one line at a time, each still ending in its newline, so memory use stays flat however long the file
+        is:<sup class="cite"><a href="#src-7">7</a></sup></p>
+<pre><code>with open("requirements.txt", encoding="utf-8") as f:
+    for line in f:
+        print(line, end="")</code></pre>
+        <p>This prints <code>pylint==4.0.0</code> once. The <code>end=""</code> stops <code>print</code> adding a second
+        newline after the one the line already carries.<sup class="cite"><a href="#src-7">7</a></sup></p>
+        <h3>Relative paths and the working directory</h3>
+        <p>A path such as <code>"requirements.txt"</code> is relative, and a relative path is resolved against the current
+        working directory,<sup class="cite"><a href="#src-6">6</a></sup> the folder your terminal was in when you started
+        Python, which is not necessarily the folder that holds the script. Start the ticket desk from its parent folder and
+        the same <code>open("requirements.txt")</code> looks in the parent, then reports <code>FileNotFoundError</code> for
+        a file you can see in your editor. When that happens, check where the terminal is before you check the code.</p>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I open files in a with block because it closes the file when the block ends, even if an exception is raised
+          inside it. Without it, an error between opening and closing leaves the file open.</p>
+          <p>Text mode decodes the bytes into strings using an encoding, and binary mode hands me the raw bytes. I always
+          pass encoding utf-8, because the default depends on the operating system, so the same file could read differently
+          on a teammate's machine or on the server.</p>
+          <p>read gives me the whole file as one string, which is fine for small files. For a very large one I loop over the
+          file object, which reads one line at a time and keeps memory flat.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="3">
+        <div class="tag">Files</div>
+        <h2>Writing, appending and creating files</h2>
+        <p>Writing uses the same <code>open()</code> and the same <code>with</code> block as reading. What changes is the
+        mode string, and choosing the wrong one is the most common way to lose data in a file.</p>
+        <h3>Three modes for writing: w, a and x</h3>
+        <p>Mode <code>"w"</code> creates the file if it is absent and empties it if it is present. Mode <code>"a"</code>
+        also creates a missing file, but writes at the end of an existing one. Mode <code>"x"</code> creates the file and
+        raises <code>FileExistsError</code> if it already exists.<sup class="cite"><a href="#src-6">6</a></sup> The detail
+        that catches people out is when <code>"w"</code> empties the file: at the moment it is opened, before a single
+        character is written.<sup class="cite"><a href="#src-6">6</a></sup> Open a file with <code>"w"</code> intending to
+        add to it, and the old content is already gone.</p>
+        <p>The ticket desk writes its board as a plain text file, one tab-separated line per ticket, and then appends a
+        closing line. Cut down to run on its own:</p>
+<pre><code>def export_board(rows, path):
+    """Write one tab-separated line per row, replacing the file."""
+    with open(path, "w", encoding="utf-8") as f:
+        for row in rows:
+            f.write("\t".join(row) + "\n")
+
+
+def append_line(path, text):
+    """Add one line to the end of a file."""
+    with open(path, "a", encoding="utf-8") as f:
+        f.write(text + "\n")
+
+
+rows = [["1", "Login page returns 500", "high", "closed"],
+        ["6", "Typo on the pricing page", "low", "open"]]
+export_board(rows, "board.txt")
+append_line("board.txt", "end of shift")
+with open("board.txt", encoding="utf-8") as f:
+    print(f.read().splitlines())</code></pre>
+        <p>It prints
+        <code>['1\tLogin page returns 500\thigh\tclosed', '6\tTypo on the pricing page\tlow\topen', 'end of shift']</code>,
+        where each <code>\t</code> is a real tab in the file. Run it a second time and the output is identical, three lines
+        and no more, because <code>"w"</code> wiped the board before rewriting it and the append then added one line to a
+        fresh file. <code>"\t".join(row)</code> builds one line from a list of strings, and every item must be a string,
+        which is why the desk's version wraps the ticket number in
+        <code>str()</code>.<sup class="cite"><a href="#src-9">9</a></sup> An append looks like
+        <code>with open(path, "a", encoding="utf-8") as f:</code> followed by <code>f.write(text + "\n")</code>.</p>
+        <div class="ix-spot" data-snippet="def log_event(text):&#10;    with open(&quot;events.log&quot;, &quot;w&quot;, encoding=&quot;utf-8&quot;) as f:&#10;        f.write(text + &quot;\n&quot;)" data-q="This function is called once per event, yet events.log only ever holds the latest line. Why?" data-a="Mode &quot;w&quot; empties the file the moment it is opened, so every call wipes the line before it. Adding to a file needs mode &quot;a&quot;."></div>
+        <p>Mode <code>"x"</code> is the guard for the opposite risk, overwriting a file someone wanted to keep:</p>
+<pre><code>with open("shift-notes.txt", "x", encoding="utf-8") as f:
+    f.write("first shift\n")</code></pre>
+        <p>The first run creates <code>shift-notes.txt</code>. The second ends with
+        <code>FileExistsError: [Errno 17] File exists: 'shift-notes.txt'</code>, another member of the
+        <code>OSError</code> family,<sup class="cite"><a href="#src-2">2</a></sup> and the file keeps its content. Use
+        <code>"x"</code> when creating the file must never destroy an existing one, and <code>"w"</code> when replacing it
+        is the whole point, as with a board that is regenerated on every run.</p>
+        <h3>write() adds exactly what you give it</h3>
+        <p><code>f.write()</code> writes exactly the string it is given and returns the number of characters
+        written.<sup class="cite"><a href="#src-7">7</a></sup> It adds no newline, unlike <code>print</code>, so forgetting
+        the <code>+ "\n"</code> runs every line into the next one.</p>
+<pre><code>with open("note.txt", "w", encoding="utf-8") as f:
+    print(f.write("end of shift"))
+    print(f.write("\n"))</code></pre>
+        <p>This prints <code>12</code> and then <code>1</code>: twelve characters for the text and one for the newline.
+        The return value is rarely used in scripts, but in the interactive prompt it is echoed after every write, which
+        puzzles people the first time.</p>
+        <h3>Buffering, and why the file has to close</h3>
+        <p>Writes are buffered. Text passed to <code>write()</code> can wait in memory and reach the disk in larger pieces,
+        instead of going to the disk on every call.<sup class="cite"><a href="#src-6">6</a></sup> The cost
+        is that a file written without <code>with</code> or <code>f.close()</code> might not be completely written to disk,
+        even when the program exits normally.<sup class="cite"><a href="#src-7">7</a></sup> Closing the file pushes out
+        whatever is still buffered, and that is the second reason, after error safety, that file code lives inside a
+        <code>with</code> block.</p>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>"w" creates the file or empties it the moment it's opened, "a" creates it or adds to the end, and "x" creates
+          it but fails with FileExistsError if it's already there. So I use "a" for logs, "w" for a file I regenerate every
+          time, and "x" when I must never overwrite anything.</p>
+          <p>write doesn't add a newline. It writes exactly the string I give it and returns how many characters it wrote,
+          so I add the newline myself, and I write inside a with block so the buffer is flushed when the file closes.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">Files</div>
+        <h2>Deleting files safely</h2>
+        <p>Deleting a file is one call. Doing it safely is mostly about what happens when the file is not there, and that
+        brings exceptions back into the picture.</p>
+        <h3>Path.unlink() and os.remove()</h3>
+        <p>The <code>pathlib</code> module wraps a filesystem path in a <code>Path</code> object with methods such as
+        <code>unlink</code>.<sup class="cite"><a href="#src-10">10</a></sup> <code>Path.unlink()</code> deletes a file or a
+        symbolic link (a small file that points at another path), and raises <code>FileNotFoundError</code> if there is nothing to
+        delete.<sup class="cite"><a href="#src-10">10</a></sup> The ticket desk's version turns that error into a yes-or-no
+        answer:</p>
+<pre><code>from pathlib import Path
+
+
+def delete_file(path):
+    """Delete a file and say whether there was one to delete."""
+    try:
+        Path(path).unlink()
+    except FileNotFoundError:
+        return False
+    else:
+        return True
+
+
+with open("board.txt", "w", encoding="utf-8") as f:
+    f.write("end of shift\n")
+print(delete_file("board.txt"), delete_file("board.txt"))</code></pre>
+        <p>This prints <code>True False</code>. The first call deletes the file the <code>with</code> block just created;
+        the second finds nothing, catches the <code>FileNotFoundError</code> and reports it as <code>False</code> instead
+        of crashing. The <code>try</code>, <code>except FileNotFoundError: return False</code> shape is what a safe delete
+        looks like in someone else's code.</p>
+        <p>There are two variations you will meet. <code>Path(path).unlink(missing_ok=True)</code> ignores a missing file in
+        one line,<sup class="cite"><a href="#src-10">10</a></sup> which suits a cleanup step that does not care, at the
+        price of never knowing whether anything was deleted. Older code uses <code>os.remove(path)</code>, which does the
+        same job on a plain string path.<sup class="cite"><a href="#src-11">11</a></sup> Both have the same limit:
+        <code>unlink</code> removes only files and links, and a directory needs <code>Path.rmdir()</code>
+        instead,<sup class="cite"><a href="#src-10">10</a></sup> while <code>os.remove()</code> raises
+        <code>FileNotFoundError</code> for a missing path and <code>IsADirectoryError</code> when the path is a
+        directory.<sup class="cite"><a href="#src-11">11</a></sup> Code that deletes is worth a second look in review,
+        because a wrong path deletes the wrong thing and there is no undo.</p>
+        <h3>Look before you leap, or ask forgiveness</h3>
+        <p>The alternative is to check first:</p>
+<pre><code>from pathlib import Path
+
+path = "board.txt"
+if Path(path).exists():
+    Path(path).unlink()</code></pre>
+        <p>The script prints nothing. It deletes <code>board.txt</code> only if the file exists at the moment it is
+        checked.</p>
+        <p>This style is called LBYL, look before you leap. It reads well and it has a gap. Between the check and the
+        delete, another program, a second copy of your script or a cleanup job can remove the file, and then
+        <code>unlink()</code> raises <code>FileNotFoundError</code> anyway, the very error the check was meant to prevent.
+        The check makes the failure rarer without making it impossible, and a rare failure is harder to reproduce than a
+        frequent one.</p>
+        <p>The other style is EAFP, easier to ask forgiveness than permission: try the operation and handle the failure,
+        which is what <code>delete_file</code> does. Python code leans towards EAFP because the operation itself is the
+        only reliable test of whether it can succeed, and the <code>try</code> statement makes the failure path explicit.
+        LBYL still has its place where the check is cheap and nothing else can change the answer in between, such as
+        testing whether a dictionary holds a key before reading it. Files live on a disk other processes share, so for
+        files EAFP is the safer habit.</p>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I delete a file with Path.unlink from pathlib, or os.remove on a plain string path. If the file doesn't exist
+          both raise FileNotFoundError, so I catch it, or pass missing_ok when I genuinely don't care. A directory needs
+          rmdir instead.</p>
+          <p>I'd rather try the delete and handle FileNotFoundError than check first. Another process can remove the file
+          between my check and my delete, so the check doesn't make the delete safe. That's EAFP, the usual Python
+          style.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
+        <div class="tag">JSON</div>
+        <h2>JSON: saving structured data and reading it back</h2>
+        <p>A tab-separated board is fine for a person to read, but turning it back into tickets would mean splitting
+        strings and guessing types. JSON stores the structure along with the values, which is why the ticket desk saves its
+        tickets as <code>tickets.json</code>.</p>
+        <h3>What JSON is and how Python values map to it</h3>
+        <p>JSON is a text format for structured data: objects in braces with string keys, arrays in square brackets,
+        strings, numbers, <code>true</code>, <code>false</code> and <code>null</code>. Python's <code>json</code> module
+        converts in both directions: a dict becomes an object, a list an array, <code>None</code> becomes
+        <code>null</code> and <code>True</code> becomes <code>true</code>.<sup class="cite"><a href="#src-12">12</a></sup>
+        The mapping is not symmetric, and tuples come back as lists:<sup class="cite"><a href="#src-12">12</a></sup></p>
+<pre><code>import json
+
+record = {"ticket_id": 4, "assignee": None, "tags": ("billing", "pdf"), "urgent": False}
+text = json.dumps(record)
+print(text)
+print(json.loads(text))</code></pre>
+        <p>The first print shows the JSON text,
+        <code>{"ticket_id": 4, "assignee": null, "tags": ["billing", "pdf"], "urgent": false}</code>, with
+        <code>null</code>, <code>false</code> and square brackets. The second shows the Python dict rebuilt from it,
+        <code>{'ticket_id': 4, 'assignee': None, 'tags': ['billing', 'pdf'], 'urgent': False}</code>, where
+        <code>tags</code> is now a list.</p>
+        <h3>dump and dumps, load and loads</h3>
+        <p><code>json.dump(obj, f)</code> writes JSON to a file object and <code>json.dumps(obj)</code> returns it as a
+        string; <code>json.load(f)</code> and <code>json.loads(text)</code> are the same pair for
+        reading.<sup class="cite"><a href="#src-12">12</a></sup> The trailing <code>s</code> stands for string, and mixing
+        the two up is one of the most common slips with this module. <code>indent=2</code> pretty-prints the output, one
+        value per line, which makes a committed JSON file readable when a reviewer looks at a
+        diff.<sup class="cite"><a href="#src-12">12</a></sup></p>
+<pre><code>import json
+
+records = [{"ticket_id": 6, "title": "Typo on the pricing page", "closed_at": None}]
+with open("tickets.json", "w", encoding="utf-8") as f:
+    json.dump(records, f, indent=2)
+with open("tickets.json", encoding="utf-8") as f:
+    print(json.load(f) == records)</code></pre>
+        <p>This prints <code>True</code>, and <code>tickets.json</code> now holds the list spread over several lines:</p>
+<pre><code>[
+  {
+    "ticket_id": 6,
+    "title": "Typo on the pricing page",
+    "closed_at": null
+  }
+]</code></pre>
+        <p>In other people's code you will recognise this as <code>json.dump(records, f, indent=2)</code> inside a
+        <code>with open(path, "w", encoding="utf-8")</code> block, and the file by a line such as
+        <code>"closed_at": null</code>.</p>
+        <h3>Dates travel as ISO 8601 text</h3>
+        <p>JSON has no date type, and <code>json.dumps</code> raises <code>TypeError</code> for any object it has no JSON
+        type for, a <code>datetime</code> included.<sup class="cite"><a href="#src-12">12</a></sup> Passing
+        <code>{"opened_at": datetime(2026, 10, 19, 8, 30)}</code> to it fails with
+        <code>TypeError: Object of type datetime is not JSON serializable</code>. The fix is to store the date as ISO 8601
+        text, the international format that reads like <code>2026-10-19T08:30:00</code>.
+        <code>isoformat()</code> produces that text and <code>datetime.fromisoformat()</code> reads it
+        back:<sup class="cite"><a href="#src-13">13</a></sup></p>
+<pre><code>from datetime import datetime
+
+opened = datetime(2026, 10, 19, 8, 30)
+text = opened.isoformat()
+print(text)
+print(datetime.fromisoformat(text) == opened)</code></pre>
+        <p>The output is <code>2026-10-19T08:30:00</code>, then <code>True</code>. ISO text has a second advantage: written
+        year first, it sorts into date order as plain text. The ticket desk wraps this in two small functions.
+        <code>to_record</code> turns a <code>Ticket</code> into a dict of plain values whose keys are exactly its attribute
+        names (<code>ticket_id</code>, <code>title</code>, <code>priority</code>, <code>status</code>,
+        <code>assignee</code>, <code>opened_at</code> and <code>closed_at</code>), with each date as ISO text and
+        <code>closed_at</code> left as <code>None</code> while the ticket is open. <code>from_record</code> does the reverse,
+        building a <code>Ticket</code> and restoring its dates with <code>fromisoformat</code>. Saving the desk becomes a
+        loop of <code>to_record</code> calls followed by one <code>json.dump</code>.</p>
+        <h3>Round trips: how a storage layer is checked</h3>
+        <p>Converting an object in memory into text or bytes that can be stored or sent is called serialization, and
+        rebuilding it is deserialization. The property that matters is the round trip: save, then load, and you must get
+        back something equal to what you saved. The <code>== records</code> line above is that check in its smallest form.
+        It is also where the limits show. A tuple saved and loaded comes back as a list, and a date comes back as a string
+        unless your loading code converts it, so a round trip is only exact when you design the record format for
+        it.<sup class="cite"><a href="#src-12">12</a></sup> That is why the desk converts tickets to records of plain
+        values and ISO dates before saving: every field then survives the trip. Turning such round trips into automated
+        tests is the next day's topic.</p>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>dump writes JSON to an open file object and dumps returns it as a string; load and loads are the same pair for
+          reading. The s stands for string.</p>
+          <p>JSON only has objects, arrays, strings, numbers, true, false and null. A datetime or a custom object makes
+          dumps raise a TypeError, so I convert to a dict of plain values first, and I remember that tuples come back as
+          lists.</p>
+          <p>JSON has no date type, so I store dates as ISO 8601 text with isoformat, and when I load I call
+          datetime.fromisoformat to get a real datetime back. Then save followed by load gives me an equal object, which is
+          the round trip I test.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="6">
+        <div class="tag">JSON</div>
+        <h2>When the JSON file is missing or corrupt</h2>
+        <p>Loading is where files and exceptions meet. The file may not exist yet, or someone may have edited it by hand and
+        broken it, and the two cases need different handling. Here is the ticket desk's loader. It is an excerpt of
+        the <code>storage</code> module and does not run on its own: the module above it imports <code>json</code> and
+        defines <code>log</code>, the module's logger, and it brings in <code>Desk</code> and <code>from_record</code>,
+        the pieces described in the previous step. The run further down this step shows what it prints on a corrupt
+        file.</p>
+<pre><code>def load_desk(path):
+    """Read a JSON file into a new desk, or return an empty desk if there is none."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            records = json.load(f)
+    except FileNotFoundError:
+        return Desk()
+    except json.JSONDecodeError as err:
+        log.error("cannot read %s: %s", path, err)
+        raise ValueError(f"{path} is not valid JSON") from err
+    desk = Desk()
+    for record in records:
+        desk.add(from_record(record))
+    return desk</code></pre>
+        <h3>A missing file is a normal first run</h3>
+        <p>The first time the program runs there is no <code>tickets.json</code>, and <code>open()</code> raises
+        <code>FileNotFoundError</code>.<sup class="cite"><a href="#src-2">2</a></sup> That is an expected situation, so the
+        loader handles it by returning an empty <code>Desk</code>. The calling code checks for an empty desk, seeds the six
+        sample tickets, and saves at the end of the run; on the second run the file exists, the six tickets are loaded and
+        nothing is seeded again. Only the risky part, opening and parsing, sits inside <code>try</code>, and the loop that
+        rebuilds tickets runs after it, so an error in <code>from_record</code> is never mistaken for a file problem.</p>
+        <h3>A corrupt file raises JSONDecodeError</h3>
+        <p>Delete the final <code>]</code> from <code>tickets.json</code> by hand and <code>json.load</code> raises
+        <code>json.JSONDecodeError</code>, a subclass of <code>ValueError</code> that carries the message and the line and
+        column where parsing failed.<sup class="cite"><a href="#src-12">12</a></sup> Without the second
+        <code>except</code> clause, the traceback runs through several frames inside Python's own <code>json</code> package
+        and ends with
+        <code>json.decoder.JSONDecodeError: Expecting ',' delimiter: line 56 column 1 (char 1279)</code>. Read bottom-up as
+        usual: the last line says the parser expected a comma on line 56, one line past the last <code>}</code>, which is
+        where it noticed the list had not been closed. Walking up, the lowest frame in a file you wrote is the
+        <code>json.load(f)</code> line in <code>load_desk</code>.</p>
+        <p>Because <code>JSONDecodeError</code> is a <code>ValueError</code>, the hierarchy from the first step applies.
+        The first matching <code>except</code> clause wins,<sup class="cite"><a href="#src-1">1</a></sup> so a clause for
+        plain <code>ValueError</code> placed above it would catch the decode error first.</p>
+        <h3>Raising a clearer error with from</h3>
+        <p>The second clause logs the problem and raises a new exception. <code>raise ... from err</code> records
+        <code>err</code> as the direct cause of the new exception, stored in its <code>__cause__</code> attribute, and the
+        traceback prints both, joined by the line "The above exception was the direct
+        cause of the following exception".<sup class="cite"><a href="#src-3">3</a></sup> Without <code>from</code>, an
+        exception raised inside an <code>except</code> clause is still chained, implicitly: the handled exception lands in
+        the new one's <code>__context__</code> attribute and the traceback joins them with "During handling of the above
+        exception, another exception occurred", which reads like a second bug in the handler; <code>from</code> sets
+        <code>__cause__</code> and states the link was intended.<sup class="cite"><a href="#src-3">3</a></sup> Shortened, a run on the damaged
+        file prints:</p>
+<pre><code>ERROR storage: cannot read tickets.json: Expecting ',' delimiter: line 56 column 1 (char 1279)
+Traceback (most recent call last):
+  ...
+json.decoder.JSONDecodeError: Expecting ',' delimiter: line 56 column 1 (char 1279)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  ...
+ValueError: tickets.json is not valid JSON</code></pre>
+        <p>The person running the program gets a last line that names the file they need to fix, and whoever debugs it
+        still sees the exact line and column above. Catching <code>JSONDecodeError</code> and
+        quietly returning an empty desk would be worse than crashing here: the calling code would see an empty desk, seed
+        it and save, overwriting the damaged file, the only copy someone could have repaired by hand.</p>
+        <button class="code-cta" type="button" data-modal="code-w02d2-chain"><span class="cc-ico">&lt;/&gt;</span> See the full chained traceback <span class="cc-meta">· 04_json_errors.md</span></button>
+        <h3>Every save rewrites the whole file</h3>
+        <p>The save side has its own limit. Saving opens the file with <code>"w"</code>, which empties it the moment it is
+        opened, so every save rewrites the whole file.<sup class="cite"><a href="#src-6">6</a></sup> For a desk of a few
+        hundred tickets that is quick and simple. It also means a program killed halfway through a save leaves a partial
+        file, which the next load reports as exactly the <code>JSONDecodeError</code> above. A single JSON file suits one
+        program and modest data. Two programs saving at once can overwrite or corrupt each other's work, which is the
+        reason databases exist; week 3 introduces one.</p>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A missing file on the first run is normal, so I catch FileNotFoundError and start with an empty collection. A
+          corrupt file isn't normal: I catch JSONDecodeError, log it, and raise a ValueError that names the file, using
+          raise from.</p>
+          <p>raise from stores the original exception as the new one's cause, in dunder cause, and the traceback says
+          "the above exception was the direct cause". Without from, the link goes in dunder context and reads "during
+          handling of the above exception", which looks like an accident.</p>
+          <p>I don't swallow a decode error by returning empty data, because the next save would overwrite the broken file,
+          and that file was the only thing anyone could have repaired.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="7">
+        <div class="tag">Check yourself</div>
+        <h2>Check yourself</h2>
+        <p>Nine retrieval questions, at least one per section. Answer each out loud before you open it.</p>
+        <details class="check"><summary>A traceback ends with <code>KeyError: 'urgent'</code>. What does that mean, and where do you look next?</summary><p>A dictionary was asked for the key <code>'urgent'</code> and does not hold it. Walk up the traceback from that last line to the lowest frame in a file you wrote, which is where the lookup was made.</p></details>
+        <details class="check"><summary>What separates a <code>ValueError</code> from a <code>TypeError</code>? Give an example of each.</summary><p>A <code>ValueError</code> means the type was right but the value was unusable, as in <code>int("TD-7")</code>. A <code>TypeError</code> means the operation does not apply to that type at all, as in <code>len(5)</code>.</p></details>
+        <details class="check"><summary>Why can a <code>try</code> statement not catch a missing colon in the same file?</summary><p>A missing colon is a <code>SyntaxError</code>, raised while Python parses the file before any line runs. The <code>try</code> statement itself never starts, so it has nothing to catch with.</p></details>
+        <details class="check"><summary>In a <code>try</code> with <code>except</code>, <code>else</code> and <code>finally</code>, which clauses run when the body raises a caught <code>ValueError</code>, and which when it raises nothing?</summary><p>With the caught error, the matching <code>except</code> runs and then <code>finally</code>. With no error, <code>else</code> runs and then <code>finally</code>. <code>finally</code> runs on every path.</p></details>
+        <details class="check"><summary>Why does a reviewer reject <code>except: pass</code>?</summary><p>A bare <code>except</code> catches everything, including <code>KeyboardInterrupt</code> and <code>SystemExit</code>, so Ctrl+C stops working and real bugs vanish without a trace. Name the narrowest type the code can recover from and log it.</p></details>
+        <details class="check"><summary>Why pass <code>encoding="utf-8"</code> to <code>open()</code>, and why open files in a <code>with</code> block?</summary><p>Without it, text mode uses a platform-dependent default, so the same file can read differently on two machines. The <code>with</code> block closes the file when it ends, even after an exception, which also flushes any buffered writes.</p></details>
+        <details class="check"><summary>A logging function opens its file with <code>"w"</code> and the file only ever holds one line. What is wrong, and what do <code>"a"</code> and <code>"x"</code> do instead?</summary><p><code>"w"</code> empties the file the moment it is opened, so each call wipes the last line. <code>"a"</code> writes at the end of the file, and <code>"x"</code> creates a new file and raises <code>FileExistsError</code> if one is already there.</p></details>
+        <details class="check"><summary>Why does <code>delete_file</code> call <code>unlink()</code> inside <code>try</code> instead of checking that the file exists first?</summary><p>The file can disappear between the check and the delete, so the check does not make the delete safe. Trying the operation and catching <code>FileNotFoundError</code> (EAFP) handles every case, and here it turns a missing file into <code>False</code>.</p></details>
+        <details class="check"><summary><code>json.dumps</code> fails on a ticket's <code>opened_at</code>. Why, and how does the desk store dates instead? And what should loading do with a missing file and with a corrupt one?</summary><p>JSON has no date type, so <code>dumps</code> raises <code>TypeError</code> for a <code>datetime</code>; the desk stores <code>isoformat()</code> text and rebuilds it with <code>datetime.fromisoformat()</code>. A missing file returns an empty desk, while a corrupt one is logged and re-raised as a <code>ValueError</code> chained to the <code>JSONDecodeError</code> with <code>from err</code>.</p></details>
+      </section>
+
+      <section class="reading-sources" aria-label="Sources and deeper dive">
+        <h2>Sources &amp; deeper dive</h2>
+        <ul>
+          <li id="src-1"><a href="https://docs.python.org/3/tutorial/errors.html" target="_blank" rel="noopener">Python tutorial — Errors and Exceptions</a> — tracebacks, try, except, else, finally and why a bare except is risky.</li>
+          <li id="src-2"><a href="https://docs.python.org/3/library/exceptions.html" target="_blank" rel="noopener">Built-in Exceptions</a> — what KeyError, ValueError, TypeError and the OSError family each mean.</li>
+          <li id="src-3"><a href="https://docs.python.org/3/reference/simple_stmts.html#the-raise-statement" target="_blank" rel="noopener">Language reference — The raise statement</a> — raising, and chaining with from.</li>
+          <li id="src-4"><a href="https://docs.python.org/3/reference/compound_stmts.html#the-try-statement" target="_blank" rel="noopener">Language reference — The try statement</a> — the exact rules for except clauses and the as name.</li>
+          <li id="src-5"><a href="https://docs.python.org/3/library/logging.html" target="_blank" rel="noopener">logging</a> — Logger.error records a message without stopping the program.</li>
+          <li id="src-6"><a href="https://docs.python.org/3/library/functions.html#open" target="_blank" rel="noopener">Built-in Functions — open</a> — modes, text versus binary, and the encoding default.</li>
+          <li id="src-7"><a href="https://docs.python.org/3/tutorial/inputoutput.html#reading-and-writing-files" target="_blank" rel="noopener">Python tutorial — Reading and Writing Files</a> — with blocks, read, iteration and write.</li>
+          <li id="src-8"><a href="https://docs.python.org/3/library/stdtypes.html#str.splitlines" target="_blank" rel="noopener">Built-in Types — str.splitlines</a> — splitting text into lines without their endings.</li>
+          <li id="src-9"><a href="https://docs.python.org/3/library/stdtypes.html#str.join" target="_blank" rel="noopener">Built-in Types — str.join</a> — building one line from several strings.</li>
+          <li id="src-10"><a href="https://docs.python.org/3/library/pathlib.html" target="_blank" rel="noopener">pathlib</a> — Path objects and Path.unlink.</li>
+          <li id="src-11"><a href="https://docs.python.org/3/library/os.html#os.remove" target="_blank" rel="noopener">os — os.remove</a> — the older way to delete a file by its path.</li>
+          <li id="src-12"><a href="https://docs.python.org/3/library/json.html" target="_blank" rel="noopener">json</a> — dump, dumps, load, loads, the type table and JSONDecodeError.</li>
+          <li id="src-13"><a href="https://docs.python.org/3/library/datetime.html#datetime.datetime.fromisoformat" target="_blank" rel="noopener">datetime — fromisoformat</a> — writing a datetime as ISO 8601 text and reading it back.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+        <div class="activity-card demo-card" data-demo="pending">
+          <div class="ac-k">⌨ Code-along files</div>
+          <div class="ac-t">Published after class</div>
+          <div class="ac-meta">typed live in the session · the answer key lands in demos/ afterwards</div>
+        </div>
+
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · after you have read the page</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 2 Day 2</footer>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 2 — goals &amp; exercise</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Read a traceback from its last line up and tell KeyError, ValueError, TypeError and SyntaxError apart</li>
+      <li>Reject bad input with raise and handle the failure with try, except, else and finally, catching only the type you can recover from</li>
+      <li>Read, write, append to, exclusively create and delete text files with with open, the right mode, encoding="utf-8" and pathlib</li>
+      <li>Save objects to a JSON file and load them back, with dates as ISO 8601 text, an empty start for a missing file and a clear error for a corrupt one</li>
+    </ul>
+    <div class="ma-k">Today's exercise</div>
+    <ul class="deliv-list check">
+      <li><a href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-02/day-2-exceptions-files-and-json" target="_blank" rel="noopener">exercises/week-02/day-2-exceptions-files-and-json</a> — a small module that saves a list of ticket dicts to JSON, loads it back, returns an empty list for a missing file, raises <code>ValueError</code> for a corrupt one and deletes a file safely. Run <code>python -m pytest -q</code> until green.</li>
+    </ul>
+    <div class="ma-k">Demos today</div>
+    <ul class="deliv-list">
+      <li>One live walk through the day's topics, built in front of the class and shaped by its questions; the files it produces are published in the demos folder afterwards</li>
+    </ul>
+    <p class="goals-foot">Wednesday tests the error and storage paths from this page. Finish the check to unlock the next page.</p>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Day 3 — Testing with pytest & NumPy →", href: "day-3-pytest-and-numpy.html" };
+window.DIAGRAM = {
+  title: "Day 2 · from a traceback to a JSON file that survives a restart",
+  width: 500, height: 480,
+  nodes: [
+    { id:"err", step:0, x:24, y:14, w:200, h:56, label:"Errors\n  traceback: read the last line\n  KeyError · ValueError · TypeError", detail:"Most recent call last, so the type and message are on the final line. Missing key, right type but bad value, wrong type." },
+    { id:"syntax", step:0, x:276, y:14, w:200, h:56, label:"SyntaxError\n  found while parsing\n  no try can catch it", detail:"Raised before any line runs, so a try in the same file never starts. The only fix is the source." },
+    { id:"raise", step:1, x:24, y:96, w:200, h:56, label:"raise\n  validate at the top of __init__\n  ValueError: unknown priority", detail:"raise stops the function and unwinds to the nearest matching handler. No invalid Ticket ever exists." },
+    { id:"try", step:1, x:276, y:96, w:200, h:56, label:"try · except · else · finally\n  catch the narrowest type", detail:"First matching except wins; else runs only when nothing was raised; finally runs on every path. A bare except also traps Ctrl+C." },
+    { id:"read", step:2, x:24, y:178, w:200, h:56, label:"Read\n  with open(path, encoding=\"utf-8\")\n  read · splitlines · for line in f", detail:"with closes the file even after an exception. Without encoding the default depends on the platform. A missing file is FileNotFoundError." },
+    { id:"write", step:3, x:276, y:178, w:200, h:56, label:"Write & create\n  w empties on open · a appends\n  x fails if it exists", detail:"write() adds no newline and returns the number of characters written. Writes are buffered until the file closes." },
+    { id:"delete", step:4, x:276, y:260, w:200, h:56, label:"Delete\n  Path.unlink() inside try\n  EAFP over LBYL", detail:"unlink raises FileNotFoundError for a missing file unless missing_ok=True; a directory needs rmdir. Catching beats checking first." },
+    { id:"json", step:5, x:24, y:260, w:200, h:56, label:"JSON\n  dump/load: files · dumps/loads: strings\n  dates as ISO 8601 text", detail:"dict to object, list to array, None to null; tuples come back as lists. datetime needs isoformat and fromisoformat." },
+    { id:"bad", step:6, x:24, y:342, w:452, h:56, label:"MISSING OR CORRUPT\n  FileNotFoundError: start empty · JSONDecodeError: log, then raise ValueError from err", detail:"JSONDecodeError is a ValueError carrying line and column. raise from keeps it as the direct cause. Every save rewrites the whole file." },
+    { id:"check", step:7, x:24, y:424, w:452, h:40, label:"CHECK YOURSELF\n  answer out loud, then open" }
+  ],
+  edges: [
+    { id:"e1", step:0, from:"err", to:"syntax", dir:"-", label:"run vs parse" },
+    { id:"e2", step:1, from:"err", to:"raise", label:"raise your own" },
+    { id:"e3", step:1, from:"raise", to:"try", label:"caught by" },
+    { id:"e4", step:2, from:"try", to:"read", label:"FileNotFoundError" },
+    { id:"e5", step:3, from:"read", to:"write", label:"same open(), new mode" },
+    { id:"e6", step:4, from:"write", to:"delete", label:"clean up" },
+    { id:"e7", step:5, from:"write", to:"json", label:"json.dump" },
+    { id:"e8", step:5, from:"read", to:"json", label:"json.load" },
+    { id:"e9", step:6, from:"json", to:"bad", label:"load can fail" },
+    { id:"e10", step:7, from:"bad", to:"check", dir:"-" }
+  ],
+  captions: [
+    "Errors: a traceback lists the calls most recent last, so read its final line first; a SyntaxError arrives earlier, while the file is parsed. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "Your code raises ValueError at the boundary, and try, except, else and finally decide what happens next: catch the narrowest type, clean up in finally.",
+    "Reading: with open and encoding utf-8 close the file and decode it the same way on every machine; a missing file is a FileNotFoundError.",
+    "Writing: w empties the file when it opens, a appends, x refuses to overwrite, and write() adds no newline.",
+    "Deleting: Path.unlink inside try, with FileNotFoundError turned into False, is safer than checking first.",
+    "JSON: dump and load move plain values through a file, and dates travel as ISO 8601 text.",
+    "A missing file starts an empty desk; a corrupt one becomes a logged ValueError chained to the JSONDecodeError.",
+    "You can now explain how Python reports, raises and handles errors, and how a program keeps its data in text and JSON files."
+  ]
+};
+window.QUIZ = {
+  id: "w02-d2",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "Which exception does int(\"TD-7\") raise?",
+      options: ["KeyError", "ValueError", "TypeError", "SyntaxError"], answer: 1,
+      explain: "int() accepts a string, so the type is right; this string's value does not spell a number. Right type, unacceptable value is a ValueError." },
+    { type: "scq", stem: "board.txt holds ten lines. What does open(\"board.txt\", \"w\", encoding=\"utf-8\") do before any write() call?",
+      options: ["Nothing until write() is called", "Empties the file", "Raises FileExistsError", "Positions the file at the end, ready to append"], answer: 1,
+      explain: "Mode \"w\" truncates an existing file the moment it is opened, before anything is written. Appending is mode \"a\"; FileExistsError comes from mode \"x\"." },
+    { type: "tf", stem: "A try statement at the top of ticket_desk.py can catch a SyntaxError caused by a missing colon further down the same file.", answer: false,
+      explain: "A SyntaxError is raised while the file is parsed, before any line runs, so the try statement never starts." },
+    { type: "mcq", stem: "Which of these are true of json.JSONDecodeError? Select all that apply.",
+      options: ["It is a subclass of ValueError", "It carries the line and column where parsing failed", "json.dumps raises it when a dict holds a datetime", "An except ValueError clause catches it"], answer: [0, 1, 3],
+      explain: "JSONDecodeError is a ValueError subclass with the message, line and column, so except ValueError catches it. A datetime passed to dumps raises TypeError instead." },
+    { type: "match", stem: "Match each open() mode to what it does.",
+      pairs: [
+        { l: "\"r\"", r: "read text; the default when no mode is given" },
+        { l: "\"w\"", r: "create the file, or empty an existing one as it opens" },
+        { l: "\"a\"", r: "create the file, or write at the end of an existing one" },
+        { l: "\"x\"", r: "create the file, or raise FileExistsError if it exists" }
+      ],
+      explain: "r reads and is the default. w truncates at open. a appends. x is exclusive creation and never overwrites." },
+    { type: "open", stem: "In two or three sentences: why should a loader return an empty collection for a missing JSON file but raise an error for a corrupt one?",
+      hint: "One case happens on every first run; the other means data someone wants is damaged.",
+      model: "A missing file is the normal first run, so catching FileNotFoundError and starting empty lets the program seed and save. A corrupt file holds data someone may need, so the loader logs the JSONDecodeError and raises a ValueError from it; returning empty data would let the next save overwrite the damaged file." }
+  ]
+};
+</script>
+
+<!-- code popup: excerpt of the errors answer-key transcript -->
+<div id="code-w02d2-intake" class="modal-overlay" hidden>
+  <div class="modal-card code-modal">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Answer key excerpt: 01_ticket_errors.md</h2>
+    <p class="cv-cap">From the end of the transcript: the intake in main() with all four clauses, and the two log lines a rejected ticket produces.</p>
+    <div class="cv" data-file="01_ticket_errors.md" data-lang="python"><pre class="cv-raw">    t4.assign(&quot;Priya&quot;)
+    t5.assign(&quot;Marcus&quot;)
+    try:
+        desk.add(Ticket(7, &quot;Refund charged twice&quot;, &quot;urgent&quot;, NOW))
+    except ValueError as err:
+        log.error(&quot;rejected ticket: %s&quot;, err)
+    else:
+        log.info(&quot;accepted ticket 7&quot;)
+    finally:
+        log.info(&quot;intake done&quot;)
+    for t in desk:
+        print(t.ticket_id, t.priority, t.status, t.days_open())
+
+# python ticket_desk.py prints, among the other log lines:
+# ERROR __main__: rejected ticket: unknown priority: 'urgent'
+# INFO __main__: intake done</pre></div>
+    <p class="cv-foot">Only the risky call sits in try. The ValueError comes from the check at the top of Ticket.__init__, and finally logs either way.</p>
+  </div>
+</div>
+
+<!-- code popup: excerpt of the corrupt-JSON answer-key transcript -->
+<div id="code-w02d2-chain" class="modal-overlay" hidden>
+  <div class="modal-card code-modal">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Answer key excerpt: 04_json_errors.md</h2>
+    <p class="cv-cap">Step 2 of the transcript: tickets.json has lost its final ], and load_desk logs the error and raises a ValueError from it.</p>
+    <div class="cv" data-file="04_json_errors.md" data-lang="bash"><pre class="cv-raw">$ python ticket_desk.py
+ERROR storage: cannot read tickets.json: Expecting &#x27;,&#x27; delimiter: line 56 column 1 (char 1279)
+Traceback (most recent call last):
+  File &quot;C:\Users\you\demo-repo\ticket-desk\storage.py&quot;, line 82, in load_desk
+    records = json.load(f)
+  File &quot;C:\Users\you\AppData\Local\Python\pythoncore-3.14-64\Lib\json\__init__.py&quot;, line 298, in load
+    return loads(fp.read(),
+...
+  File &quot;C:\Users\you\AppData\Local\Python\pythoncore-3.14-64\Lib\json\decoder.py&quot;, line 361, in raw_decode
+    obj, end = self.scan_once(s, idx)
+               ~~~~~~~~~~~~~~^^^^^^^^
+json.decoder.JSONDecodeError: Expecting &#x27;,&#x27; delimiter: line 56 column 1 (char 1279)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File &quot;C:\Users\you\demo-repo\ticket-desk\ticket_desk.py&quot;, line 53, in &lt;module&gt;
+    main()
+    ~~~~^^
+  File &quot;C:\Users\you\demo-repo\ticket-desk\ticket_desk.py&quot;, line 15, in main
+    desk = load_desk(DATA)
+  File &quot;C:\Users\you\demo-repo\ticket-desk\storage.py&quot;, line 87, in load_desk
+    raise ValueError(f&quot;{path} is not valid JSON&quot;) from err
+ValueError: tickets.json is not valid JSON</pre></div>
+    <p class="cv-foot">Two tracebacks, oldest first: the JSONDecodeError inside the json package, then the ValueError your code raised from it. Read the last line, then the line above the separator.</p>
+  </div>
+</div>
+
+<script src="../../assets/js/diagram.js?v=20261015"></script>
+<script src="../../assets/js/scrolly.js?v=20261015"></script>
+<script src="../../assets/js/modals.js?v=20261015"></script>
+<script src="../../assets/js/quiz.js?v=20261015"></script>
+<script src="../../assets/js/widgets.js?v=20261015"></script>
+<script src="../../assets/js/glossary.js?v=20261015"></script>
+<script src="../../assets/js/codeviewer.js?v=20261015"></script>
+</body>
+</html>

@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w02d5">
+<title>W2·D5 — Review, Matplotlib &amp; mini-project | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261015">
+<script src="../../assets/js/theme.js?v=20261015"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises" target="_blank" rel="noopener">Exercises</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>Review, Matplotlib &amp; mini-project: charting the desk and reading the week back</h1>
+        <div class="meta">
+          <span><b>Week 2</b> · Day 5</span>
+          <span>Fri Oct 23, 2026</span>
+          <span>Python advanced</span>
+          <span><b>~36 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span class="verified">Sources checked 2026-10-15 · python 3.15 · matplotlib 3.11.2 · pandas 3.0.6 · numpy 2.5.4 · pytest 9.1.1</span>
+        </div>
+        <p class="summary">This page assumes Thursday's ticket desk, whose tickets load from the JSON file into a
+        pandas DataFrame and are counted per status. It teaches how to choose a chart from the question it must answer,
+        then how Matplotlib draws, saves and tests two charts from that DataFrame, and it ends with a review of weeks 1
+        and 2 read back from the desk's eight files. Afterwards you can explain a Figure and an Axes, say why a script
+        saves a chart instead of showing it, and answer the questions on modules, exceptions, JSON, pytest, arrays and
+        DataFrames that a junior Python interview brings up.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="0">
+        <div class="tag">Data visualisation</div>
+        <h2>Choosing a chart from the question</h2>
+        <p>Thursday's page ended with the desk's tickets in a pandas DataFrame and a count of tickets per status printed as
+        a small table. A table answers a question if the reader is willing to read every row. A chart answers it at a
+        glance, which is why teams draw them, and the first decision is what to draw.</p>
+        <h3>What a chart is for</h3>
+        <p>Data visualisation means turning numbers into marks (bars, lines, dots) so that one comparison or one trend can
+        be seen at once. The Matplotlib quick start guide builds its examples from the same few parts every time: the marks
+        themselves, a title, and two labelled axes.<sup class="cite"><a href="#src-1">1</a></sup> In practice
+        a chart carries one message, its title states that message, and each axis names what it measures
+        and in what unit.<sup class="cite"><a href="#src-1">1</a></sup> "Tickets per status" with an x-axis called Status
+        and a y-axis called Tickets passes. A chart titled "Figure 1" with bare axes makes the reader guess which number is
+        which.</p>
+        <h3>Which chart answers which question</h3>
+        <p>A bar chart compares one value across discrete categories, and a histogram shows how a single numeric variable
+        is distributed.<sup class="cite"><a href="#src-2">2</a></sup> A scatter plot shows the relationship between two
+        numeric variables, and each point on it is one observation.<sup class="cite"><a href="#src-3">3</a></sup> A line
+        chart joins its points in order, which tells the reader that something continuous happens between them, so it suits
+        ordered data such as time and misleads when the points are unrelated
+        categories.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <table>
+          <thead><tr><th>Kind of question</th><th>An example from the ticket desk</th><th>Chart</th></tr></thead>
+          <tbody>
+            <tr><td>Comparison across categories</td><td>How many tickets are in each status?</td><td>Bar chart</td></tr>
+            <tr><td>Trend over time</td><td>How many tickets were opened each day this month?</td><td>Line chart</td></tr>
+            <tr><td>Distribution of one number</td><td>How are resolution hours spread across closed tickets?</td><td>Histogram</td></tr>
+            <tr><td>Relationship between two numbers</td><td>Do longer ticket descriptions take longer to resolve?</td><td>Scatter plot</td></tr>
+          </tbody>
+        </table>
+        <p>The data usually tells you which row you are in. Here is the status column of the desk's six tickets, counted the
+        way Thursday's code counts it:</p>
+<pre><code>import pandas as pd
+
+df = pd.DataFrame({"status": ["closed", "closed", "closed",
+                              "assigned", "assigned", "open"]})
+counts = df["status"].value_counts()
+print(counts)</code></pre>
+        <p>It prints four lines of table: <code>closed 3</code>, <code>assigned 2</code>, <code>open 1</code>, then
+        <code>Name: count, dtype: int64</code>. <code>value_counts()</code> counts how often each distinct value occurs and
+        returns a Series indexed by those values.<sup class="cite"><a href="#src-4">4</a></sup> The index holds the
+        categories and the values hold the counts, which is exactly what a bar chart needs: one bar per label, each bar as
+        long as its count. The three statuses have no order or distance between them, so this is a comparison across
+        categories, and a line joining "closed" to "assigned" would claim a continuity that does not exist.</p>
+        <div class="ix-predict" data-q="A manager asks how resolution times are spread out: are most tickets fast with a few very slow ones, or are they all about the same? Which chart answers that, and what goes along its x-axis?" data-a="A histogram of resolution hours. The x-axis is hours, split into ranges, and each bar's height is how many closed tickets fell into that range. It shows the distribution of one numeric variable."></div>
+        <h3>Axes that start at zero, and other ways a chart misleads</h3>
+        <p>Bars encode their value by length, so a value axis that does not start at zero exaggerates every difference
+        between them.<sup class="cite"><a href="#src-1">1</a></sup> Suppose two teams close 96 and 98 percent of their
+        tickets inside the SLA. On an axis from 0 to 100 the two bars are nearly the same height, which is the truth. On an
+        axis that starts at 95, the first bar is 1 unit tall and the second is 3, so the chart shows one team doing three
+        times better when the real gap is two points.</p>
+        <p>The other faults to look for are a line drawn across unrelated categories, an axis with no name or unit, a chart
+        with two kinds of mark and no legend to say which is which, and two messages squeezed into one figure so that
+        neither lands. Reviewing a colleague's chart works much like reviewing their code. Read the title and ask whether
+        the chart actually shows that. Check that a bar chart's value axis starts at zero. Check both axes have names and
+        units. Check there is a legend whenever more than one kind of mark is drawn.</p>
+        <h3>Charts in code that runs unattended</h3>
+        <p>A chart made by a program has a second audience besides people: the program's next run. A chart that has to be
+        reproduced by a scheduled job, a pipeline or a test is saved to a file rather than shown on screen, because showing
+        it needs someone to look at a window and close it.<sup class="cite"><a href="#src-5">5</a></sup> The next two
+        steps build the desk's charts that way.</p>
+        <p>You will also meet a shortcut in other people's notebooks. pandas offers plotting straight from a Series or a
+        DataFrame through a <code>.plot</code> method, built on top of
+        Matplotlib,<sup class="cite"><a href="#src-6">6</a></sup> so a line such as <code>df.plot(kind="bar")</code> is the
+        same library reached in one call. It is quick for exploring, but the desk's code calls Matplotlib directly instead,
+        because a chart function that makes its own figure, labels it and saves it is easier to read in review and easier
+        to test.</p>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I start from the question. Comparing categories is a bar chart, because lengths are easy to compare; change
+          over time is a line, because a line implies order; the spread of one number is a histogram; and two numbers
+          against each other is a scatter plot.</p>
+          <p>A bar's length is its value, so if the axis starts at ninety-five a two-point gap looks enormous. When I
+          review a chart I check that the title states one message, both axes are labelled with units, bars start at zero,
+          and there's a legend if there's more than one kind of mark.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">Matplotlib</div>
+        <h2>Matplotlib: a figure, an axes and a bar chart</h2>
+        <p>Matplotlib is the plotting library that pandas' <code>.plot</code> is built on, and it joins the desk the same
+        way pandas did: on a branch of its own, installed with pip, and pinned.</p>
+        <h3>Installing Matplotlib and pinning it</h3>
+        <p>Matplotlib is a third-party package, so it goes into the project's virtual environment with pip and gets a line
+        in <code>requirements.txt</code>. Pinning means writing the exact version, <code>matplotlib==3.11.2</code>, so every
+        machine that installs from the file gets the same release.<sup class="cite"><a href="#src-7">7</a></sup></p>
+<pre><code>git switch -c feature/desk-charts
+python -m pip install matplotlib==3.11.2</code></pre>
+        <p>The install collects a handful of packages Matplotlib depends on, such as <code>fonttools</code> and
+        <code>pillow</code>, reports NumPy as already satisfied because the desk has had it since Wednesday, and ends with a
+        "Successfully installed" line that names <code>matplotlib-3.11.2</code>. Then <code>matplotlib==3.11.2</code> goes
+        on a new line of <code>requirements.txt</code> under the pandas pin. Without the pin, a teammate installing next
+        month could get a different release from the one the code was written and tested
+        against.<sup class="cite"><a href="#src-7">7</a></sup></p>
+        <h3>Figure and Axes</h3>
+        <p>Two objects do nearly all the work. <code>plt.subplots()</code> returns a pair: a Figure and an Axes. The Figure
+        is the whole canvas, the thing that ends up in an image file. The Axes is one plot area drawn on that canvas, with
+        its own x-axis, y-axis, title and marks.<sup class="cite"><a href="#src-1">1</a></sup> The name trips people up: an
+        Axes, singular despite the final s, is a whole plot, not one axis line. The <code>figsize</code> argument sets the
+        figure's size in inches, width first.<sup class="cite"><a href="#src-8">8</a></sup></p>
+<pre><code>import matplotlib.pyplot as plt
+
+fig, ax = plt.subplots(figsize=(6, 4))
+print(type(fig).__name__, type(ax).__name__)
+plt.close(fig)</code></pre>
+        <p>This prints <code>Figure Axes</code>. <code>import matplotlib.pyplot as plt</code> is the alias every codebase
+        uses, so <code>plt.</code> in a file is the first sign of Matplotlib. The split of jobs is worth memorising: methods
+        on the Axes draw and label (<code>ax.bar</code>, <code>ax.set_title</code>), and methods on the Figure deal with the
+        canvas as a whole (<code>fig.tight_layout</code>, <code>fig.savefig</code>).</p>
+        <h3>Tickets per status, drawn from the DataFrame</h3>
+        <p>The desk's chart code lives in a new module, <code>chart.py</code>, next to Thursday's <code>frame.py</code>. It
+        imports <code>status_table</code> from <code>frame</code>, so the chart is drawn from exactly the numbers the
+        status table prints.</p>
+<pre><code>"""Draw charts of the desk's tickets with Matplotlib."""
+import matplotlib.pyplot as plt
+
+from frame import status_table
+
+
+def status_chart(df, path):
+    """Save a bar chart of tickets per status to path."""
+    counts = status_table(df)
+    fig, ax = plt.subplots(figsize=(6, 4))
+    ax.bar(counts.index, counts.values)
+    ax.set_title("Tickets per status")
+    ax.set_xlabel("Status")
+    ax.set_ylabel("Tickets")
+    fig.tight_layout()
+    fig.savefig(path)
+    plt.close(fig)</code></pre>
+        <p>Read it from the top. <code>counts</code> is the <code>value_counts()</code> Series from the first section.
+        <code>ax.bar(x, height)</code> draws one bar per category, and passing <code>counts.index</code> as the x values
+        and <code>counts.values</code> as the heights puts each status under a bar as tall as its
+        count.<sup class="cite"><a href="#src-9">9</a></sup> <code>set_title</code>, <code>set_xlabel</code> and
+        <code>set_ylabel</code> label the chart.<sup class="cite"><a href="#src-9">9</a></sup> <code>fig.tight_layout()</code>
+        adjusts the padding so the title and labels are not clipped at the
+        edges.<sup class="cite"><a href="#src-10">10</a></sup> <code>fig.savefig(path)</code> writes the figure to a file
+        and picks the format from the extension, so <code>status.png</code> gives a
+        PNG.<sup class="cite"><a href="#src-11">11</a></sup> <code>plt.close(fig)</code> releases the
+        figure.<sup class="cite"><a href="#src-12">12</a></sup></p>
+        <p><code>main()</code> in <code>ticket_desk.py</code> gains one line, <code>status_chart(df, "status.png")</code>.
+        Running <code>python ticket_desk.py</code> prints the same log lines and tables as Thursday and leaves
+        <code>status.png</code> in the folder: a 600 by 400 pixel bar chart titled "Tickets per status", with bars of 3, 2
+        and 1 for closed, assigned and open, and the value axis starting at 0. <code>savefig</code> also takes a
+        <code>dpi</code> argument when a sharper PNG is wanted.<sup class="cite"><a href="#src-11">11</a></sup> The check
+        that matters is to open the image next to the printed status table and confirm the bars show the same three
+        numbers.</p>
+        <h3>Two interfaces: explicit and pyplot</h3>
+        <p>Matplotlib documents two ways to write the same chart. The explicit, object-oriented interface creates the
+        figure and axes and calls methods on them, as <code>status_chart</code> does. The implicit pyplot interface calls
+        functions such as <code>plt.bar</code>, which act on whichever axes pyplot currently treats as "current". The quick
+        start guide recommends the explicit form for anything beyond a quick
+        sketch.<sup class="cite"><a href="#src-1">1</a></sup></p>
+<pre><code>import matplotlib.pyplot as plt
+
+plt.figure()
+plt.bar(["closed", "assigned", "open"], [3, 2, 1])
+plt.title("Tickets per status")
+plt.show()</code></pre>
+        <p>This is the older style you find in tutorials and notebooks, and it draws the same three bars in a window. It
+        reads well for one chart. In a program that draws two, every <code>plt.</code> call lands on the current axes, so a
+        function that forgets to start its own figure draws on top of the previous chart. With <code>fig</code> and
+        <code>ax</code> in hand, each line names the plot it changes, which a reviewer can check without running the
+        code.</p>
+        <h3><code>plt.show()</code> and the window that waits</h3>
+        <p><code>plt.show()</code> opens a window and blocks until that window is
+        closed.<sup class="cite"><a href="#src-5">5</a></sup> While exploring at your own machine, that is how you look at a
+        chart. In a script, the line after it does not run until someone closes the window, and in a test, a scheduled job
+        or a remote shell nobody will, so the run hangs. <code>savefig</code> works anywhere, with or without a
+        display.<sup class="cite"><a href="#src-5">5</a></sup> That is why <code>status_chart</code> saves and closes, and
+        has no <code>show</code> at all.</p>
+        <div class="ix-spot" data-snippet="def status_chart(df, path):&#10;    counts = status_table(df)&#10;    plt.bar(counts.index, counts.values)&#10;    plt.title(&quot;Tickets per status&quot;)&#10;    plt.show()&#10;    plt.savefig(path)" data-q="This version works when you run it by hand. Why would it hang under pytest or a scheduled job, and what would you change?" data-a="plt.show() blocks until a window is closed, and an unattended run has nobody to close it. Create the figure with fig, ax = plt.subplots(), draw and label on ax, then fig.savefig(path) and plt.close(fig), with no show."></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A Figure is the whole canvas, the thing that gets saved to a file. An Axes is one plot area on it, with its
+          own axes, title and marks. plt.subplots gives me both; I draw and label with methods on the axes and save with
+          savefig on the figure.</p>
+          <p>The pyplot style calls plt functions that act on whatever axes is current. The object-oriented style names
+          the figure and axes. I use the explicit one in real code, because when a program draws two charts I always know
+          which plot each line changes.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">Matplotlib</div>
+        <h2>A second chart, saving it and testing it</h2>
+        <p>One chart answers one question. The desk's second question is about time: did each closed ticket finish inside
+        the SLA for its own priority? That needs a second chart, and a second chart needs a figure of its own.</p>
+        <h3>Each chart gets its own figure</h3>
+        <p>Every call to <code>plt.subplots()</code> creates a new, separate figure, so two chart functions should each
+        create their own.<sup class="cite"><a href="#src-8">8</a></sup> <code>hours_chart</code> starts with its own
+        <code>fig, ax = plt.subplots(figsize=(6, 4))</code> and never borrows <code>status_chart</code>'s. Skip that call
+        and draw with <code>plt.bar</code> on the "current" axes instead, and the second chart's marks can land on the first
+        chart's figure, leaving one image with both charts piled on top of each other.</p>
+        <p>Ending each function with <code>plt.close(fig)</code> matters for the same reason. pyplot keeps every open figure
+        in memory, and opening many without closing them raises a
+        warning.<sup class="cite"><a href="#src-12">12</a></sup> A desk that redrew its charts every hour for a month
+        would otherwise hold hundreds of figures it no longer needs.</p>
+        <h3>Marking each ticket's own SLA</h3>
+        <p><code>chart.py</code> gains one import at the top, next to the pyplot import, and this function below
+        <code>status_chart</code>:</p>
+<pre><code>from desk import SLA_HOURS
+
+
+def hours_chart(df, path):
+    """Save each closed ticket's hours against its own SLA to path."""
+    closed = df[df["hours"].notna()]
+    labels = "TD-" + closed["ticket_id"].astype(str)
+    fig, ax = plt.subplots(figsize=(6, 4))
+    ax.bar(labels, closed["hours"], label="hours to resolve")
+    ax.scatter(labels, closed["priority"].map(SLA_HOURS), marker="_", s=600,
+               color="black", label="SLA for its priority")
+    ax.set_title("Resolution hours against each ticket's SLA")
+    ax.set_xlabel("Ticket")
+    ax.set_ylabel("Hours")
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(path)
+    plt.close(fig)</code></pre>
+        <p><code>df["hours"].notna()</code> gives a boolean mask that is <code>True</code> wherever <code>hours</code> has a
+        value, and indexing the DataFrame with it keeps only those rows.<sup class="cite"><a href="#src-13">13</a></sup>
+        Open and assigned tickets have no closing time, so their hours are missing and they drop out, leaving the three
+        closed tickets. The next line turns ids 1, 2 and 3 into the labels <code>TD-1</code>, <code>TD-2</code> and
+        <code>TD-3</code>, and the prefix is needed. When every x label is a string that parses as a number, such as
+        <code>"1"</code>, Matplotlib still draws them as categories but logs an INFO message suggesting you convert them to
+        numbers.<sup class="cite"><a href="#src-14">14</a></sup><sup class="cite"><a href="#src-15">15</a></sup> The desk
+        configures logging at INFO, so that message would print on every run; a label such as <code>"TD-1"</code> does not
+        trigger it.<sup class="cite"><a href="#src-15">15</a></sup></p>
+        <p>The comparison itself is one call. <code>Series.map(dict)</code> replaces each value with the dict's entry for
+        it, and gives NaN for a value that is not a key.<sup class="cite"><a href="#src-16">16</a></sup></p>
+<pre><code>import pandas as pd
+
+SLA_HOURS = {"high": 4, "normal": 24, "low": 72}
+priority = pd.Series(["high", "normal", "normal", "urgent"])
+print(priority.map(SLA_HOURS))</code></pre>
+        <p>This prints <code>4.0</code>, <code>24.0</code>, <code>24.0</code> and <code>NaN</code>, with
+        <code>dtype: float64</code>: "urgent" is not a key, so it maps to a missing value, and the column becomes floats to
+        hold it. In <code>hours_chart</code> every closed ticket's priority is a key, so each bar gets its own ticket's
+        limit, the same comparison Wednesday's <code>breached()</code> makes with an array.
+        <code>ax.scatter</code> draws a marker at each point, and a <code>"_"</code> marker with a large <code>s</code>
+        renders as a short horizontal mark across the column, a reference line per
+        bar.<sup class="cite"><a href="#src-3">3</a></sup> Both drawing calls pass <code>label=</code>, and
+        <code>ax.legend()</code> builds the legend from those labels.<sup class="cite"><a href="#src-17">17</a></sup></p>
+        <p>The saved <code>hours.png</code> shows TD-1 at 1.5 hours under a mark at 4, TD-2 at 54.75 against 24, and TD-3
+        at 23 against 24. Only TD-2 rises past its mark, and <code>summary()</code> reports <code>'breached': 1</code> for
+        the same tickets. When a chart and a number computed by separate code agree, both are probably right.</p>
+        <h3>Saving, closing and ignoring the image</h3>
+        <p>Save last. <code>savefig</code> writes the figure as it stands at that line, so a call placed above
+        <code>set_title</code> produces an image with no title.<sup class="cite"><a href="#src-11">11</a></sup> Then close.
+        Then decide what Git should do with the file. <code>status.png</code> and <code>hours.png</code> are rebuilt on
+        every run, which makes them build outputs, and generated files belong in <code>.gitignore</code> rather than in
+        version control.<sup class="cite"><a href="#src-18">18</a></sup> A committed image shows as modified after every
+        run and fills reviews with binary diffs nobody can read.</p>
+<pre><code>git status
+git add chart.py requirements.txt ticket_desk.py .gitignore
+git commit -m "Chart tickets per status with Matplotlib"</code></pre>
+        <p>Before the pattern <code>*.png</code> goes into <code>.gitignore</code>, <code>git status</code> lists both
+        <code>chart.py</code> and <code>status.png</code> as untracked. After it, only <code>chart.py</code> is left, and
+        the commit stages exactly the four files that changed.</p>
+        <h3>Testing code that writes a file</h3>
+        <p>Checking a chart's pixels with an <code>assert</code> is fragile, but a chart function has a contract that can be
+        tested: given a path, it writes a file there, and the file is not empty. pytest's built-in <code>tmp_path</code>
+        fixture gives each test a fresh temporary directory as a <code>pathlib.Path</code>, so the test never writes into
+        the project.<sup class="cite"><a href="#src-19">19</a></sup> A fixture is requested by naming it as a test
+        parameter, which is also how Wednesday's <code>sample_desk</code> arrives.<sup class="cite"><a href="#src-20">20</a></sup></p>
+<pre><code>def test_charts_write_png(tmp_path, sample_desk):
+    """Both charts write a PNG file that is not empty."""
+    save_desk(sample_desk, tmp_path / "tickets.json")
+    df = load_frame(tmp_path / "tickets.json")
+    status_chart(df, tmp_path / "status.png")
+    hours_chart(df, tmp_path / "hours.png")
+    for name in ["status.png", "hours.png"]:
+        assert (tmp_path / name).exists()
+        assert (tmp_path / name).stat().st_size &gt; 0</code></pre>
+        <p><code>Path.stat().st_size</code> is the file's size in bytes, so <code>&gt; 0</code> proves the file is not
+        empty.<sup class="cite"><a href="#src-21">21</a></sup> With this test added, <code>pytest</code> collects 19 items
+        and all 19 pass. The test has a limit: it proves both functions run from a saved JSON file all the way to
+        an image, and says nothing about whether the bars are the right height. The comparison with the printed numbers
+        stays a job for a person, done once when the chart is written.</p>
+        <p>The branch then ends like every branch this week: committed, merged into <code>main</code> and pushed.
+        <code>git log --oneline -- .</code> lists only the commits that touched files under the current
+        directory,<sup class="cite"><a href="#src-22">22</a></sup> so run inside <code>ticket-desk/</code> it shows the
+        desk's nineteen commits for the week, from "Restart the ticket desk with the math module" at the bottom to the two
+        chart commits on top.</p>
+        <button class="code-cta" type="button" data-modal="code-w02d5-log"><span class="cc-ico">&lt;/&gt;</span> See the merge, the push and the week's nineteen commits <span class="cc-meta">· 02_hours_chart.md</span></button>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I call plt.close on the figure after saving because pyplot keeps every open figure in memory. In a
+          long-running program that redraws charts on a schedule, unclosed figures pile up, Matplotlib starts warning, and
+          memory keeps growing.</p>
+          <p>I test a chart function by handing it pytest's tmp_path, calling it, and asserting the file exists and its
+          size is above zero. That doesn't prove the bars are right, so I compare the image with the numbers once by eye,
+          but it catches a function that crashes or writes nothing.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="3">
+        <div class="tag">Python review</div>
+        <h2>Review, part 1: modules, errors and files</h2>
+        <p>The rest of the page reads weeks 1 and 2 back from the eight files of <code>ticket-desk/</code>:
+        <code>desk.py</code>, <code>storage.py</code>, <code>stats.py</code>, <code>report.py</code>, <code>frame.py</code>,
+        <code>chart.py</code>, <code>ticket_desk.py</code> and <code>test_desk.py</code>. Each part covers a few of the
+        fortnight's ideas in plain words, with the answer an interviewer is listening for.</p>
+        <h3>Week 1 in one file: types, branches, loops, functions and classes</h3>
+        <p>Week 1 built the desk as a single script. A ticket started as a dict holding strings, numbers and datetimes. An
+        <code>if</code>/<code>elif</code>/<code>else</code> chain set its status, with the strictest test first because only
+        the first true branch runs. <code>for</code> loops walked the queue, functions gave each rule a name, and a
+        <code>Ticket</code> class put the data and its rules together, with a <code>Desk</code> class that holds the tickets
+        and can be looped over. None of that went away in week 2. <code>desk.py</code> still holds <code>Ticket</code> and
+        <code>Desk</code>, and every newer file calls into them.</p>
+        <p>What changed is where the code lives. One long file works while one person holds all of it in their head. A
+        team needs to find the rule that sets a deadline without scrolling past the code that prints the board, and needs
+        to change storage without touching the rules. Week 2 answered that with modules.</p>
+        <h3>Modules and the <code>__main__</code> guard</h3>
+        <p>A module is a <code>.py</code> file. <code>import</code> loads a module the first time it is imported and binds
+        its name in the importing file, and a later import of the same module reuses the one already
+        loaded.<sup class="cite"><a href="#src-23">23</a></sup> <code>from desk import SLA_HOURS</code> binds a single name
+        from it instead. A file that only defines functions can be imported by another without running its
+        <code>if __name__ == "__main__":</code> block, because that block runs only when the file is the program being
+        run.<sup class="cite"><a href="#src-23">23</a></sup></p>
+<pre><code>"""board.py: format one ticket as a line of the board."""
+
+
+def board_line(ticket_id, title, status):
+    """Return one tab-separated line for the board."""
+    return f"{ticket_id}\t{title}\t{status}"
+
+
+if __name__ == "__main__":
+    print(board_line(1, "Login page returns 500", "closed"))</code></pre>
+        <p><code>python board.py</code> prints <code>1</code>, <code>Login page returns 500</code> and
+        <code>closed</code> separated by tabs. Another file that runs <code>import board</code> prints nothing and can call
+        <code>board.board_line(...)</code>. That is why a test file can import every module of the desk without starting
+        the desk.</p>
+        <p>The desk splits by reason to change. <code>desk.py</code> holds the model and its rules,
+        <code>storage.py</code> saving and loading, <code>stats.py</code> the numbers, <code>report.py</code> the text
+        output, <code>frame.py</code> the DataFrame and <code>chart.py</code> the images. <code>ticket_desk.py</code> is a
+        thin script that wires them together, and <code>test_desk.py</code> holds the tests. The split has a cost: more
+        files, more imports to keep straight, and a direction to respect, since <code>chart.py</code> imports from
+        <code>frame.py</code> and never the other way round. You recognise a well-split Python project by short imports at
+        the top of each file and a guard at the foot of the one file meant to be run.</p>
+        <h3>Exceptions: catching the one you expect</h3>
+        <p>A function that cannot do its job raises an exception with a message, and the caller decides what to do.
+        <code>try</code>/<code>except</code> catches a named exception class, and catching a specific class is preferred
+        over a bare <code>except</code>, which would also swallow mistakes nobody
+        expected.<sup class="cite"><a href="#src-24">24</a></sup></p>
+<pre><code>def sla_for(priority):
+    hours = {"high": 4, "normal": 24, "low": 72}
+    if priority not in hours:
+        raise ValueError(f"unknown priority: {priority!r}")
+    return hours[priority]
+
+
+try:
+    sla_for("urgent")
+except ValueError as err:
+    print("rejected ticket:", err)</code></pre>
+        <p>This prints <code>rejected ticket: unknown priority: 'urgent'</code>. The desk does the same at intake: an
+        unknown priority raises <code>ValueError</code>, the script catches it, logs the rejection and carries on with the
+        next ticket.<sup class="cite"><a href="#src-24">24</a></sup> Had the <code>except</code> been bare, a typo such as a
+        misspelled variable name inside <code>sla_for</code> would have been caught too and reported as a rejected ticket,
+        hiding the real bug.</p>
+        <h3>Files that may not be there</h3>
+        <p>Tuesday's storage code reads the tickets file, and that file does not exist the first time the desk runs.
+        The <code>with</code> block from Tuesday opens the file, and <code>json.load</code> parses it into dicts and
+        lists.<sup class="cite"><a href="#src-25">25</a></sup></p>
+<pre><code>import json
+
+
+def load_tickets(path):
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return []
+
+
+print(load_tickets("missing.json"))</code></pre>
+        <p>With no <code>missing.json</code> in the folder this prints <code>[]</code>. Returning an empty list is a
+        decision, and it has a limit: it is right on a first run and wrong when a typo in the path quietly gives an empty
+        desk. A malformed file is a different error, <code>json.JSONDecodeError</code>, and the desk deliberately does not
+        hide that one.<sup class="cite"><a href="#src-25">25</a></sup> It raises a clear error instead, because starting
+        empty would throw a day's tickets away at the next save. In other people's code, <code>try:</code> around a
+        <code>json.load</code> with an <code>except FileNotFoundError:</code> under it is this pattern.</p>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I split a program by reason to change: the model and its rules in one module, storage in another, reporting
+          in another, and a thin script on top with an if-name-equals-main guard, so every module can be imported and
+          tested without running the program.</p>
+          <p>For a missing file I catch FileNotFoundError specifically and decide whether starting empty is right. A
+          malformed file raises a JSON decode error, and I surface that with a clear message rather than hide it. Each
+          case gets its own test with a temporary folder.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">Python review</div>
+        <h2>Review, part 2: JSON, tests and arrays</h2>
+        <p>Tuesday made the desk's data outlive the program. Wednesday made its rules provable and its resolution hours a
+        single array. These three are where an interviewer's follow-up questions about "your project" tend to land.</p>
+        <h3>JSON as the desk's file format</h3>
+        <p><code>json.dump</code>
+        writes Python dicts and lists to a file as JSON, and <code>json.load</code> parses a file object back into dicts and
+        lists.<sup class="cite"><a href="#src-25">25</a></sup></p>
+<pre><code>import json
+
+tickets = [{"ticket_id": 1, "priority": "high", "status": "closed"}]
+with open("tickets.json", "w", encoding="utf-8") as f:
+    json.dump(tickets, f)
+with open("tickets.json", encoding="utf-8") as f:
+    loaded = json.load(f)
+print(loaded == tickets, type(loaded[0]).__name__)</code></pre>
+        <p>This prints <code>True dict</code>, and <code>tickets.json</code> holds one line that any text editor, and any
+        other language, can read. That readability is why the desk saves to JSON. The limit is that the whole file is read
+        and rewritten on every save, and a damaged file fails to parse at all, raising
+        <code>json.JSONDecodeError</code>.<sup class="cite"><a href="#src-25">25</a></sup> Week 3 moves the tickets into a
+        database. In other code, a <code>with open(...)</code> followed by <code>json.load(f)</code> is this format being
+        read, and a <code>"w"</code> mode with <code>json.dump</code> is it being written.</p>
+        <h3>pytest: discovery, <code>assert</code> and fixtures</h3>
+        <p>pytest discovers files named <code>test_*.py</code> and functions named <code>test_*</code> inside them, and a
+        bare <code>assert</code> is enough, because when one fails pytest reports the values that made it
+        fail.<sup class="cite"><a href="#src-26">26</a></sup> A fixture is a function that prepares something a test needs,
+        such as sample tickets, and a test asks for it by naming it as a
+        parameter.<sup class="cite"><a href="#src-20">20</a></sup> <code>tmp_path</code> is the built-in fixture behind
+        every file test this week.<sup class="cite"><a href="#src-19">19</a></sup></p>
+<pre><code>def over_sla(hours, limit):
+    return hours &gt;= limit
+
+
+def test_over_sla_is_strict():
+    assert over_sla(24.5, 24)
+    assert not over_sla(24, 24)</code></pre>
+        <p>Saved as <code>test_rules.py</code> and run with <code>pytest</code>, this fails on purpose. pytest marks the
+        second <code>assert</code> with <code>&gt;</code> and explains it as <code>assert not True</code>, where
+        <code>True = over_sla(24, 24)</code>, then ends with <code>1 failed</code>. The rule says a ticket is over its SLA
+        only when it took longer than the limit, so <code>&gt;=</code> is the bug, and changing it to <code>&gt;</code>
+        turns the run green. That is the habit the desk's tests follow: one rule, a case on each side of the line, and an
+        <code>assert</code> that reads like the rule.</p>
+        <p>The desk's nineteen tests cover the deadline rules, unknown priorities, saving and loading with
+        <code>tmp_path</code>, corrupt JSON, the hours array and its breach mask, the per-status counts and both image
+        files. In a test file you recognise the style by <code>def test_x(tmp_path, sample_desk):</code> signatures and
+        a fixture function marked <code>@pytest.fixture</code> near the top.<sup class="cite"><a href="#src-20">20</a></sup></p>
+        <h3>A loop, a comprehension and an array</h3>
+        <p>Every list this week was built the long way: an empty list, a <code>for</code> loop and
+        <code>append</code>. A list comprehension is the shorter form of exactly that loop, written inside square
+        brackets.<sup class="cite"><a href="#src-27">27</a></sup> Teams write the comprehension for a simple
+        transformation and keep the loop when the body needs more than one expression. A NumPy array goes a step further:
+        it holds items of one dtype and supports whole-array arithmetic with no Python loop at
+        all.<sup class="cite"><a href="#src-28">28</a></sup></p>
+<pre><code>import numpy as np
+
+hours = [1.5, 54.75, 23.0]
+over = []
+for h in hours:
+    over.append(h - 24)
+print(over)
+print([h - 24 for h in hours])
+arr = np.array(hours)
+print(arr - 24)
+print(arr.dtype)</code></pre>
+        <p>The first two lines both print <code>[-22.5, 30.75, -1.0]</code>: the loop and the comprehension build the same
+        list. The third prints <code>[-22.5   30.75  -1.  ]</code>, NumPy's own layout with no commas, and the last prints
+        <code>float64</code>.<sup class="cite"><a href="#src-28">28</a></sup> The trade-off is what each container may
+        hold. A list holds anything, mixed types and <code>None</code> included. An array holds one dtype, which is what
+        lets <code>arr - 24</code> work on every element at once, and it cannot carry a ticket's title next to its
+        hours.</p>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>pytest finds files and functions whose names start with test, and a plain assert is enough because pytest
+          shows me the values when it fails. Anything a test needs, like sample tickets or a temporary folder, comes in as
+          a fixture that I name as a parameter.</p>
+          <p>A list holds references to anything, and I build it with a loop and append or with a comprehension. A NumPy
+          array holds one numeric type, so I can subtract twenty-four from every element in one expression, without a
+          loop.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
+        <div class="tag">Python review</div>
+        <h2>Review, part 3: DataFrames, and how a team reviews a codebase</h2>
+        <p>Thursday's DataFrame is the last data structure of the fortnight. After it comes the question every team asks
+        of a finished branch, and the mini-project is marked the same way.</p>
+        <h3>The DataFrame as the week's last data structure</h3>
+        <p>A pandas DataFrame is a two-dimensional labelled table: named columns, each holding values of one type, and a
+        labelled index down the side. <code>groupby</code> followed by an aggregation such as <code>mean</code> summarises
+        the table by the values of one column.<sup class="cite"><a href="#src-29">29</a></sup></p>
+<pre><code>import pandas as pd
+
+df = pd.DataFrame({
+    "priority": ["high", "normal", "normal", "normal", "high", "low"],
+    "hours": [1.5, 54.75, 23.0, None, None, None],
+})
+print(df.groupby("priority")["hours"].mean())</code></pre>
+        <p>It prints <code>high 1.500</code>, <code>low NaN</code> and <code>normal 38.875</code>, then
+        <code>Name: hours, dtype: float64</code>. The 38.875 is the average of the two closed normal tickets, 54.75 and 23.0.
+        The one low ticket is still open, so there is no number to average and its row shows NaN. A
+        <code>Counter</code> could already count statuses, and Thursday's test proved <code>value_counts()</code> gives the
+        same numbers. The DataFrame earns its dependency when a question involves several columns at once: hours, grouped
+        by priority, closed tickets only.<sup class="cite"><a href="#src-29">29</a></sup></p>
+        <h3>List, array or DataFrame column</h3>
+        <p>The three containers answer one interview question between them. A list suits items that are mixed or that
+        arrive one at a time, such as the desk's queue of <code>Ticket</code> objects. A NumPy array suits one column of
+        numbers that you do arithmetic over as a whole, such as Wednesday's resolution hours and its breach
+        mask.<sup class="cite"><a href="#src-28">28</a></sup> A DataFrame column suits numbers that belong to rows with
+        other columns you want to group or filter by, such as hours next to priority and status. Like an array, a column
+        holds values of one type, and it carries a label and the table's index with
+        it.<sup class="cite"><a href="#src-29">29</a></sup> Each step up gives more operations and costs another package
+        and a conversion, which is why the desk still keeps its tickets in a list and builds the array and the frame only
+        where a question needs them.</p>
+        <h3>Reading a codebase the way a reviewer does</h3>
+        <p>Before reading any line closely, a reviewer looking at a finished branch asks four things. Are the tests green?
+        Is the linter clean, or does every remaining message have a reason? Are the commits small, with summaries that say
+        what changed? Is the branch merged, with <code>main</code> pushed? The desk's last commands answer each one:</p>
+<pre><code>pytest
+pylint desk.py storage.py stats.py report.py frame.py chart.py ticket_desk.py test_desk.py
+git log --oneline -- .</code></pre>
+        <p>A linter reads source code without running it and reports style problems and likely mistakes. Its messages are
+        advice, and the team decides what to do with each. Two messages from the desk show both outcomes. R1705,
+        <code>no-else-return</code>, fires on an <code>else</code> that follows a block ending in <code>return</code>; the
+        fix is to delete the <code>else:</code> and de-indent its body, which leaves behaviour
+        unchanged.<sup class="cite"><a href="#src-30">30</a></sup> In a <code>try</code>/<code>except</code>/<code>else</code>
+        whose <code>except</code> returns, pylint raises it on the <code>try</code>'s <code>else:</code>, which is where it
+        found <code>storage.py</code>'s <code>delete_file</code>.<sup class="cite"><a href="#src-30">30</a></sup></p>
+        <div class="ix-spot" data-snippet="def delete_file(path):&#10;    try:&#10;        Path(path).unlink()&#10;    except FileNotFoundError:&#10;        return False&#10;    else:&#10;        return True" data-q="pylint reports R1705 no-else-return on this function. Where, and what is the fix?" data-a="On the else: line. The except block ends in return, so the else is unnecessary. Delete else: and move return True out to the indent of try:. The function behaves exactly as before: True when the file was deleted, False when there was none."></div>
+        <p>W0621, <code>redefined-outer-name</code>, fires nine times in <code>test_desk.py</code>, once for every test whose
+        parameter shares the name of the <code>sample_desk</code> fixture. pytest requests fixtures by exactly that
+        pattern, so the desk names the message and leaves it.<sup class="cite"><a href="#src-20">20</a></sup> Fixing every
+        message blindly would break the tests, and ignoring every message would leave real problems in. The history is the
+        last check. <code>git log --oneline -- .</code> lists the commits that touched the current
+        directory,<sup class="cite"><a href="#src-22">22</a></sup> and nineteen imperative summaries such as "Split the
+        desk model into its own module" and "Raise a clear error for corrupt JSON" read as the fortnight's changelog.</p>
+        <button class="code-cta" type="button" data-modal="code-w02d5-lint"><span class="cc-ico">&lt;/&gt;</span> See pylint's two runs over all eight files <span class="cc-meta">· 02_hours_chart.md</span></button>
+        <h3>The mini-project and its rubric</h3>
+        <p>The mini-project is a small ticket-report codebase in your own learner repo, marked against a rubric instead of
+        a set of starter tests. The rubric asks for the same things a reviewer asked of the desk: code split into modules,
+        a JSON file loaded with its errors handled, pytest tests that pass, a NumPy array, a pandas DataFrame, a chart
+        saved to a file, and a pylint run that is clean or whose remaining messages are named.</p>
+        <p>Order matters more than polish, so start with the spine: a module that loads the JSON file, and one test that
+        proves it loads and one that proves a missing file is handled. Add the array, then the frame, then the picture.
+        A project that starts with the picture often ends with no tests, a failing pylint run or an unmerged branch, and
+        the rubric marks all three.</p>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A list holds anything and grows an item at a time. A NumPy array is one numeric type, with arithmetic over
+          the whole thing at once. A DataFrame column is like an array with a label and an index, and it sits in a table,
+          so I can group and filter it by the other columns.</p>
+          <p>When I review a branch I check the tests are green, the linter is clean or each remaining message has a
+          reason, the commits are small with clear summaries, and it's merged and pushed. A linter message is advice: I fix
+          most, and I leave redefined-outer-name in pytest files because that's how fixtures are passed in.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="6">
+        <div class="tag">Check yourself</div>
+        <h2>Check yourself</h2>
+        <p>Nine retrieval questions, at least one per section. Answer each out loud before you open it.</p>
+        <details class="check"><summary>A manager wants to see how many tickets were opened each day this month. Which chart do you draw, and why not join the status bars with a line?</summary><p>A line chart, because the days are ordered and a line implies something continuous between points. Statuses have no order, so a line joining "closed" to "assigned" would claim a continuity that does not exist; they get bars.</p></details>
+        <details class="check"><summary>A colleague's bar chart compares 96 and 98 percent on an axis that starts at 95. What is wrong with it?</summary><p>Bars encode value by length, so the truncated axis makes the second bar three times as tall as the first for a two-point gap. A bar chart's value axis starts at zero.</p></details>
+        <details class="check"><summary>What is the difference between a Figure and an Axes, and which one do you call <code>savefig</code> on?</summary><p>The Figure is the whole canvas that ends up in the image file; an Axes is one plot area on it, with its own axes, title and marks. You draw and label on the Axes and call <code>savefig</code> on the Figure.</p></details>
+        <details class="check"><summary>A chart script works when you run it by hand but hangs under pytest. What is the likely cause?</summary><p>A <code>plt.show()</code> call. It opens a window and blocks until the window is closed, and an unattended run has nobody to close it. Save with <code>fig.savefig</code> and close the figure instead.</p></details>
+        <details class="check"><summary>Why does <code>hours_chart</code> call <code>plt.subplots()</code> itself and end with <code>plt.close(fig)</code>?</summary><p>Each call to <code>plt.subplots()</code> makes a separate figure, so the second chart cannot land on the first chart's image. Closing releases the figure, because pyplot keeps every open figure in memory and warns when too many pile up.</p></details>
+        <details class="check"><summary>What does <code>test_charts_write_png</code> prove, and what does it not prove?</summary><p>It proves both chart functions run from a saved JSON file through the DataFrame and write a non-empty PNG into <code>tmp_path</code>. It does not prove the bars have the right heights; that is checked once by eye against the printed numbers.</p></details>
+        <details class="check"><summary>Why does a module that only defines functions put its demo code under <code>if __name__ == "__main__":</code>, and why catch <code>FileNotFoundError</code> instead of using a bare <code>except</code>?</summary><p>The guarded block runs only when the file is the program, so other modules and tests can import it without side effects. A specific exception class catches only the case you planned for; a bare <code>except</code> would also hide real bugs.</p></details>
+        <details class="check"><summary><code>hours = [1.5, 54.75, 23.0]</code>. Give two ways to subtract 24 from every value without NumPy, and say what <code>np.array(hours) - 24</code> adds.</summary><p>A <code>for</code> loop that appends to a new list, or the comprehension <code>[h - 24 for h in hours]</code>. The array holds one dtype, <code>float64</code> here, and does the subtraction on every element in one expression with no Python loop.</p></details>
+        <details class="check"><summary>pylint reports R1705 in <code>storage.py</code> and W0621 nine times in <code>test_desk.py</code>. Which do you fix, which do you leave, and why?</summary><p>Fix R1705 by deleting the unnecessary <code>else:</code> after a <code>return</code> and de-indenting its body, which leaves behaviour unchanged. Leave W0621 and name it, because pytest passes fixtures by giving a test parameter the fixture's name, which is exactly what the message complains about.</p></details>
+      </section>
+
+      <section class="reading-sources" aria-label="Sources and deeper dive">
+        <h2>Sources &amp; deeper dive</h2>
+        <ul>
+          <li id="src-1"><a href="https://matplotlib.org/stable/users/explain/quick_start.html" target="_blank" rel="noopener">Matplotlib: Quick start guide</a> — Figure and Axes, the two interfaces, and the parts every chart is built from.</li>
+          <li id="src-2"><a href="https://matplotlib.org/stable/plot_types/index.html" target="_blank" rel="noopener">Matplotlib: Plot types</a> — a gallery of chart types, bars and histograms among them.</li>
+          <li id="src-3"><a href="https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.scatter.html" target="_blank" rel="noopener">Matplotlib: Axes.scatter</a> — markers at points, and the marker and size arguments.</li>
+          <li id="src-4"><a href="https://pandas.pydata.org/docs/reference/api/pandas.Series.value_counts.html" target="_blank" rel="noopener">pandas: Series.value_counts</a> — counts per distinct value, returned as a Series.</li>
+          <li id="src-5"><a href="https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.show.html" target="_blank" rel="noopener">Matplotlib: pyplot.show</a> — why a shown figure blocks a script.</li>
+          <li id="src-6"><a href="https://pandas.pydata.org/docs/user_guide/visualization.html" target="_blank" rel="noopener">pandas: Chart visualization</a> — the <code>.plot</code> shortcut on Series and DataFrames.</li>
+          <li id="src-7"><a href="https://pip.pypa.io/en/stable/reference/requirements-file-format/" target="_blank" rel="noopener">pip: Requirements File Format</a> — pinning an exact version in <code>requirements.txt</code>.</li>
+          <li id="src-8"><a href="https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.subplots.html" target="_blank" rel="noopener">Matplotlib: pyplot.subplots</a> — a new figure per call, and <code>figsize</code> in inches.</li>
+          <li id="src-9"><a href="https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.bar.html" target="_blank" rel="noopener">Matplotlib: Axes.bar</a> — one bar per category, and the labelling methods used with it.</li>
+          <li id="src-10"><a href="https://matplotlib.org/stable/api/_as_gen/matplotlib.figure.Figure.tight_layout.html" target="_blank" rel="noopener">Matplotlib: Figure.tight_layout</a> — padding so labels are not clipped.</li>
+          <li id="src-11"><a href="https://matplotlib.org/stable/api/_as_gen/matplotlib.figure.Figure.savefig.html" target="_blank" rel="noopener">Matplotlib: Figure.savefig</a> — writing a figure to a file, the format from the extension, and <code>dpi</code>.</li>
+          <li id="src-12"><a href="https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.close.html" target="_blank" rel="noopener">Matplotlib: pyplot.close</a> — releasing a figure pyplot is holding.</li>
+          <li id="src-13"><a href="https://pandas.pydata.org/docs/reference/api/pandas.Series.notna.html" target="_blank" rel="noopener">pandas: Series.notna</a> — a boolean mask of the values that are present.</li>
+          <li id="src-14"><a href="https://matplotlib.org/stable/gallery/lines_bars_and_markers/categorical_variables.html" target="_blank" rel="noopener">Matplotlib: Plotting categorical variables</a> — strings on an axis drawn as categories.</li>
+          <li id="src-15"><a href="https://github.com/matplotlib/matplotlib/blob/main/lib/matplotlib/category.py" target="_blank" rel="noopener">Matplotlib source: category.py</a> — where the INFO message about number-like string labels comes from.</li>
+          <li id="src-16"><a href="https://pandas.pydata.org/docs/reference/api/pandas.Series.map.html" target="_blank" rel="noopener">pandas: Series.map</a> — looking each value up in a dict, with NaN for a missing key.</li>
+          <li id="src-17"><a href="https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.legend.html" target="_blank" rel="noopener">Matplotlib: Axes.legend</a> — a legend built from the <code>label=</code> arguments.</li>
+          <li id="src-18"><a href="https://git-scm.com/docs/gitignore" target="_blank" rel="noopener">gitignore reference</a> — keeping generated files out of version control.</li>
+          <li id="src-19"><a href="https://docs.pytest.org/en/stable/how-to/tmp_path.html" target="_blank" rel="noopener">pytest: tmp_path</a> — a fresh temporary folder for each test.</li>
+          <li id="src-20"><a href="https://docs.pytest.org/en/stable/explanation/fixtures.html" target="_blank" rel="noopener">pytest: About fixtures</a> — requesting a fixture by naming it as a parameter.</li>
+          <li id="src-21"><a href="https://docs.python.org/3/library/pathlib.html#pathlib.Path.stat" target="_blank" rel="noopener">pathlib: Path.stat</a> — a file's size in bytes as <code>st_size</code>.</li>
+          <li id="src-22"><a href="https://git-scm.com/docs/git-log" target="_blank" rel="noopener">git-log reference</a> — <code>--oneline</code> and limiting the log to a path.</li>
+          <li id="src-23"><a href="https://docs.python.org/3/tutorial/modules.html" target="_blank" rel="noopener">Python tutorial: Modules</a> — import, and running a module as a script.</li>
+          <li id="src-24"><a href="https://docs.python.org/3/tutorial/errors.html" target="_blank" rel="noopener">Python tutorial: Errors and Exceptions</a> — raising, catching a named class, and clean-up with <code>with</code>.</li>
+          <li id="src-25"><a href="https://docs.python.org/3/library/json.html" target="_blank" rel="noopener">Python json module</a> — <code>dump</code>, <code>load</code> and <code>JSONDecodeError</code>.</li>
+          <li id="src-26"><a href="https://docs.pytest.org/en/stable/getting-started.html" target="_blank" rel="noopener">pytest: Get started</a> — how tests are discovered and how a failing <code>assert</code> is reported.</li>
+          <li id="src-27"><a href="https://docs.python.org/3/tutorial/datastructures.html#list-comprehensions" target="_blank" rel="noopener">Python tutorial: List Comprehensions</a> — the short form of a loop that builds a list.</li>
+          <li id="src-28"><a href="https://numpy.org/doc/stable/user/quickstart.html" target="_blank" rel="noopener">NumPy: Quickstart</a> — arrays, dtypes and whole-array arithmetic.</li>
+          <li id="src-29"><a href="https://pandas.pydata.org/docs/user_guide/dsintro.html" target="_blank" rel="noopener">pandas: Intro to data structures</a> — the DataFrame as a labelled table.</li>
+          <li id="src-30"><a href="https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/no-else-return.html" target="_blank" rel="noopener">pylint: no-else-return / R1705</a> — the message, where it fires and the fix.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+        <div class="activity-card demo-card" data-demo="pending">
+          <div class="ac-k">⌨ Code-along files</div>
+          <div class="ac-t">Published after class</div>
+          <div class="ac-meta">typed live in the session · the answer key lands in demos/ afterwards</div>
+        </div>
+
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · after you have read the page</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<!-- weekly feedback: the external form is the primary channel; the survey below is the offline fallback -->
+<div class="survey">
+  <p>Week 2 ends here. The feedback form takes about two minutes:
+  <a href="https://forms.cloud.microsoft/pages/responsepage.aspx?id=iuJja_motUeqQJfiMSFRZMU3bOO2vNdAiSFsti9sgKVUQkhYWEhIRzJSWjNOVVM5REFOU0tWT0JXQyQlQCN0PWcu&amp;route=shorturl" target="_blank" rel="noopener">open the week 2 feedback form</a>.
+  The table below saves the same numbers in this browser in case the form will not open.</p>
+  <section id="survey" aria-label="Weekly survey"></section>
+</div>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 2 Day 5</footer>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 5 — goals &amp; exercise</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Choose a chart from the question it must answer, and spot a truncated axis, a missing label or a missing legend in someone else's chart</li>
+      <li>Draw a bar chart from a DataFrame with Matplotlib's Figure and Axes, save it to a file and close the figure, with no <code>plt.show()</code> in the script</li>
+      <li>Add a second chart on its own figure, test that both charts write files into <code>tmp_path</code>, and keep generated images out of Git</li>
+      <li>Explain the fortnight's Python, from modules and exceptions through JSON, pytest, NumPy and pandas, the way an interviewer asks for it</li>
+      <li>Review a branch the way a team does: tests green, linter messages fixed or named, small commits, merged and pushed</li>
+    </ul>
+    <div class="ma-k">Today's exercise</div>
+    <ul class="deliv-list check">
+      <li><a href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-02/day-5-review-matplotlib-and-mini-project" target="_blank" rel="noopener">exercises/week-02/day-5-review-matplotlib-and-mini-project</a> — a rubric-marked mini-project in your learner repo: a small ticket-report codebase split into modules that loads a JSON file with its errors handled, has pytest tests, uses a NumPy array, a pandas DataFrame and a saved Matplotlib chart, passes pylint, and is merged into <code>main</code> and pushed.</li>
+    </ul>
+    <div class="ma-k">Demos today</div>
+    <ul class="deliv-list">
+      <li>One live walk through the day's topics, built in front of the class and shaped by its questions; the files it produces are published in the demos folder afterwards</li>
+    </ul>
+    <p class="goals-foot">This is the last page of week 2. Finish the check, then fill in the weekly feedback form.</p>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Back to program →", href: "../../index.html" };
+window.DIAGRAM = {
+  title: "Day 5 · from a DataFrame to a chart, and the week read back",
+  width: 500, height: 560,
+  nodes: [
+    { id:"question", step:0, kind:"example", x:14, y:14, w:472, h:56, label:"THE QUESTION FIRST\n  categories → bar · time → line\n  spread → histogram · two numbers → scatter", detail:"One message per chart, stated in the title, with labelled axes and units. Bars encode value by length, so a bar chart's value axis starts at zero." },
+    { id:"frame", step:1, x:24, y:96, w:200, h:56, label:"DataFrame\n  status_table(df)\n  value_counts()", detail:"Thursday's frame.py counts tickets per status. The Series index holds the statuses and its values the counts: the labels and heights of a bar chart." },
+    { id:"status", step:1, x:276, y:96, w:200, h:56, label:"status_chart(df, path)\n  fig, ax = plt.subplots()\n  ax.bar · fig.savefig", detail:"The Figure is the canvas, the Axes one plot area. Draw and label on ax, save with fig.savefig (format from the extension), then plt.close(fig). No plt.show(): it blocks." },
+    { id:"hours", step:2, x:276, y:178, w:200, h:56, label:"hours_chart(df, path)\n  own figure · notna()\n  map(SLA_HOURS) marks", detail:"Each chart makes its own figure. Closed tickets only; each bar gets its own priority's SLA as a black mark, so a bar above its mark is a breach." },
+    { id:"test", step:2, x:24, y:178, w:200, h:56, label:"test_charts_write_png\n  tmp_path\n  st_size > 0", detail:"The test proves both functions write a non-empty file into a temporary folder. It does not prove the bars are right. *.png goes in .gitignore." },
+    { id:"modules", step:3, x:24, y:262, w:200, h:56, label:"Modules\n  import · from x import y\n  __main__ guard", detail:"Eight files split by reason to change, with one thin script on top. The guarded block runs only when the file is the program." },
+    { id:"errors", step:3, x:276, y:262, w:200, h:56, label:"Exceptions & files\n  except FileNotFoundError\n  with open(...)", detail:"Catch the specific class you planned for. A missing file may mean start empty; a malformed file raises JSONDecodeError and is surfaced." },
+    { id:"json", step:4, x:24, y:346, w:140, h:56, label:"JSON\n  json.dump\n  json.load", detail:"Readable text of objects, arrays, strings, numbers. The whole file is read and rewritten on every save." },
+    { id:"tests", step:4, x:180, y:346, w:140, h:56, label:"pytest\n  test_* · assert\n  fixtures", detail:"pytest finds test_*.py files and test_* functions; a bare assert reports its values. Fixtures arrive by parameter name." },
+    { id:"array", step:4, x:336, y:346, w:140, h:56, label:"NumPy array\n  one dtype\n  arr - 24", detail:"A loop with append, a comprehension, or an array: the array does the arithmetic on every element at once, for one numeric type." },
+    { id:"review", step:5, kind:"example", x:14, y:430, w:472, h:56, label:"DATAFRAME & REVIEW\n  groupby · tests green · pylint fixed or named\n  small commits · merged and pushed", detail:"A DataFrame column is an array with a label and an index. R1705 is fixed; W0621 is named and left because pytest passes fixtures by name." },
+    { id:"check", step:6, x:24, y:506, w:452, h:40, label:"CHECK YOURSELF\n  answer out loud, then open" }
+  ],
+  edges: [
+    { id:"e1", step:1, from:"frame", to:"status", label:"index, values" },
+    { id:"e2", step:2, from:"status", to:"hours", label:"own figure" },
+    { id:"e3", step:2, from:"test", to:"hours", label:"checks both" },
+    { id:"e4", step:3, from:"modules", to:"errors", label:"storage.py" },
+    { id:"e5", step:4, from:"json", to:"tests", label:"tmp_path" },
+    { id:"e6", step:4, from:"tests", to:"array", label:"breach mask" },
+    { id:"e7", step:5, from:"array", to:"review", dir:"-" },
+    { id:"e8", step:5, from:"json", to:"review", dir:"-" },
+    { id:"e9", step:6, from:"review", to:"check", dir:"-" }
+  ],
+  captions: [
+    "Name the question before the chart: categories, time, spread or two numbers. One message, labelled axes, bars from zero. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "status_chart turns the DataFrame's status counts into a bar chart on its own Figure and Axes, saved to status.png.",
+    "hours_chart gets a figure of its own and marks each ticket's SLA; a tmp_path test proves both charts write files.",
+    "Review, part 1: the desk splits into modules, catches the exceptions it expects and handles a missing file.",
+    "Review, part 2: JSON on disk, pytest proving the rules, and an array where a loop used to be.",
+    "Review, part 3: the DataFrame groups by column, and a reviewer checks tests, linter, commits and the merge.",
+    "You can now choose and draw a chart, explain how it is saved and tested, and walk an interviewer through the fortnight's Python."
+  ]
+};
+window.QUIZ = {
+  id: "w02-d5",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "Which chart answers \"how are resolution hours spread across closed tickets?\"",
+      options: ["A bar chart of tickets per status", "A line chart joining each ticket's hours in id order", "A histogram of resolution hours", "A scatter plot of hours against ticket id"], answer: 2,
+      explain: "The spread of one numeric variable is a distribution, and a histogram shows a distribution. Bars compare categories; a line implies an order that ticket ids do not have." },
+    { type: "scq", stem: "status_chart ends with fig.savefig(path) and then plt.close(fig). What does plt.close(fig) do?",
+      options: ["Deletes the PNG it just saved", "Releases the figure so pyplot stops holding it in memory", "Closes the terminal the script runs in", "Saves a second copy of the chart"], answer: 1,
+      explain: "pyplot keeps every open figure in memory and warns when too many are open. Closing releases it; the saved file is untouched." },
+    { type: "tf", stem: "Leaving plt.show() in a chart script is harmless under pytest, because the test never looks at the window.", answer: false,
+      explain: "plt.show() blocks until its window is closed. An unattended run, such as a test or a scheduled job, has nobody to close it, so the run hangs. Save with savefig instead." },
+    { type: "mcq", stem: "Which statements about the desk's code are true? Select all that apply.",
+      options: ["closed[\"priority\"].map(SLA_HOURS) gives each closed ticket its own SLA limit", "A DataFrame column can mix ticket titles and hours, like a list", "pytest discovers test_* functions in files named test_*.py", "*.png belongs in .gitignore because the images are rebuilt on every run"], answer: [0, 2, 3],
+      explain: "map looks each priority up in the dict. A DataFrame column holds values of one type, like an array. pytest's discovery rule is test_*.py files and test_* functions. Generated images are build outputs and stay out of Git." },
+    { type: "match", stem: "Match each term to what it means.",
+      pairs: [
+        { l: "Figure", r: "the whole canvas, the thing saved to an image file" },
+        { l: "Axes", r: "one plot area with its own axes, title and marks" },
+        { l: "tmp_path", r: "a fresh temporary folder for each test, as a pathlib.Path" },
+        { l: "W0621", r: "a pylint message left in the tests because pytest passes fixtures by parameter name" }
+      ],
+      explain: "Draw on the Axes and save the Figure. tmp_path keeps test files out of the project. W0621 is named and left; most other linter messages get fixed." },
+    { type: "open", stem: "In two or three sentences: a teammate's two chart functions both use plt.bar and end with plt.show(), and the second image comes out with both charts drawn in it. What went wrong, and how would you rewrite each function?",
+      hint: "Think about which axes a plt. call draws on, and what an unattended run does at plt.show().",
+      model: "Both functions draw on pyplot's current axes, so the second chart lands on the first chart's figure, and plt.show() would also block an unattended run. Each function should start with fig, ax = plt.subplots(), draw and label with ax methods, then call fig.savefig(path) and plt.close(fig), with no show." }
+  ]
+};
+window.SURVEY = {
+  week: "02",
+  title: "Week 2 — How did it go?",
+  topics: [
+    "Day 1 — Modules, packaging & pip",
+    "Day 2 — Exceptions, files & JSON",
+    "Day 3 — Testing with pytest & NumPy",
+    "Day 4 — Collections & pandas",
+    "Day 5 — Review, Matplotlib & mini-project"
+  ]
+};
+</script>
+
+<!-- code popup: an excerpt of the hours-chart answer key, the week's merge -->
+<div id="code-w02d5-log" class="modal-overlay" hidden>
+  <div class="modal-card code-modal">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Answer key excerpt: 02_hours_chart.md</h2>
+    <p class="cv-cap">The last step of the transcript: the chart commit, a fast-forward merge into main, the push, and the desk's commits for the fortnight.</p>
+    <div class="cv" data-file="02_hours_chart.md" data-lang="bash"><pre class="cv-raw">$ git commit -m &quot;Chart resolution hours against each SLA&quot;
+[feature/desk-charts 3e06037] Chart resolution hours against each SLA
+ 4 files changed, 33 insertions(+), 3 deletions(-)
+$ git switch main
+$ git merge feature/desk-charts
+Updating a02ac66..3e06037
+Fast-forward
+...
+$ git push origin main
+   a02ac66..3e06037  main -&gt; main
+$ git log --oneline -- .
+3e06037 Chart resolution hours against each SLA
+5a9b1f9 Chart tickets per status with Matplotlib
+a02ac66 Group and count tickets with pandas
+d8549f5 Load the tickets into a pandas DataFrame
+...
+1c470eb Save and load the desk as JSON
+...
+bbeb87e Split the desk model into its own module
+...
+173ed54 Restart the ticket desk with the math module</pre></div>
+    <p class="cv-foot">main had no new commits since the branch split off, so the merge is a fast-forward. -- . limits the log to commits that touched ticket-desk/.</p>
+  </div>
+</div>
+
+<!-- code popup: an excerpt of the hours-chart answer key, the pylint runs -->
+<div id="code-w02d5-lint" class="modal-overlay" hidden>
+  <div class="modal-card code-modal">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Answer key excerpt: 02_hours_chart.md</h2>
+    <p class="cv-cap">pylint over all eight files, before and after deleting the else: in storage.py's delete_file.</p>
+    <div class="cv" data-file="02_hours_chart.md" data-lang="bash"><pre class="cv-raw">$ pylint desk.py storage.py stats.py report.py frame.py chart.py ticket_desk.py test_desk.py
+************* Module storage
+storage.py:34:4: R1705: Unnecessary &quot;else&quot; after &quot;return&quot;, remove the &quot;else&quot; and de-indent the code inside it (no-else-return)
+************* Module test_desk
+test_desk.py:65:53: W0621: Redefining name &#x27;sample_desk&#x27; from outer scope (line 50) (redefined-outer-name)
+...
+Your code has been rated at 9.71/10 (previous run: 9.74/10, -0.03)
+$ pylint desk.py storage.py stats.py report.py frame.py chart.py ticket_desk.py test_desk.py
+************* Module test_desk
+test_desk.py:65:53: W0621: Redefining name &#x27;sample_desk&#x27; from outer scope (line 50) (redefined-outer-name)
+...
+Your code has been rated at 9.74/10 (previous run: 9.71/10, +0.03)</pre></div>
+    <p class="cv-foot">R1705 is gone after the fix. W0621 stays, nine times, because each test names the sample_desk fixture as a parameter.</p>
+  </div>
+</div>
+
+<script src="../../assets/js/diagram.js?v=20261015"></script>
+<script src="../../assets/js/scrolly.js?v=20261015"></script>
+<script src="../../assets/js/modals.js?v=20261015"></script>
+<script src="../../assets/js/quiz.js?v=20261015"></script>
+<script src="../../assets/js/widgets.js?v=20261015"></script>
+<script src="../../assets/js/glossary.js?v=20261015"></script>
+<script src="../../assets/js/codeviewer.js?v=20261015"></script>
+<script src="../../assets/js/survey.js?v=20261015"></script>
+</body>
+</html>

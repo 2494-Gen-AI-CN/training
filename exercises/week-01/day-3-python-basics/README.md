@@ -1,7 +1,7 @@
 # Exercise — Ticket summary helpers
 
 Week 1 · Day 3 · `w01d3` · ~60–90 min
-Notes: [docs/weeks/week-01/day-3-python-basics.html](../../../docs/weeks/week-01/day-3-python-basics.html) · Demos: [demos/week-01/day-3-python-basics](../../../demos/week-01/day-3-python-basics)
+Notes: [weeks/week-01/day-3-python-basics.html](https://2494-gen-ai-cn.github.io/training/weeks/week-01/day-3-python-basics.html) · Demos: [demos/week-01/day-3-python-basics](https://github.com/2494-Gen-AI-CN/demos/tree/main/week-01/day-3-python-basics)
 
 ## Task
 

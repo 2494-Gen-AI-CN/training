@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w02d3">
+<title>W2·D3 — Testing with pytest &amp; NumPy | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261015">
+<script src="../../assets/js/theme.js?v=20261015"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises" target="_blank" rel="noopener">Exercises</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>Testing with pytest &amp; NumPy: proving the desk's rules and measuring its hours</h1>
+        <div class="meta">
+          <span><b>Week 2</b> · Day 3</span>
+          <span>Wed Oct 21, 2026</span>
+          <span>Python advanced</span>
+          <span><b>~39 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span class="verified">Sources checked 2026-10-15 · python 3.15 · pytest 9.1.1 · numpy 2.5.4</span>
+        </div>
+        <p class="summary">This page assumes Tuesday's JSON-backed ticket desk: the rules in <code>desk.py</code>, a
+        <code>storage.py</code> that saves and loads tickets as JSON, and errors raised as <code>ValueError</code>. It
+        teaches automated testing from the ground up (why teams test, what a unit test is, and pytest with its fixtures,
+        temporary folders and parametrised cases), then NumPy arrays set against the lists of week 1, and the first part of
+        interview practice. Each section shows a runnable example with its output, names the trade-off and ends with the
+        words to say when an interviewer asks. Afterwards you can sketch the test pyramid, read a pytest failure, say what
+        <code>@</code> above a <code>def</code> does, and explain why <code>assert arr == [3.0, 30.0]</code> raises an
+        error instead of failing.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="0">
+        <div class="tag">Testing</div>
+        <h2>Why teams test, and what kinds of test there are</h2>
+        <p>So far the desk has been checked by running it and reading the output. This step says why teams stop
+        there.</p>
+        <h3>What an automated test buys a team</h3>
+        <p>An automated test is a small program that runs part of your code with known inputs and compares the result
+        with what you expected. Checking by eye works once: run <code>python ticket_desk.py</code>, read the lines, decide
+        they look right. It stops working when the code has a dozen rules and four people are changing them, because
+        nobody re-reads every line of output after every edit. A test suite re-checks every rule in a second or two and
+        names the one that broke.</p>
+        <p>Python ships a testing framework in its standard library, <code>unittest</code>, so any Python install can run
+        unit tests with no extra package.<sup class="cite"><a href="#src-1">1</a></sup> Its documentation names four
+        building blocks that every framework has in some form: a test fixture (the set-up and clean-up a test needs), a
+        test case (one individual check), a test suite (a collection of test cases) and a test runner (the program that
+        executes the tests and reports the outcome).<sup class="cite"><a href="#src-1">1</a></sup></p>
+<pre><code>import unittest
+
+SLA_HOURS = {"high": 4, "normal": 24, "low": 72}
+
+
+class SlaTest(unittest.TestCase):
+    def test_high_is_four_hours(self):
+        self.assertEqual(SLA_HOURS["high"], 4)
+
+
+if __name__ == "__main__":
+    unittest.main()</code></pre>
+        <p>Saved as <code>test_sla_unittest.py</code> and run with <code>python test_sla_unittest.py</code>, this prints a
+        single dot, then <code>Ran 1 test in 0.000s</code>, then <code>OK</code>. A class that inherits from
+        <code>unittest.TestCase</code>, with methods named <code>test_...</code> calling <code>self.assertEqual</code>, is
+        how you recognise <code>unittest</code> code in someone else's repository. pytest, the runner the rest of this
+        page uses, runs <code>TestCase</code> tests like this one unchanged, so a team can switch runners without
+        rewriting its suite.<sup class="cite"><a href="#src-2">2</a></sup> Once pytest is installed (the pytest section below covers it),
+        <code>python -m pytest test_sla_unittest.py</code> reports <code>1 passed</code> for the same file.</p>
+        <h3>Unit, integration and end-to-end tests</h3>
+        <p>Tests are sorted by how much of the system they exercise. A unit test checks one small piece, usually one
+        function or one method, on its own: does a high-priority ticket fall due four hours after it opened? An
+        integration test checks that several pieces work together: does a desk saved to a JSON file come back with the same
+        tickets when it is loaded? An end-to-end test drives the whole program the way a user would and checks what
+        it printed and wrote to disk.</p>
+        <p>A unit test runs in
+        milliseconds and, when it fails, names one function. An end-to-end test proves the parts really fit together, but
+        it is slow, needs more set-up, and its failure only tells you that something somewhere is wrong.</p>
+        <h3>The test pyramid</h3>
+        <p>The usual whiteboard picture is the test pyramid: many small, fast unit tests at the base, fewer integration
+        tests in the middle, and a few slow end-to-end tests at the top. Martin Fowler's short article is the usual
+        reading on it.<sup class="cite"><a href="#src-3">3</a></sup> The shape comes down to cost. If most of the
+        checking happens at the top, every run is slow and every failure needs detective work, so people run the suite
+        less often and bugs live longer. The opposite mistake costs something too: a suite of only unit tests can pass
+        while two pieces that each work correctly disagree about the format of the file between them.</p>
+        <p>You can tell that a project tests by its layout. pytest documents two layouts: test files in a separate
+        <code>tests/</code> folder outside the application code, or test modules placed beside the code they
+        test.<sup class="cite"><a href="#src-4">4</a></sup> The ticket desk uses the second, with
+        <code>test_desk.py</code> next to <code>desk.py</code>.</p>
+        <h3>Green before merge, and what coverage does not prove</h3>
+        <p>"Green before merge" is the team rule that the whole suite passes before a branch is merged into
+        <code>main</code>. A reviewer reads the diff for design and clarity; the test run is the check a reviewer cannot
+        do by eye, that the change did not break a rule three files away. A red run on a pull request holds the merge until someone fixes the code or, when
+        the rule really did change, the test.</p>
+        <p>Teams also measure coverage. A coverage tool reports which lines of the code ran while the tests ran, and which
+        did not.<sup class="cite"><a href="#src-5">5</a></sup> Its limit is worth saying in an interview: a line that ran
+        was executed, and nothing says an <code>assert</code> checked its result. A test that calls a function and asserts
+        nothing raises the coverage figure without proving anything, so a high figure tells you where the tests have been
+        and says nothing about whether the behaviour is right.<sup class="cite"><a href="#src-5">5</a></sup></p>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Teams write automated tests so that every rule gets re-checked in seconds after every change, which nobody
+          reading output by hand can keep up with. And when something breaks, the failing test names the rule, so the fix
+          starts in the right place.</p>
+          <p>A unit test checks one function on its own, an integration test checks a few pieces together, like saving
+          to a file and loading it back, and an end-to-end test drives the whole program like a user. You want lots of
+          fast unit tests and a few slow end-to-end ones; flip that and the suite is slow and every failure takes
+          detective work.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">Testing</div>
+        <h2>Unit testing: one rule, one test</h2>
+        <p>The unit is the smallest piece worth testing on its own. In the ticket desk that means one rule: a deadline, a
+        redaction, the list of overdue tickets.</p>
+        <h3>What a unit test checks</h3>
+        <p>The <code>unittest</code> documentation defines a test case as a check for a specific response to a particular
+        set of inputs,<sup class="cite"><a href="#src-1">1</a></sup> and that is the shape of a good unit test: one rule,
+        one situation, one expected answer. A good unit test runs quickly because it touches no network and no shared
+        files, gives the same answer on every run, and when it fails you know which rule broke without opening its
+        code.</p>
+        <p>The name does a lot of that last job. pytest's short summary of failures names each failing test as
+        <code>file::function</code>,<sup class="cite"><a href="#src-6">6</a></sup> so a name such as
+        <code>test_unknown_priority_raises</code> reads as a bug report on its own, while <code>test_1</code> tells the
+        next person nothing. Long, plain test names are normal; nobody calls a test function from anywhere else, so the
+        name only has to be read, never typed.</p>
+        <h3>Arrange, act, assert</h3>
+        <p>Most unit tests have three parts in order. Arrange builds the inputs, act calls the one thing under test, and
+        assert checks the result. A test is an ordinary function, so you can write one and call it yourself before any
+        test runner is involved:</p>
+<pre><code>from datetime import datetime, timedelta
+
+SLA_HOURS = {"high": 4, "normal": 24, "low": 72}
+
+
+def deadline(opened_at, priority):
+    if priority not in SLA_HOURS:
+        raise ValueError(f"unknown priority: {priority!r}")
+    return opened_at + timedelta(hours=SLA_HOURS[priority])
+
+
+def test_high_deadline_is_four_hours():
+    opened = datetime(2026, 10, 19, 8, 30)
+    due = deadline(opened, "high")
+    assert due == datetime(2026, 10, 19, 12, 30)
+
+
+test_high_deadline_is_four_hours()
+print("passed")</code></pre>
+        <p>Saved as <code>check_rules.py</code> and run with <code>python check_rules.py</code>, this prints
+        <code>passed</code>. The three lines of the test are the three parts: build an opening time, call
+        <code>deadline</code>, assert the answer. Had the deadline been wrong, the <code>assert</code> line would have
+        stopped the script with an <code>AssertionError</code> and the print would never have run. The last two lines are
+        there only so the file runs by itself; a test runner calls test functions for you. In pytest a plain
+        <code>assert</code> is all a test needs, because pytest rewrites the assertion so that a failure shows the values on
+        both sides.<sup class="cite"><a href="#src-7">7</a></sup></p>
+        <p>The three-part shape is how you recognise a unit test in someone else's code: a
+        <code>def test_overdue_skips_closed_tickets():</code> line, a few set-up lines, one call, one
+        <code>assert</code>. A test with five calls and assertions scattered between them is usually several tests
+        sharing one name, and its first failure hides whatever the later lines would have told you.</p>
+        <h3>Testing the path that must fail</h3>
+        <p>A rule that rejects bad input needs a test as much as a rule that accepts good input. The desk's
+        <code>Ticket</code> raises <code>ValueError</code> for a priority outside <code>SLA_HOURS</code>, and so does the
+        <code>deadline</code> function above. Testing that error path is part of unit testing: <code>pytest.raises</code>
+        turns "this input must fail" into an assertion that itself fails when no exception is
+        raised.<sup class="cite"><a href="#src-7">7</a></sup></p>
+<pre><code>def test_unknown_priority_raises():
+    with pytest.raises(ValueError, match="urgent"):
+        deadline(datetime(2026, 10, 19, 8, 30), "urgent")</code></pre>
+        <p>The <code>with</code> block runs the call. The test passes only when the block raises that exception type and
+        the message matches the regular expression given as <code>match</code>, which pytest checks with
+        <code>re.search</code>.<sup class="cite"><a href="#src-7">7</a></sup> Delete the
+        <code>raise</code> line from <code>deadline</code> and the lookup <code>SLA_HOURS["urgent"]</code> still fails, with
+        a <code>KeyError</code>, so the test goes red because the type is wrong. Leave out <code>match</code> and any
+        <code>ValueError</code> raised anywhere inside the block would count as a pass.</p>
+        <h3>Test isolation: no shared files, no real clock</h3>
+        <p>The interviewer's next question is often how a unit test avoids depending on the real disk or the current
+        time. Two things make a result change between runs when nothing in the code changed: a file that other tests also
+        write to, and the clock. The desk handles the clock with a fixed <code>NOW</code> in <code>desk.py</code>;
+        <code>overdue()</code> uses it as its default "now", so a ticket opened two days before <code>NOW</code> is overdue
+        on every run, whatever today's date is.</p>
+        <p>For files, pytest provides <code>tmp_path</code>, a built-in fixture that gives each test function its own
+        unique temporary directory.<sup class="cite"><a href="#src-8">8</a></sup> The cost is that such a test never
+        touches the real <code>tickets.json</code>: it proves that saving and loading work on a file, and something else
+        still has to confirm the program uses the right file. Shared data in memory gets the same treatment. A fixture in
+        the default function scope is created again for each test that asks for it and torn down at the end of that
+        test, so one test cannot leave changes behind for the next.<sup class="cite"><a href="#src-9">9</a></sup> The fixtures section
+        shows both in code.</p>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A good unit test checks one rule in one situation, runs fast, gives the same answer every time, and has a
+          name that says what broke. I write it as arrange, act, assert: build the inputs, call the one function, then
+          check the result with an assert.</p>
+          <p>To test a function that reads a file without touching the real disk, I give the test its own temporary
+          folder, which pytest's tmp_path fixture does, write the file I need there and point the function at it. For
+          time, I pass in a fixed "now" so the answer doesn't depend on today's date.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">Testing</div>
+        <h2>pytest: finding, running and reading tests</h2>
+        <h3>Installing pytest and pinning it</h3>
+        <p>pytest is a third-party package, installed with pip into the project's virtual environment from Monday and
+        pinned in <code>requirements.txt</code> beside pylint. A requirements file lists pinned packages such as
+        <code>pytest==9.1.1</code>, and <code>pip install -r requirements.txt</code> installs everything in it, which is how
+        a fresh clone rebuilds the same environment.<sup class="cite"><a href="#src-10">10</a></sup>
+        <code>pytest --version</code> prints the installed version and is the first check after an
+        install.<sup class="cite"><a href="#src-11">11</a></sup></p>
+<pre><code>python -m pip install pytest==9.1.1
+python -m pip install -r requirements.txt
+pytest --version</code></pre>
+        <p>Between the first and second commands, <code>requirements.txt</code> gains the line <code>pytest==9.1.1</code>
+        under <code>pylint==4.0.0</code>. The second command then reports both pins as already satisfied, and the last
+        prints <code>pytest 9.1.1</code>. Pinning is a trade-off: everyone on the team gets the same behaviour, and someone
+        has to raise the version on purpose when an upgrade is wanted. The usual first stumble is typing
+        <code>pytest</code> in a terminal where <code>.venv</code> is not active, so the shell says it cannot find the
+        command. <code>python -m pytest</code> runs pytest with the same Python that <code>python -m pip install</code>
+        used, which makes it the safe form when in doubt.</p>
+        <h3>How pytest finds tests</h3>
+        <p>pytest discovers test files named <code>test_*.py</code> or <code>*_test.py</code> and, inside them, functions
+        whose names start with <code>test</code>.<sup class="cite"><a href="#src-4">4</a></sup> Run with no arguments, it
+        collects those files from the current folder and every folder below it, and prints a <code>.</code> for each test
+        that passes and an <code>F</code> for each that fails.<sup class="cite"><a href="#src-11">11</a></sup> Nothing is
+        registered by hand; the names are the registration. So the classic silent mistake is a name: a file called
+        <code>desk_tests.py</code> or a function called <code>check_redact</code> is skipped, and pytest reports that no
+        tests ran. Run it from inside <code>ticket-desk/</code>, too, because started from a folder above, it also collects
+        any other test files it finds further down.</p>
+        <p>Move <code>deadline</code> and <code>SLA_HOURS</code> from <code>check_rules.py</code> into
+        <code>rules.py</code> and put the tests in <code>test_rules.py</code> beside it:</p>
+<pre><code>from datetime import datetime
+
+import pytest
+
+from rules import deadline
+
+
+def test_high_deadline_is_four_hours():
+    opened = datetime(2026, 10, 19, 8, 30)
+    due = deadline(opened, "high")
+    assert due == datetime(2026, 10, 19, 12, 30)
+
+
+def test_unknown_priority_raises():
+    with pytest.raises(ValueError, match="urgent"):
+        deadline(datetime(2026, 10, 19, 8, 30), "urgent")</code></pre>
+        <p><code>pytest</code> in that folder prints a header, then <code>collected 2 items</code>, then
+        <code>test_rules.py ..</code> with one dot per passing test, and ends with <code>2 passed</code> and the time
+        taken.</p>
+        <h3>Reading a failure</h3>
+        <p>Change <code>"high": 4</code> to <code>"high": 8</code> in <code>rules.py</code> and run <code>pytest</code>
+        again. The progress line now reads <code>test_rules.py F.</code> and the report underneath includes these
+        lines:</p>
+<pre><code>&gt;       assert due == datetime(2026, 10, 19, 12, 30)
+E       assert datetime.datetime(2026, 10, 19, 16, 30) == datetime.datetime(2026, 10, 19, 12, 30)
+
+test_rules.py:11: AssertionError
+=========================== short test summary info ===========================
+FAILED test_rules.py::test_high_deadline_is_four_hours - assert datetime.date...
+========================= 1 failed, 1 passed in 0.05s =========================</code></pre>
+        <p>Read it from the <code>&gt;</code> marker down. A failure report shows the failing line, the values compared and
+        the difference between them:<sup class="cite"><a href="#src-7">7</a></sup> the code produced 16:30 and the test
+        expected 12:30. The summary names the test as <code>file::function</code>.<sup class="cite"><a href="#src-6">6</a></sup>
+        From those lines alone you know which rule broke and by how much. The deadline is four hours late, so the high
+        SLA must be 8 where it should be 4. Restore the value and the run is green again. Breaking a rule on purpose like
+        this is worth doing once for every new test, because a test that has never failed may not be checking
+        anything.</p>
+        <h3>Choosing which tests run</h3>
+        <p><code>pytest -v</code> raises the verbosity so that each test is printed on its own line with its
+        result.<sup class="cite"><a href="#src-6">6</a></sup> <code>pytest -k</code> followed by an expression selects the
+        tests whose names match it.<sup class="cite"><a href="#src-12">12</a></sup></p>
+<pre><code>pytest -v
+pytest -k unknown</code></pre>
+        <p>The first prints <code>test_rules.py::test_high_deadline_is_four_hours PASSED</code> and the same line for the
+        second test. The second runs only <code>test_unknown_priority_raises</code> and ends with
+        <code>1 passed, 1 deselected</code>. Good names help here too: in a suite with
+        <code>test_redact_hides_email</code> and <code>test_ticket_refs_reads_numbers</code>, one word from a name narrows
+        the run to one rule while you work on it.</p>
+        <h3>unittest or pytest</h3>
+        <p>Asked why teams choose pytest, the usual answer has two parts. Tests are plain functions with a plain
+        <code>assert</code>, and the failure report still shows the values on both
+        sides.<sup class="cite"><a href="#src-7">7</a></sup> And set-up is shared through fixtures that a test requests
+        by naming them, which the next step covers.<sup class="cite"><a href="#src-9">9</a></sup> pytest also runs
+        existing <code>unittest.TestCase</code> suites, so adopting it does not mean
+        rewriting.<sup class="cite"><a href="#src-2">2</a></sup> What <code>unittest</code> has in its favour is that it
+        needs no install at all,<sup class="cite"><a href="#src-1">1</a></sup> which matters for a small script on a
+        machine you do not control.</p>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>pytest collects files named test-something dot py, or something-underscore-test, and runs every function in
+          them whose name starts with test. There's no registration step, the naming convention is the registration, so a
+          misnamed file just silently doesn't run.</p>
+          <p>Teams usually pick pytest over unittest because tests are plain functions with a plain assert, and the
+          failure report still shows both values. Shared set-up goes into fixtures, and pytest runs old unittest suites
+          as they are, so switching is cheap.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="3">
+        <div class="tag">Testing</div>
+        <h2>Fixtures, temporary folders and parametrised tests</h2>
+        <p>Three pytest features remove most of the repetition from a test file, and two of them start with a line that
+        begins with <code>@</code>. That line comes first.</p>
+        <h3>What <code>@</code> above a <code>def</code> does</h3>
+        <p>A decorator is a function applied with <code>@</code> syntax to the function defined on the next line:
+        <code>@name</code> above <code>def f</code> is shorthand for <code>f = name(f)</code>.<sup class="cite"><a href="#src-13">13</a></sup>
+        The <code>def</code> runs as usual, then Python hands the new function to <code>name</code> and stores whatever
+        comes back under <code>f</code>. pytest uses exactly this to register a fixture or to mark a
+        test.<sup class="cite"><a href="#src-13">13</a></sup></p>
+<pre><code>registry = []
+
+
+def register(func):
+    registry.append(func.__name__)
+    return func
+
+
+@register
+def sample_tickets():
+    return ["Login page returns 500"]
+
+
+print(registry)
+print(sample_tickets())</code></pre>
+        <p>Run as a script, this prints <code>['sample_tickets']</code> and then <code>['Login page returns 500']</code>.
+        Defining the function was enough to put its name in <code>registry</code>, because <code>@register</code> ran
+        <code>register(sample_tickets)</code> at that moment. <code>register</code> returned the function unchanged, so
+        calling it afterwards still works. <code>@pytest.fixture</code> and <code>@pytest.mark.parametrize(...)</code> do
+        the same kind of bookkeeping: they note the function down so pytest can use it later. In other people's code you
+        spot a decorator by the <code>@</code> at the start of a line directly above a <code>def</code>, sometimes stacked
+        two or three deep.</p>
+        <h3>Fixtures: set-up a test asks for by name</h3>
+        <p>A fixture is a function marked with <code>@pytest.fixture</code>; a test receives its return value by naming
+        the fixture as a parameter.<sup class="cite"><a href="#src-9">9</a></sup> Without one, every test that needs the same
+        four-ticket desk repeats a dozen set-up lines. With one, the lines live in a single place and pytest calls the
+        fixture for each test that asks for it, building it fresh for every test in the default function
+        scope.<sup class="cite"><a href="#src-9">9</a></sup> A test can request several fixtures at once, such as the
+        built-in <code>tmp_path</code> together with a project fixture, and fixtures can request other
+        fixtures.<sup class="cite"><a href="#src-9">9</a></sup></p>
+        <p>The ticket desk's fixture is <code>sample_desk</code>: a <code>Desk</code> of four tickets, with a high ticket
+        closed after 3 hours, a normal ticket closed after 30 hours, one assigned and one still open. Every later test of
+        the desk's numbers starts from it. The usual slip is calling a fixture like a function, writing
+        <code>sample_desk()</code> inside a test, which pytest rejects with an error saying the fixture was called
+        directly. Name it as a parameter and let pytest do the calling.</p>
+        <button class="code-cta" type="button" data-modal="code-w02d3-fixture"><span class="cc-ico">&lt;/&gt;</span> See the sample_desk fixture and the tests that use it <span class="cc-meta">· 02_storage_tests.md</span></button>
+        <h3><code>tmp_path</code>: a folder of your own for each test</h3>
+        <p><code>tmp_path</code> is a built-in fixture that gives each test function its own unique temporary directory as
+        a <code>pathlib.Path</code>.<sup class="cite"><a href="#src-8">8</a></sup> The test below asks for it and for a
+        small project fixture, writes a JSON file into the folder, reads it back and checks nothing was lost. The second
+        test is the subject of the next section.</p>
+<pre><code>import json
+
+import pytest
+
+SLA_HOURS = {"high": 4, "normal": 24, "low": 72}
+
+
+@pytest.fixture
+def records():
+    return [{"id": 1, "priority": "high"}, {"id": 2, "priority": "low"}]
+
+
+def test_round_trip(tmp_path, records):
+    path = tmp_path / "tickets.json"
+    path.write_text(json.dumps(records), encoding="utf-8")
+    assert json.loads(path.read_text(encoding="utf-8")) == records
+
+
+@pytest.mark.parametrize("priority, hours", [("high", 4), ("normal", 24), ("low", 72)])
+def test_sla_hours(priority, hours):
+    assert SLA_HOURS[priority] == hours</code></pre>
+        <p>Saved as <code>test_store.py</code>, <code>pytest -v</code> prints four lines:
+        <code>test_store.py::test_round_trip PASSED</code>, then <code>test_sla_hours[high-4]</code>,
+        <code>test_sla_hours[normal-24]</code> and <code>test_sla_hours[low-72]</code>, each <code>PASSED</code>, and ends
+        with <code>4 passed</code>. Because the folder is new for each test, a file one test writes cannot collide with the
+        real <code>tickets.json</code> or with another test's file. Testing a missing file is easy: name a path
+        inside <code>tmp_path</code> and never write it. The desk's own storage tests do exactly that, and also write the
+        broken text <code>[{</code> into a file there to check that loading it raises <code>ValueError</code>.</p>
+        <h3>One test, several inputs</h3>
+        <p><code>@pytest.mark.parametrize</code> runs one test function once per argument set, and each case is reported
+        separately under its own ID.<sup class="cite"><a href="#src-14">14</a></sup> The first argument names the
+        parameters in one string, <code>"priority, hours"</code>; the second is a list of tuples, one per case; and the
+        test function takes the same names as its parameters. It is the second decorator on the page and reads the same
+        way: the line above the <code>def</code> hands <code>test_sla_hours</code> to pytest, which this time runs it three
+        times.</p>
+        <p>Packing cases into one definition is shorter, and it would hide which case failed if the report did not say.
+        pytest builds an ID from each parameter set, such as <code>test_sla_hours[high-4]</code>, and reports every case
+        separately.<sup class="cite"><a href="#src-14">14</a></sup> If the low limit were wrong, the summary would name
+        <code>test_sla_hours[low-72]</code> while the other two still passed. You recognise parametrisation by the list of
+        tuples above a test and by square-bracket IDs in a verbose run.</p>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A fixture is a function marked with pytest dot fixture that builds test data. A test gets it by naming it
+          as a parameter, and pytest builds a fresh one for each test, so tests can't leak changes into each other. It
+          beats copying set-up into every test because the set-up lives in one place.</p>
+          <p>To run one test against several inputs I use pytest dot mark dot parametrize with a list of input and
+          expected-value pairs. pytest runs the function once per pair and reports each under its own ID, so I can still
+          see exactly which case failed.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">NumPy</div>
+        <h2>NumPy arrays against Python lists</h2>
+        <p>The page now leaves testing for NumPy, a library for working with numbers in bulk. It is taught against the
+        lists of week 1, because the quickest way to see what an array is, is to do the same thing to a list and to an
+        array and compare the results.</p>
+        <h3>Installing NumPy and importing it</h3>
+        <p>NumPy is a third-party library whose main object is the array, a container of values that all share one type
+        and that supports arithmetic on every element at once. It installs and pins the same way pytest does:
+        <code>python -m pip install numpy==2.5.4</code>, then the line <code>numpy==2.5.4</code> added to
+        <code>requirements.txt</code> so that a fresh clone gets it too. The import is always written the same way.
+        <code>import numpy as np</code> is the convention the NumPy documentation uses
+        throughout,<sup class="cite"><a href="#src-15">15</a></sup> so <code>np.array</code>, <code>np.median</code> and
+        <code>np.float64</code> in any codebase all mean NumPy, and a file that starts with that import is a file that
+        works on arrays.</p>
+        <h3>A list and an array side by side</h3>
+        <p>Type these into the Python REPL one line at a time. The first three use a plain list of resolution hours; the
+        rest build an array from the same list.</p>
+<pre><code>hours = [3.0, 30.0, 6.5]
+hours * 2
+hours + 1
+import numpy as np
+arr = np.array(hours)
+arr * 2
+arr + 1</code></pre>
+        <p><code>hours * 2</code> shows <code>[3.0, 30.0, 6.5, 3.0, 30.0, 6.5]</code>, because on a list <code>* 2</code>
+        repeats the sequence. <code>hours + 1</code> raises
+        <code>TypeError: can only concatenate list (not "int") to list</code>, because <code>+</code> on a list only joins
+        another sequence.<sup class="cite"><a href="#src-16">16</a></sup> The array does arithmetic instead:
+        <code>arr * 2</code> shows <code>array([ 6., 60., 13.])</code> and <code>arr + 1</code> shows
+        <code>array([ 4. , 31. ,  7.5])</code>, because arithmetic between an array and a single number is applied to every
+        element.<sup class="cite"><a href="#src-15">15</a></sup></p>
+        <p>That is vectorisation: one expression over the whole array, with no loop written by you. Doubling every hour in
+        a list takes a <code>for</code> loop that builds a new list, and the same five characters, <code>* 2</code>,
+        does something else. Moving between the two catches people out: code that was written for a list and is handed
+        an array (or the other way round) often runs without an error and gives a different answer, so when a number looks
+        wrong, the first question is which of the two you are holding.</p>
+        <h3><code>dtype</code> and <code>shape</code></h3>
+<pre><code>arr.dtype
+arr.shape
+arr.mean()</code></pre>
+        <p>Continuing the same session, these show <code>dtype('float64')</code>, <code>(3,)</code> and
+        <code>np.float64(13.166666666666666)</code>. Every array has a <code>dtype</code>, the type of every element, and a
+        <code>shape</code> tuple, such as <code>(3,)</code> for three elements in one
+        dimension.<sup class="cite"><a href="#src-17">17</a></sup> Built from three floats, the array is
+        <code>float64</code> with shape <code>(3,)</code>.<sup class="cite"><a href="#src-18">18</a></sup> A list has
+        neither attribute; <code>len(hours)</code> is the closest it gets. <code>mean()</code> is a method of the array, and
+        its result prints as <code>np.float64(...)</code>, a NumPy number, which the next step comes back to. Arrays with
+        rows and columns, reshaping and random numbers wait for week 6; this page stays in one dimension.</p>
+        <h3>One type per array: the trade-off</h3>
+        <p>An array holds one dtype, so <code>np.array</code> picks a type that can represent every value it is given:
+        integers mixed with floats become floats, and anything mixed with a string becomes a
+        string.<sup class="cite"><a href="#src-18">18</a></sup></p>
+<pre><code>np.array([3, 30, 6.5]).dtype
+np.array([3, "30"]).dtype
+counts = np.array([1, 2, 3])
+counts[0] = 2.7
+counts</code></pre>
+        <p>The first line shows <code>dtype('float64')</code> and the second a string dtype. The last still shows an
+        integer array: <code>counts</code> was created with integers, the array keeps its dtype, and so the 2.7 is
+        converted to that type on the way in. That is the answer to the interview question about putting a float into an
+        integer array. The fixed type is what makes
+        whole-array arithmetic fast, and it takes away the list's freedom to mix
+        types.<sup class="cite"><a href="#src-18">18</a></sup> In practice that means checking the <code>dtype</code> of
+        any array you did not build yourself before trusting arithmetic on it; one stray string in the input turns the
+        whole array into strings.</p>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A NumPy array holds values of one fixed type, so arithmetic runs over the whole array in one expression
+          instead of a Python loop. That fixed type is what makes it fast, and the price is that it can't mix types the
+          way a list can.</p>
+          <p>On a list, times two repeats the list and plus one is a TypeError. On an array, times two doubles every
+          element and plus one adds one to each. dtype is the element type and shape is the length in each dimension. If
+          I put 2.7 into an integer array, the array keeps its dtype and the value is converted to that type.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
+        <div class="tag">NumPy</div>
+        <h2>Vectorised comparisons, and testing arrays</h2>
+        <h3>Comparing arrays element by element</h3>
+        <p>The desk needs two numbers for each closed ticket: how long it took, and how long it was allowed. The time
+        taken comes from subtracting <code>opened_at</code> from <code>closed_at</code>, which gives a
+        <code>timedelta</code>, then dividing <code>total_seconds()</code> by 3600. <code>total_seconds()</code> returns the
+        whole duration as a float, unlike <code>.seconds</code>, which is only the seconds
+        component,<sup class="cite"><a href="#src-19">19</a></sup> so a 30-hour ticket comes out as 30.0 hours instead of
+        the 6 hours left over after a whole day. In a fresh REPL, with the two closed tickets of the desk's test data:</p>
+<pre><code>import numpy as np
+hours = np.array([3.0, 30.0])
+limits = np.array([4, 24])
+late = hours &gt; limits
+late
+hours[late]
+late.sum()</code></pre>
+        <p><code>late</code> shows <code>array([False,  True])</code>. Comparing two arrays of the same shape with
+        <code>&gt;</code> is an element-by-element operation, a ufunc in NumPy's terms, and it returns a boolean
+        array.<sup class="cite"><a href="#src-20">20</a></sup> The first ticket took 3 hours against a 4-hour limit, the
+        second 30 against 24. One comparison replaces a loop with an <code>if</code> inside it. The desk's
+        <code>stats.py</code> defines a breach exactly this way: <code>breached(desk)</code> returns
+        <code>resolution_hours(desk) &gt; sla_limits(desk)</code>, two arrays built by one loop each over the closed
+        tickets and compared in a single line.</p>
+        <h3>Boolean masks: filtering and counting without a loop</h3>
+        <p>Indexing an array with a boolean array of the same shape keeps the elements where the boolean is
+        True,<sup class="cite"><a href="#src-21">21</a></sup> so <code>hours[late]</code> shows <code>array([30.])</code>,
+        the hours of the late tickets only, and <code>hours[hours &gt; 24]</code> filters by a threshold with no loop. An
+        array like <code>late</code> is called a mask. Summing a boolean array counts its True values, because booleans
+        behave as the integers 0 and 1 in arithmetic,<sup class="cite"><a href="#src-22">22</a></sup><sup class="cite"><a href="#src-23">23</a></sup>
+        so <code>late.sum()</code> shows <code>np.int64(1)</code>: one breach. Filtering with a mask and counting with
+        <code>.sum()</code> is the standard answer to "how do you filter an array without a loop?"</p>
+        <p>The limit is alignment. Element-wise work assumes position 0 in <code>hours</code> and position 0 in
+        <code>limits</code> describe the same ticket. In <code>stats.py</code> both arrays come from the same loop over the
+        same closed tickets, in the same order, which is what keeps them in step. Build them from two differently filtered
+        lists and the comparison still runs, pairing one ticket's hours with another's limit.</p>
+        <h3>Summary numbers and NumPy scalars</h3>
+        <p><code>arr.mean()</code> and <code>arr.max()</code> are array methods; <code>np.median(arr)</code> is a
+        module-level function with no method form,<sup class="cite"><a href="#src-24">24</a></sup> so
+        <code>hours.median()</code> fails with an <code>AttributeError</code>. What all three return is a NumPy scalar.
+        <code>hours.mean()</code> returns an <code>np.float64</code>, and NumPy 2 prints such a scalar as
+        <code>np.float64(16.5)</code> inside a dict or a list,<sup class="cite"><a href="#src-25">25</a></sup> so a summary
+        built straight from these values prints as
+        <code>{'mean_hours': np.float64(16.5), 'breached': np.int64(1)}</code>. There is a second reason to convert. An
+        <code>np.float64</code> inherits from Python's <code>float</code>, but NumPy's integer scalars do not inherit from
+        <code>int</code>,<sup class="cite"><a href="#src-26">26</a></sup> so <code>json.dumps</code> accepts the mean and
+        rejects the count with "Object of type int64 is not JSON serializable".<sup class="cite"><a href="#src-27">27</a></sup></p>
+<pre><code>summary = {
+    "mean_hours": float(hours.mean()),
+    "median_hours": float(np.median(hours)),
+    "max_hours": float(hours.max()),
+    "breached": int(late.sum()),
+}
+summary</code></pre>
+        <p>Typed into the same session, this shows
+        <code>{'mean_hours': 16.5, 'median_hours': 16.5, 'max_hours': 30.0, 'breached': 1}</code>, plain Python numbers that
+        print cleanly and go into a JSON file without complaint. The desk's <code>summary()</code> is built the same
+        way.</p>
+        <h3>Testing an array with pytest</h3>
+        <p>The first test most people write for an array is
+        <code>assert resolution_hours(sample_desk) == [3.0, 30.0]</code>, and it stops with an error instead of a red
+        assertion: <code>ValueError: The truth value of an array with more than one element is ambiguous</code>. The
+        <code>==</code> is element-wise too, so it produces <code>array([ True,  True])</code>, and <code>assert</code> then
+        needs one True or False from that; calling <code>bool()</code> on an array of more than one element raises
+        <code>ValueError</code> because its truth value is ambiguous.<sup class="cite"><a href="#src-17">17</a></sup> These
+        three tests ask the real questions instead:</p>
+<pre><code>def test_hours_array_is_float(sample_desk):
+    hours = resolution_hours(sample_desk)
+    assert hours.dtype == np.float64
+    assert hours.shape == (2,)
+
+
+def test_breach_mask(sample_desk):
+    assert np.array_equal(breached(sample_desk), [False, True])
+
+
+def test_summary_mean(sample_desk):
+    assert summary(sample_desk)["mean_hours"] == pytest.approx(16.5)</code></pre>
+        <p>The first checks type and size, the two properties from the previous step. <code>numpy.array_equal</code>
+        returns a single True only when both arrays have the same shape and the same
+        elements,<sup class="cite"><a href="#src-28">28</a></sup> so the second test gets one answer for the whole mask.
+        The third compares a float within a tolerance: <code>pytest.approx</code> uses a relative tolerance of 1e-6 and an
+        absolute tolerance of 1e-12 by default, so <code>0.1 + 0.2 == pytest.approx(0.3)</code>
+        passes.<sup class="cite"><a href="#src-29">29</a></sup> The sample desk's mean of 16.5 happens to be exact, so
+        <code>approx</code> there is a habit; with real data it is what keeps the test from failing on the last digit. With
+        the <code>sample_desk</code> fixture from the fixtures section, all three pass and the desk's suite reaches fourteen tests.</p>
+        <button class="code-cta" type="button" data-modal="code-w02d3-ambiguous"><span class="cc-ico">&lt;/&gt;</span> See the ambiguous-truth-value failure as pytest prints it <span class="cc-meta">· 04_hours_tests.md</span></button>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>To filter an array without a loop I build a boolean mask with a comparison, like hours greater than 24, and
+          index the array with it, so only the elements where the mask is True come back. Summing the mask counts the
+          Trues, which is how I'd count tickets over their limit.</p>
+          <p>You can't just assert that an array equals a list, because equals compares element by element and assert
+          can't turn several booleans into one answer. I check dtype and shape directly, use np.array_equal for whole
+          arrays, and pytest.approx for floats.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="6">
+        <div class="tag">Interview mindset</div>
+        <h2>Interview mindset, part 1: reasoning aloud and checking your answer</h2>
+        <p>Interview practice starts on a testing day because "how would you check that it works?" closes most junior
+        coding questions, and answering it well uses the same skill as choosing unit tests. Part 2, with mock interview
+        questions, comes in week 3.</p>
+        <h3>How a junior technical interview runs</h3>
+        <p>When you work through a small problem, the interviewer weighs how you reason aloud, whether you ask clarifying questions and
+        whether you check your own answer, as much as the final code. A correct answer reached in silence tells them less
+        than a nearly correct one whose reasoning they could follow, because the job they are hiring for is mostly working
+        with other people on code that nobody fully understands yet.</p>
+        <p>You can recognise a strong candidate from the outside. They restate the problem, name an example input and its
+        output, state a plan in a sentence or two, write the simple solution first, then check one normal case, an empty
+        input and a boundary value. None of those moves needs a clever idea, so they can all be
+        practised.</p>
+        <h3>Thinking aloud on a small problem</h3>
+        <p>Take "given a list of resolution hours, return the longest". Restate it: "So I get a list of floats and return
+        the largest?" Agree an example: <code>[3.0, 30.0, 6.5]</code> gives <code>30.0</code>. Give the plan: "Python's
+        <code>max</code> does this; I'll use it, then check the edge cases." Thinking aloud costs time on a timed problem, so
+        keep the plan to a sentence or two before you write code. Then ask the question that
+        matters here: what should an empty list return?</p>
+<pre><code>def longest(hours):
+    return max(hours, default=0.0)
+
+
+print(longest([3.0, 30.0, 6.5]))
+print(longest([]))</code></pre>
+        <p>Run as a script, this prints <code>30.0</code> and then <code>0.0</code>. <code>max()</code> raises
+        <code>ValueError</code> on an empty iterable unless a <code>default=</code> value is
+        given,<sup class="cite"><a href="#src-30">30</a></sup> so without it the second call stops with
+        <code>ValueError: max() iterable argument is empty</code>. Whether 0.0, <code>None</code> or an error is right for
+        an empty list is a decision for whoever owns the code, which is why you ask instead of guessing. Saying what you do
+        not know works the same way. "I'm not sure whether median is an array method in NumPy; I'd check the docs, and for
+        now I'll write <code>np.median</code>" is a good answer, because it shows where the gap is and how you would close
+        it.</p>
+        <h3>Checking your own answer</h3>
+        <p>Check one normal case, an empty input and a boundary value. For a breach rule the boundary is a ticket that
+        took exactly its limit: is a high ticket closed after exactly 4.0 hours a breach? With <code>&gt;</code> it is
+        not, and you say that you chose it on purpose. Those three checks are the unit tests you would write, and naming
+        them before you are asked is what interviewers mean by thinking about edge cases.</p>
+        <p>Two limits are worth knowing when you check by hand. Comparing floats with <code>==</code> is fragile, because
+        <code>0.1 + 0.2 == 0.3</code> is False in binary floating point;<sup class="cite"><a href="#src-31">31</a></sup>
+        <code>0.1 + 0.2</code> is <code>0.30000000000000004</code>. When you check a computed mean, say what tolerance counts
+        as equal, the way <code>pytest.approx</code> does with its defaults, which can be set explicitly with
+        <code>rel=</code> and <code>abs=</code>.<sup class="cite"><a href="#src-29">29</a></sup> And <code>assert</code>
+        belongs in tests. Python emits no code for <code>assert</code> statements when it runs with optimisation
+        (<code>python -O</code>),<sup class="cite"><a href="#src-32">32</a></sup> so a function that must reject bad input
+        raises an exception instead, the way the desk's <code>Ticket</code> raises <code>ValueError</code> for an unknown
+        priority.</p>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I'd start by restating the problem and agreeing one example input and output, then say my plan in a sentence
+          and write the simplest version first. If I don't know something, I say so, say how I'd find out, and carry on
+          with a stated assumption.</p>
+          <p>To check it works, I'd try a normal case, an empty input and a boundary value, the same cases I'd turn into
+          unit tests. If the answer's a float I compare with a tolerance, because 0.1 plus 0.2 isn't exactly 0.3 in
+          binary.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="7">
+        <div class="tag">Check yourself</div>
+        <h2>Check yourself</h2>
+        <p>Ten retrieval questions, at least one for each section. Answer each out loud before you open it.</p>
+        <details class="check"><summary>What separates a unit test, an integration test and an end-to-end test, and why does a healthy suite have the most unit tests?</summary><p>A unit test checks one function on its own, an integration test checks several pieces together (the desk and its JSON file), and an end-to-end test drives the whole program as a user would. Unit tests are fast and point at one function when they fail, so most of the checking happens there; a suite weighted towards end-to-end tests is slow and every failure needs detective work.</p></details>
+        <details class="check"><summary>A pull request shows 100% coverage. What does that prove, and what does it not?</summary><p>It proves every line ran during the tests. It does not prove any <code>assert</code> checked what those lines produced, so the behaviour can still be wrong.</p></details>
+        <details class="check"><summary>Name the three parts of <code>test_high_deadline_is_four_hours</code>, and say what <code>match="urgent"</code> adds to <code>pytest.raises(ValueError, ...)</code>.</summary><p>Arrange builds the opening time, act calls <code>deadline</code>, assert compares the result with 12:30. <code>match</code> makes the test pass only when the error message also matches, checked with <code>re.search</code>, so an unrelated <code>ValueError</code> inside the block does not count.</p></details>
+        <details class="check"><summary>pytest says no tests ran, although you wrote three. Give two likely causes.</summary><p>The file name does not match <code>test_*.py</code> or <code>*_test.py</code>, or the functions do not start with <code>test</code>. Running from the wrong folder, or in a terminal where <code>.venv</code> is not active, are the other usual suspects.</p></details>
+        <details class="check"><summary>What does <code>@pytest.fixture</code> above <code>def sample_desk():</code> do, and how does a test get the desk?</summary><p><code>@name</code> above a <code>def</code> is shorthand for <code>f = name(f)</code>, so pytest receives the function and registers it as a fixture. A test names <code>sample_desk</code> as a parameter and pytest calls the fixture for it, fresh for every test; calling <code>sample_desk()</code> directly is an error.</p></details>
+        <details class="check"><summary>Why does a parametrised test not hide which case failed?</summary><p>pytest builds an ID from each parameter set, such as <code>test_sla_hours[low-72]</code>, and reports every case separately, so the failing pair is named in the summary.</p></details>
+        <details class="check"><summary>With <code>hours = [3.0, 30.0, 6.5]</code> and <code>arr = np.array(hours)</code>, what do <code>hours * 2</code>, <code>hours + 1</code> and <code>arr * 2</code> give, and what are <code>arr.dtype</code> and <code>arr.shape</code>?</summary><p>The list repeats to six elements, <code>hours + 1</code> raises <code>TypeError</code>, and <code>arr * 2</code> doubles every element. The dtype is <code>float64</code> and the shape is <code>(3,)</code>.</p></details>
+        <details class="check"><summary>How do you count the tickets that breached their SLA without a loop, and why does the summary wrap the count in <code>int(...)</code>?</summary><p>Compare the hours array with the limits array to get a boolean mask, then call <code>.sum()</code> on it, because True counts as 1. The result is an <code>np.int64</code>, which prints as <code>np.int64(1)</code> and which <code>json.dumps</code> rejects, so <code>int(...)</code> turns it into a plain Python integer.</p></details>
+        <details class="check"><summary>Why does <code>assert resolution_hours(desk) == [3.0, 30.0]</code> raise a <code>ValueError</code>, and what do you write instead?</summary><p><code>==</code> on an array is element-wise, so it gives an array of booleans, and <code>assert</code> cannot get one truth value from an array of more than one element. Check <code>dtype</code> and <code>shape</code> directly, compare whole arrays with <code>np.array_equal</code>, and compare floats with <code>pytest.approx</code>.</p></details>
+        <details class="check"><summary>In an interview you have written a function that returns the longest resolution time. Which three inputs do you check aloud, and what do you say about comparing floats?</summary><p>A normal list, an empty list (where <code>max()</code> raises <code>ValueError</code> unless you give <code>default=</code>) and a boundary value. Floats are compared with a tolerance, because <code>0.1 + 0.2 == 0.3</code> is False in binary floating point.</p></details>
+      </section>
+
+      <section class="reading-sources" aria-label="Sources and deeper dive">
+        <h2>Sources &amp; deeper dive</h2>
+        <ul>
+          <li id="src-1"><a href="https://docs.python.org/3/library/unittest.html" target="_blank" rel="noopener">unittest — Unit testing framework</a> — the standard library's test framework and its four building blocks.</li>
+          <li id="src-2"><a href="https://docs.pytest.org/en/stable/how-to/unittest.html" target="_blank" rel="noopener">pytest: How to use unittest-based tests with pytest</a> — pytest runs existing <code>TestCase</code> suites unchanged.</li>
+          <li id="src-3"><a href="https://martinfowler.com/bliki/TestPyramid.html" target="_blank" rel="noopener">Martin Fowler: Test Pyramid</a> — the usual short reading on the picture; a supplement, not an official source.</li>
+          <li id="src-4"><a href="https://docs.pytest.org/en/stable/explanation/goodpractices.html" target="_blank" rel="noopener">pytest: Good Integration Practices</a> — test discovery rules and the two test layouts.</li>
+          <li id="src-5"><a href="https://coverage.readthedocs.io/" target="_blank" rel="noopener">Coverage.py documentation</a> — what a coverage report measures.</li>
+          <li id="src-6"><a href="https://docs.pytest.org/en/stable/how-to/output.html" target="_blank" rel="noopener">pytest: Managing pytest's output</a> — <code>-v</code> and the short test summary.</li>
+          <li id="src-7"><a href="https://docs.pytest.org/en/stable/how-to/assert.html" target="_blank" rel="noopener">pytest: How to write and report assertions</a> — plain <code>assert</code>, failure reports and <code>pytest.raises</code>.</li>
+          <li id="src-8"><a href="https://docs.pytest.org/en/stable/how-to/tmp_path.html" target="_blank" rel="noopener">pytest: How to use temporary directories and files</a> — the <code>tmp_path</code> fixture.</li>
+          <li id="src-9"><a href="https://docs.pytest.org/en/stable/how-to/fixtures.html" target="_blank" rel="noopener">pytest: How to use fixtures</a> — requesting fixtures by name, scope and teardown.</li>
+          <li id="src-10"><a href="https://pip.pypa.io/en/stable/reference/requirements-file-format/" target="_blank" rel="noopener">pip: Requirements File Format</a> — pinned packages and <code>pip install -r</code>.</li>
+          <li id="src-11"><a href="https://docs.pytest.org/en/stable/getting-started.html" target="_blank" rel="noopener">pytest: Get Started</a> — installing, <code>--version</code> and the first run.</li>
+          <li id="src-12"><a href="https://docs.pytest.org/en/stable/how-to/usage.html" target="_blank" rel="noopener">pytest: How to invoke pytest</a> — selecting tests with <code>-k</code>.</li>
+          <li id="src-13"><a href="https://docs.python.org/3/glossary.html#term-decorator" target="_blank" rel="noopener">Python glossary: decorator</a> — what <code>@name</code> above a <code>def</code> means.</li>
+          <li id="src-14"><a href="https://docs.pytest.org/en/stable/how-to/parametrize.html" target="_blank" rel="noopener">pytest: How to parametrize fixtures and test functions</a> — one test, many cases, one ID each.</li>
+          <li id="src-15"><a href="https://numpy.org/doc/stable/user/absolute_beginners.html" target="_blank" rel="noopener">NumPy: the absolute basics for beginners</a> — the import convention and arithmetic on whole arrays.</li>
+          <li id="src-16"><a href="https://docs.python.org/3/library/stdtypes.html#common-sequence-operations" target="_blank" rel="noopener">Python: Common sequence operations</a> — what <code>*</code> and <code>+</code> do to a list.</li>
+          <li id="src-17"><a href="https://numpy.org/doc/stable/reference/arrays.ndarray.html" target="_blank" rel="noopener">NumPy: The N-dimensional array (ndarray)</a> — <code>dtype</code>, <code>shape</code> and the ambiguous truth value.</li>
+          <li id="src-18"><a href="https://numpy.org/doc/stable/reference/generated/numpy.array.html" target="_blank" rel="noopener">numpy.array</a> — how an array's type is chosen from its values.</li>
+          <li id="src-19"><a href="https://docs.python.org/3/library/datetime.html#timedelta-objects" target="_blank" rel="noopener">datetime — timedelta objects</a> — <code>total_seconds()</code> against <code>.seconds</code>.</li>
+          <li id="src-20"><a href="https://numpy.org/doc/stable/reference/ufuncs.html" target="_blank" rel="noopener">NumPy: Universal functions (ufunc)</a> — element-by-element operations and comparisons.</li>
+          <li id="src-21"><a href="https://numpy.org/doc/stable/user/basics.indexing.html" target="_blank" rel="noopener">NumPy: Indexing on ndarrays</a> — boolean mask indexing.</li>
+          <li id="src-22"><a href="https://docs.python.org/3/library/stdtypes.html#boolean-type-bool" target="_blank" rel="noopener">Python: Boolean type</a> — True and False behave as 1 and 0 in arithmetic.</li>
+          <li id="src-23"><a href="https://numpy.org/doc/stable/reference/generated/numpy.sum.html" target="_blank" rel="noopener">numpy.sum</a> — summing an array, including a boolean one.</li>
+          <li id="src-24"><a href="https://numpy.org/doc/stable/reference/generated/numpy.median.html" target="_blank" rel="noopener">numpy.median</a> — a module-level function with no method form.</li>
+          <li id="src-25"><a href="https://numpy.org/neps/nep-0051-scalar-representation.html" target="_blank" rel="noopener">NEP 51: Changing the representation of NumPy scalars</a> — why NumPy 2 prints <code>np.float64(16.5)</code>.</li>
+          <li id="src-26"><a href="https://numpy.org/doc/stable/reference/arrays.scalars.html" target="_blank" rel="noopener">NumPy: Scalars</a> — which NumPy scalars inherit from Python's built-in types.</li>
+          <li id="src-27"><a href="https://docs.python.org/3/library/json.html#json.JSONEncoder" target="_blank" rel="noopener">json: JSONEncoder</a> — the types <code>json.dumps</code> can write.</li>
+          <li id="src-28"><a href="https://numpy.org/doc/stable/reference/generated/numpy.array_equal.html" target="_blank" rel="noopener">numpy.array_equal</a> — one True or False for two whole arrays.</li>
+          <li id="src-29"><a href="https://docs.pytest.org/en/stable/reference/reference.html" target="_blank" rel="noopener">pytest: API reference</a> — <code>pytest.approx</code> and its default tolerances.</li>
+          <li id="src-30"><a href="https://docs.python.org/3/library/functions.html#max" target="_blank" rel="noopener">Python: Built-in functions, max</a> — the empty-iterable error and <code>default=</code>.</li>
+          <li id="src-31"><a href="https://docs.python.org/3/tutorial/floatingpoint.html" target="_blank" rel="noopener">Python tutorial: Floating-Point Arithmetic: Issues and Limitations</a> — why <code>0.1 + 0.2 == 0.3</code> is False.</li>
+          <li id="src-32"><a href="https://docs.python.org/3/reference/simple_stmts.html#the-assert-statement" target="_blank" rel="noopener">Python reference: The assert statement</a> — what happens to <code>assert</code> under <code>python -O</code>.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+        <div class="activity-card demo-card" data-demo="pending">
+          <div class="ac-k">⌨ Code-along files</div>
+          <div class="ac-t">Published after class</div>
+          <div class="ac-meta">typed live in the session · the answer key lands in demos/ afterwards</div>
+        </div>
+
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · after you have read the page</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 2 Day 3</footer>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 3 — goals &amp; exercise</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Explain why teams test, place unit, integration and end-to-end tests on the test pyramid, and say what "green before merge" and a coverage figure do and do not prove</li>
+      <li>Write unit tests in arrange-act-assert form, including an error path with pytest.raises, and read a pytest failure from the &gt; line down to the short summary</li>
+      <li>Say what @ above a def does, share set-up through a fixture, isolate file tests with tmp_path and run one test over several inputs with parametrize</li>
+      <li>Compare a list and a NumPy array on arithmetic, dtype and shape, and filter and count with a boolean mask</li>
+      <li>Test arrays with dtype and shape checks, np.array_equal and pytest.approx, and check your own answer aloud in an interview</li>
+    </ul>
+    <div class="ma-k">Today's exercise</div>
+    <ul class="deliv-list check">
+      <li><a href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-02/day-3-pytest-and-numpy" target="_blank" rel="noopener">exercises/week-02/day-3-pytest-and-numpy</a> — a pytest-checked module: resolution hours as a NumPy array, a breach mask against SLA limits and a mean, plus two tests you write yourself. Run <code>python -m pytest -q</code> until green.</li>
+    </ul>
+    <div class="ma-k">Demos today</div>
+    <ul class="deliv-list">
+      <li>One live walk through the day's topics, built in front of the class and shaped by its questions; the files it produces are published in the demos folder afterwards</li>
+    </ul>
+    <p class="goals-foot">Thursday assumes your tests are green and merged. Finish the check to unlock the next page.</p>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Day 4 — Collections & pandas →", href: "day-4-collections-and-pandas.html" };
+window.DIAGRAM = {
+  title: "Day 3 · from a rule to a tested array",
+  width: 500, height: 470,
+  nodes: [
+    { id:"why", step:0, kind:"example", x:14, y:14, w:472, h:50, label:"WHY TEST\n  unit · integration · end-to-end · the pyramid", detail:"Many fast unit tests at the base, fewer integration tests, a few slow end-to-end tests at the top. Green before merge; coverage shows which lines ran, and nothing about whether they were checked." },
+    { id:"unit", step:1, x:24, y:86, w:200, h:48, label:"Unit test\n  arrange · act · assert", detail:"One rule, one situation, one expected answer. pytest.raises(ValueError, match=...) tests the path that must fail; a fixed NOW and tmp_path keep tests isolated." },
+    { id:"pytest", step:2, x:24, y:162, w:200, h:48, label:"pytest\n  test_*.py · assert · -v · -k", detail:"Collects test_*.py files and test functions. Read a failure from the > line: the values on both sides, then file::function in the short summary." },
+    { id:"fixture", step:3, x:24, y:238, w:200, h:56, label:"Fixtures\n  @pytest.fixture · tmp_path\n  parametrize", detail:"@name above def f means f = name(f). A test asks for a fixture by naming it; parametrize runs one test per tuple, each under its own ID." },
+    { id:"array", step:4, x:276, y:86, w:200, h:56, label:"Array vs list\n  arr * 2 · dtype · shape", detail:"On a list * 2 repeats and + 1 is a TypeError. On an array both act on every element. One dtype per array: fast arithmetic, no mixed types." },
+    { id:"mask", step:5, x:276, y:162, w:200, h:56, label:"Boolean masks\n  hours > limits · .sum()", detail:"An element-wise comparison gives a boolean array; indexing with it filters, summing it counts. float() and int() turn NumPy scalars into plain numbers." },
+    { id:"arrtest", step:5, x:276, y:238, w:200, h:56, label:"Testing arrays\n  dtype · array_equal · approx", detail:"assert arr == [...] raises the ambiguous-truth-value ValueError. Check dtype and shape, compare with np.array_equal, compare floats with pytest.approx." },
+    { id:"interview", step:6, x:24, y:330, w:452, h:52, label:"INTERVIEW MINDSET, PART 1\n  restate · example · plan · simple first · check normal, empty, boundary", detail:"Ask what an empty input should return (max() raises without default=), compare floats with a tolerance, and keep assert for tests." },
+    { id:"check", step:7, x:24, y:410, w:452, h:40, label:"CHECK YOURSELF\n  answer out loud, then open" }
+  ],
+  edges: [
+    { id:"e1", step:1, from:"why", to:"unit", label:"base of the pyramid" },
+    { id:"e2", step:2, from:"unit", to:"pytest", label:"a runner" },
+    { id:"e3", step:3, from:"pytest", to:"fixture", label:"shared set-up" },
+    { id:"e4", step:4, from:"why", to:"array", label:"new library" },
+    { id:"e5", step:5, from:"array", to:"mask", label:"compare" },
+    { id:"e6", step:5, from:"mask", to:"arrtest", label:"assert on it" },
+    { id:"e7", step:5, from:"fixture", to:"arrtest", label:"sample_desk" },
+    { id:"e8", step:6, from:"fixture", to:"interview", dir:"-" },
+    { id:"e9", step:6, from:"arrtest", to:"interview", dir:"-" },
+    { id:"e10", step:7, from:"interview", to:"check", dir:"-" }
+  ],
+  captions: [
+    "Why teams test: unit, integration and end-to-end tests, the pyramid they form, and what green before merge means. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "A unit test checks one rule in one situation: arrange the inputs, act once, assert the result, including the path that must fail.",
+    "pytest finds tests by their names, runs them with a plain assert, and reports a failure with both values and the test's name.",
+    "A decorator hands the function to pytest: fixtures share set-up, tmp_path gives each test a folder, parametrize runs one test per case.",
+    "NumPy arrives as a library of its own: an array does arithmetic on every element and holds one dtype in a fixed shape.",
+    "Comparing two arrays gives a boolean mask that filters and counts; arrays are tested with dtype, shape, array_equal and approx.",
+    "In an interview, reason aloud, start simple, and check a normal case, an empty input and a boundary value.",
+    "You can now explain the test pyramid, write and read a pytest test, and say what an array does that a list does not."
+  ]
+};
+window.QUIZ = {
+  id: "w02-d3",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "pytest collects test_desk.py but skips one of its functions. Which one?",
+      options: ["test_redact_hides_email", "check_redact_hides_email", "test_sla_hours", "test_overdue_skips_closed_tickets"], answer: 1,
+      explain: "pytest collects functions whose names start with test. check_redact_hides_email does not, so it never runs and nothing reports it." },
+    { type: "tf", stem: "A coverage report of 100% proves that every rule in the code behaves correctly.", answer: false,
+      explain: "Coverage shows which lines ran during the tests. A line that ran was not necessarily checked by an assert, so the behaviour can still be wrong." },
+    { type: "mcq", stem: "With arr = np.array([3.0, 30.0]), which of these give a single True or False that assert can use directly? Select all that apply.",
+      options: ["np.array_equal(arr, [3.0, 30.0])", "arr == [3.0, 30.0]", "arr.dtype == np.float64", "arr.shape == (2,)"], answer: [0, 2, 3],
+      explain: "arr == [3.0, 30.0] is element-wise and gives an array of booleans, so assert raises the ambiguous-truth-value ValueError. The other three each give one answer." },
+    { type: "match", stem: "Match each expression to what it gives, with hours = [3.0, 30.0, 6.5] and arr = np.array(hours).",
+      pairs: [
+        { l: "hours * 2", r: "a list of six elements: the three hours, repeated" },
+        { l: "hours + 1", r: "TypeError: can only concatenate list to list" },
+        { l: "arr * 2", r: "an array with every element doubled" },
+        { l: "arr > 24", r: "a boolean array: False, True, False" }
+      ],
+      explain: "On a list, * repeats and + only joins another sequence. On an array, arithmetic and comparisons with a number apply to every element." },
+    { type: "scq", stem: "What does @pytest.fixture do above def sample_desk():?",
+      options: ["It runs sample_desk once before the whole file and caches the result", "It hands the function to pytest, which registers it so any test naming sample_desk as a parameter receives a fresh return value", "It turns sample_desk into a test that pytest runs and reports", "It makes sample_desk safe to call as sample_desk() inside other tests"], answer: 1,
+      explain: "@name above def f is shorthand for f = name(f). pytest registers the fixture; a test asks for it by naming it as a parameter and, in the default scope, gets a new one per test. Calling it directly is an error." },
+    { type: "open", stem: "In two or three sentences: how would you count the tickets that took longer than their SLA without writing a loop over the hours, and how would you test the result?",
+      hint: "One comparison, one method, two pytest tools.",
+      model: "Build an array of hours and an array of limits for the same closed tickets in the same order, compare them with > to get a boolean mask, and call .sum() on the mask, since True counts as 1. Test the mask with np.array_equal against the expected list of booleans, and test any float result such as the mean with pytest.approx, using a fixture such as sample_desk for the data." }
+  ]
+};
+</script>
+
+<!-- code popup: excerpt of the storage-tests answer key -->
+<div id="code-w02d3-fixture" class="modal-overlay" hidden>
+  <div class="modal-card code-modal">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Answer key excerpt: 02_storage_tests.md</h2>
+    <p class="cv-cap">The sample_desk fixture, one test that asks for it together with tmp_path, and the verbose run once the parametrised test is added.</p>
+    <div class="cv" data-file="02_storage_tests.md" data-lang="python"><pre class="cv-raw">@pytest.fixture
+def sample_desk():
+    &quot;&quot;&quot;Four tickets: closed after 3 and 30 hours, one assigned, one open.&quot;&quot;&quot;
+    desk = Desk()
+    quick = Ticket(1, &quot;Login page returns 500&quot;, &quot;high&quot;, datetime(2026, 10, 19, 8, 30))
+    slow = Ticket(2, &quot;Password reset email is late&quot;, &quot;normal&quot;, datetime(2026, 10, 16, 9, 15))
+    ...
+    quick.close(datetime(2026, 10, 19, 11, 30))
+    slow.close(datetime(2026, 10, 17, 15, 15))
+    busy.assign(&quot;Priya&quot;)
+    ...
+    return desk
+
+
+def test_save_then_load_keeps_every_ticket(tmp_path, sample_desk):
+    &quot;&quot;&quot;Saving and loading keeps every ticket and its status.&quot;&quot;&quot;
+    path = tmp_path / &quot;tickets.json&quot;
+    save_desk(sample_desk, path)
+    ...
+
+$ pytest -v
+...
+test_desk.py::test_sla_hours[high-4] PASSED                              [ 81%]
+test_desk.py::test_sla_hours[normal-24] PASSED                           [ 90%]
+test_desk.py::test_sla_hours[low-72] PASSED                              [100%]
+
+============================= 11 passed in 0.05s ==============================</pre></div>
+    <p class="cv-foot">sample_desk is never called by hand: the test names it as a parameter beside tmp_path and pytest supplies both.</p>
+  </div>
+</div>
+
+<!-- code popup: excerpt of the hours-tests answer key -->
+<div id="code-w02d3-ambiguous" class="modal-overlay" hidden>
+  <div class="modal-card code-modal">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Answer key excerpt: 04_hours_tests.md</h2>
+    <p class="cv-cap">Step 1 of the transcript: an array compared with a list inside an assert stops with an error before any value is compared.</p>
+    <div class="cv" data-file="04_hours_tests.md" data-lang="bash"><pre class="cv-raw">$ pytest -v
+...
+test_desk.py::test_hours_array_is_float FAILED                           [100%]
+
+================================== FAILURES ===================================
+__________________________ test_hours_array_is_float __________________________
+
+sample_desk = &lt;desk.Desk object at 0x0000029E7A307A80&gt;
+
+    def test_hours_array_is_float(sample_desk):
+        &quot;&quot;&quot;Resolution hours are float64, one for each closed ticket.&quot;&quot;&quot;
+&gt;       assert resolution_hours(sample_desk) == [3.0, 30.0]
+E       ValueError: The truth value of an array with more than one element is ambiguous. Use a.any() or a.all()
+
+test_desk.py:95: ValueError
+=========================== short test summary info ===========================
+FAILED test_desk.py::test_hours_array_is_float - ValueError: The truth value ...
+======================== 1 failed, 11 passed in 0.18s =========================</pre></div>
+    <p class="cv-foot">The E line says ValueError, not AssertionError: the assert never got a single True or False to check. The next step of the transcript replaces it with the dtype and shape checks.</p>
+  </div>
+</div>
+
+<script src="../../assets/js/diagram.js?v=20261015"></script>
+<script src="../../assets/js/scrolly.js?v=20261015"></script>
+<script src="../../assets/js/modals.js?v=20261015"></script>
+<script src="../../assets/js/quiz.js?v=20261015"></script>
+<script src="../../assets/js/widgets.js?v=20261015"></script>
+<script src="../../assets/js/glossary.js?v=20261015"></script>
+<script src="../../assets/js/codeviewer.js?v=20261015"></script>
+</body>
+</html>

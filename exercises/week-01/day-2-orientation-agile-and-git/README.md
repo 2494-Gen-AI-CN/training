@@ -1,7 +1,7 @@
 # Exercise — Orientation, Agile & Git fundamentals
 
 Week 1 · Day 2 · `w01d2` · Tue 2026-10-13 · ~60–90 min · marked against a rubric (no automated tests)
-Notes: [docs/weeks/week-01/day-2-orientation-agile-and-git.html](../../../docs/weeks/week-01/day-2-orientation-agile-and-git.html) · Demos: [demos/week-01/day-2-orientation-agile-and-git](../../../demos/week-01/day-2-orientation-agile-and-git)
+Notes: [weeks/week-01/day-2-orientation-agile-and-git.html](https://2494-gen-ai-cn.github.io/training/weeks/week-01/day-2-orientation-agile-and-git.html) · Demos: [demos/week-01/day-2-orientation-agile-and-git](https://github.com/2494-Gen-AI-CN/demos/tree/main/week-01/day-2-orientation-agile-and-git)
 
 ## Task
 

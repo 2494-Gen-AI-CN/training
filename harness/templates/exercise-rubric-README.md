@@ -1,7 +1,7 @@
 # Exercise — {{title}}
 
 Week {{week}} · Day {{day}} · `{{id}}` · ~60–90 min · marked against a rubric (no automated tests)
-Notes: [docs/weeks/{{rel}}.html](../../../docs/weeks/{{rel}}.html) · Demos: [demos/{{rel}}](../../../demos/{{rel}})
+Notes: [weeks/{{rel}}.html](https://2494-gen-ai-cn.github.io/training/weeks/{{rel}}.html) · Demos: [demos/{{rel}}](https://github.com/2494-Gen-AI-CN/demos/tree/main/{{rel}})
 
 ## Task
 

@@ -41,7 +41,8 @@ class ArgsForTests(unittest.TestCase):
         self.assertEqual(2, _args("1", "2", "--template", "harness/templates/missing.html", "--today", "2026-10-13").returncode)
 
     def test_notes_only_needs_the_brief(self):
-        r = _args("2", "1", "--no-plan", "--notes-only", "--today", "2026-10-13")
+        # a day with no committed brief: week 3 is not authored yet (week 2's briefs now exist)
+        r = _args("3", "1", "--no-plan", "--notes-only", "--today", "2026-10-13")
         self.assertEqual(2, r.returncode)
         self.assertIn("--notes-only needs an existing brief", r.stderr)
 

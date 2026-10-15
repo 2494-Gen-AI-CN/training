@@ -1,7 +1,7 @@
 # Exercise — Ticket data helpers
 
 Week 1 · Day 4 · `w01d4` · ~60–90 min
-Notes: [docs/weeks/week-01/day-4-python-data-types.html](../../../docs/weeks/week-01/day-4-python-data-types.html) · Demos: [demos/week-01/day-4-python-data-types](../../../demos/week-01/day-4-python-data-types)
+Notes: [weeks/week-01/day-4-python-data-types.html](https://2494-gen-ai-cn.github.io/training/weeks/week-01/day-4-python-data-types.html) · Demos: [demos/week-01/day-4-python-data-types](https://github.com/2494-Gen-AI-CN/demos/tree/main/week-01/day-4-python-data-types)
 
 Both links resolve from the training repo, not from the copy in your own repository. The demos folder is added there after the class, so `git pull` the training repo if a link does not open yet.
 

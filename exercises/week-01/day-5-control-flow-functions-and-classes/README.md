@@ -1,7 +1,7 @@
 # Exercise: Help desk classes
 
 Week 1 · Day 5 · `w01d5` · ~60–90 min
-Notes: [docs/weeks/week-01/day-5-control-flow-functions-and-classes.html](../../../docs/weeks/week-01/day-5-control-flow-functions-and-classes.html) · Demos: [demos/week-01/day-5-control-flow-functions-and-classes](../../../demos/week-01/day-5-control-flow-functions-and-classes)
+Notes: [weeks/week-01/day-5-control-flow-functions-and-classes.html](https://2494-gen-ai-cn.github.io/training/weeks/week-01/day-5-control-flow-functions-and-classes.html) · Demos: [demos/week-01/day-5-control-flow-functions-and-classes](https://github.com/2494-Gen-AI-CN/demos/tree/main/week-01/day-5-control-flow-functions-and-classes)
 
 Both links resolve from the training repo, not from the copy in your own repository. The demos folder is added there after the class, so `git pull` the training repo if a link does not open yet.
 
