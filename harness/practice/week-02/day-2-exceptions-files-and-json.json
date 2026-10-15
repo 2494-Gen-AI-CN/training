@@ -66,9 +66,9 @@
         "parse_ids([\"7\", None]) lets the TypeError from int(None) reach the caller; a bare except or except Exception swallows it, the too-wide handler the page warns about."
       ],
       "approved": true,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "q": "Write <code>parse_ids(texts)</code>, which takes a list of strings and returns a list of the ints they spell, in the same order. A string that <code>int()</code> rejects with a <code>ValueError</code> is skipped, and the strings after it are still read. Catch <code>ValueError</code> and nothing else, so that any other error, such as the <code>TypeError</code> from <code>int(None)</code>, reaches the caller. For example, <code>parse_ids([\"7\", \"TD-7\", \"12\"])</code> returns <code>[7, 12]</code>.",
+      "starter": "def parse_ids(texts):\n    ...",
+      "tests": "assert parse_ids([\"7\", \"TD-7\", \"12\"]) == [7, 12], \"skips the string int() rejects and still reads the ones after it\"\nassert raises(TypeError, parse_ids, [\"7\", None]), \"lets the TypeError from int(None) reach the caller\""
     },
     {
       "id": "t2",
@@ -81,9 +81,9 @@
         "A missing path raises FileNotFoundError instead of returning an empty list."
       ],
       "approved": true,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "q": "Write <code>read_board(path)</code>, which reads the tab-separated board file at <code>path</code> and returns a list with one row per line of the file, each row a list of that line's fields as strings, with no line ending left on any of them. Open the file in a <code>with</code> block with <code>encoding=\"utf-8\"</code>, as the page does. A file holding <code>\"1\\tLogin page returns 500\\thigh\\tclosed\\n\"</code> gives <code>[[\"1\", \"Login page returns 500\", \"high\", \"closed\"]]</code>, and a file that ends in a newline gives no empty row at the end. A missing path raises <code>FileNotFoundError</code>.",
+      "starter": "def read_board(path):\n    ...",
+      "tests": "import os, tempfile\nboard_path = os.path.join(tempfile.mkdtemp(), \"board.txt\")\nwith open(board_path, \"w\", encoding=\"utf-8\") as f:\n    f.write(\"1\\tLogin page returns 500\\thigh\\tclosed\\n6\\tTypo on the pricing page\\tlow\\topen\\n\")\nassert len(read_board(board_path)) == 2, \"a file of two lines that ends in a newline gives two rows\"\nassert [row[-1] for row in read_board(board_path)] == [\"closed\", \"open\"], \"the last field of each row has no line ending\"\nassert read_board(board_path)[0] == [\"1\", \"Login page returns 500\", \"high\", \"closed\"], \"each row holds the line's fields, split at the tabs\"\nassert raises(FileNotFoundError, read_board, os.path.join(tempfile.mkdtemp(), \"missing.txt\")), \"a missing file raises FileNotFoundError\""
     },
     {
       "id": "t3",
@@ -96,9 +96,9 @@
         "After the failed second call the file still holds the first call's text; mode \"w\" empties it the moment it is opened."
       ],
       "approved": true,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "q": "Write <code>start_shift_log(path, lines)</code>, which creates a new file at <code>path</code> with mode <code>\"x\"</code> and writes each string in the list <code>lines</code> on a line of its own, each one followed by a newline. <code>start_shift_log(p, [\"shift starts\", \"ticket 6 opened\"])</code> leaves the file reading <code>\"shift starts\\nticket 6 opened\\n\"</code>. Because of mode <code>\"x\"</code>, a second call on a path that already exists raises <code>FileExistsError</code> and leaves the file holding what the first call wrote.",
+      "starter": "def start_shift_log(path, lines):\n    ...",
+      "tests": "import os, tempfile\ndef read_back(p):\n    with open(p, encoding=\"utf-8\") as f:\n        return f.read()\nlog_path = os.path.join(tempfile.mkdtemp(), \"shift.log\")\nstart_shift_log(log_path, [\"shift starts\", \"ticket 6 opened\"])\nassert read_back(log_path) == \"shift starts\\nticket 6 opened\\n\", \"the new file holds each line followed by a newline\"\nassert raises(FileExistsError, start_shift_log, log_path, [\"second shift\"]), \"a second call on the same path raises FileExistsError\"\nassert read_back(log_path) == \"shift starts\\nticket 6 opened\\n\", \"after the failed second call the file still holds the first call's lines\""
     },
     {
       "id": "t4",
@@ -111,9 +111,9 @@
         "After the call none of the existing files is left on disk."
       ],
       "approved": true,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "q": "Write <code>remove_files(paths)</code>, which deletes the file at each path in the list <code>paths</code> with <code>Path(path).unlink()</code> and returns how many files it really deleted. A path whose file is already gone is skipped by catching the <code>FileNotFoundError</code> that <code>unlink()</code> raises for it: it is not counted, and the paths after it are still deleted. Given two files that exist with a missing path between them, <code>remove_files</code> deletes both files and returns <code>2</code>.",
+      "starter": "from pathlib import Path\n\n\ndef remove_files(paths):\n    ...",
+      "tests": "import os, tempfile\nfolder = tempfile.mkdtemp()\nfirst = os.path.join(folder, \"old-board.txt\")\ngone = os.path.join(folder, \"gone.txt\")\nlast = os.path.join(folder, \"old-notes.txt\")\nfor name in (first, last):\n    with open(name, \"w\", encoding=\"utf-8\") as f:\n        f.write(\"end of shift\\n\")\nassert remove_files([first, gone, last]) == 2, \"returns the number of files it really deleted\"\nassert not os.path.exists(last), \"a missing path in the middle does not stop the deletes after it\"\nassert not os.path.exists(first) and not os.path.exists(last), \"no file that existed is left on disk\""
     },
     {
       "id": "t5",
@@ -126,9 +126,9 @@
         "A record holding a datetime lets the TypeError from dumps reach the caller; wrapping the call in a wide except that returns False hides it."
       ],
       "approved": true,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "q": "Write <code>survives_json(record)</code>, which turns the dict <code>record</code> into JSON text with <code>json.dumps</code>, reads that text back with <code>json.loads</code>, and returns <code>True</code> when what comes back equals <code>record</code> and <code>False</code> when it does not. <code>survives_json({\"ticket_id\": 4, \"assignee\": None})</code> returns <code>True</code>, and <code>survives_json({\"tags\": (\"billing\", \"pdf\")})</code> returns <code>False</code>, because the tuple comes back as a list. A record holding a value JSON has no type for, such as a <code>datetime</code>, makes <code>json.dumps</code> raise <code>TypeError</code>; let that error reach the caller.",
+      "starter": "import json\n\n\ndef survives_json(record):\n    ...",
+      "tests": "from datetime import datetime\nassert survives_json({\"ticket_id\": 4, \"title\": \"Refund charged twice\", \"urgent\": False, \"assignee\": None}) == True, \"a record of numbers, strings, booleans and None comes back equal\"\nassert survives_json({\"ticket_id\": 4, \"tags\": (\"billing\", \"pdf\")}) == False, \"a record holding a tuple does not come back equal\"\nassert raises(TypeError, survives_json, {\"opened_at\": datetime(2026, 10, 19, 8, 30)}), \"the TypeError json.dumps raises for a datetime reaches the caller\""
     }
   ]
 }

@@ -60,9 +60,9 @@
         "A valid file returns only the tickets whose status is not \"closed\", in file order, as dicts read with json.load."
       ],
       "approved": true,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "q": "Write <code>load_open(path)</code>. It reads the file at <code>path</code>, which holds a JSON list of ticket dicts, and returns a new list of the tickets whose <code>\"status\"</code> is not <code>\"closed\"</code>, in the order the file holds them. When there is no file at <code>path</code>, it returns <code>[]</code>. When the file holds text that is not valid JSON, it lets <code>json.JSONDecodeError</code> reach the caller instead of returning <code>[]</code>, because an empty list there would start an empty desk and lose the day's tickets at the next save. For a file holding <code>[{\"ticket_id\": 1, \"status\": \"closed\"}, {\"ticket_id\": 2, \"status\": \"open\"}]</code>, it returns <code>[{\"ticket_id\": 2, \"status\": \"open\"}]</code>.",
+      "starter": "import json\n\n\ndef load_open(path):\n    ...",
+      "tests": "import json, os, tempfile\nfolder = tempfile.mkdtemp()\ngood = os.path.join(folder, \"tickets.json\")\nwith open(good, \"w\", encoding=\"utf-8\") as f:\n    json.dump([{\"ticket_id\": 1, \"status\": \"closed\"}, {\"ticket_id\": 2, \"status\": \"open\"}, {\"ticket_id\": 3, \"status\": \"assigned\"}], f)\nbroken = os.path.join(folder, \"broken.json\")\nwith open(broken, \"w\", encoding=\"utf-8\") as f:\n    f.write('[{\"ticket_id\": 1, \"status\": ')\nassert load_open(os.path.join(folder, \"missing.json\")) == [], \"a path with no file behind it gives []\"\nassert raises(json.JSONDecodeError, load_open, broken), \"a file that is not valid JSON raises json.JSONDecodeError instead of giving []\"\nassert load_open(good) == [{\"ticket_id\": 2, \"status\": \"open\"}, {\"ticket_id\": 3, \"status\": \"assigned\"}], \"a valid file gives every ticket that is not closed, in file order\""
     },
     {
       "id": "t2",
@@ -75,9 +75,9 @@
         "The comparison uses the limit argument, so breached([3.0, 5.0], 4) returns [False, True]; a 24 copied from the page's example gives the wrong answer."
       ],
       "approved": true,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "q": "Write <code>breached(hours, limit)</code>, which returns a list with one <code>True</code> or <code>False</code> per value in <code>hours</code>, in the same order. An entry is <code>True</code> when its value is strictly over <code>limit</code>, so a value equal to the limit gives <code>False</code>. An empty <code>hours</code> gives <code>[]</code>. A list comprehension is the short way to write it, and a loop with <code>append</code> is also right. <code>breached([1.5, 54.75, 24.0], 24)</code> returns <code>[False, True, False]</code>.",
+      "starter": "def breached(hours, limit):\n    ...",
+      "tests": "assert breached([24.0, 24.5], 24) == [False, True], \"a value equal to the limit is not over it\"\nassert breached([30.0, 1.0, 25.0, 3.5], 24) == [True, False, True, False], \"a list with one True or False per value, in the order given\"\nassert breached([], 24) == [], \"no values give []\"\nassert breached([3.0, 5.0], 4) == [False, True], \"the comparison uses the limit it is given\""
     }
   ]
 }

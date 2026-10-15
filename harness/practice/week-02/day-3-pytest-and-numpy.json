@@ -67,9 +67,9 @@
         "With deadline swapped for one that gives every priority 4 hours, the test raises AssertionError; a test copied from the page's high-priority case passes, because it never checks the normal rule."
       ],
       "approved": true,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "q": "The starter holds the page's <code>SLA_HOURS</code> and <code>deadline(opened_at, priority)</code>. Write the test function <code>test_normal_deadline_crosses_midnight()</code>: it checks that a normal ticket opened at <code>datetime(2026, 10, 19, 20, 0)</code> is due at <code>datetime(2026, 10, 20, 20, 0)</code>. Lay it out the way the page's <code>test_high_deadline_is_four_hours</code> is laid out: arrange, act, assert. The test returns quietly when <code>deadline</code> is right and stops with <code>AssertionError</code> when it is wrong. The checks call it three times: against the page's <code>deadline</code>, against one that hands back the opening time unchanged, and against one that gives every priority 4 hours. To watch it pass before you check, call it once at the end of the script, as <code>check_rules.py</code> does.",
+      "starter": "from datetime import datetime, timedelta\nSLA_HOURS = {\"high\": 4, \"normal\": 24, \"low\": 72}\n\n\ndef deadline(opened_at, priority):\n    if priority not in SLA_HOURS:\n        raise ValueError(f\"unknown priority: {priority!r}\")\n    return opened_at + timedelta(hours=SLA_HOURS[priority])\n\n\ndef test_normal_deadline_crosses_midnight():\n    ...",
+      "tests": "from datetime import timedelta\ndef _outcome(test):\n    try:\n        test()\n    except AssertionError:\n        return \"fails\"\n    return \"passes\"\nassert _outcome(test_normal_deadline_crosses_midnight) == \"passes\", \"passes against the page's deadline\"\ndef deadline(opened_at, priority):\n    return opened_at\nassert _outcome(test_normal_deadline_crosses_midnight) == \"fails\", \"fails when deadline hands back the opening time unchanged\"\ndef deadline(opened_at, priority):\n    return opened_at + timedelta(hours=4)\nassert _outcome(test_normal_deadline_crosses_midnight) == \"fails\", \"fails when deadline gives every priority 4 hours\""
     },
     {
       "id": "t2",
@@ -82,9 +82,9 @@
         "rule applied by hand to a new function returns that same function and adds its name to the end of TRIAGE_RULES, so @name is shorthand for f = name(f)."
       ],
       "approved": true,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "q": "Write a decorator <code>rule(func)</code> that appends <code>func.__name__</code> to the list <code>TRIAGE_RULES</code> and hands <code>func</code> back. Apply it with <code>@rule</code> to two rule functions: <code>is_high(ticket)</code> returns <code>True</code> when <code>ticket[\"priority\"]</code> is <code>\"high\"</code>, and <code>is_unassigned(ticket)</code> returns <code>True</code> when <code>ticket[\"assignee\"]</code> is <code>None</code>; each returns <code>False</code> otherwise. Once the script has run, without either function being called, <code>TRIAGE_RULES</code> is <code>[\"is_high\", \"is_unassigned\"]</code>, and <code>is_high({\"priority\": \"high\", \"assignee\": None})</code> returns <code>True</code>.",
+      "starter": "TRIAGE_RULES = []\n\n\ndef rule(func):\n    ...",
+      "tests": "assert TRIAGE_RULES == [\"is_high\", \"is_unassigned\"], \"TRIAGE_RULES names both rules in the order they were defined, before either is called\"\nassert (is_high({\"priority\": \"high\", \"assignee\": None}), is_high({\"priority\": \"low\", \"assignee\": \"dana\"})) == (True, False), \"is_high still works after @rule: True for a high ticket, False for a low one\"\nassert (is_unassigned({\"priority\": \"low\", \"assignee\": None}), is_unassigned({\"priority\": \"high\", \"assignee\": \"dana\"})) == (True, False), \"is_unassigned still works after @rule: True with no assignee, False with one\"\ndef is_low(ticket):\n    return ticket[\"priority\"] == \"low\"\nassert (rule(is_low) is is_low, TRIAGE_RULES[-1]) == (True, \"is_low\"), \"rule called by hand returns the same function and adds its name at the end\""
     },
     {
       "id": "t3",
@@ -98,9 +98,9 @@
         "longest_breach([3.0], -1) raises ValueError; checking the limit with assert raises AssertionError instead, and the page says assert belongs in tests while a function that must reject bad input raises an exception."
       ],
       "approved": true,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "q": "Write <code>longest_breach(hours, limit)</code>. It returns the largest value in the list <code>hours</code> that is strictly above <code>limit</code>, or <code>None</code> when no value is, and raises <code>ValueError</code> when <code>limit</code> is negative. <code>longest_breach([3.0, 30.0, 6.5], 4)</code> returns <code>30.0</code>, and both <code>longest_breach([3.0, 4.0], 4)</code> and <code>longest_breach([], 4)</code> return <code>None</code>.",
+      "starter": "def longest_breach(hours, limit):\n    ...",
+      "tests": "assert longest_breach([3.0, 30.0, 6.5], 4) == 30.0, \"gives the longest time above the limit\"\nassert longest_breach([3.0, 4.0], 4) == None, \"a ticket that took exactly its limit is not a breach\"\nassert longest_breach([], 4) == None, \"an empty list gives None\"\nassert raises(ValueError, longest_breach, [3.0], -1), \"a negative limit raises ValueError\""
     }
   ]
 }

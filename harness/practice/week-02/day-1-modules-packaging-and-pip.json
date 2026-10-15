@@ -60,9 +60,9 @@
         "hours_match([1.5, 2.0], 4.0) is False; an answer that always says True, or passes an abs_tol as large as 1, lets half an hour of difference through."
       ],
       "approved": true,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "q": "Write <code>hours_match(entries, total)</code>. <code>entries</code> is a list of the hours agents logged on one ticket, with corrections entered as negative numbers. Return <code>True</code> when the entries add up to <code>total</code> and <code>False</code> when they do not. The sum is a computed float, so compare it with <code>math.isclose</code> and pass an <code>abs_tol</code>, since a total of 0 is possible; <code>abs_tol=1e-9</code> is plenty for hours. For example, <code>hours_match([0.1, 0.2], 0.3)</code> returns <code>True</code> and <code>hours_match([1.5, 2.0], 4.0)</code> returns <code>False</code>.",
+      "starter": "import math\n\n\ndef hours_match(entries, total):\n    ...",
+      "tests": "assert hours_match([0.1, 0.2], 0.3) == True, \"0.1 and 0.2 hours count as matching a total of 0.3\"\nassert hours_match([0.1, 0.2, -0.3], 0) == True, \"entries that a correction cancels out match a total of 0\"\nassert hours_match([1.5, 2.0], 4.0) == False, \"entries half an hour short of the total do not match\""
     },
     {
       "id": "t2",
@@ -76,9 +76,9 @@
         "first_tag(\"Login page returns 500\") is None; calling group(1) straight on the result stops with an error there, because search, like match on the page, returns None when nothing matches."
       ],
       "approved": true,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "q": "Write <code>first_tag(subject)</code>, which returns the text inside the first pair of square brackets in a ticket subject, as a string, or <code>None</code> when the subject has no tag. The tag can sit anywhere in the subject. Square brackets are special in a pattern, so a literal one is written with a backslash in front, as <code>\\.</code> is for a dot. A pattern compiled once at the top of the file, as the page does with <code>TICKET_REF</code>, keeps it in one place. For example, <code>first_tag(\"Invoice PDF is blank [billing] [urgent]\")</code> returns <code>\"billing\"</code>.",
+      "starter": "import re\n\n\ndef first_tag(subject):\n    ...",
+      "tests": "assert first_tag(\"Invoice PDF is blank [billing]\") == \"billing\", \"finds a tag that is not at the start of the subject\"\nassert first_tag(\"Invoice PDF is blank [billing] [urgent]\") == \"billing\", \"stops at the first closing bracket\"\nassert first_tag(\"[urgent] Login page returns 500\") == \"urgent\", \"returns the text inside the brackets as a string\"\nassert first_tag(\"Login page returns 500\") == None, \"returns None when the subject has no tag\""
     }
   ]
 }

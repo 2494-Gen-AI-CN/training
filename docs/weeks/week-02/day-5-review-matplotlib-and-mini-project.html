@@ -601,6 +601,37 @@ git log --oneline -- .</code></pre>
         </div>
       </section>
 
+      <section class="practice" id="practice" hidden>
+        <div class="tag">Practice</div>
+        <h2>Practice</h2>
+        <div class="ix-task" data-id="t1" data-title="Files that may not be there" data-q="Write &lt;code&gt;load_open(path)&lt;/code&gt;. It reads the file at &lt;code&gt;path&lt;/code&gt;, which holds a JSON list of ticket dicts, and returns a new list of the tickets whose &lt;code&gt;&quot;status&quot;&lt;/code&gt; is not &lt;code&gt;&quot;closed&quot;&lt;/code&gt;, in the order the file holds them. When there is no file at &lt;code&gt;path&lt;/code&gt;, it returns &lt;code&gt;[]&lt;/code&gt;. When the file holds text that is not valid JSON, it lets &lt;code&gt;json.JSONDecodeError&lt;/code&gt; reach the caller instead of returning &lt;code&gt;[]&lt;/code&gt;, because an empty list there would start an empty desk and lose the day&#x27;s tickets at the next save. For a file holding &lt;code&gt;[{&quot;ticket_id&quot;: 1, &quot;status&quot;: &quot;closed&quot;}, {&quot;ticket_id&quot;: 2, &quot;status&quot;: &quot;open&quot;}]&lt;/code&gt;, it returns &lt;code&gt;[{&quot;ticket_id&quot;: 2, &quot;status&quot;: &quot;open&quot;}]&lt;/code&gt;.">
+<pre class="task-starter"><code>import json
+
+
+def load_open(path):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>import json, os, tempfile
+folder = tempfile.mkdtemp()
+good = os.path.join(folder, "tickets.json")
+with open(good, "w", encoding="utf-8") as f:
+    json.dump([{"ticket_id": 1, "status": "closed"}, {"ticket_id": 2, "status": "open"}, {"ticket_id": 3, "status": "assigned"}], f)
+broken = os.path.join(folder, "broken.json")
+with open(broken, "w", encoding="utf-8") as f:
+    f.write('[{"ticket_id": 1, "status": ')
+assert load_open(os.path.join(folder, "missing.json")) == [], "a path with no file behind it gives []"
+assert raises(json.JSONDecodeError, load_open, broken), "a file that is not valid JSON raises json.JSONDecodeError instead of giving []"
+assert load_open(good) == [{"ticket_id": 2, "status": "open"}, {"ticket_id": 3, "status": "assigned"}], "a valid file gives every ticket that is not closed, in file order"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t2" data-title="A loop, a comprehension and an array" data-q="Write &lt;code&gt;breached(hours, limit)&lt;/code&gt;, which returns a list with one &lt;code&gt;True&lt;/code&gt; or &lt;code&gt;False&lt;/code&gt; per value in &lt;code&gt;hours&lt;/code&gt;, in the same order. An entry is &lt;code&gt;True&lt;/code&gt; when its value is strictly over &lt;code&gt;limit&lt;/code&gt;, so a value equal to the limit gives &lt;code&gt;False&lt;/code&gt;. An empty &lt;code&gt;hours&lt;/code&gt; gives &lt;code&gt;[]&lt;/code&gt;. A list comprehension is the short way to write it, and a loop with &lt;code&gt;append&lt;/code&gt; is also right. &lt;code&gt;breached([1.5, 54.75, 24.0], 24)&lt;/code&gt; returns &lt;code&gt;[False, True, False]&lt;/code&gt;.">
+<pre class="task-starter"><code>def breached(hours, limit):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert breached([24.0, 24.5], 24) == [False, True], "a value equal to the limit is not over it"
+assert breached([30.0, 1.0, 25.0, 3.5], 24) == [True, False, True, False], "a list with one True or False per value, in the order given"
+assert breached([], 24) == [], "no values give []"
+assert breached([3.0, 5.0], 4) == [False, True], "the comparison uses the limit it is given"</code></pre>
+        </div>
+      </section>
+
       <section class="step" data-diagram="0" data-step="6">
         <div class="tag">Check yourself</div>
         <h2>Check yourself</h2>

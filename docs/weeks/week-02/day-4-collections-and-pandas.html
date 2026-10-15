@@ -616,6 +616,54 @@ print(table.to_dict() == dict(Counter(df["status"])))</code></pre>
         </div>
       </section>
 
+      <section class="practice" id="practice" hidden>
+        <div class="tag">Practice</div>
+        <h2>Practice</h2>
+        <div class="ix-task" data-id="t1" data-title="Counter" data-q="Write &lt;code&gt;week_counts(days)&lt;/code&gt;. &lt;code&gt;days&lt;/code&gt; holds one list of ticket statuses per day, and the function returns a &lt;code&gt;Counter&lt;/code&gt; of every status across all the days. For &lt;code&gt;[[&quot;open&quot;, &quot;closed&quot;], [&quot;open&quot;, &quot;assigned&quot;]]&lt;/code&gt; it returns a Counter equal to &lt;code&gt;{&quot;open&quot;: 2, &quot;closed&quot;: 1, &quot;assigned&quot;: 1}&lt;/code&gt;. Reading a status that never appeared from the result gives &lt;code&gt;0&lt;/code&gt;, and an empty list of days gives an empty Counter.">
+<pre class="task-starter"><code>from collections import Counter
+
+
+def week_counts(days):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert week_counts([["open", "closed"], ["open", "assigned"]]) == {"open": 2, "closed": 1, "assigned": 1}, "a status seen on two days is counted on both days"
+assert week_counts([["open"], ["closed"]])["escalated"] == 0, "a status that never appears reads 0"
+assert week_counts([]) == {}, "no days at all gives an empty count"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t2" data-title="namedtuple" data-q="Define &lt;code&gt;TicketRow&lt;/code&gt; as a named tuple with the fields &lt;code&gt;ticket_id&lt;/code&gt;, &lt;code&gt;priority&lt;/code&gt;, &lt;code&gt;status&lt;/code&gt; and &lt;code&gt;hours&lt;/code&gt;, in that order. Then write &lt;code&gt;close_row(row, hours)&lt;/code&gt;, which returns a new &lt;code&gt;TicketRow&lt;/code&gt; with the same id and priority as &lt;code&gt;row&lt;/code&gt;, the status &lt;code&gt;&quot;closed&quot;&lt;/code&gt; and the hours it was given. The row passed in stays as it was. &lt;code&gt;close_row(TicketRow(4, &quot;normal&quot;, &quot;assigned&quot;, None), 22.5)&lt;/code&gt; returns &lt;code&gt;TicketRow(4, &quot;normal&quot;, &quot;closed&quot;, 22.5)&lt;/code&gt;.">
+<pre class="task-starter"><code>from collections import namedtuple
+
+TicketRow = ...
+
+
+def close_row(row, hours):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>row = TicketRow(4, "normal", "assigned", None)
+assert TicketRow._fields == ("ticket_id", "priority", "status", "hours"), "TicketRow has the fields ticket_id, priority, status and hours, in that order"
+assert close_row(row, 22.5) == TicketRow(4, "normal", "closed", 22.5), "the returned row is closed with the new hours, its id and priority as they were"
+assert (row.status, row.hours) == ("assigned", None), "the row passed in still reads assigned with no hours"
+assert type(close_row(row, 22.5)) == TicketRow, "close_row returns a TicketRow"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t3" data-title="OrderedDict" data-q="Write &lt;code&gt;serve(queue, urgent)&lt;/code&gt;. &lt;code&gt;queue&lt;/code&gt; is an &lt;code&gt;OrderedDict&lt;/code&gt; from ticket id to title, oldest ticket first, and &lt;code&gt;urgent&lt;/code&gt; is a ticket id or &lt;code&gt;None&lt;/code&gt;. When &lt;code&gt;urgent&lt;/code&gt; is a ticket id, move that ticket to the front of the queue. Then take the first pair off the queue and return it as a &lt;code&gt;(ticket id, title)&lt;/code&gt; tuple; the tickets left behind keep their order. With a queue holding 4 &lt;code&gt;&quot;Invoice PDF is blank&quot;&lt;/code&gt;, 6 &lt;code&gt;&quot;Typo on the pricing page&quot;&lt;/code&gt; and 5 &lt;code&gt;&quot;Checkout fails on mobile&quot;&lt;/code&gt;, in that order, &lt;code&gt;serve(queue, 5)&lt;/code&gt; returns &lt;code&gt;(5, &quot;Checkout fails on mobile&quot;)&lt;/code&gt; and leaves &lt;code&gt;list(queue)&lt;/code&gt; as &lt;code&gt;[4, 6]&lt;/code&gt;. On the same three tickets, &lt;code&gt;serve(queue, None)&lt;/code&gt; returns ticket 4&#x27;s pair.">
+<pre class="task-starter"><code>def serve(queue, urgent):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>from collections import OrderedDict
+first = OrderedDict([(4, "Invoice PDF is blank"), (6, "Typo on the pricing page"), (5, "Checkout fails on mobile")])
+second = OrderedDict(first)
+assert serve(first, 5) == (5, "Checkout fails on mobile"), "an urgent ticket goes to the front and is served first"
+assert list(first) == [4, 6], "the served ticket leaves the queue and the others keep their order"
+assert serve(second, None) == (4, "Invoice PDF is blank"), "with no urgent ticket the oldest one is served"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t4" data-title="defaultdict" data-q="Write &lt;code&gt;idle_agents(groups, names)&lt;/code&gt;. &lt;code&gt;groups&lt;/code&gt; is a &lt;code&gt;defaultdict(list)&lt;/code&gt; from agent name to a list of ticket ids, and &lt;code&gt;names&lt;/code&gt; is a list of agent names. Return a list of the names in &lt;code&gt;names&lt;/code&gt; that hold no ticket, in the order &lt;code&gt;names&lt;/code&gt; gives them. An agent holds no ticket when its list is empty or when it is not in &lt;code&gt;groups&lt;/code&gt; at all. Leave &lt;code&gt;groups&lt;/code&gt; as it was. With &lt;code&gt;groups&lt;/code&gt; holding &lt;code&gt;&quot;Priya&quot;: [4, 7]&lt;/code&gt; and &lt;code&gt;&quot;Marcus&quot;: []&lt;/code&gt;, &lt;code&gt;idle_agents(groups, [&quot;Priya&quot;, &quot;Marcus&quot;, &quot;Lee&quot;])&lt;/code&gt; returns &lt;code&gt;[&quot;Marcus&quot;, &quot;Lee&quot;]&lt;/code&gt;.">
+<pre class="task-starter"><code>def idle_agents(groups, names):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>from collections import defaultdict
+groups = defaultdict(list, {"Priya": [4, 7], "Marcus": []})
+assert idle_agents(groups, ["Priya", "Marcus", "Lee"]) == ["Marcus", "Lee"], "lists the agents with an empty list and the agents missing from groups"
+assert list(groups) == ["Priya", "Marcus"], "groups still holds only Priya and Marcus; checking Lee does not add Lee"
+assert idle_agents(groups, ["Lee", "Priya", "Marcus"]) == ["Lee", "Marcus"], "keeps the order the names come in"</code></pre>
+        </div>
+      </section>
+
       <section class="step" data-diagram="0" data-step="6">
         <div class="tag">Check yourself</div>
         <h2>Check yourself</h2>

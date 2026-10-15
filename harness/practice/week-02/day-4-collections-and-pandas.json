@@ -60,9 +60,9 @@
         "An empty list of days gives an empty Counter, equal to {}."
       ],
       "approved": true,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "q": "Write <code>week_counts(days)</code>. <code>days</code> holds one list of ticket statuses per day, and the function returns a <code>Counter</code> of every status across all the days. For <code>[[\"open\", \"closed\"], [\"open\", \"assigned\"]]</code> it returns a Counter equal to <code>{\"open\": 2, \"closed\": 1, \"assigned\": 1}</code>. Reading a status that never appeared from the result gives <code>0</code>, and an empty list of days gives an empty Counter.",
+      "starter": "from collections import Counter\n\n\ndef week_counts(days):\n    ...",
+      "tests": "assert week_counts([[\"open\", \"closed\"], [\"open\", \"assigned\"]]) == {\"open\": 2, \"closed\": 1, \"assigned\": 1}, \"a status seen on two days is counted on both days\"\nassert week_counts([[\"open\"], [\"closed\"]])[\"escalated\"] == 0, \"a status that never appears reads 0\"\nassert week_counts([]) == {}, \"no days at all gives an empty count\""
     },
     {
       "id": "t2",
@@ -75,9 +75,9 @@
         "The result is a TicketRow whose fields sit in the order ticket_id, priority, status, hours, so result[2] is \"closed\"; returning a dict or a reordered namedtuple fails."
       ],
       "approved": true,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "q": "Define <code>TicketRow</code> as a named tuple with the fields <code>ticket_id</code>, <code>priority</code>, <code>status</code> and <code>hours</code>, in that order. Then write <code>close_row(row, hours)</code>, which returns a new <code>TicketRow</code> with the same id and priority as <code>row</code>, the status <code>\"closed\"</code> and the hours it was given. The row passed in stays as it was. <code>close_row(TicketRow(4, \"normal\", \"assigned\", None), 22.5)</code> returns <code>TicketRow(4, \"normal\", \"closed\", 22.5)</code>.",
+      "starter": "from collections import namedtuple\n\nTicketRow = ...\n\n\ndef close_row(row, hours):\n    ...",
+      "tests": "row = TicketRow(4, \"normal\", \"assigned\", None)\nassert TicketRow._fields == (\"ticket_id\", \"priority\", \"status\", \"hours\"), \"TicketRow has the fields ticket_id, priority, status and hours, in that order\"\nassert close_row(row, 22.5) == TicketRow(4, \"normal\", \"closed\", 22.5), \"the returned row is closed with the new hours, its id and priority as they were\"\nassert (row.status, row.hours) == (\"assigned\", None), \"the row passed in still reads assigned with no hours\"\nassert type(close_row(row, 22.5)) == TicketRow, \"close_row returns a TicketRow\""
     },
     {
       "id": "t3",
@@ -90,9 +90,9 @@
         "After the call the served ticket is gone and the rest keep their order, so list(queue) is [4, 6] in the first case."
       ],
       "approved": true,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "q": "Write <code>serve(queue, urgent)</code>. <code>queue</code> is an <code>OrderedDict</code> from ticket id to title, oldest ticket first, and <code>urgent</code> is a ticket id or <code>None</code>. When <code>urgent</code> is a ticket id, move that ticket to the front of the queue. Then take the first pair off the queue and return it as a <code>(ticket id, title)</code> tuple; the tickets left behind keep their order. With a queue holding 4 <code>\"Invoice PDF is blank\"</code>, 6 <code>\"Typo on the pricing page\"</code> and 5 <code>\"Checkout fails on mobile\"</code>, in that order, <code>serve(queue, 5)</code> returns <code>(5, \"Checkout fails on mobile\")</code> and leaves <code>list(queue)</code> as <code>[4, 6]</code>. On the same three tickets, <code>serve(queue, None)</code> returns ticket 4's pair.",
+      "starter": "def serve(queue, urgent):\n    ...",
+      "tests": "from collections import OrderedDict\nfirst = OrderedDict([(4, \"Invoice PDF is blank\"), (6, \"Typo on the pricing page\"), (5, \"Checkout fails on mobile\")])\nsecond = OrderedDict(first)\nassert serve(first, 5) == (5, \"Checkout fails on mobile\"), \"an urgent ticket goes to the front and is served first\"\nassert list(first) == [4, 6], \"the served ticket leaves the queue and the others keep their order\"\nassert serve(second, None) == (4, \"Invoice PDF is blank\"), \"with no urgent ticket the oldest one is served\""
     },
     {
       "id": "t4",
@@ -104,9 +104,9 @@
         "groups still has two keys after the call and \"Lee\" in groups is False; reading groups[name] to check it inserts Lee with an empty list."
       ],
       "approved": true,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "q": "Write <code>idle_agents(groups, names)</code>. <code>groups</code> is a <code>defaultdict(list)</code> from agent name to a list of ticket ids, and <code>names</code> is a list of agent names. Return a list of the names in <code>names</code> that hold no ticket, in the order <code>names</code> gives them. An agent holds no ticket when its list is empty or when it is not in <code>groups</code> at all. Leave <code>groups</code> as it was. With <code>groups</code> holding <code>\"Priya\": [4, 7]</code> and <code>\"Marcus\": []</code>, <code>idle_agents(groups, [\"Priya\", \"Marcus\", \"Lee\"])</code> returns <code>[\"Marcus\", \"Lee\"]</code>.",
+      "starter": "def idle_agents(groups, names):\n    ...",
+      "tests": "from collections import defaultdict\ngroups = defaultdict(list, {\"Priya\": [4, 7], \"Marcus\": []})\nassert idle_agents(groups, [\"Priya\", \"Marcus\", \"Lee\"]) == [\"Marcus\", \"Lee\"], \"lists the agents with an empty list and the agents missing from groups\"\nassert list(groups) == [\"Priya\", \"Marcus\"], \"groups still holds only Priya and Marcus; checking Lee does not add Lee\"\nassert idle_agents(groups, [\"Lee\", \"Priya\", \"Marcus\"]) == [\"Lee\", \"Marcus\"], \"keeps the order the names come in\""
     }
   ]
 }

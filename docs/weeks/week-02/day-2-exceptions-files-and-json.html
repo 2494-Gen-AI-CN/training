@@ -643,6 +643,71 @@ ValueError: tickets.json is not valid JSON</code></pre>
         </div>
       </section>
 
+      <section class="practice" id="practice" hidden>
+        <div class="tag">Practice</div>
+        <h2>Practice</h2>
+        <div class="ix-task" data-id="t1" data-title="Exception handling" data-q="Write &lt;code&gt;parse_ids(texts)&lt;/code&gt;, which takes a list of strings and returns a list of the ints they spell, in the same order. A string that &lt;code&gt;int()&lt;/code&gt; rejects with a &lt;code&gt;ValueError&lt;/code&gt; is skipped, and the strings after it are still read. Catch &lt;code&gt;ValueError&lt;/code&gt; and nothing else, so that any other error, such as the &lt;code&gt;TypeError&lt;/code&gt; from &lt;code&gt;int(None)&lt;/code&gt;, reaches the caller. For example, &lt;code&gt;parse_ids([&quot;7&quot;, &quot;TD-7&quot;, &quot;12&quot;])&lt;/code&gt; returns &lt;code&gt;[7, 12]&lt;/code&gt;.">
+<pre class="task-starter"><code>def parse_ids(texts):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert parse_ids(["7", "TD-7", "12"]) == [7, 12], "skips the string int() rejects and still reads the ones after it"
+assert raises(TypeError, parse_ids, ["7", None]), "lets the TypeError from int(None) reach the caller"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t2" data-title="Read files" data-q="Write &lt;code&gt;read_board(path)&lt;/code&gt;, which reads the tab-separated board file at &lt;code&gt;path&lt;/code&gt; and returns a list with one row per line of the file, each row a list of that line&#x27;s fields as strings, with no line ending left on any of them. Open the file in a &lt;code&gt;with&lt;/code&gt; block with &lt;code&gt;encoding=&quot;utf-8&quot;&lt;/code&gt;, as the page does. A file holding &lt;code&gt;&quot;1\tLogin page returns 500\thigh\tclosed\n&quot;&lt;/code&gt; gives &lt;code&gt;[[&quot;1&quot;, &quot;Login page returns 500&quot;, &quot;high&quot;, &quot;closed&quot;]]&lt;/code&gt;, and a file that ends in a newline gives no empty row at the end. A missing path raises &lt;code&gt;FileNotFoundError&lt;/code&gt;.">
+<pre class="task-starter"><code>def read_board(path):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>import os, tempfile
+board_path = os.path.join(tempfile.mkdtemp(), "board.txt")
+with open(board_path, "w", encoding="utf-8") as f:
+    f.write("1\tLogin page returns 500\thigh\tclosed\n6\tTypo on the pricing page\tlow\topen\n")
+assert len(read_board(board_path)) == 2, "a file of two lines that ends in a newline gives two rows"
+assert [row[-1] for row in read_board(board_path)] == ["closed", "open"], "the last field of each row has no line ending"
+assert read_board(board_path)[0] == ["1", "Login page returns 500", "high", "closed"], "each row holds the line's fields, split at the tabs"
+assert raises(FileNotFoundError, read_board, os.path.join(tempfile.mkdtemp(), "missing.txt")), "a missing file raises FileNotFoundError"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t3" data-title="Write and create files" data-q="Write &lt;code&gt;start_shift_log(path, lines)&lt;/code&gt;, which creates a new file at &lt;code&gt;path&lt;/code&gt; with mode &lt;code&gt;&quot;x&quot;&lt;/code&gt; and writes each string in the list &lt;code&gt;lines&lt;/code&gt; on a line of its own, each one followed by a newline. &lt;code&gt;start_shift_log(p, [&quot;shift starts&quot;, &quot;ticket 6 opened&quot;])&lt;/code&gt; leaves the file reading &lt;code&gt;&quot;shift starts\nticket 6 opened\n&quot;&lt;/code&gt;. Because of mode &lt;code&gt;&quot;x&quot;&lt;/code&gt;, a second call on a path that already exists raises &lt;code&gt;FileExistsError&lt;/code&gt; and leaves the file holding what the first call wrote.">
+<pre class="task-starter"><code>def start_shift_log(path, lines):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>import os, tempfile
+def read_back(p):
+    with open(p, encoding="utf-8") as f:
+        return f.read()
+log_path = os.path.join(tempfile.mkdtemp(), "shift.log")
+start_shift_log(log_path, ["shift starts", "ticket 6 opened"])
+assert read_back(log_path) == "shift starts\nticket 6 opened\n", "the new file holds each line followed by a newline"
+assert raises(FileExistsError, start_shift_log, log_path, ["second shift"]), "a second call on the same path raises FileExistsError"
+assert read_back(log_path) == "shift starts\nticket 6 opened\n", "after the failed second call the file still holds the first call's lines"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t4" data-title="Delete files" data-q="Write &lt;code&gt;remove_files(paths)&lt;/code&gt;, which deletes the file at each path in the list &lt;code&gt;paths&lt;/code&gt; with &lt;code&gt;Path(path).unlink()&lt;/code&gt; and returns how many files it really deleted. A path whose file is already gone is skipped by catching the &lt;code&gt;FileNotFoundError&lt;/code&gt; that &lt;code&gt;unlink()&lt;/code&gt; raises for it: it is not counted, and the paths after it are still deleted. Given two files that exist with a missing path between them, &lt;code&gt;remove_files&lt;/code&gt; deletes both files and returns &lt;code&gt;2&lt;/code&gt;.">
+<pre class="task-starter"><code>from pathlib import Path
+
+
+def remove_files(paths):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>import os, tempfile
+folder = tempfile.mkdtemp()
+first = os.path.join(folder, "old-board.txt")
+gone = os.path.join(folder, "gone.txt")
+last = os.path.join(folder, "old-notes.txt")
+for name in (first, last):
+    with open(name, "w", encoding="utf-8") as f:
+        f.write("end of shift\n")
+assert remove_files([first, gone, last]) == 2, "returns the number of files it really deleted"
+assert not os.path.exists(last), "a missing path in the middle does not stop the deletes after it"
+assert not os.path.exists(first) and not os.path.exists(last), "no file that existed is left on disk"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t5" data-title="JSON" data-q="Write &lt;code&gt;survives_json(record)&lt;/code&gt;, which turns the dict &lt;code&gt;record&lt;/code&gt; into JSON text with &lt;code&gt;json.dumps&lt;/code&gt;, reads that text back with &lt;code&gt;json.loads&lt;/code&gt;, and returns &lt;code&gt;True&lt;/code&gt; when what comes back equals &lt;code&gt;record&lt;/code&gt; and &lt;code&gt;False&lt;/code&gt; when it does not. &lt;code&gt;survives_json({&quot;ticket_id&quot;: 4, &quot;assignee&quot;: None})&lt;/code&gt; returns &lt;code&gt;True&lt;/code&gt;, and &lt;code&gt;survives_json({&quot;tags&quot;: (&quot;billing&quot;, &quot;pdf&quot;)})&lt;/code&gt; returns &lt;code&gt;False&lt;/code&gt;, because the tuple comes back as a list. A record holding a value JSON has no type for, such as a &lt;code&gt;datetime&lt;/code&gt;, makes &lt;code&gt;json.dumps&lt;/code&gt; raise &lt;code&gt;TypeError&lt;/code&gt;; let that error reach the caller.">
+<pre class="task-starter"><code>import json
+
+
+def survives_json(record):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>from datetime import datetime
+assert survives_json({"ticket_id": 4, "title": "Refund charged twice", "urgent": False, "assignee": None}) == True, "a record of numbers, strings, booleans and None comes back equal"
+assert survives_json({"ticket_id": 4, "tags": ("billing", "pdf")}) == False, "a record holding a tuple does not come back equal"
+assert raises(TypeError, survives_json, {"opened_at": datetime(2026, 10, 19, 8, 30)}), "the TypeError json.dumps raises for a datetime reaches the caller"</code></pre>
+        </div>
+      </section>
+
       <section class="step" data-diagram="0" data-step="7">
         <div class="tag">Check yourself</div>
         <h2>Check yourself</h2>

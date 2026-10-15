@@ -605,6 +605,32 @@ git push origin main</code></pre>
         </div>
       </section>
 
+      <section class="practice" id="practice" hidden>
+        <div class="tag">Practice</div>
+        <h2>Practice</h2>
+        <div class="ix-task" data-id="t1" data-title="math.isclose" data-q="Write &lt;code&gt;hours_match(entries, total)&lt;/code&gt;. &lt;code&gt;entries&lt;/code&gt; is a list of the hours agents logged on one ticket, with corrections entered as negative numbers. Return &lt;code&gt;True&lt;/code&gt; when the entries add up to &lt;code&gt;total&lt;/code&gt; and &lt;code&gt;False&lt;/code&gt; when they do not. The sum is a computed float, so compare it with &lt;code&gt;math.isclose&lt;/code&gt; and pass an &lt;code&gt;abs_tol&lt;/code&gt;, since a total of 0 is possible; &lt;code&gt;abs_tol=1e-9&lt;/code&gt; is plenty for hours. For example, &lt;code&gt;hours_match([0.1, 0.2], 0.3)&lt;/code&gt; returns &lt;code&gt;True&lt;/code&gt; and &lt;code&gt;hours_match([1.5, 2.0], 4.0)&lt;/code&gt; returns &lt;code&gt;False&lt;/code&gt;.">
+<pre class="task-starter"><code>import math
+
+
+def hours_match(entries, total):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert hours_match([0.1, 0.2], 0.3) == True, "0.1 and 0.2 hours count as matching a total of 0.3"
+assert hours_match([0.1, 0.2, -0.3], 0) == True, "entries that a correction cancels out match a total of 0"
+assert hours_match([1.5, 2.0], 4.0) == False, "entries half an hour short of the total do not match"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t2" data-title="Regular expressions" data-q="Write &lt;code&gt;first_tag(subject)&lt;/code&gt;, which returns the text inside the first pair of square brackets in a ticket subject, as a string, or &lt;code&gt;None&lt;/code&gt; when the subject has no tag. The tag can sit anywhere in the subject. Square brackets are special in a pattern, so a literal one is written with a backslash in front, as &lt;code&gt;\.&lt;/code&gt; is for a dot. A pattern compiled once at the top of the file, as the page does with &lt;code&gt;TICKET_REF&lt;/code&gt;, keeps it in one place. For example, &lt;code&gt;first_tag(&quot;Invoice PDF is blank [billing] [urgent]&quot;)&lt;/code&gt; returns &lt;code&gt;&quot;billing&quot;&lt;/code&gt;.">
+<pre class="task-starter"><code>import re
+
+
+def first_tag(subject):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert first_tag("Invoice PDF is blank [billing]") == "billing", "finds a tag that is not at the start of the subject"
+assert first_tag("Invoice PDF is blank [billing] [urgent]") == "billing", "stops at the first closing bracket"
+assert first_tag("[urgent] Login page returns 500") == "urgent", "returns the text inside the brackets as a string"
+assert first_tag("Login page returns 500") == None, "returns None when the subject has no tag"</code></pre>
+        </div>
+      </section>
+
       <section class="step" data-diagram="0" data-step="6">
         <div class="tag">Check yourself</div>
         <h2>Check yourself</h2>

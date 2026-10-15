@@ -653,6 +653,60 @@ print(longest([]))</code></pre>
         </div>
       </section>
 
+      <section class="practice" id="practice" hidden>
+        <div class="tag">Practice</div>
+        <h2>Practice</h2>
+        <div class="ix-task" data-id="t1" data-title="Unit testing" data-q="The starter holds the page&#x27;s &lt;code&gt;SLA_HOURS&lt;/code&gt; and &lt;code&gt;deadline(opened_at, priority)&lt;/code&gt;. Write the test function &lt;code&gt;test_normal_deadline_crosses_midnight()&lt;/code&gt;: it checks that a normal ticket opened at &lt;code&gt;datetime(2026, 10, 19, 20, 0)&lt;/code&gt; is due at &lt;code&gt;datetime(2026, 10, 20, 20, 0)&lt;/code&gt;. Lay it out the way the page&#x27;s &lt;code&gt;test_high_deadline_is_four_hours&lt;/code&gt; is laid out: arrange, act, assert. The test returns quietly when &lt;code&gt;deadline&lt;/code&gt; is right and stops with &lt;code&gt;AssertionError&lt;/code&gt; when it is wrong. The checks call it three times: against the page&#x27;s &lt;code&gt;deadline&lt;/code&gt;, against one that hands back the opening time unchanged, and against one that gives every priority 4 hours. To watch it pass before you check, call it once at the end of the script, as &lt;code&gt;check_rules.py&lt;/code&gt; does.">
+<pre class="task-starter"><code>from datetime import datetime, timedelta
+SLA_HOURS = {"high": 4, "normal": 24, "low": 72}
+
+
+def deadline(opened_at, priority):
+    if priority not in SLA_HOURS:
+        raise ValueError(f"unknown priority: {priority!r}")
+    return opened_at + timedelta(hours=SLA_HOURS[priority])
+
+
+def test_normal_deadline_crosses_midnight():
+    ...</code></pre>
+<pre class="task-tests" hidden><code>from datetime import timedelta
+def _outcome(test):
+    try:
+        test()
+    except AssertionError:
+        return "fails"
+    return "passes"
+assert _outcome(test_normal_deadline_crosses_midnight) == "passes", "passes against the page's deadline"
+def deadline(opened_at, priority):
+    return opened_at
+assert _outcome(test_normal_deadline_crosses_midnight) == "fails", "fails when deadline hands back the opening time unchanged"
+def deadline(opened_at, priority):
+    return opened_at + timedelta(hours=4)
+assert _outcome(test_normal_deadline_crosses_midnight) == "fails", "fails when deadline gives every priority 4 hours"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t2" data-title="Decorators" data-q="Write a decorator &lt;code&gt;rule(func)&lt;/code&gt; that appends &lt;code&gt;func.__name__&lt;/code&gt; to the list &lt;code&gt;TRIAGE_RULES&lt;/code&gt; and hands &lt;code&gt;func&lt;/code&gt; back. Apply it with &lt;code&gt;@rule&lt;/code&gt; to two rule functions: &lt;code&gt;is_high(ticket)&lt;/code&gt; returns &lt;code&gt;True&lt;/code&gt; when &lt;code&gt;ticket[&quot;priority&quot;]&lt;/code&gt; is &lt;code&gt;&quot;high&quot;&lt;/code&gt;, and &lt;code&gt;is_unassigned(ticket)&lt;/code&gt; returns &lt;code&gt;True&lt;/code&gt; when &lt;code&gt;ticket[&quot;assignee&quot;]&lt;/code&gt; is &lt;code&gt;None&lt;/code&gt;; each returns &lt;code&gt;False&lt;/code&gt; otherwise. Once the script has run, without either function being called, &lt;code&gt;TRIAGE_RULES&lt;/code&gt; is &lt;code&gt;[&quot;is_high&quot;, &quot;is_unassigned&quot;]&lt;/code&gt;, and &lt;code&gt;is_high({&quot;priority&quot;: &quot;high&quot;, &quot;assignee&quot;: None})&lt;/code&gt; returns &lt;code&gt;True&lt;/code&gt;.">
+<pre class="task-starter"><code>TRIAGE_RULES = []
+
+
+def rule(func):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert TRIAGE_RULES == ["is_high", "is_unassigned"], "TRIAGE_RULES names both rules in the order they were defined, before either is called"
+assert (is_high({"priority": "high", "assignee": None}), is_high({"priority": "low", "assignee": "dana"})) == (True, False), "is_high still works after @rule: True for a high ticket, False for a low one"
+assert (is_unassigned({"priority": "low", "assignee": None}), is_unassigned({"priority": "high", "assignee": "dana"})) == (True, False), "is_unassigned still works after @rule: True with no assignee, False with one"
+def is_low(ticket):
+    return ticket["priority"] == "low"
+assert (rule(is_low) is is_low, TRIAGE_RULES[-1]) == (True, "is_low"), "rule called by hand returns the same function and adds its name at the end"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t3" data-title="Checking your answer" data-q="Write &lt;code&gt;longest_breach(hours, limit)&lt;/code&gt;. It returns the largest value in the list &lt;code&gt;hours&lt;/code&gt; that is strictly above &lt;code&gt;limit&lt;/code&gt;, or &lt;code&gt;None&lt;/code&gt; when no value is, and raises &lt;code&gt;ValueError&lt;/code&gt; when &lt;code&gt;limit&lt;/code&gt; is negative. &lt;code&gt;longest_breach([3.0, 30.0, 6.5], 4)&lt;/code&gt; returns &lt;code&gt;30.0&lt;/code&gt;, and both &lt;code&gt;longest_breach([3.0, 4.0], 4)&lt;/code&gt; and &lt;code&gt;longest_breach([], 4)&lt;/code&gt; return &lt;code&gt;None&lt;/code&gt;.">
+<pre class="task-starter"><code>def longest_breach(hours, limit):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert longest_breach([3.0, 30.0, 6.5], 4) == 30.0, "gives the longest time above the limit"
+assert longest_breach([3.0, 4.0], 4) == None, "a ticket that took exactly its limit is not a breach"
+assert longest_breach([], 4) == None, "an empty list gives None"
+assert raises(ValueError, longest_breach, [3.0], -1), "a negative limit raises ValueError"</code></pre>
+        </div>
+      </section>
+
       <section class="step" data-diagram="0" data-step="7">
         <div class="tag">Check yourself</div>
         <h2>Check yourself</h2>
