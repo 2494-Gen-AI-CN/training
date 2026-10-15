@@ -1,0 +1,112 @@
+{
+  "day": "w02d4",
+  "page": "docs/weeks/week-02/day-4-collections-and-pandas.html",
+  "assessed": "2026-10-15",
+  "verdict": "partial",
+  "summary": "The four collections steps each lend themselves to a small ticket function whose result shows the trap the page names (Counter.update adding, _replace leaving the row alone, popitem and move_to_end defaulting to the back, a defaultdict read inserting the key); the two pandas steps do not, because the browser runtime has no pandas.",
+  "steps": [
+    {
+      "step": 0,
+      "title": "Counter: counting without the bookkeeping",
+      "suitable": true,
+      "reason": "A Counter's counts, its 0 for a missing key and update adding where dict.update replaces all show up in a returned value, and the page names both mistakes. The exercise and demo rung 14 take status_counts over one list, so the task adds up several days of statuses instead.",
+      "task": "t1"
+    },
+    {
+      "step": 1,
+      "title": "namedtuple: rows whose fields have names",
+      "suitable": true,
+      "reason": "Field access, immutability and _replace returning a new row are all visible on the returned row and on the row passed in, and assigning to a field (the brief's pitfall) raises AttributeError. The exercise's to_rows and the demo's rows() build rows from tickets; the task closes an existing row instead.",
+      "task": "t2"
+    },
+    {
+      "step": 2,
+      "title": "OrderedDict: when the order is part of the data",
+      "suitable": true,
+      "reason": "move_to_end and popitem change the queue and return a pair a check can read, and leaving out last=False sends the ticket to the back or takes the newest one, which the page shows as the default. The exercise's and demo's work_queue build the order with sorted; the task works on a queue that is already built.",
+      "task": "t3"
+    },
+    {
+      "step": 3,
+      "title": "The rest of the collections module",
+      "suitable": true,
+      "reason": "The page's named trap, a read of a missing key on a defaultdict inserting it, shows up as the dict's length after the call. The exercise's ids_by_agent and the demo's by_agent build the groups, so the task only reads a defaultdict it is given; deque and ChainMap stay in the notes.",
+      "task": "t4"
+    },
+    {
+      "step": 4,
+      "title": "pandas: a DataFrame from a JSON file",
+      "suitable": false,
+      "reason": "The browser runtime loads no packages, so pandas, read_json and DataFrame selection cannot run there, and pip and requirements.txt are tools. Faking a DataFrame with plain dicts would practise something the page does not teach.",
+      "task": null
+    },
+    {
+      "step": 5,
+      "title": "pandas: computed columns, missing values and groups",
+      "suitable": false,
+      "reason": "Computed columns, NaN handling, value_counts, groupby and sort_values all need pandas, which the browser runtime does not load. The one standard-library echo, NaN == NaN being False, is a single comparison and not worth a task.",
+      "task": null
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "title": "Counter",
+      "step": 0,
+      "idea": "The reader writes week_counts(days), where days is a list of lists of statuses, one list per day, and returns a Counter of every status across all days. For [[\"open\", \"closed\"], [\"open\", \"assigned\"]] the result equals {\"open\": 2, \"closed\": 1, \"assigned\": 1}.",
+      "checks": [
+        "A status seen on two days is counted on both; building a plain dict and calling update with each day's counts keeps only the last day's number.",
+        "A status that never appears reads 0 from the result; a plain dict raises KeyError on that read.",
+        "An empty list of days gives an empty Counter, equal to {}."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t2",
+      "title": "namedtuple",
+      "step": 1,
+      "idea": "The reader defines TicketRow = namedtuple(\"TicketRow\", [\"ticket_id\", \"priority\", \"status\", \"hours\"]) and writes close_row(row, hours), which returns a copy of the row with status \"closed\" and the given hours. close_row(TicketRow(4, \"normal\", \"assigned\", None), 22.5) gives TicketRow(4, \"normal\", \"closed\", 22.5).",
+      "checks": [
+        "The returned row has status \"closed\" and hours 22.5, with ticket_id and priority as they were; assigning row.status = \"closed\" raises AttributeError before anything comes back.",
+        "The row passed in still has status \"assigned\" and hours None afterwards, so the function built a new row.",
+        "The result is a TicketRow whose fields sit in the order ticket_id, priority, status, hours, so result[2] is \"closed\"; returning a dict or a reordered namedtuple fails."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t3",
+      "title": "OrderedDict",
+      "step": 2,
+      "idea": "The reader writes serve(queue, urgent), where queue is an OrderedDict of ticket id to title, oldest first, and urgent is a ticket id or None. If urgent is given, that ticket moves to the front; then the first pair comes off the queue and is returned. With queue 4, 6, 5 and urgent 5, serve returns (5, \"Checkout fails on mobile\") and the queue is left as 4, 6.",
+      "checks": [
+        "With urgent 5 the returned pair is ticket 5's; move_to_end(5) without last=False sends it to the back, so another ticket comes off.",
+        "With urgent None the oldest ticket, 4, comes off; popitem() with its default last=True takes the newest.",
+        "After the call the served ticket is gone and the rest keep their order, so list(queue) is [4, 6] in the first case."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t4",
+      "title": "defaultdict",
+      "step": 3,
+      "idea": "The reader writes idle_agents(groups, names), where groups is a defaultdict(list) of agent to ticket ids, and returns the names in names that hold no ticket, in the order given. With groups holding Priya: [4, 7] and Marcus: [], idle_agents(groups, [\"Priya\", \"Marcus\", \"Lee\"]) returns [\"Marcus\", \"Lee\"].",
+      "checks": [
+        "The result lists the agents with an empty list and the agents missing from groups, in the order of names.",
+        "groups still has two keys after the call and \"Lee\" in groups is False; reading groups[name] to check it inserts Lee with an empty list."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    }
+  ]
+}

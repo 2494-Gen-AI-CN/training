@@ -1,0 +1,134 @@
+{
+  "day": "w02d2",
+  "page": "docs/weeks/week-02/day-2-exceptions-files-and-json.html",
+  "assessed": "2026-10-15",
+  "verdict": "partial",
+  "summary": "The day lends itself to five checkable tasks on catching one narrow exception, reading, writing with \"x\", deleting files on a temporary path and a JSON round trip; reading a traceback is a reading skill no check sees, and the missing-or-corrupt loader is the exercise's load_tickets under another name.",
+  "steps": [
+    {
+      "step": 0,
+      "title": "Errors and how to read a traceback",
+      "suitable": false,
+      "reason": "The step teaches reading a traceback and naming KeyError, ValueError and TypeError from its last line, a diagnosis skill that leaves no name or value for a check to read, and its SyntaxError stops the run before any check is tried. Raising and catching those types is the next step, which carries the task.",
+      "task": null
+    },
+    {
+      "step": 1,
+      "title": "Raising and handling exceptions with try and except",
+      "suitable": true,
+      "reason": "What a try with a narrow except does shows up in a return value and in which exceptions still escape, and the page names both mistakes a check can catch: a handler wider than the error it recovers from, and a try wrapped around more than the risky line. The task stays off the demo's Ticket constructor and intake and off the page's parse_id by working on a list of ids.",
+      "task": "t1"
+    },
+    {
+      "step": 2,
+      "title": "Opening and reading files",
+      "suitable": true,
+      "reason": "Reading a file the checks create under tempfile.mkdtemp() gives a list a check can compare, and the page names the two slips that change it: splitting on \"\\n\" leaves an empty last item, and looping over the file keeps each newline. Reading the tab-separated board back is a sibling of the demo's export_board, and the exercise reads only JSON.",
+      "task": "t2"
+    },
+    {
+      "step": 3,
+      "title": "Writing, appending and creating files",
+      "suitable": true,
+      "reason": "Mode \"x\", the newline write() leaves out and the content a second call must not destroy all show up in the file's text and in a FileExistsError a check can see. The demo writes with \"w\" and \"a\" and the exercise appends JSON, so a create-only shift log is a sibling of both.",
+      "task": "t3"
+    },
+    {
+      "step": 4,
+      "title": "Deleting files safely",
+      "suitable": true,
+      "reason": "Which files are gone and a count of what was really deleted are behaviour a check can read, and the page names the price of missing_ok=True (never knowing whether anything was deleted) and the crash of an unguarded unlink. The exercise and the demo both hold delete_file itself, so the task deletes a list of paths and counts; the trainer may judge that still too close.",
+      "task": "t4"
+    },
+    {
+      "step": 5,
+      "title": "JSON: saving structured data and reading it back",
+      "suitable": true,
+      "reason": "A round trip through dumps and loads gives a value a check can compare, and the page names the limits that change it: tuples come back as lists and a datetime makes dumps raise TypeError. The exercise owns saving to a file and converting dates, so the task works on strings and converts nothing.",
+      "task": "t5"
+    },
+    {
+      "step": 6,
+      "title": "When the JSON file is missing or corrupt",
+      "suitable": false,
+      "reason": "Every behaviour here, an empty result for a missing file and a ValueError chained with from to the JSONDecodeError, is an acceptance criterion of the exercise's load_tickets and the demo's load_desk, so any task on this step hands the exercise over under a new name.",
+      "task": null
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "title": "Exception handling",
+      "step": 1,
+      "idea": "The reader writes parse_ids(texts), which turns each string in a list into an int and skips the ones int() rejects with a ValueError, catching only that type. parse_ids([\"7\", \"TD-7\", \"12\"]) returns [7, 12].",
+      "checks": [
+        "parse_ids([\"7\", \"TD-7\", \"12\"]) returns [7, 12]; a try wrapped around the whole loop stops at \"TD-7\" and loses 12.",
+        "parse_ids([\"7\", None]) lets the TypeError from int(None) reach the caller; a bare except or except Exception swallows it, the too-wide handler the page warns about."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t2",
+      "title": "Read files",
+      "step": 2,
+      "idea": "The reader writes read_board(path), which opens a tab-separated board file with encoding=\"utf-8\" in a with block and returns one list of fields per line. A file holding \"1\\tLogin page returns 500\\thigh\\tclosed\\n\" gives [[\"1\", \"Login page returns 500\", \"high\", \"closed\"]].",
+      "checks": [
+        "A two-line file that ends in a newline gives exactly two rows; splitting the text on \"\\n\" adds an empty last row.",
+        "The last field of each row is \"closed\" or \"open\" with no line ending; looping over the file object or using readlines() keeps the \"\\n\".",
+        "A missing path raises FileNotFoundError instead of returning an empty list."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t3",
+      "title": "Write and create files",
+      "step": 3,
+      "idea": "The reader writes start_shift_log(path, lines), which creates a new file with mode \"x\" and writes each string in lines on its own line, so an existing log is never overwritten. start_shift_log(p, [\"shift starts\", \"ticket 6 opened\"]) leaves the file reading \"shift starts\\nticket 6 opened\\n\".",
+      "checks": [
+        "The new file reads \"shift starts\\nticket 6 opened\\n\"; leaving out the + \"\\n\" runs the lines together, since write() adds no newline.",
+        "A second call on the same path raises FileExistsError; mode \"w\" or \"a\" lets it through.",
+        "After the failed second call the file still holds the first call's text; mode \"w\" empties it the moment it is opened."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t4",
+      "title": "Delete files",
+      "step": 4,
+      "idea": "The reader writes remove_files(paths), which deletes each file in a list with Path.unlink(), carries on past any that is already gone by catching FileNotFoundError, and returns how many it really deleted. With two existing files and one missing path it returns 2.",
+      "checks": [
+        "Two existing files and one missing path give 2; unlink(missing_ok=True) counts the missing one too and returns 3.",
+        "A missing path in the middle of the list raises nothing and the file after it is still deleted; an unguarded unlink() stops at the missing one.",
+        "After the call none of the existing files is left on disk."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t5",
+      "title": "JSON",
+      "step": 5,
+      "idea": "The reader writes survives_json(record), which turns a dict into JSON text with json.dumps, reads it back with json.loads and returns whether the result equals the original. survives_json({\"ticket_id\": 4, \"assignee\": None}) returns True and survives_json({\"tags\": (\"billing\", \"pdf\")}) returns False.",
+      "checks": [
+        "A record of numbers, strings, booleans and None gives True; calling json.dump without a file in place of dumps fails before anything is compared.",
+        "A record holding a tuple gives False, because the tuple comes back as a list; comparing the two JSON texts instead of the values gives True.",
+        "A record holding a datetime lets the TypeError from dumps reach the caller; wrapping the call in a wide except that returns False hides it."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    }
+  ]
+}

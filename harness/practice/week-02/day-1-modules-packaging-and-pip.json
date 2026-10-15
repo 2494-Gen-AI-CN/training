@@ -1,0 +1,84 @@
+{
+  "day": "w02d1",
+  "page": "docs/weeks/week-02/day-1-modules-packaging-and-pip.html",
+  "assessed": "2026-10-15",
+  "verdict": "partial",
+  "summary": "The day lends itself to two checkable tasks, one comparing logged hours with math.isclose and one pulling a bracketed tag out of a subject with a compiled pattern; logging shows up as printed stderr lines and its one checkable record is the exercise's check_sla, and pip, pylint and the split into modules are tools, the shell or several files.",
+  "steps": [
+    {
+      "step": 0,
+      "title": "The import statement and the math module",
+      "suitable": true,
+      "reason": "math.isclose returns a bool a check can read, and the page names both mistakes: comparing computed floats with == and leaving out abs_tol when one side is zero. The exercise's days_open already takes math.ceil, so the task stays on isclose and off rounding.",
+      "task": "t1"
+    },
+    {
+      "step": 1,
+      "title": "Logging: a record of what the program did",
+      "suitable": false,
+      "reason": "What the step teaches (levels against a threshold, basicConfig, the format string, stderr) shows up as printed lines, which a check does not see. The one behaviour a check could catch with a handler, a single WARNING built from a %s argument, is the exercise's check_sla acceptance criterion, and handlers added in the worker stay on the logging module from one run to the next.",
+      "task": null
+    },
+    {
+      "step": 2,
+      "title": "Regular expressions with the re module",
+      "suitable": true,
+      "reason": "A compiled pattern's search and group(1) give back a string or None a check can compare, and the page names the mistakes that change it: re.match trying only at the start, greedy .* running past the first closing bracket, and handing back the match object instead of the group. The exercise owns ticket references and email redaction, so the task reads a different shape, a tag in square brackets.",
+      "task": "t2"
+    },
+    {
+      "step": 3,
+      "title": "pip, virtual environments and requirements.txt",
+      "suitable": false,
+      "reason": "pip, venv and requirements.txt are shell tools and files on disk; the runtime has no terminal and installs no package, and nothing here leaves a value in a namespace.",
+      "task": null
+    },
+    {
+      "step": 4,
+      "title": "pylint: reading a linter's report",
+      "suitable": false,
+      "reason": "pylint is an installed tool that reads code without running it, and the runtime cannot install it; a docstring does reach __doc__, but the only wrong answer there is not writing one.",
+      "task": null
+    },
+    {
+      "step": 5,
+      "title": "Writing your own module",
+      "suitable": false,
+      "reason": "The step's point is two files, one importing the other, and the __name__ guard telling them apart; a task runs as one file whose __name__ is always \"__main__\", so neither the import-time side effects nor the guard can be shown. The one-file pitfall, import desk then desk = Desk(), needs a second module to import.",
+      "task": null
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "title": "math.isclose",
+      "step": 0,
+      "idea": "The reader writes hours_match(entries, total): entries is a list of hours agents logged on one ticket, corrections included as negative numbers, and the function returns True when they add up to total and False otherwise, using math.isclose with an abs_tol. Example: hours_match([0.1, 0.2], 0.3) is True.",
+      "checks": [
+        "hours_match([0.1, 0.2], 0.3) is True; comparing the sum with == gives False, because 0.1 + 0.2 is stored a hair away from 0.3.",
+        "hours_match([0.1, 0.2, -0.3], 0) is True; math.isclose without abs_tol gives False, because a tolerance relative to zero is zero.",
+        "hours_match([1.5, 2.0], 4.0) is False; an answer that always says True, or passes an abs_tol as large as 1, lets half an hour of difference through."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t2",
+      "title": "Regular expressions",
+      "step": 2,
+      "idea": "The reader compiles one pattern at module level and writes first_tag(subject), which returns the text inside the first pair of square brackets in a ticket subject, or None when there is none. Example: first_tag(\"Invoice PDF is blank [billing] [urgent]\") is \"billing\".",
+      "checks": [
+        "first_tag(\"Invoice PDF is blank [billing] [urgent]\") is \"billing\"; re.match finds nothing there, because the tag is not at the start of the subject.",
+        "The same subject gives \"billing\" and not \"billing] [urgent\"; a greedy .* runs on to the last closing bracket, where the lazy .*? stops at the first.",
+        "first_tag(\"[urgent] Login page returns 500\") is the string \"urgent\"; returning the match object instead of match.group(1) fails it.",
+        "first_tag(\"Login page returns 500\") is None; calling group(1) straight on the result stops with an error there, because search, like match on the page, returns None when nothing matches."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    }
+  ]
+}

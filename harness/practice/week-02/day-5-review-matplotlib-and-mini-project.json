@@ -1,0 +1,83 @@
+{
+  "day": "w02d5",
+  "page": "docs/weeks/week-02/day-5-review-matplotlib-and-mini-project.html",
+  "assessed": "2026-10-15",
+  "verdict": "partial",
+  "summary": "The day lends itself to two checkable tasks from its Python review, a JSON loader that handles only the missing file and a breach list built with a comprehension; its chart, Matplotlib, pandas, pytest and pylint steps need packages, a window, several files or a reviewer's judgement, none of which the browser runtime or a check can supply.",
+  "steps": [
+    {
+      "step": 0,
+      "title": "Choosing a chart from the question",
+      "suitable": false,
+      "reason": "The step teaches a judgement: which chart answers which question, why a bar axis starts at zero and how to review a colleague's chart. A function mapping a question kind to a chart name would only test recall of the table, and drawing anything needs Matplotlib, which the runtime does not load.",
+      "task": null
+    },
+    {
+      "step": 1,
+      "title": "Matplotlib: a figure, an axes and a bar chart",
+      "suitable": false,
+      "reason": "Every behaviour here (plt.subplots, ax.bar, savefig, plt.show blocking) lives in Matplotlib, which the worker does not load, and the install and pin with pip is a tool step. Faking a Figure and Axes in plain Python would test the fake, not the library.",
+      "task": null
+    },
+    {
+      "step": 2,
+      "title": "A second chart, saving it and testing it",
+      "suitable": false,
+      "reason": "The step's points are Matplotlib figures and plt.close, pandas Series.map, .gitignore and a pytest test with tmp_path; the runtime has no Matplotlib, pandas or pytest, and Git is a tool. The file-writing contract it tests belongs to the chart function, which cannot run here.",
+      "task": null
+    },
+    {
+      "step": 3,
+      "title": "Review, part 1: modules, errors and files",
+      "suitable": true,
+      "reason": "Catching FileNotFoundError by name while letting json.JSONDecodeError through shows up as a return value and a raised exception a check can see, and the page names the mistake: a broad or bare except that also turns a corrupt file into an empty desk. Modules and the __main__ guard need several files and are left out; the task returns the error where the exercise's loader prints a message, so it does not hand over that criterion.",
+      "task": "t1"
+    },
+    {
+      "step": 4,
+      "title": "Review, part 2: JSON, tests and arrays",
+      "suitable": true,
+      "reason": "The list comprehension has its home on this page and gives a list a check can compare, and the page's failing test names the mistake that matters: >= where the rule says strictly over the limit. pytest and NumPy are not in the runtime, so the task keeps to the plain-list form of Wednesday's breach mask.",
+      "task": "t2"
+    },
+    {
+      "step": 5,
+      "title": "Review, part 3: DataFrames, and how a team reviews a codebase",
+      "suitable": false,
+      "reason": "groupby and the DataFrame need pandas, which the runtime does not load, and redoing them with dicts would fake the package the step is about. The rest is a comparison of containers and a review habit (pytest, pylint, git log), which are concepts and tools with no value for a check to read.",
+      "task": null
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "title": "Files that may not be there",
+      "step": 3,
+      "idea": "The reader writes load_open(path), which reads a JSON list of ticket dicts and returns only those whose status is not \"closed\". A missing file gives [], and a corrupt file raises json.JSONDecodeError for the caller to see. For a file holding a closed ticket 1 and an open ticket 2, it returns the list with ticket 2's dict only.",
+      "checks": [
+        "A path with no file behind it returns [], so FileNotFoundError is caught rather than left to stop the program.",
+        "A file holding text that is not JSON raises json.JSONDecodeError; a bare except or except Exception that returns [] for it fails, since that would start an empty desk and lose the day's tickets at the next save.",
+        "A valid file returns only the tickets whose status is not \"closed\", in file order, as dicts read with json.load."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t2",
+      "title": "A loop, a comprehension and an array",
+      "step": 4,
+      "idea": "The reader writes breached(hours, limit), which returns a list of booleans, one per value in hours, True where that value is strictly over limit. A comprehension is the short form; a loop with append is also right. breached([1.5, 54.75, 24.0], 24) returns [False, True, False].",
+      "checks": [
+        "A value exactly equal to the limit gives False; writing >= instead of >, the bug the page's failing test shows, gives True.",
+        "The result is a list with one boolean per input value, in the same order, and an empty list gives [].",
+        "The comparison uses the limit argument, so breached([3.0, 5.0], 4) returns [False, True]; a 24 copied from the page's example gives the wrong answer."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    }
+  ]
+}

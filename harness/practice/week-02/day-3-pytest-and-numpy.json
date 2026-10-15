@@ -1,0 +1,106 @@
+{
+  "day": "w02d3",
+  "page": "docs/weeks/week-02/day-3-pytest-and-numpy.html",
+  "assessed": "2026-10-15",
+  "verdict": "partial",
+  "summary": "The day lends itself to three plain-Python tasks: a hand-called unit test in arrange-act-assert form that has to catch a broken deadline, a decorator that registers triage rules, and an edge-case function checked on a normal, an empty and a boundary input; pytest itself, its fixtures and parametrize, and every NumPy step need packages the browser runtime does not load, and the testing overview is concepts.",
+  "steps": [
+    {
+      "step": 0,
+      "title": "Why teams test, and what kinds of test there are",
+      "suitable": false,
+      "reason": "The step teaches concepts (the test pyramid, unit against integration against end-to-end, green before merge, what coverage proves), none of which leaves a value a check can read. Its unittest example is there to be recognised, and running a suite through unittest.main prints a report a check cannot see.",
+      "task": null
+    },
+    {
+      "step": 1,
+      "title": "Unit testing: one rule, one test",
+      "suitable": true,
+      "reason": "The page shows a test as an ordinary function you call yourself, so the reader's test function is behaviour: a check can call it against the page's deadline (it must return quietly) and against a deadline the check swaps in broken (it must raise AssertionError). pytest.raises and tmp_path are out, since pytest is not in the runtime; the task keeps to arrange, act, assert with a plain assert and stays off the exercise's hours_report functions.",
+      "task": "t1"
+    },
+    {
+      "step": 2,
+      "title": "pytest: finding, running and reading tests",
+      "suitable": false,
+      "reason": "The step teaches a tool: installing and pinning pytest, how it discovers test_*.py files, reading its failure report, -v and -k. pytest is not in the runtime, there is no terminal, and discovery depends on file names across several files.",
+      "task": null
+    },
+    {
+      "step": 3,
+      "title": "Fixtures, temporary folders and parametrised tests",
+      "suitable": true,
+      "reason": "Fixtures, tmp_path and parametrize all need pytest, but the step's first section teaches @ above a def as plain Python with the register example, and that leaves names a check can read: what the registry holds after the definitions run and whether the decorated function still works. The task is a sibling of register in the ticket domain, not the sample_desk fixture of the demo.",
+      "task": "t2"
+    },
+    {
+      "step": 4,
+      "title": "NumPy arrays against Python lists",
+      "suitable": false,
+      "reason": "The point of the step is the NumPy array (element-wise arithmetic, dtype, shape, one type per array), and the runtime loads no numpy. The list half (* 2 repeats, + 1 raises TypeError) is only there as the contrast and would not make a task on its own.",
+      "task": null
+    },
+    {
+      "step": 5,
+      "title": "Vectorised comparisons, and testing arrays",
+      "suitable": false,
+      "reason": "Masks, .sum() on booleans, NumPy scalars, np.array_equal and pytest.approx all need numpy or pytest, which the runtime does not load. The one standard-library idea in it, total_seconds() against .seconds, is a neighbouring detail of the demo's resolution_hours, and rule 2 rules out building a task from a neighbour when the step's point is a package.",
+      "task": null
+    },
+    {
+      "step": 6,
+      "title": "Interview mindset, part 1: reasoning aloud and checking your answer",
+      "suitable": true,
+      "reason": "The reasoning-aloud half is spoken, but the checking half is behaviour: max with default= on an empty input, > at the boundary where hours equal the limit, and raising ValueError for bad input where an assert belongs in tests. Each of those is a mistake the page names, and a function over a plain list of hours checks all three without numpy and without repeating the exercise's array functions.",
+      "task": "t3"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "title": "Unit testing",
+      "step": 1,
+      "idea": "The starter holds the page's SLA_HOURS and deadline(opened_at, priority). The reader writes test_normal_deadline_crosses_midnight() in arrange-act-assert form: a normal ticket opened at datetime(2026, 10, 19, 20, 0) is due at datetime(2026, 10, 20, 20, 0), checked with one plain assert. The reader calls it once at the end of the script, as the page's check_rules.py does.",
+      "checks": [
+        "Called against the page's deadline, the test returns without raising; an expected value with the wrong day or hour (the due time computed on the same date) raises AssertionError.",
+        "With deadline swapped by the check for one that returns opened_at unchanged, the test raises AssertionError; a test that calls deadline and asserts nothing passes anyway, which is the page's point that a test that never fails may not be checking anything.",
+        "With deadline swapped for one that gives every priority 4 hours, the test raises AssertionError; a test copied from the page's high-priority case passes, because it never checks the normal rule."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t2",
+      "title": "Decorators",
+      "step": 3,
+      "idea": "The reader writes a decorator rule(func) that appends func.__name__ to a list TRIAGE_RULES and hands func back, then applies it with @rule to two small checks, is_high(ticket) (True when ticket[\"priority\"] == \"high\") and is_unassigned(ticket) (True when ticket[\"assignee\"] is None). After the script runs, TRIAGE_RULES is [\"is_high\", \"is_unassigned\"] and is_high({\"priority\": \"high\", \"assignee\": None}) returns True.",
+      "checks": [
+        "TRIAGE_RULES holds [\"is_high\", \"is_unassigned\"] in definition order once the script has run, with neither function called; the page's point is that @rule runs rule(f) when the def runs.",
+        "is_high({\"priority\": \"high\", \"assignee\": None}) returns True; a rule that appends and returns nothing leaves is_high bound to None, so the call raises TypeError.",
+        "rule applied by hand to a new function returns that same function and adds its name to the end of TRIAGE_RULES, so @name is shorthand for f = name(f)."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t3",
+      "title": "Checking your answer",
+      "step": 6,
+      "idea": "The reader writes longest_breach(hours, limit): it returns the largest value in the list hours that is strictly above limit, or None when no value is, and raises ValueError when limit is negative. longest_breach([3.0, 30.0, 6.5], 4) returns 30.0, longest_breach([3.0, 4.0], 4) returns None, and longest_breach([], 4) returns None.",
+      "checks": [
+        "longest_breach([3.0, 30.0, 6.5], 4) returns 30.0, the normal case.",
+        "longest_breach([3.0, 4.0], 4) returns None; using >= counts the ticket that took exactly its limit as a breach, the boundary the page says to decide on purpose.",
+        "longest_breach([], 4) returns None; max() over an empty sequence without default= stops with ValueError: max() iterable argument is empty.",
+        "longest_breach([3.0], -1) raises ValueError; checking the limit with assert raises AssertionError instead, and the page says assert belongs in tests while a function that must reject bad input raises an exception."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    }
+  ]
+}
