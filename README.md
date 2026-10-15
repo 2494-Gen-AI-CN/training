@@ -32,7 +32,8 @@ You need Python 3.15 and Git.
 ```
 git clone https://github.com/2494-Gen-AI-CN/training.git
 cd training
-python -m venv .venv
+py -3.15 -m venv .venv          # Windows: the py launcher picks 3.15 even when another Python is on PATH
+# python3.15 -m venv .venv      # macOS / Linux
 .venv\Scripts\activate          # Windows
 # source .venv/bin/activate     # macOS / Linux
 pip install -r requirements-dev.txt

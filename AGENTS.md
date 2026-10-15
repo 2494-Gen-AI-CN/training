@@ -44,6 +44,7 @@ Prep repo for the 11-week **2494 Gen-AI Python** training. Two deliverables per 
 
 ## Commands
 
+- Interpreter: the project Python is 3.15 (`harness/config.json` `python`, README). On the trainer's Windows machine the bare `python` on PATH is 3.12; 3.15 is the `py` launcher's default (`py --version`). Run every `python ...` command below as `py ...` there (or work from a 3.15 venv: `py -3.15 -m venv .venv`). The harness and the tests spawn their children with `sys.executable`, so the interpreter you start with is the one they use. A fresh 3.15 needs `py -m pip install -r requirements-dev.txt` and the week packages (`numpy`, `pandas`, `matplotlib`) once; a suite run that fails only in `test_exercises.py` for week-2 days is a missing package, not a broken exercise.
 - Contract tests: `python -m unittest discover -s tests -v`
 - Contract tests, recorded for the tracker (use at the end of a session): `python harness/log_run.py tests`
 - Close a taught day (D-0050, D-0055): `python harness/close_day.py <week> <day>` (dry run), then add `--apply` (`--match NN-slug=<sha>` when a block's commit message was not typed verbatim)
