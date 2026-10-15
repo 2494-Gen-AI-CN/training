@@ -17,7 +17,7 @@
     <a class="topnav" href="../../index.html">Home</a>
   </div>
   <nav class="topbar-center">
-    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
     <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises" target="_blank" rel="noopener">Exercises</a>
   </nav>
   <div class="topbar-right">
@@ -361,7 +361,6 @@ print(sample_tickets())</code></pre>
         the desk's numbers starts from it. The usual slip is calling a fixture like a function, writing
         <code>sample_desk()</code> inside a test, which pytest rejects with an error saying the fixture was called
         directly. Name it as a parameter and let pytest do the calling.</p>
-        <button class="code-cta" type="button" data-modal="code-w02d3-fixture"><span class="cc-ico">&lt;/&gt;</span> See the sample_desk fixture and the tests that use it <span class="cc-meta">· 02_storage_tests.md</span></button>
         <h3><code>tmp_path</code>: a folder of your own for each test</h3>
         <p><code>tmp_path</code> is a built-in fixture that gives each test function its own unique temporary directory as
         a <code>pathlib.Path</code>.<sup class="cite"><a href="#src-8">8</a></sup> The test below asks for it and for a
@@ -581,7 +580,6 @@ def test_summary_mean(sample_desk):
         passes.<sup class="cite"><a href="#src-29">29</a></sup> The sample desk's mean of 16.5 happens to be exact, so
         <code>approx</code> there is a habit; with real data it is what keeps the test from failing on the last digit. With
         the <code>sample_desk</code> fixture from the fixtures section, all three pass and the desk's suite reaches fourteen tests.</p>
-        <button class="code-cta" type="button" data-modal="code-w02d3-ambiguous"><span class="cc-ico">&lt;/&gt;</span> See the ambiguous-truth-value failure as pytest prints it <span class="cc-meta">· 04_hours_tests.md</span></button>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>To filter an array without a loop I build a boolean mask with a comparison, like hours greater than 24, and
@@ -771,11 +769,6 @@ assert raises(ValueError, longest_breach, [3.0], -1), "a negative limit raises V
       </div>
 
       <div class="side-cards">
-        <div class="activity-card demo-card" data-demo="pending">
-          <div class="ac-k">⌨ Code-along files</div>
-          <div class="ac-t">Published after class</div>
-          <div class="ac-meta">typed live in the session · the answer key lands in demos/ afterwards</div>
-        </div>
 
         <button class="activity-card accent" type="button" data-modal="quiz-modal">
           <div class="ac-k">✓ Comprehension check</div>
@@ -821,10 +814,6 @@ assert raises(ValueError, longest_breach, [3.0], -1), "a negative limit raises V
     <div class="ma-k">Today's exercise</div>
     <ul class="deliv-list check">
       <li><a href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-02/day-3-pytest-and-numpy" target="_blank" rel="noopener">exercises/week-02/day-3-pytest-and-numpy</a> — a pytest-checked module: resolution hours as a NumPy array, a breach mask against SLA limits and a mean, plus two tests you write yourself. Run <code>python -m pytest -q</code> until green.</li>
-    </ul>
-    <div class="ma-k">Demos today</div>
-    <ul class="deliv-list">
-      <li>One live walk through the day's topics, built in front of the class and shaped by its questions; the files it produces are published in the demos folder afterwards</li>
     </ul>
     <p class="goals-foot">Thursday assumes your tests are green and merged. Finish the check to unlock the next page.</p>
   </div>
@@ -899,77 +888,11 @@ window.QUIZ = {
 };
 </script>
 
-<!-- code popup: excerpt of the storage-tests answer key -->
-<div id="code-w02d3-fixture" class="modal-overlay" hidden>
-  <div class="modal-card code-modal">
-    <button class="modal-close" type="button" aria-label="Close">✕</button>
-    <h2>Answer key excerpt: 02_storage_tests.md</h2>
-    <p class="cv-cap">The sample_desk fixture, one test that asks for it together with tmp_path, and the verbose run once the parametrised test is added.</p>
-    <div class="cv" data-file="02_storage_tests.md" data-lang="python"><pre class="cv-raw">@pytest.fixture
-def sample_desk():
-    &quot;&quot;&quot;Four tickets: closed after 3 and 30 hours, one assigned, one open.&quot;&quot;&quot;
-    desk = Desk()
-    quick = Ticket(1, &quot;Login page returns 500&quot;, &quot;high&quot;, datetime(2026, 10, 19, 8, 30))
-    slow = Ticket(2, &quot;Password reset email is late&quot;, &quot;normal&quot;, datetime(2026, 10, 16, 9, 15))
-    ...
-    quick.close(datetime(2026, 10, 19, 11, 30))
-    slow.close(datetime(2026, 10, 17, 15, 15))
-    busy.assign(&quot;Priya&quot;)
-    ...
-    return desk
-
-
-def test_save_then_load_keeps_every_ticket(tmp_path, sample_desk):
-    &quot;&quot;&quot;Saving and loading keeps every ticket and its status.&quot;&quot;&quot;
-    path = tmp_path / &quot;tickets.json&quot;
-    save_desk(sample_desk, path)
-    ...
-
-$ pytest -v
-...
-test_desk.py::test_sla_hours[high-4] PASSED                              [ 81%]
-test_desk.py::test_sla_hours[normal-24] PASSED                           [ 90%]
-test_desk.py::test_sla_hours[low-72] PASSED                              [100%]
-
-============================= 11 passed in 0.05s ==============================</pre></div>
-    <p class="cv-foot">sample_desk is never called by hand: the test names it as a parameter beside tmp_path and pytest supplies both.</p>
-  </div>
-</div>
-
-<!-- code popup: excerpt of the hours-tests answer key -->
-<div id="code-w02d3-ambiguous" class="modal-overlay" hidden>
-  <div class="modal-card code-modal">
-    <button class="modal-close" type="button" aria-label="Close">✕</button>
-    <h2>Answer key excerpt: 04_hours_tests.md</h2>
-    <p class="cv-cap">Step 1 of the transcript: an array compared with a list inside an assert stops with an error before any value is compared.</p>
-    <div class="cv" data-file="04_hours_tests.md" data-lang="bash"><pre class="cv-raw">$ pytest -v
-...
-test_desk.py::test_hours_array_is_float FAILED                           [100%]
-
-================================== FAILURES ===================================
-__________________________ test_hours_array_is_float __________________________
-
-sample_desk = &lt;desk.Desk object at 0x0000029E7A307A80&gt;
-
-    def test_hours_array_is_float(sample_desk):
-        &quot;&quot;&quot;Resolution hours are float64, one for each closed ticket.&quot;&quot;&quot;
-&gt;       assert resolution_hours(sample_desk) == [3.0, 30.0]
-E       ValueError: The truth value of an array with more than one element is ambiguous. Use a.any() or a.all()
-
-test_desk.py:95: ValueError
-=========================== short test summary info ===========================
-FAILED test_desk.py::test_hours_array_is_float - ValueError: The truth value ...
-======================== 1 failed, 11 passed in 0.18s =========================</pre></div>
-    <p class="cv-foot">The E line says ValueError, not AssertionError: the assert never got a single True or False to check. The next step of the transcript replaces it with the dtype and shape checks.</p>
-  </div>
-</div>
-
 <script src="../../assets/js/diagram.js?v=20261015"></script>
 <script src="../../assets/js/scrolly.js?v=20261015"></script>
 <script src="../../assets/js/modals.js?v=20261015"></script>
 <script src="../../assets/js/quiz.js?v=20261015"></script>
 <script src="../../assets/js/widgets.js?v=20261015"></script>
 <script src="../../assets/js/glossary.js?v=20261015"></script>
-<script src="../../assets/js/codeviewer.js?v=20261015"></script>
 </body>
 </html>

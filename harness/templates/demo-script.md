@@ -1,134 +1,192 @@
-# {{NN}} — {{Demo title}}
+# Demo: {{Title}} (`{{thread-id}}` -> `{{NN}}-{{slug}}`)
 
-Week {{week}} · Day {{day}} · `{{id}}` · Demo {{N}} of {{total}} · {{dateLabel}}
+> **Objective:** One paragraph: what the room can DO after this block, the shape of the code it leaves behind, and the end state in one sentence ("End-state: ...").
+>
+> **Time:** 90 min ({{AM|PM}} block)
+> **Audience:** Who is in the room and what they hold: the previous block's end state by name, what they have and have not written yet.
+> **Prerequisite reading:** notes page section(s) this block assumes, or "none" for the first block of the week.
+> **Thread:** `{{thread-id}}` — commit `{{commit message}}` on top of `{{previous block NN-slug}}`
 
-- Objective: one sentence, what the learner can DO after this demo (not what they will have seen).
-- Time: 30 min
-- Before the room arrives: terminal open at the scratch folder, font at 18 pt, `python --version` already run, previous demo's files closed.
-- Delivery mode: typed
-- Audience: who is in the room and what they already know (from the Audience line of the day).
-- Prerequisite reading: notes page section(s) or the previous demo this one assumes; "none" on the first demo of the day.
-- Answer key: key/{{NN}}_{{slug}}.py
-- Hand-typed files: {{NN}}_{{slug}}.py
-- Tool-generated files: none
-- Thread: standalone
-- Starts from: cold
+This **extends an existing thread** (or: is **first-contact, built from scratch**). One short paragraph on what is hand-typed and why the typing is the lesson. Nothing pre-provided unless the Stub manifest says so.
+
+### Hand-typed during demo
+- `ticket-desk/<file>.py` — what this block adds to it
+- `ticket-desk/<new file>.py` — new file, what it holds
+
+### Stub manifest
+- None.
 
 <!--
 Header rules (checked by harness/demo_check.py):
-- all eleven bullets above are present, in any order, before the first "## Step" heading
-- Time is "N min" and equals the sum of the step minutes; N within metrics.demos.minutesPerScriptMin..Max
-- Delivery mode is "typed" (the room watches the trainer type) or "lecture-over-file" (the file is pre-written because
-  learners will CONSULT it later rather than WRITE it; use sparingly). Facilitation scripts live in the runbook, not here.
-- Answer key is key/NN_<slug>.py (a runnable file) or key/NN_<slug>.md (a transcript of a terminal demo: ```console
-  blocks where command lines start with "$ " and the other lines are the real output). Same NN and slug as this script.
-  A standalone .py key fits metrics.demos.maxLinesPerFile lines; a thread rung's .py key is the thread's WHOLE end state
-  at this rung and fits metrics.demos.maxLinesPerThreadKey lines.
-- Hand-typed files are the files the trainer creates by typing; tool-generated files are the ones a tool writes
-  (git init output, a scaffold command, a notebook export). Every claim about a tool-generated file is proven by running
-  the tool, never by quoting its docs.
-- Thread is the thread id from the week plan (harness/plans/week-WW.md, "## Threads") when this demo is a rung of a
-  demo codebase that grows across days, or "standalone" when the week plan lists it under Standalone demos.
-- Starts from is "cold" (first rung of a thread, or any standalone demo) or the repo-relative path of the previous
-  rung's answer key (trainer/<week>/<day>/demos/key/NN_<slug>.py|.md) exactly as the week plan's Threads row says.
-  That key must exist on disk: rungs are authored in ladder order. A rung EXTENDS that end state; it never re-types or
-  re-scaffolds what an earlier rung built.
+- Title line: "# Demo: <title> (`<thread-id>` -> `NN-<slug>`)"; NN-<slug> is the file name without .md.
+- Five blockquote fields, each on its own "> **Label:** value" line, in any order, above the first "## " heading:
+  Objective, Time, Audience, Prerequisite reading, Thread. A field may continue on following "> " lines.
+- Time reads "N min" first (anything after it, such as "(AM block)", is free text); N within
+  metrics.demos.minutesPerBlockMin..Max and equal to the sum of the step minutes.
+- Thread reads one of:
+    `<thread-id>` — commit `<message>` on top of `<NN-slug of the previous block>`
+    `<thread-id>` — commit `<message>`, starts cold
+    standalone — starts cold
+  The thread id, commit message and previous block come from the week plan's Threads table row for this block
+  (harness/plans/week-WW.md). A block EXTENDS the previous block's commit on the prep branch of the demo repo
+  (config.json demoRepo.prepBranch); it never re-types or re-scaffolds what an earlier block built.
+- "### Hand-typed during demo" and "### Stub manifest" are optional but recommended; they sit above the first "## ".
+- A "> **DELIVERY RECORD (YYYY-MM-DD)**" blockquote is appended by harness/close_day.py after the day is taught;
+  the author never writes one.
 -->
 
-## Step 1 — <what gets typed in this step> (10 min)
+---
 
-cwd: `w01d2-scratch/` (state the working directory in every step that has a code or command block; say where it came from the first time: "created in Step 1", "the repo clone", ...)
+## Presenter cheat-sheet
 
-```python
-# --- STEP 1: <what this step adds> ---
-print("every line the trainer types, verbatim, in the order it is typed")
-```
-
-Talking points while typing:
-- one sentence per idea, said while the line is on screen
-- the "why" lives here, not in code comments
-
-Check (expected output):
-
-```text
-every line the trainer types, verbatim, in the order it is typed
-```
+| # | Step | File touched |
+|---|------|--------------|
+| 1 | Frame: why this block, on the whiteboard | Whiteboard |
+| 2 | <what gets typed> | `ticket-desk/<file>.py` |
+| 3 | <what gets typed> | `ticket-desk/<file>.py` |
+| 4 | Run; commit `{{commit message}}` | Terminal |
+| 5 | Wrap-up questions | Discussion |
 
 <!--
-Body rules:
-- "## Step n — title (M min)" headings numbered 1..n in order, >= 2 steps.
-- Fenced blocks tagged ```python are KEY blocks for a .py answer key: every non-blank line in them appears in the key
-  file, and every non-blank line of the key is either typed in some ```python block of THIS script or carried from the
-  `Starts from` key (A5 both ways, A12 one canonical copy; no "..." elisions). A line typed live that is later replaced
-  in the same rung goes in a ```python transient block (typed, but not in the end state). A CARRIED line that this rung
-  deletes or rewrites is shown in a ```python replaced block (not typed; it names what disappears from the end state;
-  every line in it must exist in the `Starts from` key). A carried line that is neither replaced nor in the key fails.
-  Only a .py `Starts from` key carries lines; a transcript's end state is a repository, so a .py rung that starts from a
-  transcript types its file from the first line.
-- Fenced blocks tagged ```bash are KEY blocks for a .md transcript key: one command per line, no prompt characters,
-  "#" lines are comments. The transcript's "$ " command lines must be exactly this sequence, in this order. When the
-  rung starts from a transcript, the "$ " sequence continues that transcript's repo state (same folder, same branch).
-  In a .py-keyed rung, ```bash blocks are not checked (use them for the closing git add/commit of the rung).
-- Typed lines per rung (python kept + transient lines, plus bash commands) fit metrics.demos.maxTypedLinesPerRung.
-- ```text, ```diff and any other tag are illustrative (expected output, what to delete) and are not checked.
-- Every token (keyword, method, flag, git subcommand) is introduced before its first use: walk the script as a learner
-  who has read only the prerequisite reading. The first script of the day that uses a tool carries its install, version
-  and config commands, proven by running them.
-- Wording (D-0039): the trainer says the talking points aloud while typing, so write sentences a person can say without
-  rephrasing them: short, plain, one idea each, no chain of clauses joined by semicolons or colons. A contrast that
-  corrects what the room really assumes ("review comments, not taste") is good spoken wording; keep it. A humanizer
-  pass runs after the author (prose only, guarded by harness/prose_guard.py); give it little to do.
-- "What we did NOT cover" bullets read "- <topic>: <where it goes or why it is out>. <the reason, as one sentence>."
-  with no dash between topic and note (checked by harness/demo_check.py).
+Cheat-sheet rules: one row per "## Step" heading, numbered 1..n in the same order; the Step cell is a short label of
+the step, the File cell names the file, "Terminal", "Whiteboard" or "Discussion".
 -->
 
-## Step 2 — <next thing typed> (10 min)
+---
 
-cwd: `w01d2-scratch/`
+## Step 1 — Frame: <the idea in six words> (5 min, no code)
 
-```python
-# --- STEP 2: <what this step adds> ---
-name = "Toronto"
-print(f"Hello, {name}")
+*"The sentence the trainer opens with, in quotes, said aloud."*
+
+Whiteboard:
+
+```text
+<the picture the room sees before any code: a table, a before/after, an arrow diagram>
 ```
 
-Talking points while typing:
+- One bullet per idea the picture carries.
+- *"A spoken line that lands the idea."*
+
+<!--
+Body rules (checked by harness/demo_check.py unless marked "critic"):
+- "## Step n — title (M min)" headings numbered 1..n in order; steps within metrics.demos.stepsPerBlockMin..Max;
+  "(M min, no code)" marks a whiteboard or discussion step. Minutes sum to the header Time.
+- Every step that has a ```python or ```bash fence states its working directory on a "cwd:" line; the first time a
+  directory appears the line says where it came from ("created in Step 2", "the demo repo clone", ...).
+- Fenced ```python / ```bash blocks are exactly what the trainer types, in order, no "..." elisions. Lines typed and
+  then replaced inside the same block are shown as typed; the end state is the block's prep commit, not the script.
+  Typed lines per block (non-blank python lines plus bash commands) fit metrics.demos.maxTypedLinesPerBlock.
+- "### Talking points while typing" follows each typed block: one idea per bullet, said while the line is on screen;
+  the why lives here, never in code comments. Bold the term being taught; italics for a line said verbatim.
+- "> **Pre-empt — "<question the room asks>"** <answer>" after a talking point that provokes the question (critic:
+  at least one per block, answering a real question, never a rhetorical one).
+- "Check (expected output):" with a ```text fence after each run; a prose "Check:" when the state is visible in the
+  editor rather than the terminal.
+- Every token (keyword, method, flag, git subcommand) is introduced before its first use, counting the Prerequisite
+  reading and every earlier block of the thread. The first block that uses a tool carries its install, version and
+  config commands, proven by running them.
+- Wording (D-0039): the trainer says the talking points aloud while typing, so write sentences a person can say without
+  rephrasing: short, plain, one idea each. A humanizer pass runs after the author (prose only, guarded by
+  harness/prose_guard.py); give it little to do.
+- The last step of a thread block ends with the block's commit: a ```bash fence holding git add and
+  git commit -m "<the Thread line's commit message>" (checked).
+-->
+
+---
+
+## Step 2 — <what gets typed> (35 min)
+
+cwd: `ticket-desk/` (the demo repo clone, on the branch the previous block left)
+
+Create `ticket-desk/<file>.py`. Start with the shape, then the behaviour:
+
+```python
+# every line the trainer types, verbatim, in the order it is typed
+```
+
+### Talking points while typing
+
+- **The term being taught** — what it is, in one sentence.
+- *"The line said aloud that makes it land."*
+- Why this and not the obvious alternative.
+
+> **Pre-empt — "Why not just ...?"** The answer, two sentences, said before anyone asks.
+
+Check (expected output):
+
+```text
+<what the terminal shows, exactly>
+```
+
+---
+
+## Step 3 — <what gets typed> (35 min)
+
+cwd: `ticket-desk/`
+
+```python
+```
+
+### Talking points while typing
+
 - ...
 
 Check (expected output):
 
 ```text
-Hello, Toronto
 ```
 
-## Step 3 — <next thing typed> (10 min)
+---
 
-cwd: `w01d2-scratch/`
+## Step 4 — Run; commit (10 min)
 
-```python
-# --- STEP 3: <what this step adds> ---
+cwd: `ticket-desk/`
+
+Run the whole thing once more, then commit the block:
+
+```bash
+python ticket_desk.py
+git add .
+git commit -m "{{commit message}}"
 ```
 
-Talking points while typing:
-- ...
+### Talking points while running
 
-## Common pitfalls
+- *"Second commit on the thread, still runs end to end. `{{previous block}}` -> `{{NN}}-{{slug}}`."*
+- What the next block extends from here.
 
-| Symptom (what the room sees) | Fix (what to type or say) |
-|---|---|
-| `SyntaxError: ...` after Step 2 | ... |
-| ... | ... |
+---
+
+## Step 5 — Wrap-up questions (5 min, no code)
+
+See "End-of-demo wrap-up" below; ask them with the screen off.
+
+---
+
+## Common pitfalls (call these out proactively)
+
+1. **<Symptom the room sees, in their words>.** Cause: <one sentence>. Fix: <what to type or say>.
+2. **<Symptom>.** Cause: ... Fix: ...
 
 ## What we did NOT cover (intentional)
 
-- <topic the room may ask about>: deferred to <day/demo>. <The reason, as one sentence>.
+- <topic the room may ask about>: deferred to <block or day>. <The reason, as one sentence>.
 
-## Wrap-up questions
+<!--
+"What we did NOT cover" bullets read "- <topic>: <where it goes or why it is out>. <the reason, as one sentence>."
+with no dash between topic and note (checked by harness/demo_check.py, D-0039).
+-->
 
-Answerable without looking at code:
-1. ...
+## End-of-demo wrap-up
+
+Without looking at the screen:
+
+1. <question answerable from the mental model, not the code>
 2. ...
+3. ...
+
+If question 2 stumps them, restate: <the one-sentence model>. It is the hinge for <the next block>.
 
 ## Sequence pointer
 
-Previous: <demo or "first demo of the day"> · Next: <demo {{N+1}} title, or "notes page handoff" / "exercise briefing">
+Previous: **`{{previous block}}`** (<day, slot>). Next: **`{{next block}}`** (<day, slot>) — <one sentence on what it extends from this block's commit>. Never restart.

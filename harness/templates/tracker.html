@@ -232,7 +232,7 @@ window.TRACKER = null;
   var DAYMS = 86400000;
   var WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   var MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  var ARTS = [["research", "R", "research brief"], ["demos", "D", "demo scripts and keys"], ["notes", "N", "notes page"],
+  var ARTS = [["research", "R", "research brief"], ["demos", "D", "walkthrough blocks"], ["notes", "N", "notes page"],
               ["exercise", "E", "exercise"], ["runbook", "B", "runbook"]];
   var GLYPH = { red: "✕", amber: "▲", good: "✓", none: "○" };
 
@@ -247,9 +247,9 @@ window.TRACKER = null;
   };
   TR.demosState = function (d) {
     var a = d.a.demos;
-    if (d.demoFormat === "none" || (d.demoFormat === "loose" && !a.scripts)) return "na";
+    if (d.demoFormat === "none" || a.planned === 0) return "na";
     if (!a.scripts) return "none";
-    if ((a.planned != null && a.scripts < a.planned) || a.keys < a.scripts) return "partial";
+    if (a.planned != null && a.scripts < a.planned) return "partial";
     return "full";
   };
   TR.has = function (d, name) { return name === "demos" ? TR.demosState(d) === "full" || TR.demosState(d) === "na" : !!d.a[name]; };
@@ -335,7 +335,6 @@ window.TRACKER = null;
     var c = function (arr, f) { return arr.filter(f).length; };
     return {
       days: days.length, live: c(days, function (d) { return d.status === "live"; }), authored: c(days, function (d) { return d.status === "authored"; }), taught: c(days, function (d) { return !!d.taught; }),
-      published: c(days, function (d) { return d.a.published; }),
       weeks: data.weeks.length, plans: c(data.weeks, function (w) { return w.plan.ok; }),
       msDone: c(ms, function (m) { return m.state === "done"; }), msPartial: c(ms, function (m) { return m.state === "partial"; }), ms: ms.length,
       open: items.length, overdue: c(items, function (i) { return i.due && i.due < today; }),
@@ -383,17 +382,16 @@ window.TRACKER = null;
       var cls = "mk", label = a[1], state = "missing";
       if (a[0] === "demos") {
         var ds = TR.demosState(d), dm = d.a.demos;
-        if (ds === "na") { cls += " na"; label = "–"; state = d.demoFormat === "loose" ? "loose day (no fallback scripts)" : "not applicable (no code demo)"; }
+        if (ds === "na") { cls += " na"; label = "–"; state = "not applicable (no walkthrough block that day)"; }
         else if (ds === "full") { cls += " on"; state = dm.scripts + " of " + (dm.planned == null ? dm.scripts : dm.planned) + " authored"; }
         else if (ds === "partial") { cls += " part"; label = dm.scripts + "/" + (dm.planned == null ? "?" : dm.planned); state = "partial"; }
-        else if (dm.planned != null) { label = "0/" + dm.planned; state = "0 of " + dm.planned + " planned demos authored"; }
+        else if (dm.planned != null) { label = "0/" + dm.planned; state = "0 of " + dm.planned + " planned walkthroughs authored"; }
       } else if (d.a[a[0]]) { cls += " on"; state = "present"; }
       return h("i", { class: cls, title: a[2] + ": " + state, text: label });
     }));
   }
   function badge(d) {
-    if (d.a.published) return h("span", { class: "badge live", text: "published" });
-    if (d.a.closed && !d.a.published) return h("span", { class: "badge live", text: "closed" });
+    if (d.a.closed) return h("span", { class: "badge live", text: "closed" });
     if (d.taught) return h("span", { class: "badge live", text: "taught" });
     if (d.status === "live") return h("span", { class: "badge live", text: "live" });
     if (d.status === "authored") return h("span", { class: "badge authored", text: "authored" });
@@ -401,7 +399,7 @@ window.TRACKER = null;
   }
   function links(w, d) {
     return { research: "harness/research/" + d.rel + ".md", notes: "docs/weeks/" + d.rel + ".html", exercise: "exercises/" + d.rel + "/README.md",
-             runbook: "trainer/" + d.rel + "/runbook.md", demos: "trainer/" + d.rel + "/demos/", plan: w.plan.path };
+             runbook: "trainer/" + d.rel + "/runbook.md", demos: "trainer/" + d.rel.split("/")[0] + "/demos/", plan: w.plan.path };
   }
 
   var today = localToday();
@@ -452,7 +450,7 @@ window.TRACKER = null;
         h("div", { class: "s" }, [s])]);
     }
     fill("tiles", [
-      tile("Days live", c.live, c.days, "authored, not released " + c.authored + " · taught " + c.taught + " · published " + c.published, c.live / c.days),
+      tile("Days live", c.live, c.days, "authored, not released " + c.authored + " · taught " + c.taught, c.live / c.days),
       tile("Week plans", c.plans, c.weeks, "weeks with a passing plan", c.plans / c.weeks),
       tile("Alarms", al.length, null, red + " late · " + (al.length - red) + " due soon"),
       tile("Milestones", c.msDone, c.ms, c.msPartial + " in progress", c.msDone / c.ms),
@@ -499,7 +497,7 @@ window.TRACKER = null;
         var yn = function (v) { return h("td", {}, [st(v ? "good" : "none", v ? "yes" : "no")]); };
         rows.push(h("tr", {}, [h("td", {}, [h("button", { class: "btn", type: "button", "data-open": d.id, text: d.id })]), h("td", { text: TR.fmt(d.date) }), h("td", { text: d.title }),
           yn(w.plan.ok), yn(d.a.research), h("td", { text: ds === "na" ? "n/a" : dm.scripts + " / " + (dm.planned == null ? "?" : dm.planned) }), yn(d.a.notes), yn(d.a.exercise), yn(d.a.runbook),
-          h("td", { text: d.a.published ? "published" : d.taught ? "taught" : d.status }), h("td", {}, [a ? st(a.level, a.text) : ""])]));
+          h("td", { text: d.taught ? "taught" : d.status }), h("td", {}, [a ? st(a.level, a.text) : ""])]));
       });
     });
     fill("view-list", [table(["Day", "Date", "Title", "Plan", "Research", "Demos", "Notes", "Exercise", "Runbook", "State", "Alarm"], rows)]);
@@ -528,19 +526,18 @@ window.TRACKER = null;
   function renderThreads() {
     fill("threads", D.threads.map(function (t) {
       var groups = [], cur = null;
-      t.rungs.forEach(function (r) { if (!cur || cur.day !== r.day) { cur = { day: r.day, rungs: [] }; groups.push(cur); } cur.rungs.push(r); });
+      t.blocks.forEach(function (r) { if (!cur || cur.day !== r.day) { cur = { day: r.day, rungs: [] }; groups.push(cur); } cur.rungs.push(r); });
       return h("div", {}, [
         h("div", {}, [h("b", { class: "mono", text: t.id }), h("span", { class: "muted", text: "  " + t.project + " · weeks " + t.weeks.join(" to ") })]),
         h("div", { class: "muted small", text: t.domain }),
         h("div", { class: "ladder" }, groups.map(function (g) {
           return h("div", { class: "lgroup" }, [h("div", { class: "rungs" }, g.rungs.map(function (r) {
-            return h("span", { class: "rung" + (r.chain === "break" ? " break" : r.authored ? " on" : "") + (r.taught ? " taught" : ""),
-              title: "Rung " + r.rung + " " + r.demo + ": " + (r.chain === "break" ? "chain broken" : r.authored ? "authored" : "planned") + (r.taught ? ", taught" : "") + (r.lines ? ", " + r.lines + " lines" : "") + ". Commit: " + r.commit,
-              text: r.chain === "break" ? "✕" : r.rung });
+            return h("span", { class: "rung" + (r.authored ? " on" : "") + (r.taught ? " taught" : ""),
+              title: "Block " + r.block + " " + r.name + " (" + r.slot + "): " + (r.authored ? "authored" : "planned") + (r.taught ? ", taught" : "") + ". Commit: " + r.commit,
+              text: r.block });
           })), h("span", { text: g.day })]);
         })),
-        h("div", { class: "small" }, [t.authored + " of " + t.planned + " planned rungs authored · " + t.taught + " taught · end key " + (t.endKeyLines == null ? "not a .py yet" : t.endKeyLines + " of " + t.cap + " lines") + " · ",
-          t.chainOk ? st("good", "chain ok") : st("red", "chain broken")]),
+        h("div", { class: "small" }, [t.authored + " of " + t.planned + " planned blocks authored · " + t.taught + " taught (one commit per block on the week's prep branch, D-0055)"]),
         h("div", { class: "dim small", style: "margin-top:4px", text: "Filled = authored, ringed = taught, dashed = planned." })
       ]);
     }));
@@ -588,22 +585,21 @@ window.TRACKER = null;
         art("week plan", w.plan.ok, L.plan, w.plan.exists ? "fails plan_check" : "no plan for this week"),
         art("research brief", d.a.research, L.research),
         d.demoFormat === "none" ? art("demos", true, null) :
-          d.demoFormat === "loose" && !dm.scripts ? art("demos", true, null, "loose day, no fallback scripts") : art("demos (" + dm.scripts + " of " + (dm.planned == null ? "?" : dm.planned) + " scripts, " + dm.keys + " keys)", TR.demosState(d) === "full", L.demos),
+          art("walkthroughs (" + dm.scripts + " of " + (dm.planned == null ? "?" : dm.planned) + " blocks)", TR.demosState(d) === "full" || TR.demosState(d) === "na", L.demos),
         art("notes page", d.a.notes, L.notes), art("exercise", d.a.exercise, L.exercise), art("runbook", d.a.runbook, L.runbook),
         art(d.exerciseKind === "rubric" ? "marking guide" : "solutions", d.a.solutions, "trainer/" + d.rel + "/solutions/"),
         art("taught", !!d.taught, null, d.taught || "delivery close not run"),
         art("delivery record", d.a.closed, "trainer/" + d.rel + "/delivery.json", "close_day.py not run"),
         d.delivery ? h("tr", {}, [h("td", { colspan: "2", class: "small muted",
-          text: d.delivery.format + " · " + d.delivery.files + " file(s) · demo-repo@" + d.delivery.sha })]) : null,
-        art("demos published", d.a.published, "demos/" + d.rel + "/", "published after the delivery close")])]),
+          text: d.delivery.format + " · " + d.delivery.blocks + " block(s)" + (d.delivery.states && d.delivery.states.length ? " (" + d.delivery.states.join(", ") + ")" : "") + " · demo-repo@" + d.delivery.sha })]) : null])]),
       h("h4", { text: "From the week plan" }),
       d.coverage == null ? h("div", { class: "dim", text: "This week has no plan yet." }) :
         h("div", { class: "small" }, [d.coverage + " of " + d.subtopics + " subtopics mapped" + (d.demoMinutes ? " · " + d.demoMinutes + " demo minutes" : "")]),
       d.rows.length ? h("ul", { class: "plain" }, d.rows.map(function (r) {
         return h("li", {}, [
-          h("div", {}, [st(r.authored ? "good" : "none", r.authored ? "authored" : "planned"), "  ", h("b", { class: "mono", text: r.demo }),
-            h("span", { class: "muted small", text: "  " + (r.thread === "standalone" ? "standalone" : r.thread + " rung " + r.rung) })]),
-          h("div", { class: "small muted", title: r.startsFrom }, ["starts from ", h("span", { class: "mono", text: r.startsFrom === "cold" ? "cold" : r.startsFrom.split("/").pop() })]),
+          h("div", {}, [st(r.authored ? "good" : "none", r.authored ? "authored" : "planned"), "  ", h("b", { class: "mono", text: r.name }),
+            h("span", { class: "muted small", text: "  " + r.slot + " · " + (r.minutes || "?") + " min · " + (r.thread === "standalone" ? "standalone" : r.thread + " block " + r.block) })]),
+          h("div", { class: "small muted" }, ["starts from ", h("span", { class: "mono", text: r.startsFrom }), " · commit ", h("span", { class: "mono", text: r.commit })]),
           h("div", { class: "small", style: "margin-top:3px" }, [rich(r.adds)])]);
       })) : null,
       h("h4", { text: "Runs" }),

@@ -5,7 +5,12 @@ from __future__ import annotations
 import re
 import unittest
 
-from helpers import HARNESS, ROOT, TRAINER, authored_days, load_json, metrics, trainer_demos
+import sys
+
+from helpers import HARNESS, ROOT, TRAINER, authored_days, load_json, metrics, week_demos
+
+sys.path.insert(0, str(HARNESS))
+import plan_check  # noqa: E402
 
 CONFIG = load_json(HARNESS / "config.json")
 REQUIRED = ["## Day at a glance", "## Objectives", "## Setup check", "## Notes page handoff",
@@ -27,24 +32,24 @@ class TrainerTests(unittest.TestCase):
                 # D-0027: header links every public artifact absolutely (trainer repo is separate) and solutions/ relatively
                 head = "\n".join(text.splitlines()[:4])
                 self.assertIn(f"{CONFIG['siteUrl']}weeks/{rel}.html", head, "runbook header must link the notes page on the site")
-                self.assertIn(f"{CONFIG['repoUrl']}/tree/main/demos/{rel}", head, "runbook header must link the demos folder")
+                if week_demos(w["dir"]).is_dir():
+                    self.assertIn("](../demos/)", head, "runbook header must link the week's walkthrough folder (D-0055)")
                 self.assertIn("](solutions/)", head, "runbook header must link solutions/")
                 if d.get("feedback"):
                     self.assertIn("## Feedback form", text)
                 if d["kind"] == "review":
                     self.assertIn("## Review agenda", text)
-                # D-0030: one "## Demo N: <script>" per walkthrough script in trainer/<rel>/demos/; concept days facilitate
-                if d["demoFormat"] == "loose" and not trainer_demos(rel).is_dir():
-                    pass  # D-0050: a loose day without fallback scripts owes no Demo sections
-                elif d["demoFormat"] == "none":
-                    self.assertNotRegex(text, re.compile(r"^## Demo \d+:", re.M), "demoFormat none: no Demo sections")
+                # D-0055: one "## Demo: <walkthrough>.md" per block of the day in the week plan; concept days facilitate
+                if d["demoFormat"] == "none":
+                    self.assertNotRegex(text, re.compile(r"^## Demo", re.M), "demoFormat none: no Demo sections")
                     self.assertRegex(text, re.compile(r"^## Facilitation \d+: .+\(\d+ min\)", re.M), "demoFormat none day needs timed Facilitation sections")
-                else:
-                    scripts = sorted(p.name for p in trainer_demos(rel).glob("*.md") if re.match(r"^\d{2}_", p.name))
-                    self.assertTrue(scripts, f"no demo scripts in {trainer_demos(rel)}")
-                    for f in scripts:
-                        self.assertRegex(text, re.compile(rf"^## Demo \d+: {re.escape(f)}", re.M), f"no section for demo script {f}")
-                    self.assertNotRegex(text, re.compile(r"^## Demo \d+: \d{2}_\S+\.py", re.M), "Demo sections name the script (.md), not the answer key")
+                elif week_demos(w["dir"]).is_dir():
+                    plan_file = HARNESS / "plans" / f"week-{w['week']:02d}.md"
+                    blocks = plan_check.day_rows(plan_check.load_plan(plan_file), d["id"])["blockRows"] if plan_file.is_file() else []
+                    self.assertTrue(blocks, f"{d['id']} has no block in the week plan")
+                    for b in blocks:
+                        self.assertRegex(text, re.compile(rf"^## Demo: {re.escape(b['name'])}\.md", re.M), f"no section for walkthrough {b['name']}.md")
+                        self.assertTrue((week_demos(w["dir"]) / f"{b['name']}.md").is_file(), f"walkthrough {b['name']}.md missing on disk")
                 # minutes table sums into the day band
                 glance = text.split("## Day at a glance", 1)[1].split("\n## ", 1)[0]
                 mins = [int(m) for m in re.findall(r"^\|[^|]*\|\s*(\d+)\s*\|", glance, re.M)]

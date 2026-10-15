@@ -77,7 +77,7 @@ window.WEEKS = [
   { w:1, phase:"py", project:"P0", title:"Agile for developers, Git & Python fundamentals", start:"2026-10-12", end:"2026-10-16", days:[
     {"kind": "holiday", "date": "2026-10-12", "label": "Thanksgiving (Canada)"},
     {"t": "Orientation, Agile & Git fundamentals", "s": "SDLC · Scrum · story pointing · git init/commit/branch/merge/push/pull", "id": "w01d2", "date": "2026-10-13", "href": "weeks/week-01/day-2-orientation-agile-and-git.html", "ex": "https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-01/day-2-orientation-agile-and-git"},
-    {"t": "Python basics", "s": "syntax · comments · variables & datatypes · operators · input/output", "id": "w01d3", "date": "2026-10-14", "href": "weeks/week-01/day-3-python-basics.html", "demo": "https://github.com/2494-Gen-AI-CN/training/tree/main/demos/week-01/day-3-python-basics", "ex": "https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-01/day-3-python-basics"},
+    {"t": "Python basics", "s": "syntax · comments · variables & datatypes · operators · input/output", "id": "w01d3", "date": "2026-10-14", "href": "weeks/week-01/day-3-python-basics.html", "ex": "https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-01/day-3-python-basics"},
     {"t": "Python data types", "s": "strings · casting · bool · list · tuple · range · set · dict · numbers · datetime", "id": "w01d4", "date": "2026-10-15", "href": "weeks/week-01/day-4-python-data-types.html", "ex": "https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-01/day-4-python-data-types"},
     {"t": "Control flow, functions & classes", "s": "if/else · loops · functions · lambda · arrays · OOP · inheritance · iterators · scope", "id": "w01d5", "date": "2026-10-16", "href": "weeks/week-01/day-5-control-flow-functions-and-classes.html", "ex": "https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-01/day-5-control-flow-functions-and-classes", "feedback": true}
   ]},
@@ -158,13 +158,14 @@ window.WEEKS = [
 // Site-level links. Keep in sync with harness/config.json (build_index.py does not touch these).
 window.SITE = {
   repoUrl: "https://github.com/2494-Gen-AI-CN/training",
+  demoRepoUrl: "https://github.com/2494-Gen-AI-CN/demos",
   feedbackFormUrl: "https://forms.cloud.microsoft/pages/responsepage.aspx?id=iuJja_motUeqQJfiMSFRZMU3bOO2vNdAiSFsti9sgKVUQkhYWEhIRzJSWjNOVVM5REFOU0tWT0JXQyQlQCN0PWcu&route=shorturl",
   revProUrl: "https://app.revature.com/dashboard",
   revOpsUrl: "https://rev-ops.revatureengineering.com/"
 };
 (function () {
   const S = window.SITE;
-  document.getElementById("nav-demos").href = S.repoUrl + "/tree/main/demos";
+  document.getElementById("nav-demos").href = S.demoRepoUrl;   // the public demo repo (D-0055)
   document.getElementById("nav-exercises").href = S.repoUrl + "/tree/main/exercises";
   document.getElementById("rail-repo").href = S.repoUrl;
   document.getElementById("rail-feedback").href = S.feedbackFormUrl;
@@ -217,7 +218,6 @@ window.SITE = {
       let chips = "";
       if (live) {
         chips += `<a class="chip" href="${day.href}">Notes</a>`;
-        if (day.demo) chips += `<a class="chip" href="${day.demo}" target="_blank" rel="noopener">Demo</a>`;
         if (day.ex) chips += `<a class="chip" href="${day.ex}" target="_blank" rel="noopener">Exercise</a>`;
       } else {
         chips += `<span class="chip soon">coming soon</span>`;

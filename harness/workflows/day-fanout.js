@@ -5,36 +5,35 @@
 //   python harness/args_for.py <week> <day...> --today YYYY-MM-DD   -> paste as args
 //   Workflow({ scriptPath: "harness/workflows/day-fanout.js", args: <that JSON> })
 //
-// Pipeline:  Research (gate-tiered, all days in parallel) -> Demos (one day after the other, in day order:
-// each rung starts from the previous rung's key, D-0033; then one series-review critic over a multi-day run,
-// flags only, D-0053) -> Materials (notes ∥ runbook ∥ exercise, all days
-// in parallel) -> Wire (serial, shared files) -> Record (run log + work tracker, D-0035)
+// Pipeline:  Research (gate-tiered, all days in parallel) -> Materials (notes ∥ exercise, then the runbook, all
+// days in parallel) -> Wire (serial, shared files) -> Record (run log + work tracker, D-0035)
 // -> Verify (unittest, ≤2 fix loops).
-// Demos (D-0030): walkthrough scripts + answer keys are authored to trainer/<rel>/demos/ (private) and
-// published to demos/<rel>/ by harness/publish_demos.py only once curriculum.json carries taught:<date>.
-// A demoFormat "none" day skips the Demos stage; its runbook carries facilitation scripts instead.
-// A demoFormat "loose" day (D-0050): the trainer improvises; scripts and keys are authored only as an optional
-// fallback when the week plan has ladder rows for the day, otherwise nothing is authored and the runbook carries one live-demo block.
+// Demos (D-0055) are NOT authored here: the week's walkthrough blocks come from harness/workflows/demo-series.js
+// (one walkthrough per AM/PM demo slot under trainer/week-WW/demos/, one commit per block on the demo repo's prep
+// branch). This script reads the plan's block rows for the day so the runbook points at them and the exercise
+// knows what the room built; the notes pages carry no demo card, demo list or code popup.
+// A demoFormat "none" day has no block; its runbook carries facilitation scripts instead.
 // Every artifact is produced by an author agent and judged by a DIFFERENT critic agent
 // reading harness/critics/<artifact>.md; up to 3 passes, then the item is flagged (never blocks).
-// A humanizer agent runs between author and critic on the notes page (D-0029) and on the trainer's delivery
-// wording, the demo scripts and the runbook (D-0039; prose only, guarded by harness/prose_guard.py).
+// A humanizer agent runs between author and critic on the notes page (D-0029) and on the runbook (D-0039; prose
+// only, guarded by harness/prose_guard.py).
 // Notes pages (D-0040) are reference/study material at junior-interview depth: a notes-verify agent runs
 // harness/notes_check.py (structure, delivery phrases, stamps, citations, link liveness; WebFetch claim currency
 // on full-gate and currency-flagged days) and its findings bind the notes critic.
 // Notes-only mode (args_for.py --notes-only, D-0040): Research = a depth pass that extends the committed brief's
-// "## Notes depth" section; Demos = the scripts and keys already on disk; Materials = the notes page only
-// (exercise and runbook untouched); Wire realigns the week plan's Notes-step column from what was built.
+// "## Notes depth" section; Materials = the notes page only (exercise and runbook untouched); Wire realigns the
+// week plan's Notes-step column from what was built.
+// Runbook-only mode (args_for.py --runbook-only, D-0055): the committed brief and page are reused; Materials =
+// the runbook only (author -> humanize -> critic); Wire rebuilds the tracker.
 //
 // Scripts cannot touch the filesystem or Date(); everything comes in through args.
 // Lifted from the reference week-fanout.js: gated(), fix(), VERDICT, repairNulls(), compact(), salvage.
 
 export const meta = {
   name: 'day-fanout',
-  description: 'Research -> demos (in day order) -> notes/runbook/exercise (critic-gated, 3-pass repass) -> wire -> verify, for one training day or the days of one week; --notes-only re-authors the notes pages alone (research depth, then notes)',
+  description: 'Research -> notes/runbook/exercise (critic-gated, 3-pass repass) -> wire -> verify, for one training day or the days of one week; --notes-only re-authors the notes pages alone (research depth, then notes); --runbook-only the runbooks alone; demos come from demo-series.js (D-0055)',
   phases: [
     { title: 'Research' },
-    { title: 'Demos' },
     { title: 'Materials' },
     { title: 'Wire' },
     { title: 'Record' },
@@ -73,16 +72,16 @@ function tier(stage, pass, quiet) {
   return o
 }
 const tierLabel = (s) => { const t = tier(s, 0, true); return `${s}=${t.model || 'inherit'}/${t.effort || 'inherit'}` }
-const TIER_LABELS = ['research-light','research-full','demos','notes','notes-critic','notes-verify-light','notes-verify-full','humanize','exercise','runbook','critic','series-review','wire','verify','fix'].map(tierLabel).join(' · ')
+const TIER_LABELS = ['research-light','research-full','notes','notes-critic','notes-verify-light','notes-verify-full','humanize','exercise','runbook','critic','wire','verify','fix'].map(tierLabel).join(' · ')
 const NOTES_ONLY = !!A.notesOnly
+const RUNBOOK_ONLY = !!A.runbookOnly
+const DEMOS_DIR = A.demosDir || `${TRAINER}/${A.weekDir}/demos`   // the week's walkthroughs (demo-series.js, D-0055)
+const PREP = A.prepBranch || `prep/week-${String(A.week).padStart(2, '0')}`
 const DAYS = A.days.map(d => ({
   ...d,
   researchFile: `${H}/research/${d.rel}.md`,
-  demoDir: `${TRAINER}/${d.rel}/demos`,          // scripts (NN_<slug>.md) + key/ (answer keys): private until taught
-  keyDir: `${TRAINER}/${d.rel}/demos/key`,
-  pubDemoDir: `${ROOT}/demos/${d.rel}`,           // written only by harness/publish_demos.py
   noDemos: d.demoFormat === 'none',
-  loose: d.demoFormat === 'loose',
+  blocks: (d.blockRows || []).map(b => ({ ...b, file: `${DEMOS_DIR}/${b.name}.md` })),   // the day's walkthrough blocks (D-0055)
   exDir: `${ROOT}/exercises/${d.rel}`,
   trDir: `${TRAINER}/${d.rel}`,
   pageFile: `${ROOT}/docs/weeks/${d.rel}.html`,
@@ -97,18 +96,13 @@ const RESEARCH_SCHEMA = { type:'object', additionalProperties:false, properties:
   glossaryTerms:{ type:'array', items:{ type:'object', additionalProperties:false, properties:{ term:{type:'string'}, def:{type:'string'}, aka:{type:'array', items:{type:'string'}} }, required:['term','def','aka'] } },
   pitfalls:{ type:'array', items:{type:'string'} },
   summary:{type:'string'} }, required:['versionStamps','sourceCount','glossaryTerms','pitfalls','summary'] }
-const DEMO_SCHEMA = { type:'object', additionalProperties:false, properties:{
-  scripts:{ type:'array', items:{ type:'object', additionalProperties:false, properties:{ name:{type:'string'}, key:{type:'string'}, objective:{type:'string'}, minutes:{type:'number'}, mode:{type:'string'}, needsKey:{type:'boolean'} }, required:['name','key','objective','minutes','mode','needsKey'] } },
-  facilitation:{ type:'array', items:{type:'string'} },
-  requirements:{ type:'array', items:{type:'string'} },
-  summary:{type:'string'} }, required:['scripts','facilitation','requirements','summary'] }
 const NOTES_SCHEMA = { type:'object', additionalProperties:false, properties:{
   wordCount:{type:'number'}, declaredMinutes:{type:'number'}, steps:{type:'number'}, quizCount:{type:'number'},
   h3Count:{type:'number'}, interviewCount:{type:'number'}, checkYourselfCount:{type:'number'}, codeBlocks:{type:'number'}, citations:{type:'number'},
   sourcesChecked:{type:'string'},
   stepMap:{ type:'array', items:{ type:'object', additionalProperties:false, properties:{ subtopic:{type:'string'}, step:{type:'number'} }, required:['subtopic','step'] } },
-  demoLinks:{ type:'array', items:{type:'string'} }, codePopups:{ type:'array', items:{type:'string'} }, summary:{type:'string'} },
-  required:['wordCount','declaredMinutes','steps','quizCount','h3Count','interviewCount','checkYourselfCount','codeBlocks','citations','sourcesChecked','stepMap','demoLinks','codePopups','summary'] }
+  summary:{type:'string'} },
+  required:['wordCount','declaredMinutes','steps','quizCount','h3Count','interviewCount','checkYourselfCount','codeBlocks','citations','sourcesChecked','stepMap','summary'] }
 // notes-verify (D-0040): mechanical findings that bind the notes critic. structural = notes_check.py findings
 // about parsing or the bands; dead = links that do not answer; stale = currency, stamp and citation findings.
 const VERIFY_NOTES_SCHEMA = { type:'object', additionalProperties:false, properties:{
@@ -137,14 +131,16 @@ const repairNull = (x, label) => x || ({ task: label, status:'flagged', passes:0
 const compact = (x) => x ? ({ task:x.task, status:x.status, passes:x.passes, ...(x.flags ? {flags:x.flags} : {}), summary:x.summary }) : null
 const J = (x) => JSON.stringify(x, null, 1)
 
-// Week plan rows (D-0034): args_for.py gates on harness/plans/week-WW.md and passes each day's coverage rows,
-// thread rows (rungs with startsFrom), ladder rows and day shape. --no-plan is the logged escape.
+// Week plan rows (D-0034, D-0055): args_for.py gates on harness/plans/week-WW.md and passes each day's coverage rows,
+// block rows (the day's walkthroughs with slot, startsFrom, commit message and stop point), ladder rows and day
+// shape. --no-plan is the logged escape.
 const planCtx = (d) => A.noPlan
-  ? `WEEK PLAN: NONE (the --no-plan escape was used; STATUS.md records it). No thread rows: every demo is standalone and starts cold.\n`
-  : `WEEK PLAN (binding): ${A.weekPlan}. Coverage rows for this day (subtopic -> demo | facilitation | notes -> notes step): ${J(d.weekPlanRows || [])}\n` +
-    `Thread rows for this day (each demo to author, in this order; thread "standalone" starts cold; a rung EXTENDS its startsFrom key, D-0033): ${J(d.threadRows || [])}\n` +
+  ? `WEEK PLAN: NONE (the --no-plan escape was used; STATUS.md records it). No block rows: the day has no planned walkthrough.\n`
+  : `WEEK PLAN (binding): ${A.weekPlan}. Coverage rows for this day (subtopic -> walkthrough | facilitation | notes -> notes step): ${J(d.weekPlanRows || [])}\n` +
+    `Walkthrough blocks of this day (authored by demo-series.js under ${DEMOS_DIR}; one commit each on ${PREP} of the demo repo; a block EXTENDS its startsFrom block, D-0055): ${J((d.blockRows || []).map(b => ({ name: b.name, slot: b.slot, minutes: b.minutes, thread: b.thread, startsFrom: b.startsFrom, commitMessage: b.commitMessage, stopPoint: b.stopPoint, resumeAt: b.resumeAt, endState: b.endState })))}\n` +
     `Ladder rows (minutes, must-follow, guarantees): ${J(d.ladderRows || [])}\n` +
-    (d.dayShape ? `Day shape from the plan (AM/PM blocks, stop points, cut first / never cut):\n${d.dayShape}\n` : '') +
+    (d.dayShape ? `Day shape from the plan (AM/PM lines):\n${d.dayShape}\n` : '') +
+    (d.cutFirst && d.cutFirst.length ? `Squeeze priorities (week-level): cut first ${J(d.cutFirst)}; never cut ${J(d.neverCut || [])}\n` : '') +
     (d.spoilerRows && d.spoilerRows.length ? `Anti-spoiler rows touching this day: ${J(d.spoilerRows)}\n` : '')
 const dayHeader = (d) =>
   `DAY: ${d.id} — "${d.title}" (${d.subtitle}). Week ${A.week} "${A.theme}", day ${d.day} = ${d.weekday}, kind=${d.kind}, gate=${d.gate}, demoFormat=${d.demoFormat}, feedbackForm=${d.feedback}.\n` +
@@ -161,7 +157,6 @@ const dayHeader = (d) =>
 // authors and critics only; research, demo and notes prompts never see it, and the trainer's demo-thread repo
 // keeps its own name.
 const LR = CFG.learnerRepo
-const LOOSE_DEMO_BULLET = "One live walk through the day's topics, built in front of the class and shaped by its questions; the files it produces are published in the demos folder afterwards"
 const learnerCtx = (d) => !LR ? '' :
   `LEARNER REPO (D-0051, binding): every trainee has ONE ${LR.visibility} GitHub repository ${LR.org}/<${LR.name}> (${LR.nameRule}), created in the ${LR.createdIn} Git exercise and kept for the whole course. ` +
   (d.id === LR.createdIn
@@ -196,31 +191,6 @@ async function researchStage(d) {
       { schema: VERDICT, label:`${d.id}:research-crit`, phase:'Research', ...tier('critic') }))
 }
 
-async function demosStage(d) {
-  if (d.noDemos) return { task: `${d.id} demos`, status:'skipped', passes:0, summary:'demoFormat none: no code demo; the runbook carries a facilitation script per subtopic', result:{ scripts:[], facilitation: d.subtopics, requirements:[], summary:'' } }
-  if (d.loose && !(d.threadRows || []).length) return { task: `${d.id} demos`, status:'skipped', passes:0, summary:'demoFormat loose with no ladder rows: the trainer improvises; nothing authored (D-0050)', result:{ scripts:[], facilitation:(d.weekPlanRows || []).filter(r => r.Demo === 'facilitation').map(r => r.Subtopic), requirements:[], summary:'' } }
-  return gated(`${d.id} demos`,
-    (cr, pass) => agent(
-      `You are the DEMO author (D-0030: a demo IS the walkthrough script the trainer types in front of the room; the committed code is the answer key). ${dayHeader(d)}` +
-      `Read the research brief ${d.researchFile} — your only source of facts and version/API shapes. Read ${H}/templates/demo-script.md (script format, every rule in its comments) and ${H}/templates/demo-README.md. Read ${H}/critics/demos.md so you know what the critic runs.\n` +
-      (A.noPlan
-        ? `FIRST sort the day's subtopics by the CONSULT-vs-WRITE test: a subtopic whose objective is fluency (the room must become able to type it: code, commands, git, SDK calls) gets a script with Delivery mode "typed"; reference material learners will look up later may be "lecture-over-file" (rare); a concept subtopic (SDLC, Scrum, story points, MLOps concepts, professionalism) gets NO script — list it under facilitation[] and the runbook author writes a timed facilitation block for it. Respect the Day note's limits (e.g. "at most one demo on the on-ramp"). Every script is Thread: standalone, Starts from: cold.\n`
-        : `The WEEK PLAN decides the demos: author EXACTLY the thread rows above, in that order, with those NN_<slug> names, keys and minutes (ladder rows); the coverage rows say which subtopic each demo teaches and which subtopics are facilitation (list those under facilitation[] for the runbook author) or notes-only. For every rung whose startsFrom is a key path: READ that key FIRST (it is the thread's end state before this rung), set the header bullets "- Thread: <thread>" and "- Starts from: <that exact path>", type ONLY what the row's "adds" says on top of it, show any carried line you remove or rewrite in a \`\`\`python replaced block, and make the .py key the WHOLE end state (carried lines + typed lines, ≤${M.demos.maxLinesPerThreadKey} lines); the rung ends in a commit with the row's commitMessage (a \`\`\`bash block with git add/commit in the last step; in a transcript, the "$ " sequence continues the previous transcript's repo). A rung whose startsFrom is a transcript creates its file from the first line inside the repository that transcript left. Never re-type a function, class, file, git init, install or config an earlier rung built (critic item 13). Standalone rows start cold with "- Thread: standalone".\n`) +
-      `Write ${d.demoDir}/ (private trainer repo; create dirs): ${M.demos.scriptsMin}–${M.demos.scriptsMax} scripts named NN_<slug>.md in teaching order, each ${M.demos.minutesPerScriptMin}–${M.demos.minutesPerScriptMax} min, with the eleven header bullets (incl. Thread and Starts from), "## Step n — title (M min)" headings (≥2, minutes summing to Time), a cwd: line in every step that has a code or command block, the exact code/commands in fenced blocks (\`\`\`python for code typed into a file, \`\`\`bash for terminal commands one per line without prompt characters, \`\`\`text for expected output), "Talking points while typing" per step, Common pitfalls (symptom + fix), What we did NOT cover (intentional), Wrap-up questions, Sequence pointer. At most ${M.demos.maxTypedLinesPerRung} typed lines per script. Every token introduced before first use (earlier rungs of the thread count as introduced); the first rung of a thread that uses a tool carries install + version + config commands proven by running them, later rungs do not repeat them; every tool-generated claim proven by running the tool.\n` +
-      `Write ${d.keyDir}/: one answer key per script with the same NN and slug: key/NN_<slug>.${d.demoFormat === 'nb' ? 'ipynb (nbformat v4, outputs cleared, one markdown cell per step; .py allowed for setup)' : 'py'} (≤${M.demos.maxLinesPerFile} lines for a standalone demo, ≤${M.demos.maxLinesPerThreadKey} for a thread rung; runnable with "python <file>" from key/; its lines EXACTLY the union of the script's \`\`\`python blocks plus the lines carried from the Starts from key — no elisions, no stubs; a line typed then replaced in the same rung goes in a \`\`\`python transient block) OR key/NN_<slug>.md for a terminal demo (a transcript: \`\`\`console blocks whose "$ " lines are exactly the script's \`\`\`bash commands in order, followed by the real output you captured by running them). Plus key/README.md (run-order table file|shows|run|needs key? listing every key file; template demo-README.md), key/requirements.txt only if non-stdlib (pinned to the brief's stamps), key/.env.example only if a key is needed (names only; such keys guard with an env check that prints a clear message and exits 0 when absent).\n` +
-      (d.loose ? `LOOSE DAY (D-0050): these scripts and keys are a FALLBACK the trainer may not follow in class; harness/close_day.py publishes what was typed in the demo repo, never key/. Same contract, same demo_check.\n` : '') +
-      `LLM calls (if this day has any) use exactly ${J(LLM)}; model id from the brief. No secrets. Do NOT write anything under ${d.pubDemoDir} (published later by harness/publish_demos.py).\n` +
-      `Before returning, with Bash: run "python ${H}/demo_check.py ${d.demoDir}" until it prints OK; run every .py key from key/ and confirm the output matches the script's Check blocks; replay every transcript's commands in a scratch folder and confirm the output.\n` +
-      `Wording (D-0039): the trainer says the talking points aloud while typing, so write sentences a person can say without rephrasing them (short, plain, one idea each; no chain of clauses joined by semicolons or colons); a contrast that corrects what the room really assumes is good spoken wording. "What we did NOT cover" bullets read "- <topic>: <where it goes>. <reason>." with no dash between topic and note. A humanizer pass runs after you (prose only); give it little to do.\n` +
-      `Return scripts[] (name, key, objective, minutes, mode, needsKey), facilitation[] (subtopics with no script), requirements[], summary.` + fix(cr),
-      { schema: DEMO_SCHEMA, label:`${d.id}:demos`, phase:'Demos', ...tier('demos', pass) })
-      .then(async (r) => { if (r && (r.scripts || []).length) await humanizeTrainer(d, 'demos', r.scripts.map(s => `${d.demoDir}/${/\.md$/.test(s.name) ? s.name : s.name + '.md'}`), 'Demos'); return r }),
-    (_r) => agent(
-      `DEMOS CRITIC. Read ${H}/critics/demos.md and apply it to ${d.demoDir}/ (scripts + key/) against the brief ${d.researchFile}. Use Bash: run "python ${H}/demo_check.py ${d.demoDir}" and quote its output; RUN every .py key from key/ (60 s timeout) against the script's Check blocks; replay every transcript key's "$ " commands in a scratch folder in the rung's Starts from state; run key-gated keys without the key; nbformat.validate every .ipynb. Then walk every script as a learner (items 5–8), judge the CONSULT-vs-WRITE split (item 9), and check every rung against its thread row (item 13: Thread/Starts from match the row, only the row's "adds" is typed on top of the Starts from key, end state and commit message match; demo names and minutes match the ladder rows). Day context: ${dayHeader(d)}` +
-      `Return pass, critiques (file + step + concrete fix), one-sentence summary.`,
-      { schema: VERDICT, label:`${d.id}:demos-crit`, phase:'Demos', ...tier('critic') }))
-}
-
 // Humanizer pass (D-0029): runs after the notes author and before the notes critic. Prose only, proven by
 // harness/prose_guard.py in its html mode (D-0040): the tag skeleton, code, attributes, labels, citations and
 // the non-prose script literals must be byte-identical afterwards.
@@ -233,40 +203,33 @@ const humanize = (d) => agent(
   `Return one short paragraph: patterns found (by humanizer section number), sentences changed per step, final word count.`,
   { label:`${d.id}:notes-humanize`, phase:'Materials', ...tier('humanize') })
 
-// Humanizer pass on the trainer's delivery wording (D-0039): the day's demo scripts after the demo author and the
-// runbook after the runbook author, both before their critics. Prose only: harness/prose_guard.py compares every
-// file with a snapshot taken before the pass, so the pass cannot change what a demo types or what a checker reads.
-// kind is 'demos' (files = the day's NN_<slug>.md scripts) or 'runbook' (files = the runbook).
+// Humanizer pass on the trainer's delivery wording (D-0039): the runbook after the runbook author, before its critic.
+// Prose only: harness/prose_guard.py compares the file with a snapshot taken before the pass, so the pass cannot
+// change what a checker reads. (The walkthroughs get the same pass inside demo-series.js, D-0055.)
 const humanizeTrainer = (d, kind, files, phaseName) => agent(
-  `HUMANIZE pass on the trainer's delivery wording (D-0039) for ${d.id}: ${kind === 'demos' ? 'the demo scripts' : 'the runbook'}. Files, the ONLY ones you may change: ${J(files)}.\n` +
-  `The trainer reads these files in front of the room and says the ${kind === 'demos' ? 'talking points aloud while typing' : 'questions, framing lines and answers aloud'}. Wording that sounds machine-written has to be reworded live, which is clunky. Make it read like a person's own speaking notes and change nothing a demo depends on.\n` +
+  `HUMANIZE pass on the trainer's delivery wording (D-0039) for ${d.id}: the runbook. Files, the ONLY ones you may change: ${J(files)}.\n` +
+  `The trainer reads this file in front of the room and says the questions, framing lines and answers aloud. Wording that sounds machine-written has to be reworded live, which is clunky. Make it read like a person's own speaking notes and change nothing a demo depends on.\n` +
   `1. FIRST, from ${ROOT}, run: python harness/prose_guard.py snapshot <the files>   and keep the snapshot directory it prints.\n` +
   `2. Load the humanizer skill with the Skill tool ("humanizer:humanizer") and apply it in FILE MODE to each file; read the whole file before editing it. Reference voice: a trainer's delivery notes, plain and technical. Lines said to the room are sentences a person can say without rephrasing them; instructions to the trainer stay short imperatives. Light touch: leave a sentence that already sounds spoken. The edits that usually help: split a run-on or a chain of clauses joined by semicolons or colons into short sentences, cut a stock phrase, give a clipped fragment its subject.\n` +
   `   Do NOT flatten good spoken wording: a contrast that corrects what the room really assumes ("review comments, not taste"; "a merge conflict is two edits to one line, not a broken repository") stays, and so does a short line the trainer would say as it is. Add no joke, warmth, example or fact, and drop no fact. In a logistics sentence (a stop point, what moves where, what is pasted from which key, which commit waits) every fact survives in the same order; when unsure, leave the sentence.\n` +
   `3. FROZEN, byte for byte: every fenced block and the section it sits in; every inline code span (same spans, same count); every heading line; ` +
-  (kind === 'demos'
-    ? `everything above the first "## " heading (title, date line, the header bullets: a checker parses them and other files quote the Objective); every line starting with "cwd:"; the lines that introduce a block ("Talking points while typing:", "Check (expected output):"); the header row, the separator row and the number of rows of every table; `
-    : `the title, the "Week ..." line and the "Notes page: ..." links line; every line starting with "|" (the "Day at a glance" table is read by a test); every bold label such as **Script:**, **Time:**, **Room state before:**, **Stop point if long:**, **Goal:** (the humanizer's rule about bold labels does not apply here: they are the template's structure); `) +
-  `URLs, file names, paths, commit messages, branch names, numbers, minutes, dates and ids. One bullet in, one bullet out: never add, remove, merge, split or reorder bullets or numbered items, and never move text between sections.` +
-  (kind === 'demos' ? ` The "What we did NOT cover" bullets keep the format "- <topic>: <where it goes>. <reason>." (demo_check.py checks it).` : '') + `\n` +
+  `the title, the "Week ..." line and the "Notes page: ..." links line; every line starting with "|" (the "Day at a glance" table is read by a test); every bold label such as **Walkthrough:**, **Time:**, **Commit:**, **Room state before:**, **Stop point if long:**, **Goal:** (the humanizer's rule about bold labels does not apply here: they are the template's structure); ` +
+  `URLs, file names, paths, commit messages, branch names, numbers, minutes, dates and ids. One bullet in, one bullet out: never add, remove, merge, split or reorder bullets or numbered items, and never move text between sections.\n` +
   `4. Verify from ${ROOT}: python harness/prose_guard.py check <snapshot directory> <the files>   must print OK or UNCHANGED for every file with no WARN line (a WARN means a number changed: restore it)` +
-  (kind === 'demos' ? `, and python ${H}/demo_check.py ${d.demoDir}   must print OK` : '') +
-  `. Fix and re-run until that holds. Use the Edit tool (no sed, no heredocs). Touch no other file, nothing under key/ or solutions/.\n` +
+  `. Fix and re-run until that holds. Use the Edit tool (no sed, no heredocs). Touch no other file, nothing under solutions/.\n` +
   `Return one short paragraph: sentences changed per file, humanizer sections found (by number), anything left alone on purpose.`,
   { label:`${d.id}:${kind}-humanize`, phase: phaseName, ...tier('humanize') })
 
-// What the materials authors know about the day's demos (names, keys, objectives, facilitation subtopics).
-function demoFacts(d, demo) {
-  const scripts = (demo && demo.result && demo.result.scripts) ? demo.result.scripts : []
-  const facilitation = (demo && demo.result && demo.result.facilitation) ? demo.result.facilitation : []
-  const scriptsSentence = `Demo scripts (private until taught, in ${d.demoDir}): ${J(scripts.map(s => ({ name:s.name, key:s.key, objective:s.objective, minutes:s.minutes })))}. Answer keys in ${d.keyDir}. Subtopics facilitated without a demo: ${J(facilitation)}.\n`
+// What the materials authors know about the day's demos (D-0055): the walkthrough blocks of the day (from the
+// plan, authored by demo-series.js under DEMOS_DIR) and the subtopics facilitated without one.
+function demoFacts(d) {
+  const blocks = d.blocks || []
+  const facilitation = (d.weekPlanRows || []).filter(r => r.Demo === 'facilitation').map(r => r.Subtopic)
   const demoCtx = d.noDemos
-    ? `This day has NO code demos (demoFormat none): every subtopic is facilitated from the runbook.\n`
-    : d.loose
-    ? `LOOSE day (D-0050): the trainer improvises in the public demo repo ${(CFG.demoRepo || {}).url || ''}/tree/${(CFG.demoRepo || {}).branch || 'main'}/${d.rel}; ${scripts.length ? 'the scripts below are an optional fallback' : 'no scripts exist'}; after the day harness/close_day.py publishes the typed files to demos/${d.rel}/.\n` + (scripts.length ? scriptsSentence : '')
-    : scriptsSentence
-  return { scripts, scriptNames: scripts.map(s => s.name), keyNames: scripts.map(s => s.key), facilitation, demoCtx,
-    demoUrl: `${CFG.repoUrl}/tree/${CFG.repoBranch || 'main'}/demos/${d.rel}`, exUrl: `${CFG.repoUrl}/tree/${CFG.repoBranch || 'main'}/exercises/${d.rel}` }
+    ? `This day has NO code demo (demoFormat none): every subtopic is facilitated from the runbook.\n`
+    : `Walkthrough blocks of this day (one per AM/PM demo slot; the trainer performs them live from ${DEMOS_DIR}; their answer key is the demo repo ${(CFG.demoRepo || {}).url || ''} at each block's commit on ${PREP}; nothing about them appears on the learner site): ${J(blocks.map(b => ({ name:b.name, slot:b.slot, minutes:b.minutes, commitMessage:b.commitMessage, startsFrom:b.startsFrom, endState:b.endState })))}. Subtopics facilitated without a demo: ${J(facilitation)}.\n`
+  return { blocks, blockNames: blocks.map(b => b.name), facilitation, demoCtx,
+    exUrl: `${CFG.repoUrl}/tree/${CFG.repoBranch || 'main'}/exercises/${d.rel}` }
 }
 
 // Research depth (D-0040): in a notes-only run a research agent extends the committed brief with the
@@ -305,10 +268,9 @@ const notesVerify = (d, pass) => agent(
 
 // Notes page (D-0040): reference/study material at junior-interview depth. Author -> humanizer (prose-guarded)
 // -> notes-verify + notes critic, up to 3 passes.
-async function notesStage(d, demo) {
-  const { scriptNames, keyNames, demoCtx, exUrl } = demoFacts(d, demo)
+async function notesStage(d) {
+  const { blockNames, demoCtx, exUrl } = demoFacts(d)
   const page = d.pageFile
-  const looseNoKeys = d.loose && !keyNames.length
   const wpm = MN.readingWpm || 150
   return gated(`${d.id} notes page`,
     (cr, pass) => agent(
@@ -316,36 +278,32 @@ async function notesStage(d, demo) {
       `PURPOSE (D-0040): ${page} is reference and study material a learner reads on their own after the day (${Math.round(WORD_MIN / wpm)}–${Math.round(WORD_MAX / wpm)} minutes). It teaches every subtopic of this day to the depth a junior-developer interview expects, plus the adjacent concept the brief names for it. Applying the concepts is the demos' job; this page explains, shows a runnable example, names the trade-off, shows what the thing looks like in someone else's code, and gives the sentences the reader would say when asked.\n` +
       `DEPTH BAR per subtopic (the critic samples three): (1) a plain explanation a graduate can follow, (2) a runnable example in a <pre><code> block with its output stated in the prose, (3) a trade-off or a limit, (4) how to recognise it on sight in real code, (5) a spoken answer in the step's "Say it in an interview" callout; then the adjacent concept from the brief's Notes depth (what the interviewer asks next).\n` +
       `SCOPE: teach this day's coverage rows in curriculum order, each under an h2 or an h3. A later day's topic may be named in ONE sentence ("week 2 moves this into a module"), never taught as an h2 or h3; the anti-spoiler rows above mean "not a section".\n` +
-      `DELIVERY REFERENCES: the page never refers to the classroom. None of these strings may appear in article prose, quiz strings or diagram strings: ${J(MN.deliveryPhrases || [])}. Do not describe what the trainer did, what the reader watched, or the session. You MAY say in broad strokes what the demo thread builds ("the ticket-desk code grows a queue of tuples"), never an answer-key file path in prose. The demo card and the goals modal's "Demos today" list are structure and stay.\n` +
+      `DELIVERY REFERENCES: the page never refers to the classroom. None of these strings may appear in article prose, quiz strings or diagram strings: ${J(MN.deliveryPhrases || [])}. Do not describe what the trainer did, what the reader watched, or the session. You MAY say in broad strokes what the demo thread builds ("the ticket-desk code grows a queue of tuples"), never a walkthrough name or a file path of the trainer's repo. The page carries NO demo card, no demo list in the goals modal and no code popup (D-0055: demos are disconnected from the site).\n` +
       `FACTS: ${d.researchFile} is your ONLY source (its Claims, Notes depth, Sources, Glossary, Pitfalls). Add nothing to the brief. Every sentence that states a version number, a model id, an API/class/function/flag name's behaviour, a default, a limit or a price carries a citation <sup class="cite"><a href="#src-N">N</a></sup> to an <li id="src-N"> in section.reading-sources whose URL is in the brief; >= ${MN.citationsPerStepMin} citations per teaching step.\n` +
-      `STRUCTURE: read ${TEMPLATE} and copy its shell exactly (head + meta tc-day, topbar, nav.toc, article.reading-col, aside.side with diagram + ${d.noDemos ? 'NO demo card (demoFormat none)' : 'the demo card as variant A (pending) from ' + H + '/templates/day.exemplar.html, whatever the template page shows'} + quiz card + side-nav, #quiz-modal, #goals-modal, optional #deep-modal, ${MN.codePopupsMin}–${MN.codePopupsMax} #code-* popups, inline window.NEXT/DIAGRAM/QUIZ, the exact script tags). Then:\n` +
-      `- <meta name="tc-day" content="${d.id}">; title "<title> | ${CFG.siteTitle}"; topbar brand "${(CFG.brand||{}).bold}·${(CFG.brand||{}).rest}", Home ../../index.html, Demos ${CFG.repoUrl}/tree/main/demos, Exercises ${CFG.repoUrl}/tree/main/exercises.\n` +
+      `STRUCTURE: read ${TEMPLATE} and copy its shell exactly (head + meta tc-day, topbar, nav.toc, article.reading-col, aside.side with diagram + quiz card + side-nav (no demo card), #quiz-modal, #goals-modal, optional #deep-modal, inline window.NEXT/DIAGRAM/QUIZ, the exact script tags; no #code-* popups). Then:\n` +
+      `- <meta name="tc-day" content="${d.id}">; title "<title> | ${CFG.siteTitle}"; topbar brand "${(CFG.brand||{}).bold}·${(CFG.brand||{}).rest}", Home ../../index.html, Demos ${(CFG.demoRepo || {}).url || ''} (the public demo repo, the only demo link on the site), Exercises ${CFG.repoUrl}/tree/main/exercises.\n` +
       `- .lede: h1; .meta spans "Week ${A.week} · Day ${d.day}", "${d.dateLabel}", "${A.theme}", "<b>~N min</b> · reference notes @${wpm} wpm · diagram · check" (N = round(prose words / ${wpm})), and <span class="verified">Sources checked <the brief's verified: date> · python ${CFG.python}[ · <lib> <version> for each library stamp in the brief]</span>; p.summary of 3–5 sentences: the one sentence the page assumes from the previous day (week note), what the page teaches, what the reader can answer afterwards; then the .ix-legend.\n` +
-      `- ${MN.stepsMin}–${MN.stepsMax} section.step (data-step 0..n-1, each with .tag and h2). All but the last are TEACHING steps: >= ${MN.h3PerStepMin} h3 subsections each (a subtopic or its adjacent concept per h3), 450–900 prose words, runnable <pre><code> examples wherever the subtopic is code-shaped (page total >= ${MN.codeBlocksMin}), citations, at most one widget (.ix-predict / .ix-spot) and optionally one code popup button, and LAST in the step exactly one <div class="callout interview"><div class="k">Say it in an interview</div><p>…</p></div> with 1–3 <p>, each a spoken first-person answer (10–20 seconds, no code) to one of the step's interview questions from the brief.\n` +
+      `- ${MN.stepsMin}–${MN.stepsMax} section.step (data-step 0..n-1, each with .tag and h2). All but the last are TEACHING steps: >= ${MN.h3PerStepMin} h3 subsections each (a subtopic or its adjacent concept per h3), 450–900 prose words, runnable <pre><code> examples wherever the subtopic is code-shaped (page total >= ${MN.codeBlocksMin}), citations, at most one widget (.ix-predict / .ix-spot), and LAST in the step exactly one <div class="callout interview"><div class="k">Say it in an interview</div><p>…</p></div> with 1–3 <p>, each a spoken first-person answer (10–20 seconds, no code) to one of the step's interview questions from the brief.\n` +
       `- The LAST step: .tag "Check yourself", h2 "Check yourself", one intro <p>, then ${MN.checkYourselfMin}–${MN.checkYourselfMax} <details class="check"><summary>question</summary><p>answer, 1–4 sentences</p></details> covering every teaching step. No h3, no callout.\n` +
       `- section.reading-sources: <li id="src-1">, <li id="src-2"> … in citation order, >= ${MN.sourcesMin} items, each one http link taken from the brief plus a one-line reason.\n` +
-      (d.noDemos ? `- NO .demo-card and no "Demos today" list (demoFormat none).\n` : `- .demo-card exactly variant A: data-demo="pending", text "Published after class", no links (D-0030; harness/publish_demos.py flips it after the session).\n`) +
       `- window.DIAGRAM with captions.length == step count, nodes {id,step,x,y,w,h,label,detail?}, edges referencing real ids; each step reveals something the section explains; the last caption sums up what the reader can now explain.\n` +
       `- window.QUIZ with exactly ${MN.quizQuestions} questions: ≥1 scq, ≥1 tf, ≥1 mcq or match, ≤1 open; every non-open question has explain; grounded in the page.\n` +
-      `- #goals-modal: ${MN.goalsMin}–${MN.goalsMax} "By the end of today you can" items; "Today's exercise" link ${exUrl}; ${d.noDemos ? 'no demo list' : d.loose ? '"Demos today" list: exactly ONE item: ' + JSON.stringify(LOOSE_DEMO_BULLET) : '"Demos today" list: one item per script, its objective in ladder order, no file names or links'}.\n` +
-      (looseNoKeys
-        ? `- Code popups: none (loose day without fallback keys; codePopupsMin is 0).\n`
-        : `- Code popups: ${MN.codePopupsMin}–${MN.codePopupsMax}, each a SHORT excerpt of a real answer key in ${d.keyDir} (data-file = exact key filename, e.g. ${keyNames[0] || '01_<slug>.py'}; code HTML-escaped; never the whole file).\n`) +
+      `- #goals-modal: ${MN.goalsMin}–${MN.goalsMax} "By the end of today you can" items and the "Today's exercise" link ${exUrl}; no demo list (D-0055).\n` +
       `- Code in prose: single tokens (a command, a filename, an identifier) inline as <code>; any sequence of 2+ commands or lines the reader would type goes in a <pre><code> block (HTML-escaped, one command per line, no prompt characters) — never a run of commands inside a sentence.\n` +
       `- window.NEXT = { label: ${J(d.nextLabel)}, href: ${J(d.nextHref)} }.\n` +
-      `- Scripts: theme.js in head; bottom exactly diagram, scrolly, modals, quiz, widgets, glossary, codeviewer${d.feedback ? ', survey (+ a #survey section with window.SURVEY and a link to ' + CFG.feedbackFormUrl + ')' : ''}; relative ../../assets/... paths with the template's ?v= versions. Widgets allowed: .ix-legend, .ix-predict, .ix-spot only.\n` +
+      `- Scripts: theme.js in head; bottom exactly diagram, scrolly, modals, quiz, widgets, glossary${d.feedback ? ', survey (+ a #survey section with window.SURVEY and a link to ' + CFG.feedbackFormUrl + ')' : ''}; relative ../../assets/... paths with the template's ?v= versions. Widgets allowed: .ix-legend, .ix-predict, .ix-spot only.\n` +
       `- Prose voice (D-0029): write plainly, as a person explaining to a colleague. No "not X but Y" contrasts, no one-line closers that restate the paragraph, no forced triads, no em-dashes as the default joiner, no bold labels at the start of items, no stock AI words (delve, crucial, robust, seamless, leverage, landscape, navigate, journey, foster, testament, underscore). A humanizer pass runs after you; give it little to do.\n` +
       `WRITE INCREMENTALLY (the page is ${WORD_MIN}–${WORD_MAX} prose words; aim for ${WORD_MIN + 300}–${WORD_MAX - 300}; one huge Write gets truncated):\n` +
       `1. ONE Write of the whole shell: the lede, every section.step with its tag, h2 and h3 headings only, an empty Check yourself step, window.NEXT, window.DIAGRAM with one placeholder caption per step, window.QUIZ with ${MN.quizQuestions} placeholder questions, the modals and the script tags. It must parse: run python ${H}/notes_check.py ${page} --counts (band findings are expected at this point, a parse error is not).\n` +
       `2. Fill ONE step per Edit call (its prose, code blocks, citations, callout). After each Edit run the same --counts command and watch the words total; stop adding prose at ${WORD_MAX - 300}.\n` +
       `3. Then the Check yourself step, the real quiz, the diagram nodes/edges/captions, the sources list, the meta minutes and the verified span. Never rewrite the whole file after step 1.\n` +
-      `Before returning run: python ${H}/notes_check.py ${page} --counts --phrases --stamps --citations   until it prints OK, and quote its last line. Return wordCount, declaredMinutes, steps, h3Count, interviewCount, checkYourselfCount, codeBlocks, citations (total), sourcesChecked, stepMap (every coverage-row subtopic -> the 1-based step that teaches it), quizCount, demoLinks, codePopups, summary.` + fix(cr),
+      `Before returning run: python ${H}/notes_check.py ${page} --counts --phrases --stamps --citations   until it prints OK, and quote its last line. Return wordCount, declaredMinutes, steps, h3Count, interviewCount, checkYourselfCount, codeBlocks, citations (total), sourcesChecked, stepMap (every coverage-row subtopic -> the 1-based step that teaches it), quizCount, summary.` + fix(cr),
       { schema: NOTES_SCHEMA, label:`${d.id}:notes`, phase:'Materials', ...tier('notes', pass) })
       .then(async (r) => { if (r) await humanize(d); return r }),
     async (_r, pass) => {
       const v = await notesVerify(d, pass)
       const c = await agent(
-        `NOTES CRITIC. Read ${H}/critics/notes.md and apply it to ${page} against ${d.researchFile} (allowed facts), ${TEMPLATE} (structure), ${d.noDemos ? 'no demos (demoFormat none: the page must carry NO demo card)' : (d.loose ? 'a loose day (D-0050): the demo card is pending; the Demos today list has exactly one generic item; ' + (scriptNames.length ? 'fallback scripts ' + J(scriptNames) + ' in ' + d.demoDir + ' and answer keys ' + J(keyNames) + ' in ' + d.keyDir : 'no scripts on disk') : 'demo scripts ' + J(scriptNames) + ' in ' + d.demoDir + ' and answer keys ' + J(keyNames) + ' in ' + d.keyDir + ' (the demo card must be data-demo="pending" with no links)')}. Word band ${WORD_MIN}–${WORD_MAX}. Item 12 against the week plan rows: every coverage subtopic is taught under an h2 or h3 and nothing the anti-spoiler rows defer is a section. Run the verification command in the critic spec with Bash and quote it. Day context: ${dayHeader(d)}` +
+        `NOTES CRITIC. Read ${H}/critics/notes.md and apply it to ${page} against ${d.researchFile} (allowed facts), ${TEMPLATE} (structure). Demos are disconnected from the site (D-0055): the page carries no demo card, no demo list in the goals modal and no code popup; the walkthrough names ${J(blockNames)} and the trainer's paths must not appear in it. Word band ${WORD_MIN}–${WORD_MAX}. Item 12 against the week plan rows: every coverage subtopic is taught under an h2 or h3 and nothing the anti-spoiler rows defer is a section. Run the verification command in the critic spec with Bash and quote it. Day context: ${dayHeader(d)}` +
         `Findings from the notes-verify agent (item 19, binding; each is a critique unless you show it is wrong): ${J(v || { checked:0, structural:['notes-verify agent hard-failed; run notes_check.py yourself'], dead:[], stale:[] })}\n` +
         `Return pass, critiques (concrete fixes), one-sentence summary.`,
         { schema: VERDICT, label:`${d.id}:notes-crit`, phase:'Materials', ...tier('notes-critic') })
@@ -355,15 +313,17 @@ async function notesStage(d, demo) {
     })
 }
 
-async function materialsStage(d, demo) {
-  const { scriptNames, facilitation, demoCtx, demoUrl, exUrl } = demoFacts(d, demo)
-  const notes = () => notesStage(d, demo)
+async function materialsStage(d) {
+  const { blocks, blockNames, facilitation, demoCtx, exUrl } = demoFacts(d)
+  const notes = () => notesStage(d)
+  const walkthroughs = blocks.map(b => b.file)
+  const demosLink = `../demos/`
 
   const rubric = d.exerciseKind === 'rubric'
   const exercise = () => rubric ? gated(`${d.id} exercise`,
     (cr, pass) => agent(
       `You are the EXERCISE author (RUBRIC kind: a hands-on deliverable marked against a rubric; NO starter module, NO pytest). ${dayHeader(d)}${learnerCtx(d)}` +
-      `${demoCtx}Read ${d.researchFile}${d.noDemos ? '' : ', the demo scripts in ' + d.demoDir + ' and the answer keys in ' + d.keyDir}. Read ${H}/templates/exercise-rubric-README.md and follow its headings.\n` +
+      `${demoCtx}Read ${d.researchFile}${d.noDemos ? '' : ' and the day\'s walkthroughs ' + J(walkthroughs) + ' (what the room built; they may be absent while demo-series.js has not run yet: then the plan rows above stand in)'}. Read ${H}/templates/exercise-rubric-README.md and follow its headings.\n` +
       `Write ${d.exDir}/README.md: the task (what trainees build on their own machine/GitHub, drawn from this day's subtopics and the Day note), "## Deliverable" (exactly what they hand in or show), "## Acceptance criteria" (5–8 observable checklist items), "## Rubric" (markdown table criterion | meets | partial | missing), "## Getting started" (commands in a fenced block), "## Hints" (≥2); sized for 60–90 min. Do NOT create starter/ or tests/.\n` +
       `ALSO write ${d.trDir}/solutions/RUBRIC.md (private trainer marking guide; create dirs): for every acceptance criterion, the exact command(s) a trainer runs against a trainee's repo to check it in under two minutes, the expected output, and what "meets" vs "partial" looks like; plus common failure modes.\n` +
       `Return module="rubric", testCount=<number of acceptance criteria>, starterFailed=false, solutionPassed=<true iff RUBRIC.md covers every criterion>, summary.` + fix(cr),
@@ -375,7 +335,7 @@ async function materialsStage(d, demo) {
   : gated(`${d.id} exercise`,
     (cr, pass) => agent(
       `You are the EXERCISE author. ${dayHeader(d)}${learnerCtx(d)}` +
-      `${demoCtx}Read ${d.researchFile}${d.noDemos ? '' : ', the demo scripts in ' + d.demoDir + ' and the answer keys in ' + d.keyDir}. Read ${H}/templates/exercise-README.md and ${H}/templates/conftest.py.\n` +
+      `${demoCtx}Read ${d.researchFile}${d.noDemos ? '' : ' and the day\'s walkthroughs ' + J(walkthroughs) + ' (what the room built; they may be absent while demo-series.js has not run yet: then the plan rows above stand in)'}. Read ${H}/templates/exercise-README.md and ${H}/templates/conftest.py.\n` +
       `Write ${d.exDir}/: README.md (task, acceptance checklist mapping 1:1 to test names, getting started, ≥2 hints; 60–90 min), starter/<module>.py (signatures + docstrings + raise NotImplementedError only), tests/conftest.py (copy the template verbatim), tests/test_<module>.py with ${M.exercise.testsMin}–${M.exercise.testsMax} deterministic, network-free tests.\n` +
       `ALSO write the reference solution to ${d.trDir}/solutions/<module>.py (private trainer repo path; create dirs).\n` +
       `Use Bash from ${d.exDir}: "python -m pytest -q" MUST fail; "EXERCISE_SRC=${d.trDir}/solutions python -m pytest -q" MUST pass. Confirm both before returning.\n` +
@@ -389,17 +349,21 @@ async function materialsStage(d, demo) {
   const runbook = () => gated(`${d.id} runbook`,
     (cr, pass) => agent(
       `You are the RUNBOOK author (trainer-only talk track). ${dayHeader(d)}${learnerCtx(d)}` +
-      `${demoCtx}Read ${d.researchFile}${d.noDemos ? '' : ', every demo script ' + J(scriptNames) + ' in ' + d.demoDir + ' (header + steps; you point at them, you do not copy them)'}, ${d.pageFile} if it exists (for objectives), and the exercise README at ${d.exDir}/README.md if it exists. Read the template ${H}/templates/runbook.md.\n` +
-      `Write ${d.trDir}/runbook.md: first line "# ${d.id} runbook — ${d.title}"; second line "Week ${A.week} · Day ${d.day} · ${d.dateLabel} · ${A.theme}"; third line links every artifact exactly as the template does (the trainer repo is separate, so public links are absolute): notes page ${CFG.siteUrl}weeks/${d.rel}.html, demos ${demoUrl}, exercise ${exUrl}, brief ${CFG.repoUrl}/blob/${CFG.repoBranch || 'main'}/harness/research/${d.rel}.md, and the relative link solutions/; headings in template order; "Day at a glance" table whose Minutes sum to ${M.runbook.dayMinutesMin}–${M.runbook.dayMinutesMax} incl. breaks/lunch, demo rows using each script's Time; then the teaching blocks in the order the day runs them: ${d.noDemos ? '' : (d.loose && !scriptNames.length) ? 'ONE "## Live demo: <title> (M min)" block instead of Demo sections (D-0050: goal, what the trainer expects to type under demo-repo/' + d.rel + '/, stop points; no script exists) and ' : 'one "## Demo N: <script filename, e.g. 01_<slug>.md>" per script' + (d.loose ? ' (loose day D-0050: the scripts are an optional fallback, say so in each block)' : '') + ' (script path demos/<file> relative to the runbook, answer key path, Time, room state before, stop point if long, ≥2 checkpoint questions, ≥1 pitfall from the brief; NO talk track, the script is the talk track) and '}one "## Facilitation N: <subtopic> (M min)" per subtopic with no demo (${J(d.noDemos ? d.subtopics : facilitation)}): Goal, numbered timed beats (board plan, ask the room, pairs, debrief), ≥2 "Ask the room" questions with the steering answer, ≥1 misconception from the brief, what the room writes down; Notes page handoff; Exercise briefing (${rubric ? 'deliverable, acceptance criteria, ≥2 stuck points, how to mark in the room, marking guide ' + d.trDir + '/solutions/RUBRIC.md' : 'module, acceptance, ≥2 stuck points, solutions path ' + d.trDir + '/solutions'}${LR ? ', where trainees work and hand in (the learner repo folder)' : ''}); Common questions; If running long / short${d.feedback ? '; "## Feedback form" with ' + CFG.feedbackFormUrl : ''}${d.kind === 'review' ? '; "## Review agenda"' : ''}.\n` +
+      `${demoCtx}Read ${d.researchFile}${d.noDemos ? '' : ', the day\'s walkthroughs ' + J(walkthroughs) + ' (header, cheat-sheet and steps; you point at them, you do not copy them; if a file is absent because demo-series.js has not run yet, use the plan rows above and say so in the section)'}, ${d.pageFile} if it exists (for objectives), and the exercise README at ${d.exDir}/README.md if it exists. Read the template ${H}/templates/runbook.md.\n` +
+      `Write ${d.trDir}/runbook.md: first line "# ${d.id} runbook — ${d.title}"; second line "Week ${A.week} · Day ${d.day} · ${d.dateLabel} · ${A.theme}"; third line links every artifact exactly as the template does (the trainer repo is separate, so public links are absolute): notes page ${CFG.siteUrl}weeks/${d.rel}.html, walkthroughs ${demosLink} (relative: the week folder beside this day's folder), exercise ${exUrl}, brief ${CFG.repoUrl}/blob/${CFG.repoBranch || 'main'}/harness/research/${d.rel}.md, and the relative link solutions/; headings in template order; "Day at a glance" table whose Minutes sum to ${M.runbook.dayMinutesMin}–${M.runbook.dayMinutesMax} incl. breaks/lunch, one row per walkthrough block using its ladder minutes (a break inside a block is named in its row); then the teaching blocks in the order the day runs them: ${d.noDemos ? '' : 'one "## Demo: <walkthrough name>.md" per block of the day (' + J(blockNames) + '; walkthrough path ../demos/<name>.md relative to the runbook, Time and slot, the commit message on ' + PREP + ', room state before = the block it starts from and what is on screen and in the repo, the plan\'s stop point and where the remainder resumes, ≥2 checkpoint questions, ≥1 pitfall from the brief; NO talk track, the walkthrough is the talk track) and '}one "## Facilitation N: <subtopic> (M min)" per subtopic with no demo (${J(d.noDemos ? d.subtopics : facilitation)}): Goal, numbered timed beats (board plan, ask the room, pairs, debrief), ≥2 "Ask the room" questions with the steering answer, ≥1 misconception from the brief, what the room writes down; Notes page handoff; Exercise briefing (${rubric ? 'deliverable, acceptance criteria, ≥2 stuck points, how to mark in the room, marking guide ' + d.trDir + '/solutions/RUBRIC.md' : 'module, acceptance, ≥2 stuck points, solutions path ' + d.trDir + '/solutions'}${LR ? ', where trainees work and hand in (the learner repo folder)' : ''}); Common questions; If running long / short${d.feedback ? '; "## Feedback form" with ' + CFG.feedbackFormUrl : ''}${d.kind === 'review' ? '; "## Review agenda"' : ''}.\n` +
       `Wording (D-0039): the trainer delivers from this file, so questions, framing lines and answers are sentences a person can say without rephrasing them, and a stop point or an "if running long" line is a few short sentences in the order things happen, not one sentence chained with semicolons. A humanizer pass runs after you (prose only); give it little to do.\n` +
       `Return totalMinutes, demoSections (Demo + Facilitation blocks), solutionFiles (what exists under solutions/), summary.` + fix(cr),
       { schema: RUNBOOK_SCHEMA, label:`${d.id}:runbook`, phase:'Materials', ...tier('runbook', pass) })
       .then(async (r) => { if (r) await humanizeTrainer(d, 'runbook', [`${d.trDir}/runbook.md`], 'Materials'); return r }),
     (_r) => agent(
-      `RUNBOOK CRITIC. Read ${H}/critics/runbook.md and apply it to ${d.trDir}/runbook.md with ${d.noDemos ? 'no demo scripts (demoFormat none: every teaching block is a Facilitation block)' : (d.loose && !scriptNames.length) ? 'no demo scripts (loose day, D-0050: one "## Live demo: <title> (M min)" block stands in for the Demo sections)' : 'demo scripts ' + J(scriptNames) + ' in ' + d.demoDir + ' and facilitation subtopics ' + J(facilitation)}, exercise in ${d.exDir}, solutions in ${d.trDir}/solutions, brief ${d.researchFile}. ${rubric ? 'Rubric-kind day: check solutions/RUBRIC.md exists and the briefing matches it; no pytest.' : 'Run the solutions pytest check with Bash.'} Items 2 and 3 against the week plan: demo minutes equal the ladder rows, the glance table follows the day shape, stop points match the plan's, and each Demo section's "room state before" names the rung it starts from (the thread row's startsFrom key, or "cold"). Day context: ${dayHeader(d)}${learnerCtx(d)}` +
+      `RUNBOOK CRITIC. Read ${H}/critics/runbook.md and apply it to ${d.trDir}/runbook.md with ${d.noDemos ? 'no walkthrough (demoFormat none: every teaching block is a Facilitation block)' : 'walkthrough blocks ' + J(blockNames) + ' under ' + DEMOS_DIR + ' and facilitation subtopics ' + J(facilitation)}, exercise in ${d.exDir}, solutions in ${d.trDir}/solutions, brief ${d.researchFile}. ${rubric ? 'Rubric-kind day: check solutions/RUBRIC.md exists and the briefing matches it; no pytest.' : 'Run the solutions pytest check with Bash.'} Items 2 and 3 against the week plan: walkthrough minutes equal the ladder rows, the glance table follows the day shape, stop points match the plan's Stop points rows, and each Demo section's "room state before" names the block it starts from (the block row's startsFrom, or "cold"). Day context: ${dayHeader(d)}${learnerCtx(d)}` +
       `Return pass, critiques (concrete fixes), one-sentence summary.`,
       { schema: VERDICT, label:`${d.id}:runbook-crit`, phase:'Materials', ...tier('critic') }))
 
+  if (RUNBOOK_ONLY) {
+    const reused = (label) => ({ task: label, status:'cached', passes:0, summary:'not re-authored in a runbook-only run (D-0055)' })
+    return { notes: reused(`${d.id} notes page`), exercise: reused(`${d.id} exercise`), runbook: await runbook() }
+  }
   // notes + exercise first (runbook reads both for objectives / stuck points), then runbook
   const [n, e] = await parallel([notes, exercise])
   const r = await runbook()
@@ -412,67 +376,23 @@ async function materialsStage(d, demo) {
 log(`Model tiers: ${TIER_LABELS}; escalate on pass ≥ ${TIERS.escalateOn || '—'} → ${TIERS.escalate ? (TIERS.escalate.model || 'inherit') + '/' + (TIERS.escalate.effort || 'inherit') : 'off'}`)
 if (A.noPlan) log(`WARNING: running WITHOUT a week plan (--no-plan escape); record it in STATUS.md`)
 else log(`Week plan: ${A.weekPlan}`)
-// Week batch (D-0038): research for every day in parallel, then demos STRICTLY in day order, then materials in
-// parallel again. A rung's Starts from key is the previous rung's key (D-0033), so a later day's demo author can
-// only start once the earlier day's keys are on disk. A day whose demos stage produced no scripts blocks the
-// later days of the run: they are reported flagged and nothing is authored on top of a missing key. A day the
-// critic flagged still has its keys and does not block.
-const blocked = (label, by) => ({ task: label, status:'flagged', passes:0, flags:[`blocked: ${by} produced no demo keys, so this day's rungs have no Starts from state; re-run from ${by}`], summary:`not attempted (blocked by ${by})` })
-if (NOTES_ONLY) log(`Notes-only run (D-0040): research depth -> notes page; demos, exercise and runbook reused from disk`)
+// Week batch (D-0038): research for every day in parallel, then materials in parallel. Demos are a separate weekly
+// run (demo-series.js, D-0055): the materials read the day's block rows from the plan and the walkthroughs on
+// disk when they exist.
+if (NOTES_ONLY) log(`Notes-only run (D-0040): research depth -> notes page; exercise and runbook reused from disk`)
+if (RUNBOOK_ONLY) log(`Runbook-only run (D-0055): brief and page reused; runbook author -> humanize -> critic`)
 phase('Research')
-const researched = await parallel(DAYS.map(d => () => NOTES_ONLY ? researchDepthStage(d) : researchStage(d)))
-phase('Demos')
-const demoed = []
-let blockedBy = null
-let seriesReview = null
-if (NOTES_ONLY) {
-  // D-0040: the day's scripts and keys are already on disk (args_for.py --notes-only checked); nothing is authored.
-  for (const d of DAYS) demoed.push((d.noDemos || (d.loose && !(d.existingScripts || []).length))
-    ? { task:`${d.id} demos`, status:'skipped', passes:0, summary:d.noDemos ? 'demoFormat none: no code demo' : 'demoFormat loose with no fallback scripts on disk (D-0050)', result:{ scripts:[], facilitation: d.subtopics, requirements:[], summary:'' } }
-    : { task:`${d.id} demos`, status:'cached', passes:0, summary:'notes-only: scripts and keys reused from disk',
-        result:{ scripts:(d.existingScripts || []).map(s => ({ name:s.name, key:s.key, objective:s.objective, minutes:s.time || 0, mode:'', needsKey:false })),
-                 facilitation:(d.weekPlanRows || []).filter(r => r.Demo === 'facilitation').map(r => r.Subtopic), requirements:[], summary:'' } })
-} else {
-  for (const d of DAYS) {
-    if (blockedBy) { demoed.push(blocked(`${d.id} demos`, blockedBy)); continue }
-    let r = null
-    try { r = await demosStage(d) } catch (e) { log(`${d.id} demos stage threw: ${e && e.message}`) }
-    demoed.push(r)
-    if (!d.noDemos && !d.loose && !(r && r.result && (r.result.scripts || []).length)) blockedBy = `${d.id} demos`
-  }
-  // Series review (D-0053): once every day's demos are done, ONE critic reads the run's scripts as a series, in
-  // ladder order, against the week plan (story, Starts from chain, Weekly Epic, anti-spoiler, minutes, handoffs).
-  // Flags only: it never blocks a day and nothing is auto-fixed; its verdict reaches the run record and the return.
-  const scripted = DAYS.map((d, i) => ({ d, r: demoed[i] })).filter(x => x.r && x.r.result && (x.r.result.scripts || []).length)
-  if (DAYS.length > 1 && scripted.length >= 2) {
-    try {
-      seriesReview = await agent(
-        `SERIES REVIEW (D-0053). Read ${H}/critics/series-review.md and apply it to this run's demo scripts as ONE series against the week plan ${A.weekPlan || '(none: the --no-plan escape was used, so judge the scripts against each other only)'}.\n` +
-        `Days of this run in order, each with its script paths in ladder order (a day of the run that is not listed has no scripts and is skipped): ${J(scripted.map(x => ({ day: x.d.id, demoFormat: x.d.demoFormat, scripts: x.r.result.scripts.map(s => `${x.d.demoDir}/${/\.md$/.test(s.name) ? s.name : s.name + '.md'}`) })))}\n` +
-        `Each script's answer key sits under key/ beside it. Judge only what spans scripts or days; a problem inside one script belongs to the demos critic. Edit no file.\n` +
-        `Return pass, critiques (script path + the series-level problem + a concrete fix), one-sentence summary.`,
-        { schema: VERDICT, label:'series-review', phase:'Demos', ...tier('series-review') })
-    } catch (e) { log(`series review threw: ${e && e.message}`) }
-    if (seriesReview) log(`Series review: ${seriesReview.pass ? 'PASS' : 'FLAGGED (' + (seriesReview.critiques || []).length + ' critique(s))'}; flags only, no day blocked`)
-  }
-}
+const cachedResearch = (d) => ({ task: `${d.id} research`, status:'cached', passes:0, summary:`reused the committed brief ${d.researchFile}`, result:{ versionStamps:[], sourceCount:0, glossaryTerms:[], pitfalls:[], summary:'' } })
+const researched = await parallel(DAYS.map(d => () => RUNBOOK_ONLY ? cachedResearch(d) : NOTES_ONLY ? researchDepthStage(d) : researchStage(d)))
 phase('Materials')
 const materials = await parallel(DAYS.map((d, i) => async () => {
-  const demos = demoed[i]
-  // No scripts on a demo day (blocked, or this day's own demos stage failed): notes, exercise and runbook all
-  // read the scripts, so they are not attempted either.
-  if (!d.noDemos && !d.loose && !(demos && demos.result && (demos.result.scripts || []).length)) {
-    const why = (demos && demos.passes === 0 && demos.flags) ? demos.flags[0] : `not attempted: ${d.id} demos produced no scripts; fix the demos and re-run this day`
-    const skip = (label) => ({ task: label, status:'flagged', passes:0, flags:[why], summary:'not attempted (no demo scripts)' })
-    return { notes: skip(`${d.id} notes page`), exercise: skip(`${d.id} exercise`), runbook: skip(`${d.id} runbook`) }
-  }
   if (NOTES_ONLY) {
     const reused = (label) => ({ task: label, status:'cached', passes:0, summary:'not re-authored in a notes-only run (D-0040); its notes-handoff wording may lag the page' })
-    return { notes: await notesStage(d, demos), exercise: reused(`${d.id} exercise`), runbook: reused(`${d.id} runbook`) }
+    return { notes: await notesStage(d), exercise: reused(`${d.id} exercise`), runbook: reused(`${d.id} runbook`) }
   }
-  return materialsStage(d, demos)
+  return materialsStage(d)
 }))
-const perDay = DAYS.map((d, i) => ({ d, research: researched[i], demos: demoed[i], ...(materials[i] || {}) }))
+const perDay = DAYS.map((d, i) => ({ d, research: researched[i], ...(materials[i] || {}) }))
 
 // ---------- WIRE (serial: shared files) ----------
 phase('Wire')
@@ -487,13 +407,12 @@ const stepMaps = perDay.filter(x => x && x.notes && x.notes.result && (x.notes.r
 const wire = await agent(
   `WIRE step (serial, shared files). Days shipped this run: ${J(DAYS.map(d => ({ id:d.id, rel:d.rel, page:d.pageRel })))}.\n` +
   `1. Open ${ROOT}/docs/assets/js/glossary.js. Between "// GLOSSARY:BEGIN" and "// GLOSSARY:END" append these entries as { term, def, aka } lines, SKIPPING any whose term or aka already exists (case-insensitive, check both term and aka of existing entries): ${J(glossaryAdds)}. Keep the file valid JS (node --check).\n` +
-  `2. In ${H}/curriculum.json set "status" per day exactly as this list says: ${J(WIRE_STATUS)}, for each day ONLY if that day's page ${'`'}docs/weeks/<rel>.html${'`'}, exercises/<rel>/README.md and (unless demoFormat is "none" or "loose") ${TRAINER}/<rel>/demos/key/README.md all exist on disk. "authored" means the day is written but not linked from docs/index.html; harness/release_week.py makes it live (D-0052); a day already live stays live, which the list already reflects. Never touch the "taught" field.\n` +
+  `2. In ${H}/curriculum.json set "status" per day exactly as this list says: ${J(WIRE_STATUS)}, for each day ONLY if that day's page ${'`'}docs/weeks/<rel>.html${'`'} and exercises/<rel>/README.md exist on disk${RUNBOOK_ONLY ? ' (a runbook-only run changes no status: skip this step)' : ''}. "authored" means the day is written but not linked from docs/index.html; harness/release_week.py makes it live (D-0052); a day already live stays live, which the list already reflects. Never touch the "taught" field. The week's walkthroughs are a separate run (demo-series.js) and never gate a day's status.\n` +
   `3. Run: python ${H}/build_index.py   (it also rebuilds tracker.html, the work tracker, D-0035)\n` +
   `4. For each shipped day whose previous day page exists, confirm the previous page's window.NEXT.href points at this day's filename; fix if not.` +
   (A.releaseOnWire ? '' : ` EXCEPTION (D-0052): this run ships its days as "authored" (written, not linked), and a live page never links into an unreleased one. So when the previous page was NOT written by this run and its curriculum.json status is "live", leave its window.NEXT exactly as it is.`) +
   ` And for each shipped day's own page: if its window.NEXT.href names a day page that does not exist on disk (a later day of this run was blocked or failed), set it to { label: "Back to program →", href: "../../index.html" }.\n` +
-  `5. Publish step (D-0030): for each shipped day run "python ${H}/publish_demos.py <week> <day>" (${J(DAYS.map(d => `${A.week} ${d.day}`))}). It copies the answer keys to demos/<rel>/ and flips the notes demo card ONLY if curriculum.json carries taught:<date> for that day (set by the delivery-day close); otherwise it prints "not taught yet" and that is the expected outcome on an authoring run. A loose day prints "written by harness/close_day.py"; that too is expected. Never copy demo files by hand.\n` +
-  `5b. Practice section (D-0047): for each shipped day run "python ${H}/practice_tasks.py insert <week> <day>" (${J(DAYS.map(d => `${A.week} ${d.day}`))}). A re-authored page comes back without its section.practice; this writes it again from harness/practice/<rel>.json and prints "no practice file" for a day that has none, which is the expected outcome for a newly authored day. Never write that section by hand.\n` +
+  `5. Practice section (D-0047): for each shipped day run "python ${H}/practice_tasks.py insert <week> <day>" (${J(DAYS.map(d => `${A.week} ${d.day}`))}). A re-authored page comes back without its section.practice; this writes it again from harness/practice/<rel>.json and prints "no practice file" for a day that has none, which is the expected outcome for a newly authored day. Never write that section by hand.\n` +
   `6. Run ${ROOT}/docs/bump-css.sh --all if you changed glossary.js.\n` +
   `7. Coverage-map realignment (D-0040): ${(A.noPlan || !stepMaps.length) ? 'nothing to do this run (no week plan, or no notes page reported a stepMap).' : 'in ' + A.weekPlan + ' "## Coverage map" table, for each day below set the "Notes step" cell of the row whose Day and Subtopic match to the number given, touching no other cell: ' + J(stepMaps) + '. Then run: python ' + H + '/plan_check.py ' + A.weekPlan + '   and quote its OK line (fix the cell, never the checker, if it complains).'}\n` +
   `8. Last, run: python ${H}/build_tracker.py   so tracker.html matches the state you just changed (never edit tracker.html by hand).\n` +
@@ -506,16 +425,13 @@ const report = perDay.map((x, i) => {
   return {
     day: d.id,
     research: compact(repairNull(x && x.research, `${d.id} research`)),
-    demos: compact(repairNull(x && x.demos, `${d.id} demos`)),
     notes: compact(repairNull(x && x.notes, `${d.id} notes page`)),
     exercise: compact(repairNull(x && x.exercise, `${d.id} exercise`)),
     runbook: compact(repairNull(x && x.runbook, `${d.id} runbook`)),
   }
 })
 const flagged = []
-report.forEach(r => ['research','demos','notes','exercise','runbook'].forEach(k => { if (r[k] && r[k].status === 'flagged') flagged.push({ day:r.day, artifact:k, flags:r[k].flags }) }))
-// Series review (D-0053): a FAIL is one flagged item on the run's last day, in the same {day, artifact, flags} shape.
-if (seriesReview && !seriesReview.pass) flagged.push({ day: DAYS[DAYS.length - 1].id, artifact:'series-review', flags:(seriesReview.critiques || []).map(c => `series-review: ${c}`) })
+report.forEach(r => ['research','notes','exercise','runbook'].forEach(k => { if (r[k] && r[k].status === 'flagged') flagged.push({ day:r.day, artifact:k, flags:r[k].flags }) }))
 
 // ---------- RECORD (work tracker, D-0035) ----------
 // One record per run in harness/runs.jsonl, written before Verify so the run-log contract test sees it; the
@@ -528,10 +444,10 @@ const runRecord = {
   kind: 'day-fanout', date: A.today, week: A.week, days: DAYS.map(d => d.id), runId: null,
   agents: AGENTS + 1, minutes: null, tokens: null,
   tiers: { labels: TIER_LABELS, verified: null },
-  artifacts: report.flatMap(r => ['research','demos','notes','exercise','runbook'].map(k => ({ day: r.day, name: k, status: (r[k] && r[k].status) || 'flagged', passes: r[k] ? r[k].passes : 0 }))),
+  artifacts: report.flatMap(r => ['research','notes','exercise','runbook'].map(k => ({ day: r.day, name: k, status: (r[k] && r[k].status) || 'flagged', passes: r[k] ? r[k].passes : 0 }))),
   flagged: flagged.length,
   flags: flagged.map(f => ({ day: f.day, artifact: f.artifact, flags: (f.flags || []).slice(0, 6).map(x => String(x).slice(0, 300)) })),
-  tests: null, resolved: false, note: [A.noPlan ? 'run with the --no-plan escape' : '', NOTES_ONLY ? 'notes-only run (D-0040): research depth + notes page; demos, exercise and runbook reused' : ''].filter(Boolean).join('; '),
+  tests: null, resolved: false, note: [A.noPlan ? 'run with the --no-plan escape' : '', NOTES_ONLY ? 'notes-only run (D-0040): research depth + notes page; exercise and runbook reused' : '', RUNBOOK_ONLY ? 'runbook-only run (D-0055): brief and page reused' : ''].filter(Boolean).join('; '),
 }
 const recorded = await agent(
   `RECORD step (work tracker, D-0035).\n` +
@@ -558,4 +474,4 @@ for (let attempt = 1; attempt <= 3; attempt++) {
 }
 
 log(`Run complete: ${DAYS.length} day(s), ${flagged.length} flagged item(s), tests ${verify && verify.passed ? 'PASS' : 'FAIL'}; run log ${recorded ? 'recorded' : 'NOT recorded'} (add the run id with: python harness/log_run.py amend --last --run-id <wf_...>)`)
-return { week: A.week, days: DAYS.map(d => d.id), flaggedCount: flagged.length, flagged, seriesReview, verify, wire, report, recorded, glossaryAdded: glossaryAdds.length }
+return { week: A.week, days: DAYS.map(d => d.id), flaggedCount: flagged.length, flagged, verify, wire, report, recorded, glossaryAdded: glossaryAdds.length }

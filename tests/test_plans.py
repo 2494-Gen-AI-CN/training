@@ -49,7 +49,7 @@ class PlanFileTests(unittest.TestCase):
                 problems = plan_check.check_plan(p, metrics()["demos"])
                 self.assertEqual([], problems, "\n".join(problems))
 
-    def test_plan_lists_every_subtopic_and_every_rung_starts_from_resolves(self):
+    def test_plan_lists_every_subtopic_and_every_block_chains(self):
         cur = curriculum()
         for p in sorted(PLANS.glob("week-*.md")) if PLANS.is_dir() else []:
             with self.subTest(plan=p.name):
@@ -62,24 +62,29 @@ class PlanFileTests(unittest.TestCase):
                     for st in d["subtopics"]:
                         self.assertIn((d["id"], st.strip().lower()), covered, f"{d['id']} subtopic '{st}' not in the coverage map")
                 self.assertTrue(plan["threads"], "plan needs at least one thread")
+                prev_last = plan_check.previous_last_block(plan["week"])
                 for t in plan["threads"]:
                     prev = None
-                    for r in t["rungs"]:
+                    for r in t["blocks"]:
                         s = r["Starts from"]
                         if prev is None:
-                            # first rung: cold, or a key that exists on disk (previous week's last rung)
-                            ok = s == "cold" or (ROOT / s).is_file() or not TRAINER.exists()
-                            self.assertTrue(ok, f"{t['id']} rung {r['Rung']}: Starts from {s} does not resolve")
+                            # first block: cold, or the previous week's last walkthrough of the same thread
+                            ok = s == "cold" or (plan_check.WALK_RE.match(s) and (t["id"] not in prev_last or prev_last[t["id"]] == s))
+                            self.assertTrue(ok, f"{t['id']} block {r['Block']}: Starts from {s} does not resolve")
                         else:
-                            self.assertEqual(prev, s, f"{t['id']} rung {r['Rung']}: Starts from must be the previous rung's key")
-                        prev = r["keyPath"]
+                            self.assertEqual(prev, s, f"{t['id']} block {r['Block']}: Starts from must be the previous block's walkthrough")
+                        prev = r["Walkthrough"]
+                blocks = plan_check.week_blocks(plan)
+                self.assertEqual([b["n"] for b in blocks], list(range(1, len(blocks) + 1)))
+                for b in blocks:
+                    self.assertTrue(b["stopPoint"], f"{b['name']} has no stop point")
 
     def test_template_has_every_section(self):
         text = (HARNESS / "templates" / "week-plan.md").read_text(encoding="utf-8")
         for s in plan_check.SECTIONS:
             self.assertIn(s, text)
-        for cols in (plan_check.RUNG_COLS, plan_check.LADDER_COLS, plan_check.COVERAGE_COLS, plan_check.STANDALONE_COLS,
-                     plan_check.SPOILER_COLS, plan_check.DEVIATION_COLS):
+        for cols in (plan_check.BLOCK_COLS, plan_check.LADDER_COLS, plan_check.COVERAGE_COLS, plan_check.STANDALONE_COLS,
+                     plan_check.STOP_COLS, plan_check.SCAFFOLD_COLS, plan_check.NEVER_COLS, plan_check.SPOILER_COLS, plan_check.DEVIATION_COLS):
             self.assertIn("| " + " | ".join(cols) + " |", text)
 
 
@@ -95,8 +100,10 @@ class PlanArgsTests(unittest.TestCase):
         self.assertIn("week-plan-critic", a["models"]["stages"])
         self.assertEqual({"model", "effort"}, set(a["models"]["stages"]["week-plan"]))
         for d in a["days"]:
-            for k in ("id", "date", "dateLabel", "subtopics", "status", "rel", "existingScripts"):
+            for k in ("id", "date", "dateLabel", "subtopics", "status", "rel"):
                 self.assertIn(k, d, f"plan day {d.get('id')} lacks {k}")
+        for k in ("existingWalkthroughs", "demosDir", "prepBranch"):
+            self.assertIn(k, a, f"plan args lack {k} (D-0055)")
         # same tiers as the day args carry (D-0026/D-0032: one source, config.json models)
         day = json.loads(run_args("1", "2", "--today", "2026-10-13", "--no-plan").stdout)
         self.assertEqual(day["models"], a["models"])
@@ -135,11 +142,13 @@ class PlanArgsTests(unittest.TestCase):
                     self.assertTrue(a["weekPlan"].endswith(f"harness/plans/week-{wk['week']:02d}.md"))
                     day = a["days"][0]
                     self.assertEqual(len(d["subtopics"]), len(day["weekPlanRows"]), "one coverage row per subtopic")
-                    if d["demoFormat"] not in ("none", "loose") or day["threadRows"]:
-                        self.assertTrue(day["threadRows"], "a demo day needs thread/standalone rows")
-                        for r in day["threadRows"]:
+                    if d["demoFormat"] != "none":
+                        self.assertTrue(day["blockRows"], "a demo day needs block rows (D-0055)")
+                        for r in day["blockRows"]:
                             self.assertIn("startsFrom", r)
-                            self.assertTrue(r["startsFrom"] == "cold" or r["startsFrom"].startswith("trainer/"), r)
+                            self.assertTrue(r["startsFrom"] == "cold" or plan_check.WALK_RE.match(r["startsFrom"]), r)
+                            self.assertIn(r["slot"], ("AM", "PM"))
+                            self.assertTrue(r["commitMessage"] or r["thread"] == "standalone", r)
                     self.assertTrue(day["dayShape"].startswith(f"### {d['id']} —"))
 
 
@@ -160,24 +169,44 @@ class WeekPlanScriptTests(unittest.TestCase):
 
     def test_day_fanout_reads_plan_rows(self):
         src = (HARNESS / "workflows" / "day-fanout.js").read_text(encoding="utf-8")
-        for needle in ("weekPlanRows", "threadRows", "startsFrom", "noPlan"):
-            self.assertIn(needle, src, f"day-fanout.js must use {needle} from args (D-0034)")
+        for needle in ("weekPlanRows", "blockRows", "startsFrom", "noPlan"):
+            self.assertIn(needle, src, f"day-fanout.js must use {needle} from args (D-0034, D-0055)")
 
 
 class WeekBatchTests(unittest.TestCase):
-    """D-0038: one invocation authors the days of a week; demos in day order, the rest in parallel."""
+    """D-0038 / D-0055: one day-fanout invocation authors the materials of a week's days in parallel; demos are a
+    separate weekly run (demo-series.js) whose blocks are authored serially in ladder order."""
 
-    def test_demos_run_in_day_order_never_in_parallel(self):
+    def test_day_fanout_has_no_demos_phase(self):
         src = (HARNESS / "workflows" / "day-fanout.js").read_text(encoding="utf-8")
-        run = src[src.index("phase('Research')"):src.index("phase('Wire')")]
-        calls = [m.start() for m in re.finditer(r"\b(researchStage|demosStage|materialsStage)\(d", run)]
-        self.assertEqual(3, len(calls), "each stage is called once in the Run section")
-        self.assertLess(run.index("phase('Demos')"), run.index("demosStage(d"))
-        self.assertLess(run.index("demosStage(d"), run.index("phase('Materials')"), "every day's demos finish before any materials start")
-        demos_part = run[run.index("phase('Demos')"):run.index("phase('Materials')")]
-        self.assertNotIn("parallel(", demos_part, "a rung starts from the previous rung's key on disk (D-0033): demos are serial")
-        self.assertRegex(demos_part, r"for \(const d of DAYS\)")
-        self.assertIn("blockedBy", demos_part, "a day with no demo keys must block the later days of the run")
+        self.assertNotIn("phase('Demos')", src, "demos left day-fanout.js (D-0055)")
+        self.assertNotIn("publish_demos", src)
+        self.assertNotIn("demo-card", src)
+        self.assertNotIn("Demos today", src)
+        self.assertNotIn("codePopups", src)
+        self.assertLess(src.index("phase('Research')"), src.index("phase('Materials')"))
+
+    def test_demo_series_runs_blocks_in_ladder_order_then_one_series_review(self):
+        src = (HARNESS / "workflows" / "demo-series.js").read_text(encoding="utf-8")
+        self.assertIn("export const meta", src)
+        blocks_part = src[src.index("phase('Blocks')"):src.index("phase('Review')")]
+        self.assertNotIn("parallel(", blocks_part, "a block starts from the previous block's commit: blocks are serial")
+        self.assertRegex(blocks_part, r"for \(const b of BLOCKS\)")
+        self.assertIn("blockedBy", blocks_part, "a block with no commit must block the later blocks of its thread")
+        review_part = src[src.index("phase('Review')"):src.index("phase('Record')")]
+        self.assertEqual(1, review_part.count("tier('series-review')"), "exactly one series-review agent, in the Review phase")
+        self.assertEqual(1, src.count("tier('series-review')"))
+        self.assertIn("A.seriesCritic", review_part, "the series critic path comes from args (harness/critics/series-review.md)")
+        self.assertIn("series_readme.py", src)
+        for stage in ("'demos'", "'demos-critic'", "'humanize'", "'series-review'", "'wire'", "'verify'", "'fix'"):
+            self.assertIn(f"tier({stage}", src, f"demo-series.js must spread tier({stage})")
+        chunks = re.split(r"\bagent\((?!\))", src)
+        for i, chunk in enumerate(chunks[1:], 1):
+            self.assertIn("...tier(", chunk, f"agent() call #{i} in demo-series.js does not spread a tier(...)")
+        cfg = json.loads((HARNESS / "config.json").read_text(encoding="utf-8"))
+        for stage in ("demos", "demos-critic", "series-review"):
+            self.assertIn(stage, cfg["models"]["stages"])
+        self.assertTrue((HARNESS / "critics" / "series-review.md").is_file())
 
     def test_pages_of_one_batch_link_forward(self):
         wk = next(w for w in curriculum()["weeks"] if (PLANS / f"week-{w['week']:02d}.md").is_file())
@@ -196,24 +225,28 @@ class WeekBatchTests(unittest.TestCase):
         expect = f"{days[1]['slug']}.html" if days[1].get("status") == "live" else "../../index.html"
         self.assertEqual(expect, alone["nextHref"])
 
-    def test_series_review_runs_once_after_the_demos_loop(self):
-        # D-0053: one series-review critic after every day's demos, only on a multi-day run; flags only
-        src = (HARNESS / "workflows" / "day-fanout.js").read_text(encoding="utf-8")
-        demos_part = src[src.index("phase('Demos')"):src.index("phase('Materials')")]
-        self.assertEqual(1, demos_part.count("tier('series-review')"), "exactly one series-review agent, in the Demos phase")
-        self.assertEqual(1, src.count("tier('series-review')"))
-        loop = demos_part.rindex("for (const d of DAYS)")
-        call = demos_part.index("tier('series-review')")
-        self.assertLess(loop, call, "the series review runs after the day-order demos loop")
-        guard = demos_part.index("DAYS.length > 1")
-        self.assertLess(loop, guard)
-        self.assertLess(guard, call, "a single-day run has no series to review")
-        self.assertIn("critics/series-review.md", demos_part)
-        self.assertIn("series-review: ", src, "a FAIL reaches the run record's flags")
-        self.assertIn("'series-review'", src[src.index("const TIER_LABELS"):src.index("const NOTES_ONLY")])
-        self.assertTrue((HARNESS / "critics" / "series-review.md").is_file())
-        cfg = json.loads((HARNESS / "config.json").read_text(encoding="utf-8"))
-        self.assertIn("series-review", cfg["models"]["stages"])
+
+class DemoSeriesArgsTests(unittest.TestCase):
+    """D-0055: args_for.py <week> --demos emits the week's blocks in ladder order for demo-series.js."""
+
+    def test_demos_args_carry_blocks_and_tiers(self):
+        wk = next(w for w in curriculum()["weeks"] if (PLANS / f"week-{w['week']:02d}.md").is_file())
+        res = run_args(str(wk["week"]), "--demos", "--today", "2026-10-15")
+        if res.returncode != 0 and "research brief" in res.stderr:
+            self.skipTest("the week's research briefs are not on disk")
+        self.assertEqual(0, res.returncode, res.stderr)
+        a = json.loads(res.stdout)
+        for k in ("root", "today", "week", "weekDir", "blocks", "demosDir", "template", "critic", "seriesCritic", "weekPlan", "models", "config", "demoRepo", "prepBranch"):
+            self.assertIn(k, a, f"demos args lack {k}")
+        self.assertTrue(a["blocks"])
+        self.assertEqual([b["n"] for b in a["blocks"]], list(range(1, len(a["blocks"]) + 1)))
+        for b in a["blocks"]:
+            for k in ("name", "day", "dayId", "slot", "minutes", "startsFrom", "adds", "endState", "commitMessage", "researchBrief", "stopPoint", "dateLabel"):
+                self.assertIn(k, b, f"block {b.get('name')} lacks {k}")
+            self.assertTrue(b["name"].startswith(f"{b['n']:02d}-"))
+        self.assertIn("demos-critic", a["models"]["stages"])
+        self.assertRegex(a["prepBranch"], r"^prep/week-\d{2}$")
+        self.assertTrue(a["demosDir"].endswith(f"trainer/{a['weekDir']}/demos"))
 
 
 class ReleaseOnWireTests(unittest.TestCase):

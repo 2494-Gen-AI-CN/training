@@ -41,7 +41,7 @@ test result, anything left undone and why.
 | ~~2~~ | ~~Stage 3 Re-author W1D2 demos + promote page~~ | ~~Tue 2026-10-13 is W1D2; must be taught from the new contract~~ | ~~1 session, ~20 agents~~ done 2026-10-12, D-0031 |
 | ~~3~~ | ~~Stage 2 Week plan artifact + demo threads~~ | ~~W1D3–W1D5 are still unauthored: plan week 1 (demo ladder, anti-spoiler ledger, coverage map, stop points) and make the demos one growing thread (rungs that extend the previous rung's key) before any of them is written. Must land before Wed 2026-10-14 morning; if it cannot, run W1D3 first and Stage 2 before W1D4~~ | ~~1 long session, ~3 agents; amends the demo contract (`demo_check.py`, demos critic, demo-script template, metrics)~~ done 2026-10-12, D-0033 (demo threads) + D-0034 (week plan); `harness/plans/week-01.md` written by `week-plan.js` |
 | ~~4~~ | ~~Week-1 batch run W1D3–W1D5 (milestone 6)~~ | ~~Wed 2026-10-14 needs its material; first use of the week batch (D-0038): demos in day order, the rest in parallel~~ | ~~1 session, ~60 agents (approved 2026-10-12)~~ done 2026-10-12, run `wf_55423fc5-aa6`, 67 agents, 0 flagged |
-| ~~5~~ | ~~Stage 4 Daily close audit~~ | ~~Needed Tue 2026-10-13 evening after the first delivery; audits the classroom repo against the keys, sets `taught`, carries unreached steps to the next day, re-checks later rungs~~ | ~~1 session, no agents~~ loose close built 2026-10-14, D-0050 (`close_day.py`; W1D2 and W1D3 closed); the rung-diff close for thread days is deferred to week 3 (O-18) |
+| ~~5~~ | ~~Stage 4 Daily close audit~~ | ~~Needed Tue 2026-10-13 evening after the first delivery; audits the classroom repo against the keys, sets `taught`, carries unreached steps to the next day, re-checks later rungs~~ | ~~1 session, no agents~~ loose close built 2026-10-14, D-0050 (`close_day.py`; W1D2 and W1D3 closed); the block diff against the prep branch built 2026-10-15, D-0055 (O-18 closed) |
 | ~~6~~ | ~~Stage 8 Hidden week, Friday gate, series review, drift check~~ | ~~Week-ahead authoring needs pages that stay unlinked until the Friday release; by Thu 2026-10-15~~ | ~~1 session, no agents~~ done 2026-10-14, D-0052, D-0053 |
 | 7 | Week-2 plan and batch | By Fri 2026-10-16; settle O-11 and O-12 first | 2 sessions, ~5 + ~100 agents (ask first) |
 | ~~8~~ | ~~Stage 7 Notes depth (interview sections)~~ | ~~Fits the persona; touches critic + template. Notes keep their delivery references for now (trainer decision 2026-10-12: wait for learner feedback)~~ | ~~1 session~~ done 2026-10-13, D-0040, widened to the reference-notes rework (4500–7000 words, Check yourself, citations, no delivery references) + notes QC (`notes_check.py`, notes-verify agent, pinned tiers); the stance of 2026-10-12 was reversed by the trainer on 2026-10-13 |
@@ -53,6 +53,8 @@ Stage 0 (humanizer pass, D-0029) was done on 2026-10-11 in the session that wrot
 ---
 
 ## Stage 1 — Demo contract (catalog A1, A3, A5, A13, A17, A21, A22, A27, A28, A29, A30, C1, H)
+
+> Superseded 2026-10-15 by D-0055: a demo is one walkthrough per demo block under `trainer/week-WW/demos/`, the demo repo's prep branch is the answer key, `demo_check.py` is format-only, and nothing is published to the learner site. The prompt below is kept for the record.
 
 ```
 STAGE 1 — Demo contract.
@@ -225,7 +227,9 @@ After the run:
 Exit: W1D3 to W1D5 are `live`, tests green, both repos pushed, run record complete.
 ```
 
-## Stage 4 — Daily close audit (loose close done 2026-10-14, D-0050; rung-diff close for thread days: later, week 3) (catalog D16, A15, D19, A26, A28, E6, B8; replaces the 2026-10-11 Stage 4 draft)
+## Stage 4 — Daily close audit (loose close done 2026-10-14, D-0050; the block diff built 2026-10-15, D-0055) (catalog D16, A15, D19, A26, A28, E6, B8; replaces the 2026-10-11 Stage 4 draft)
+
+> Done 2026-10-15 as part of D-0055 in a simpler shape than the prompt below: `close_day.py` matches each block's commit message against the day's live commits and diffs the live tree against the prep commit (reached / diverged / not reached); fold-back and carry-over are hand steps recorded in the walkthrough's DELIVERY RECORD and the runbook. The prompt is kept for the record; O-18 is closed.
 
 ```
 STAGE 4 — Daily close audit: what actually reached the room, checked against the demo repo.

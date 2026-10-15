@@ -65,8 +65,8 @@ class TrackerDataTests(unittest.TestCase):
         self.assertEqual(len(list(authored_days())), sum(1 for d in teaching if d["status"] in ("authored", "live")))
         for d in teaching:
             self.assertIn(d["status"], ("planned", "authored", "live"), d["id"])
-            self.assertEqual({"research", "demos", "notes", "exercise", "runbook", "solutions", "published", "closed"}, set(d["a"]), d["id"])
-            self.assertEqual({"planned", "scripts", "keys"}, set(d["a"]["demos"]), d["id"])
+            self.assertEqual({"research", "demos", "notes", "exercise", "runbook", "solutions", "closed"}, set(d["a"]), d["id"])
+            self.assertEqual({"planned", "scripts"}, set(d["a"]["demos"]), d["id"])
         for w, d, rel in authored_days():
             td = next(x for x in teaching if x["id"] == d["id"])
             self.assertTrue(td["a"]["research"] and td["a"]["notes"] and td["a"]["exercise"] and td["a"]["runbook"],
@@ -90,11 +90,10 @@ class TrackerDataTests(unittest.TestCase):
     def test_threads_follow_the_plans(self):
         self.assertTrue(self.data["threads"], "config.json threads is empty")
         for t in self.data["threads"]:
-            self.assertEqual(t["planned"], len(t["rungs"]))
-            self.assertTrue(t["chainOk"], f"thread {t['id']}: a rung no longer extends its Starts from key")
-            for r in t["rungs"]:
-                if r["authored"]:
-                    self.assertEqual("ok", r["chain"], r)
+            self.assertEqual(t["planned"], len(t["blocks"]))
+            self.assertEqual(t["authored"], sum(1 for b in t["blocks"] if b["authored"]))
+            for b in t["blocks"]:
+                self.assertEqual({"week", "block", "day", "name", "slot", "authored", "taught", "commit"}, set(b))
 
 
 class RunLogTests(unittest.TestCase):
@@ -165,7 +164,7 @@ class WiringTests(unittest.TestCase):
         self.assertIn("log_run.py amend --last --match-days", day, "Verify records the test result on this run's record")
 
     def test_state_writing_scripts_rebuild(self):
-        for path in (HARNESS / "build_index.py", HARNESS / "publish_demos.py", HARNESS / "log_run.py", HARNESS / "close_day.py",
+        for path in (HARNESS / "build_index.py", HARNESS / "log_run.py", HARNESS / "close_day.py",
                      ROOT / "decisions" / "new.py"):
             with self.subTest(script=path.name):
                 src = path.read_text(encoding="utf-8")
@@ -215,16 +214,16 @@ class TrackerPageTests(unittest.TestCase):
 
         def day(i, date, status="planned", taught=None, closed=False):
             built = status in ("authored", "live")      # D-0052: an authored day has every artifact, it is only unreleased
-            return {"id": i, "slot": 1, "date": date, "kind": "lesson", "title": i, "status": status, "taught": taught, "demoFormat": "py",
-                    "a": {"research": built, "demos": {"planned": 2, "scripts": 2 if built else 0, "keys": 2 if built else 0},
-                          "notes": built, "exercise": built, "runbook": built, "solutions": False, "published": False,
+            return {"id": i, "slot": 1, "date": date, "kind": "lesson", "title": i, "status": status, "taught": taught, "demoFormat": "walkthrough",
+                    "a": {"research": built, "demos": {"planned": 2, "scripts": 2 if built else 0},
+                          "notes": built, "exercise": built, "runbook": built, "solutions": False,
                           "closed": closed}}
 
         def week(n, start, days, plan):
             return {"week": n, "start": start, "end": start, "plan": {"exists": plan, "ok": plan, "problems": 0, "path": ""}, "days": days}
 
         data = {
-            "rules": rules, "threads": [{"id": "t", "chainOk": True}],
+            "rules": rules, "threads": [{"id": "t", "blocks": []}],
             "weeks": [week(1, "2026-10-12", [day("w01d2", "2026-10-13", "live"), day("w01d3", "2026-10-14"),
                                                    day("w01d4", "2026-10-13", "live", closed=True)], True),
                       week(2, "2026-10-19", [day("w02d1", "2026-10-19"), day("w02d2", "2026-10-20", "authored")], False),

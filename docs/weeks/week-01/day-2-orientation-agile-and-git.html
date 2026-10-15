@@ -17,7 +17,7 @@
     <a class="topnav" href="../../index.html">Home</a>
   </div>
   <nav class="topbar-center">
-    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
     <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises" target="_blank" rel="noopener">Exercises</a>
   </nav>
   <div class="topbar-right">
@@ -458,7 +458,6 @@ print(greet("Toronto").upper())
         names the branch it brought in, such as "Merge feature/shout into main". A file in a pull request that still
         contains <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code> is the mistake a reviewer spots first, because the file no longer
         runs.</p>
-        <button class="code-cta" type="button" data-modal="code-w01d2-conflict"><span class="cc-ico">&lt;/&gt;</span> See the conflict and the graph as Git prints them <span class="cc-meta">· 02_local_git_loop.md</span></button>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>git branch creates a branch but leaves me where I am; git switch with -c creates it and moves me onto it. If I
@@ -523,7 +522,6 @@ git push</code></pre>
         do not have, so you fetch and merge before pushing again rather than overwrite a teammate's
         work.<sup class="cite"><a href="#src-37">37</a></sup> On screen it reads
         <code>! [rejected] main -&gt; main (fetch first)</code>.</p>
-        <button class="code-cta" type="button" data-modal="code-w01d2-diverged"><span class="cc-ico">&lt;/&gt;</span> See a diverged pull stop, then merge <span class="cc-meta">· 03_remote_round_trip.md</span></button>
         <h3>Authenticating to GitHub</h3>
         <p>GitHub remotes can be addressed over HTTPS or SSH. HTTPS pushes authenticate with a personal access token or a
         credential helper, and never with your account password; Git Credential Manager, bundled with Git for Windows, opens
@@ -672,11 +670,6 @@ git commit -m "Merge feature/shout into main"</code></pre>
       </div>
 
       <div class="side-cards">
-        <div class="activity-card demo-card" data-demo="none">
-          <div class="ac-k">⌨ Code-along files</div>
-          <div class="ac-t">No code demo this day</div>
-          <div class="ac-meta">nothing was saved from the live walk-through</div>
-        </div>
 
         <button class="activity-card" type="button" data-modal="deep-modal">
           <div class="ac-k">⌖ Deep dive</div>
@@ -744,12 +737,6 @@ git commit -m "Merge feature/shout into main"</code></pre>
     <div class="ma-k">Today's exercise</div>
     <ul class="deliv-list check">
       <li><a href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-01/day-2-orientation-agile-and-git" target="_blank" rel="noopener">exercises/week-01/day-2-orientation-agile-and-git</a> — a real repository on GitHub with a feature branch, a merge, one resolved conflict and readable commit messages, marked against the rubric in the README.</li>
-    </ul>
-    <div class="ma-k">Demos today</div>
-    <ul class="deliv-list">
-      <li>Demo 1 — confirm which Python the terminal will run, use the REPL, and run a saved script, so every trainee can start the Wednesday exercises from a working setup</li>
-      <li>Demo 2 — run the full local Git loop (init, add, commit, branch, merge) without notes, and resolve a merge conflict by reading both sides and removing all three markers</li>
-      <li>Demo 3 — connect a local repository to a remote, push, bring a teammate's work in with fetch and pull, and recover when the two histories have diverged</li>
     </ul>
     <p class="goals-foot">Wednesday assumes your tooling check passed. Finish the check to unlock the next page.</p>
   </div>
@@ -825,73 +812,11 @@ window.QUIZ = {
 };
 </script>
 
-<!-- code popup: excerpt of the local-loop answer-key transcript -->
-<div id="code-w01d2-conflict" class="modal-overlay" hidden>
-  <div class="modal-card code-modal">
-    <button class="modal-close" type="button" aria-label="Close">✕</button>
-    <h2>Answer key excerpt: 02_local_git_loop.md</h2>
-    <p class="cv-cap">Step 5 of the local loop transcript: both branches changed the same print line, Git stops, and the resolved merge shows up as a diamond in the graph.</p>
-    <div class="cv" data-file="02_local_git_loop.md" data-lang="bash"><pre class="cv-raw">$ git merge feature/shout
-Auto-merging hello.py
-CONFLICT (content): Merge conflict in hello.py
-Automatic merge failed; fix conflicts and then commit the result.
-$ cat hello.py
-...
-&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
-print(greet(&quot;Toronto&quot;) + &quot;!&quot;)
-=======
-print(greet(&quot;Toronto&quot;).upper())
-&gt;&gt;&gt;&gt;&gt;&gt;&gt; feature/shout
-print(farewell(&quot;Toronto&quot;))
-$ git add hello.py
-$ git commit -m &quot;Merge feature/shout into main&quot;
-[main 17e4a9b] Merge feature/shout into main
-$ git log --oneline --graph
-*   17e4a9b Merge feature/shout into main
-|\
-| * 9e4d7fb Shout the greeting
-* | 51dd1c2 Add exclamation mark to the greeting
-|/
-* 1ce201a Add farewell function
-* b4a1a27 Add greet function and .gitignore</pre></div>
-    <p class="cv-foot">HEAD is main's side; the line after ======= is feature/shout's. The resolved line kept both ideas: print(greet("Toronto").upper() + "!").</p>
-  </div>
-</div>
-
-<!-- code popup: excerpt of the remote round-trip answer-key transcript -->
-<div id="code-w01d2-diverged" class="modal-overlay" hidden>
-  <div class="modal-card code-modal">
-    <button class="modal-close" type="button" aria-label="Close">✕</button>
-    <h2>Answer key excerpt: 03_remote_round_trip.md</h2>
-    <p class="cv-cap">Step 3 of the remote round-trip transcript: a local commit and a teammate's pushed commit leave the histories diverged.</p>
-    <div class="cv" data-file="03_remote_round_trip.md" data-lang="bash"><pre class="cv-raw">$ git pull --ff-only
-From ../origin
-   27887d3..84cb51b  main       -&gt; origin/main
-hint: Diverging branches can't be fast-forwarded, you need to either:
-...
-fatal: Not possible to fast-forward, aborting.
-$ git pull --no-rebase --no-edit
-Merge made by the 'ort' strategy.
- README.md | 2 ++
- 1 file changed, 2 insertions(+)
-$ git log --oneline --graph
-*   446b0d6 Merge branch 'main' of ../origin
-|\
-| * 84cb51b State the Python version in the README
-* | d2795cc Soften the farewell
-|/
-* 27887d3 Add README
-...</pre></div>
-    <p class="cv-foot">--ff-only refuses and changes nothing; --no-rebase states the strategy, so Git merges and the graph shows a second diamond.</p>
-  </div>
-</div>
-
 <script src="../../assets/js/diagram.js?v=20261015"></script>
 <script src="../../assets/js/scrolly.js?v=20261015"></script>
 <script src="../../assets/js/modals.js?v=20261015"></script>
 <script src="../../assets/js/quiz.js?v=20261015"></script>
 <script src="../../assets/js/widgets.js?v=20261015"></script>
 <script src="../../assets/js/glossary.js?v=20261015"></script>
-<script src="../../assets/js/codeviewer.js?v=20261015"></script>
 </body>
 </html>

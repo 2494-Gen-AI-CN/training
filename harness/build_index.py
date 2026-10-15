@@ -108,18 +108,10 @@ def day_paths(week: dict, day: dict) -> dict:
         "rel": rel,
         "page": f"weeks/{rel}.html",            # relative to docs/
         "page_fs": ROOT / "docs" / "weeks" / f"{rel}.html",
-        "demos": ROOT / "demos" / rel,
         "exercise": ROOT / "exercises" / rel,
         "trainer": ROOT / "trainer" / rel,
         "research": ROOT / "harness" / "research" / f"{rel}.md",
     }
-
-
-def published_files(pub: Path) -> list[Path]:
-    """Files a loose day published under demos/<rel>/: everything but README.md (D-0050)."""
-    if not pub.is_dir():
-        return []
-    return sorted(f for f in pub.rglob("*") if f.is_file() and f.name != "README.md" and "__pycache__" not in f.parts)
 
 
 # ---------------------------------------------------------------- render
@@ -158,11 +150,7 @@ def render(cur: dict | None = None) -> str:
                 # D-0052: only live days are linked; an authored day's page exists but stays unlinked (hidden week, not access control).
                 if d.get("status") == "live":
                     entry["href"] = p["page"]
-                    # D-0030: answer keys are public only once the day is taught (and the day has code demos at all);
-                    # D-0050: a taught loose day gets the chip only when close_day.py published at least one file
-                    if d.get("taught") and d.get("demoFormat") != "none" and \
-                            (d.get("demoFormat") != "loose" or published_files(p["demos"])):
-                        entry["demo"] = f"{repo_url}/tree/{branch}/demos/{p['rel']}"
+                    # D-0055: demos are disconnected from the site; the topnav links the public demo repo and no day carries a demo chip
                     entry["ex"] = f"{repo_url}/tree/{branch}/exercises/{p['rel']}"
                 if d.get("kind") == "review":
                     entry["review"] = True

@@ -10,7 +10,7 @@ Checks (each a function taking the repo root, so tests can point it at a tempora
              SOFT  `pending` / `blocked until` in prose (case-insensitive)
                    scans *.md at the root and under docs/, harness/, trainer/ plus docs/**/*.html;
                    code fences, code spans, and in HTML script/style/pre/code elements, comments and
-                   tags with their attributes are stripped first (so data-demo="pending" never matches)
+                   tags with their attributes are stripped first (so an attribute value never matches)
                    (root-level .html is never scanned, so the generated tracker.html is not either)
   git        HARD  untracked files and deletions in the root repo, trainer/ and demo-repo/
              SOFT  a repo that is absent or has no .git (it was not checked)

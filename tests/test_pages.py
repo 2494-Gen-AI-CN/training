@@ -8,16 +8,17 @@ import sys
 import unittest
 from pathlib import Path
 
-from helpers import DOCS, FORBIDDEN_RE, HARNESS, PAGE_SCRIPT_ORDER, ROOT, TRAINER, ParsedPage, authored_days, metrics, node_exe, public_demos, trainer_demos
+from helpers import DOCS, FORBIDDEN_RE, HARNESS, PAGE_SCRIPT_ORDER, ROOT, ParsedPage, authored_days, load_json, metrics, node_exe
 
 sys.path.insert(0, str(HARNESS))
 import build_index  # noqa: E402
 import notes_check  # noqa: E402
 
 EXEMPLAR = HARNESS / "templates" / "day.exemplar.html"
+DEMO_REPO_URL = load_json(HARNESS / "config.json")["demoRepo"]["url"]
 
 
-def _structure_checks(tc: unittest.TestCase, page: ParsedPage, day_id: str | None, feedback: bool, demo_card: bool = True):
+def _structure_checks(tc: unittest.TestCase, page: ParsedPage, day_id: str | None, feedback: bool):
     r = page.root
     tc.assertIn("tc-day", page.meta)
     if day_id:
@@ -40,10 +41,14 @@ def _structure_checks(tc: unittest.TestCase, page: ParsedPage, day_id: str | Non
     tc.assertIsNotNone(r.find("section", "reading-sources"))
     tc.assertIsNotNone(r.find("svg", id="diagram"))
     tc.assertIsNotNone(r.find(class_name="stage-caption"))
-    if demo_card:
-        tc.assertIsNotNone(r.find(class_name="demo-card"))
-    else:
-        tc.assertIsNone(r.find(class_name="demo-card"), "demoFormat none: the page must not carry a demo card (D-0030)")
+    # D-0055: demos are disconnected from the site: no demo card, no demo list, no code popup; one Demos link to the demo repo
+    tc.assertIsNone(r.find(class_name="demo-card"), "no demo card on a notes page (D-0055)")
+    tc.assertNotIn("data-demo", page.raw)
+    tc.assertEqual([], r.find_all("button", "code-cta"), "no code popups (D-0055)")
+    tc.assertNotIn("Demos today", page.raw)
+    demos_links = [a for a in r.find_all("a", "topnav") if a.text().strip() == "Demos"]
+    tc.assertEqual(1, len(demos_links))
+    tc.assertEqual(DEMO_REPO_URL, demos_links[0].attrs.get("href"), "the topnav Demos link points at the public demo repo")
     tc.assertIsNotNone(r.find("button", "activity-card", data_modal="quiz-modal"))
     tc.assertIsNotNone(r.find("a", "snav-next"))
     tc.assertIsNotNone(r.find("div", id="quiz-modal"))
@@ -51,14 +56,6 @@ def _structure_checks(tc: unittest.TestCase, page: ParsedPage, day_id: str | Non
     tc.assertIsNotNone(r.find("div", id="goals-modal"))
     goals = r.find("ul", "goals-list")
     tc.assertIsNotNone(goals)
-    # code popups: every code-cta has a matching modal with a .cv[data-file]
-    for btn in r.find_all("button", "code-cta"):
-        target = btn.attrs.get("data-modal")
-        modal = r.find("div", id=target)
-        tc.assertIsNotNone(modal, f"missing modal {target}")
-        cv = modal.find("div", "cv")
-        tc.assertIsNotNone(cv)
-        tc.assertTrue(cv.attrs.get("data-file"))
     # scripts
     srcs = page.script_srcs
     tc.assertEqual("theme.js", srcs[0])
@@ -100,16 +97,13 @@ class ExemplarTests(unittest.TestCase):
 
 class AuthoredPageTests(unittest.TestCase):
     def test_every_authored_page(self):
-        """Every authored or live day's page (D-0052); the demo-card state below still turns on `taught`."""
+        """Every authored or live day's page (D-0052)."""
         M = metrics()["notes"]
         for w, d, rel in authored_days():
             path = DOCS / "weeks" / f"{rel}.html"
             with self.subTest(rel=rel):
                 page = ParsedPage(path)
-                no_demos = d["demoFormat"] == "none"
-                loose = d["demoFormat"] == "loose"  # D-0050: publishes what was typed live, never the authored keys
-                taught = bool(d.get("taught")) and not no_demos
-                _structure_checks(self, page, d["id"], build_index.is_feedback(w, d), demo_card=not no_demos)
+                _structure_checks(self, page, d["id"], build_index.is_feedback(w, d))
                 steps = page.root.find_all("section", "step")
                 self.assertTrue(M["stepsMin"] <= len(steps) <= M["stepsMax"], len(steps))
                 words = page.prose_words()
@@ -125,41 +119,6 @@ class AuthoredPageTests(unittest.TestCase):
                 self.assertTrue(M["goalsMin"] <= len(goals) <= M["goalsMax"])
                 src_links = [a for a in page.root.find("section", "reading-sources").find_all("a") if a.attrs.get("href", "").startswith("http")]
                 self.assertGreaterEqual(len(src_links), M["sourcesMin"])
-                popups = page.root.find_all("button", "code-cta")
-                self.assertTrue(M["codePopupsMin"] <= len(popups) <= M["codePopupsMax"])
-                # code popups excerpt a real answer key: public once taught, else the private key/ (checked when trainer/ is here);
-                # a loose day's popups always excerpt the authored fallback key/, taught or not (D-0050)
-                private_keys = [trainer_demos(rel) / "key"] if TRAINER.exists() else []
-                key_dirs = private_keys if loose else ([public_demos(rel)] if taught else private_keys)
-                if no_demos:
-                    self.assertEqual([], popups, "demoFormat none: no code popups")
-                for btn in popups:
-                    modal = page.root.find("div", id=btn.attrs["data-modal"])
-                    f = modal.find("div", "cv").attrs["data-file"]
-                    if key_dirs:
-                        self.assertTrue(any((k / f).exists() for k in key_dirs), f"popup names missing answer-key file {f}")
-                # demo card (D-0030): pending with no links until taught; published with links to real public files after
-                if not no_demos:
-                    card = page.root.find(class_name="demo-card")
-                    demo_links = [a.attrs["href"] for a in card.find_all("a")]
-                    published = build_index.published_files(public_demos(rel)) if loose else None
-                    if taught and loose and not published:
-                        # D-0050: taught, nothing saved from the live walk-through
-                        self.assertEqual("none", card.attrs.get("data-demo"), "a taught loose day with no files says so")
-                        self.assertEqual([], demo_links, "a no-demo card links nothing")
-                        self.assertIn("No code demo this day", card.text())
-                    elif taught:
-                        self.assertEqual("published", card.attrs.get("data-demo"))
-                        self.assertTrue(demo_links, "published demo card must link the answer keys")
-                        marker = f"/demos/{rel}/"
-                        for href in demo_links:
-                            # loose files may sit in a subfolder: the name is everything after /demos/<rel>/
-                            name = href.split(marker, 1)[1] if loose and marker in href else href.rstrip("/").rsplit("/", 1)[-1]
-                            self.assertTrue((public_demos(rel) / name).exists(), f"demo link {href} not on disk")
-                    else:
-                        self.assertEqual("pending", card.attrs.get("data-demo"), "demo card must be pending until the day is taught")
-                        self.assertEqual([], demo_links, "pending demo card must not link anything")
-                        self.assertIn("Published after class", card.text())
                 # goals modal links to exercise README
                 goal_hrefs = " ".join(a.attrs.get("href", "") for a in page.root.find("div", id="goals-modal").find_all("a"))
                 self.assertIn(f"exercises/{rel}", goal_hrefs)

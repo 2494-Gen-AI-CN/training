@@ -1,27 +1,31 @@
 #!/usr/bin/env python3
-"""Parse and check one week plan (harness/plans/week-WW.md, template harness/templates/week-plan.md; D-0034).
+"""Parse and check one week plan (harness/plans/week-WW.md, template harness/templates/week-plan.md; D-0034, D-0055).
 
 The plan is written once per week by harness/workflows/week-plan.js before any day of the week is authored.
-args_for.py reads it (through load_plan) to gate day args and to pass each day's rows into the day workflow;
-the week-plan critic and tests/test_plans.py call check_plan.
+args_for.py reads it (through load_plan) to gate day args, to pass each day's rows into day-fanout.js and to
+pass the week's blocks into demo-series.js; harness/series_readme.py renders trainer/week-WW/demos/README.md
+from it; the week-plan critic and tests/test_plans.py call check_plan.
 
 Checks (stdlib only):
   headings  - the template's sections, in order; one "### <id> — ..." per teaching day under Per-day shape
-  threads   - "### <thread-id>" blocks with a rung table: rungs 1..n, Day in this week, Key = Demo + ext,
-              Starts from = cold (first rung) or exactly the previous rung's key path (or an existing key on
-              disk for the first rung of a later week); .py start keys exist when the rung's day is authored/live
-  standalone- Day in this week, Demo/Key well formed
-  ladder    - every thread rung and standalone demo appears exactly once, numbered 1..n in teaching order;
-              Minutes within metrics.demos.minutesPerScriptMin..Max; scripts per day within scriptsMin..Max;
-              a day's demos are numbered 01.. contiguously in ladder order; Must follow cites earlier rows and
-              includes the previous rung of the same thread
+              with "- AM:" and "- PM:" lines
+  threads   - "### <thread-id>" blocks with a block table: blocks 1..n, Day in this week, Slot AM|PM,
+              Walkthrough = NN-<slug>, Starts from = cold (first block of the thread's scope, or the previous
+              week's last block) or exactly the previous block's Walkthrough; Adds / End state / Commit message
+  standalone- Day, Slot, Walkthrough well formed, a reason
+  ladder    - every block and standalone walkthrough once, numbered 1..n in teaching order; Minutes within
+              metrics.demos.minutesPerBlockMin..Max; blocks per day within blocksPerDayMin..Max and one per
+              (day, slot); walkthroughs numbered 01.. contiguously ACROSS THE WEEK in ladder order; Must follow
+              cites earlier rows and includes the previous block of the same thread
+  series    - Stop points (one row per walkthrough), Squeeze priorities (Cut first + Never cut lists),
+              Hard-stop rule (prose), Scaffold bundle (two tables), Run prerequisites (bullets)
   coverage  - every curriculum subtopic of every teaching day of the week appears once, with its own day,
-              Demo = a demo of that day | facilitation | notes, Notes step a positive integer
-  authored/live days - an authored or live day is recorded as-is: its rows equal its scripts on disk
-              (name, Time, Thread, Starts from) (D-0052)
+              Demo = a walkthrough of that day | facilitation | notes, Notes step a positive integer
+  authored/live days - once trainer/week-WW/demos/ exists, the walkthroughs on disk equal the plan's for every
+              authored or live day (name, Time, thread, Starts from, commit message) (D-0052)
 
 Usage:
-    python harness/plan_check.py harness/plans/week-01.md
+    python harness/plan_check.py harness/plans/week-02.md
 Exit 1 with one problem per line when anything fails; exit 0 and "OK" otherwise.
 """
 from __future__ import annotations
@@ -38,29 +42,33 @@ import demo_check  # noqa: E402
 ROOT = bi.ROOT
 METRICS = ROOT / "harness" / "metrics.json"
 SECTIONS = ["## Weekly Epic", "## Assumes from the previous week", "## Threads", "## Standalone demos", "## Demo ladder",
-            "## Per-day shape", "## Anti-spoiler ledger", "## Real-world framing and deliberate deviations", "## Coverage map"]
-RUNG_COLS = ["Rung", "Day", "Demo", "Key", "Starts from", "Adds", "End state", "Commit message"]
-STANDALONE_COLS = ["Day", "Demo", "Key", "Minutes", "Why it fits no thread"]
-LADDER_COLS = ["#", "Day", "Demo", "Minutes", "Must follow", "Guarantees"]
+            "## Per-day shape", "## Stop points", "## Squeeze priorities", "## Hard-stop rule", "## Scaffold bundle",
+            "## Run prerequisites", "## Anti-spoiler ledger", "## Real-world framing and deliberate deviations", "## Coverage map"]
+BLOCK_COLS = ["Block", "Day", "Slot", "Walkthrough", "Starts from", "Adds", "End state", "Commit message"]
+STANDALONE_COLS = ["Day", "Slot", "Walkthrough", "Minutes", "Why it fits no thread"]
+LADDER_COLS = ["#", "Day", "Walkthrough", "Minutes", "Must follow", "Guarantees"]
+STOP_COLS = ["Walkthrough", "Clean stop point", "Resume at"]
+SCAFFOLD_COLS = ["Day", "Hand-out", "Pre-provided", "Why rote"]
+NEVER_COLS = ["Never pre-provide", "Walkthrough"]
 COVERAGE_COLS = ["Subtopic", "Day", "Demo", "Notes step"]
 SPOILER_COLS = ["Day", "Defers", "To", "Why"]
 DEVIATION_COLS = ["Deviation", "Workplace reality", "Pedagogical reason"]
-DEMO_RE = re.compile(r"^(\d{2})_([a-z0-9]+(?:[-_][a-z0-9]+)*)$")
-KEY_RE = re.compile(r"^(\d{2})_([a-z0-9]+(?:[-_][a-z0-9]+)*)\.(py|md|ipynb)$")
+WALK_RE = re.compile(r"^(\d{2})-([a-z0-9]+(?:-[a-z0-9]+)*)$")
+SLOTS = ("AM", "PM")
 DAY_HEAD_RE = re.compile(r"^### (w\d{2}d\d) — ", re.M)
 THREAD_HEAD_RE = re.compile(r"^### ([a-z0-9]+(?:-[a-z0-9]+)*)\s*$", re.M)
 
 
 def _cell(s: str) -> str:
-    """Cell text; a cell that is ONE code span (`02_x.py`) is unwrapped, any other backtick is content."""
+    """Cell text; a cell that is ONE code span (`02-x`) is unwrapped, any other backtick is content."""
     s = s.strip()
     if len(s) >= 2 and s.startswith("`") and s.endswith("`") and s.count("`") == 2:
         return s[1:-1].strip()
     return s
 
 
-def _tables(text: str) -> list[list[dict[str, str]]]:
-    """Every markdown table in `text` as a list of row dicts keyed by header cell."""
+def _tables(text: str) -> list[tuple[list[str], list[dict[str, str]]]]:
+    """Every markdown table in `text` as (header, rows) with rows keyed by header cell."""
     out, cur, header = [], [], None
     for ln in text.splitlines() + [""]:
         if ln.lstrip().startswith("|"):
@@ -95,9 +103,28 @@ def _table_with(body: str, cols: list[str]) -> list[dict[str, str]] | None:
     return None
 
 
+def _bullets(body: str) -> list[str]:
+    return [m.group(1).strip() for m in re.finditer(r"^\s*(?:[-*]|\d+\.)\s+(.*)$", body, re.M)]
+
+
+def _prose(body: str) -> str:
+    """Body with tables, comments and bullets removed: the paragraphs."""
+    body = re.sub(r"<!--.*?-->", "", body, flags=re.S)
+    return "\n".join(ln for ln in body.splitlines() if ln.strip() and not ln.lstrip().startswith(("|", "- ", "* ")) and not re.match(r"^\s*\d+\.\s", ln))
+
+
+def _list_after(body: str, label: str) -> list[str]:
+    """Bullets of the list that follows a '**Label**' or 'Label:' line in a section body."""
+    m = re.search(rf"^\**{re.escape(label)}\**[^\n]*$", body, re.M | re.I)
+    if not m:
+        return []
+    rest = body[m.end():]
+    nxt = re.search(r"^\**(Cut first|Never cut)\**", rest, re.M | re.I)
+    return _bullets(rest[:nxt.start()] if nxt else rest)
+
+
 def load_plan(path: Path) -> dict:
-    """Structured view of a plan: week, threads (with rungs and resolved key paths), standalone, ladder, coverage,
-    dayShape (id -> text). Raises ValueError when the file is not a plan at all."""
+    """Structured view of a plan. Raises ValueError when the file is not a plan at all."""
     text = path.read_text(encoding="utf-8")
     m = re.match(r"# Week (\d{2}) plan", text)
     if not m:
@@ -107,7 +134,6 @@ def load_plan(path: Path) -> dict:
     wk = next((w for w in cur["weeks"] if w["week"] == week), None)
     if wk is None:
         raise ValueError(f"{path.name}: week {week} is not in the curriculum")
-    slug_by_id = {d["id"]: d["slug"] for d in wk["days"] if d.get("kind") != "holiday"}
     threads = []
     tbody = _section(text, "## Threads")
     heads = list(THREAD_HEAD_RE.finditer(tbody))
@@ -115,23 +141,19 @@ def load_plan(path: Path) -> dict:
         end = heads[i + 1].start() if i + 1 < len(heads) else len(tbody)
         block = tbody[h.end():end]
         meta = {k.strip(): v.strip() for k, v in re.findall(r"^- ([A-Za-z ]+?):\s*(.*)$", block, re.M)}
-        rungs = []
-        for r in (_table_with(block, RUNG_COLS) or []):
-            slug = slug_by_id.get(r["Day"])
-            rungs.append({**{k: r[k] for k in RUNG_COLS},
-                          "keyPath": f"trainer/{wk['dir']}/{slug}/demos/key/{r['Key']}" if slug else None})
+        blocks = [{k: r[k] for k in BLOCK_COLS} for r in (_table_with(block, BLOCK_COLS) or [])]
         threads.append({"id": h.group(1), "domain": meta.get("Domain", ""), "scope": meta.get("Scope", ""),
                         "startState": meta.get("Start state this week", ""), "endState": meta.get("End state this week", ""),
-                        "rungs": rungs})
-    standalone = []
-    for r in (_table_with(_section(text, "## Standalone demos"), STANDALONE_COLS) or []):
-        slug = slug_by_id.get(r["Day"])
-        standalone.append({**{k: r[k] for k in STANDALONE_COLS},
-                           "keyPath": f"trainer/{wk['dir']}/{slug}/demos/key/{r['Key']}" if slug else None})
+                        "blocks": blocks})
+    standalone = [{k: r[k] for k in STANDALONE_COLS} for r in (_table_with(_section(text, "## Standalone demos"), STANDALONE_COLS) or [])]
     ladder = [{k: r[k] for k in LADDER_COLS} for r in (_table_with(_section(text, "## Demo ladder"), LADDER_COLS) or [])]
     coverage = [{k: r[k] for k in COVERAGE_COLS} for r in (_table_with(_section(text, "## Coverage map"), COVERAGE_COLS) or [])]
     spoilers = [{k: r[k] for k in SPOILER_COLS} for r in (_table_with(_section(text, "## Anti-spoiler ledger"), SPOILER_COLS) or [])]
-    deviations = [{k: r[k] for k in DEVIATION_COLS} for r in (_table_with(_section(text, "## Real-world framing and deliberate deviations"), DEVIATION_COLS) or [])]
+    framing_body = _section(text, "## Real-world framing and deliberate deviations")
+    deviations = [{k: r[k] for k in DEVIATION_COLS} for r in (_table_with(framing_body, DEVIATION_COLS) or [])]
+    stops = [{k: r[k] for k in STOP_COLS} for r in (_table_with(_section(text, "## Stop points"), STOP_COLS) or [])]
+    squeeze_body = _section(text, "## Squeeze priorities")
+    scaffold_body = _section(text, "## Scaffold bundle")
     shape_body = _section(text, "## Per-day shape")
     day_shape = {}
     dh = list(DAY_HEAD_RE.finditer(shape_body))
@@ -140,29 +162,67 @@ def load_plan(path: Path) -> dict:
         day_shape[h.group(1)] = shape_body[h.start():end].strip()
     return {"path": str(path), "week": week, "weekDir": wk["dir"], "threads": threads, "standalone": standalone,
             "ladder": ladder, "coverage": coverage, "spoilers": spoilers, "deviations": deviations, "dayShape": day_shape,
-            "epic": _section(text, "## Weekly Epic").strip()}
+            "epic": _section(text, "## Weekly Epic").strip(),
+            "assumes": _bullets(_section(text, "## Assumes from the previous week")),
+            "stopPoints": stops,
+            "squeeze": {"cutFirst": _list_after(squeeze_body, "Cut first"), "neverCut": _list_after(squeeze_body, "Never cut")},
+            "hardStop": _prose(_section(text, "## Hard-stop rule")).strip(),
+            "scaffold": {"handouts": [{k: r[k] for k in SCAFFOLD_COLS} for r in (_table_with(scaffold_body, SCAFFOLD_COLS) or [])],
+                         "never": [{k: r[k] for k in NEVER_COLS} for r in (_table_with(scaffold_body, NEVER_COLS) or [])],
+                         "intro": _prose(scaffold_body).strip()},
+            "prereqs": _bullets(_section(text, "## Run prerequisites")),
+            "framing": _prose(framing_body).strip()}
+
+
+def week_blocks(plan: dict) -> list[dict]:
+    """Every walkthrough of the week in ladder order, with its thread row and ladder minutes merged."""
+    by_name: dict[str, dict] = {}
+    for t in plan["threads"]:
+        for r in t["blocks"]:
+            by_name[r["Walkthrough"]] = {"thread": t["id"], "block": r["Block"], "name": r["Walkthrough"], "day": r["Day"], "slot": r["Slot"],
+                                         "startsFrom": r["Starts from"], "adds": r["Adds"], "endState": r["End state"],
+                                         "commitMessage": r["Commit message"]}
+    for s in plan["standalone"]:
+        by_name[s["Walkthrough"]] = {"thread": "standalone", "block": "", "name": s["Walkthrough"], "day": s["Day"], "slot": s["Slot"],
+                                     "startsFrom": "cold", "adds": s["Why it fits no thread"], "endState": "", "commitMessage": ""}
+    stops = {s["Walkthrough"]: s for s in plan["stopPoints"]}
+    out = []
+    for i, r in enumerate(plan["ladder"]):
+        b = dict(by_name.get(r["Walkthrough"], {"thread": "", "block": "", "name": r["Walkthrough"], "day": r["Day"], "slot": "",
+                                                "startsFrom": "", "adds": "", "endState": "", "commitMessage": ""}))
+        mins = int(r["Minutes"]) if r["Minutes"].isdigit() else None
+        st = stops.get(r["Walkthrough"], {})
+        b.update({"n": i + 1, "minutes": mins, "mustFollow": r["Must follow"], "guarantees": r["Guarantees"],
+                  "stopPoint": st.get("Clean stop point", ""), "resumeAt": st.get("Resume at", "")})
+        out.append(b)
+    return out
 
 
 def day_rows(plan: dict, day_id: str) -> dict:
     """The rows of one day, as args_for.py passes them into the day workflow."""
-    thread_rows = []
-    for t in plan["threads"]:
-        for r in t["rungs"]:
-            if r["Day"] == day_id:
-                thread_rows.append({"thread": t["id"], "rung": r["Rung"], "demo": r["Demo"], "key": r["Key"],
-                                    "startsFrom": r["Starts from"], "adds": r["Adds"], "endState": r["End state"],
-                                    "commitMessage": r["Commit message"], "keyPath": r["keyPath"]})
-    for s in plan["standalone"]:
-        if s["Day"] == day_id:
-            thread_rows.append({"thread": "standalone", "rung": "", "demo": s["Demo"], "key": s["Key"], "startsFrom": "cold",
-                                "adds": s["Why it fits no thread"], "endState": "", "commitMessage": "", "keyPath": s["keyPath"]})
     return {
         "weekPlanRows": [r for r in plan["coverage"] if r["Day"] == day_id],
-        "threadRows": thread_rows,
+        "blockRows": [b for b in week_blocks(plan) if b["day"] == day_id],
         "ladderRows": [r for r in plan["ladder"] if r["Day"] == day_id],
         "dayShape": plan["dayShape"].get(day_id, ""),
         "spoilerRows": [r for r in plan["spoilers"] if r["Day"] == day_id or r["To"] == day_id],
+        "cutFirst": plan["squeeze"]["cutFirst"],
+        "neverCut": plan["squeeze"]["neverCut"],
     }
+
+
+def previous_last_block(week: int, root: Path = ROOT) -> dict[str, str]:
+    """{thread id: last walkthrough name} of the previous week's plan, when it exists and parses."""
+    prev = root / "harness" / "plans" / f"week-{week - 1:02d}.md"
+    out: dict[str, str] = {}
+    if prev.is_file():
+        try:
+            for t in load_plan(prev)["threads"]:
+                if t["blocks"]:
+                    out[t["id"]] = t["blocks"][-1]["Walkthrough"]
+        except ValueError:
+            pass
+    return out
 
 
 def check_plan(path: Path, metrics: dict | None = None, root: Path = ROOT) -> list[str]:
@@ -182,7 +242,6 @@ def check_plan(path: Path, metrics: dict | None = None, root: Path = ROOT) -> li
     wk = next(w for w in cur["weeks"] if w["week"] == plan["week"])
     teaching = bi.teaching_days(wk)
     ids = [d["id"] for d in teaching]
-    recorded = {d["id"] for d in teaching if d.get("status") in ("authored", "live")}  # D-0052
     # headings in order
     pos = -1
     for s in SECTIONS:
@@ -201,85 +260,94 @@ def check_plan(path: Path, metrics: dict | None = None, root: Path = ROOT) -> li
     for did, body in plan["dayShape"].items():
         if did not in ids:
             p.append(f"{name}: Per-day shape names {did}, not a teaching day of week {plan['week']}")
-        for need in ("- AM:", "- PM:", "- Stop points:", "- Cut first:", "- Never cut:"):
+        for need in ("- AM:", "- PM:"):
             if need not in body:
                 p.append(f"{name}: Per-day shape {did} lacks '{need}'")
     # threads
     if not plan["threads"]:
         p.append(f"{name}: Threads section has no '### <thread-id>' block")
-    demos_by_day: dict[str, list[tuple[str, str]]] = {}  # day -> [(demo, origin)]
-    expected_start: dict[str, str] = {}  # (day, demo) -> Starts from
+    expected: dict[str, tuple[str, str]] = {}  # walkthrough -> (thread, starts from)
+    prev_last = previous_last_block(plan["week"], root)
     for t in plan["threads"]:
         tid = t["id"]
         if not t["domain"] or not t["scope"]:
             p.append(f"{name}: thread {tid} needs '- Domain:' and '- Scope:' lines")
-        if not t["rungs"]:
-            p.append(f"{name}: thread {tid} has no rung table with columns {RUNG_COLS}")
-        prev_key = None
-        for i, r in enumerate(t["rungs"]):
-            tag = f"thread {tid} rung {r['Rung'] or '?'}"
-            if r["Rung"] != str(i + 1):
-                p.append(f"{name}: {tag}: rungs must be numbered 1..n in order")
+        if not t["blocks"]:
+            p.append(f"{name}: thread {tid} has no block table with columns {BLOCK_COLS}")
+        prev_name = None
+        for i, r in enumerate(t["blocks"]):
+            tag = f"thread {tid} block {r['Block'] or '?'}"
+            if r["Block"] != str(i + 1):
+                p.append(f"{name}: {tag}: blocks must be numbered 1..n in order")
             if r["Day"] not in ids:
                 p.append(f"{name}: {tag}: Day '{r['Day']}' is not a teaching day of week {plan['week']}")
-            if not DEMO_RE.match(r["Demo"]):
-                p.append(f"{name}: {tag}: Demo must read NN_<slug>, got '{r['Demo']}'")
-            if not KEY_RE.match(r["Key"]) or r["Key"].rsplit(".", 1)[0] != r["Demo"]:
-                p.append(f"{name}: {tag}: Key must be Demo + .py|.md|.ipynb, got '{r['Key']}'")
+            if r["Slot"] not in SLOTS:
+                p.append(f"{name}: {tag}: Slot must be AM or PM, got '{r['Slot']}'")
+            if not WALK_RE.match(r["Walkthrough"]):
+                p.append(f"{name}: {tag}: Walkthrough must read NN-<slug>, got '{r['Walkthrough']}'")
             s = r["Starts from"]
             if i == 0:
-                if s != "cold" and not (demo_check.STARTS_RE.match(s) and (root / s).is_file()):
-                    p.append(f"{name}: {tag}: first rung must start cold or from an existing key (previous week's last rung), got '{s}'")
-            elif s != prev_key:
-                p.append(f"{name}: {tag}: Starts from must be the previous rung's key '{prev_key}', got '{s}'")
-            if r["Day"] in recorded and s != "cold" and not (root / s).is_file():
-                p.append(f"{name}: {tag}: authored/live day but Starts from key {s} is not on disk")
+                if s != "cold" and not WALK_RE.match(s):
+                    p.append(f"{name}: {tag}: first block must start cold or from the previous week's last walkthrough (NN-<slug>), got '{s}'")
+                elif s != "cold" and tid in prev_last and prev_last[tid] != s:
+                    p.append(f"{name}: {tag}: the previous week's last walkthrough of {tid} is '{prev_last[tid]}', not '{s}'")
+            elif s != prev_name:
+                p.append(f"{name}: {tag}: Starts from must be the previous block's walkthrough '{prev_name}', got '{s}'")
             for col in ("Adds", "End state", "Commit message"):
                 if not r[col]:
                     p.append(f"{name}: {tag}: '{col}' is empty")
-            prev_key = r["keyPath"]
-            demos_by_day.setdefault(r["Day"], []).append((r["Demo"], tag))
-            expected_start[(r["Day"], r["Demo"])] = (tid, s)
+            if r["Walkthrough"] in expected:
+                p.append(f"{name}: {tag}: walkthrough '{r['Walkthrough']}' listed twice")
+            expected[r["Walkthrough"]] = (tid, s)
+            prev_name = r["Walkthrough"]
     for s in plan["standalone"]:
-        tag = f"standalone {s['Demo']}"
+        tag = f"standalone {s['Walkthrough']}"
         if s["Day"] not in ids:
             p.append(f"{name}: {tag}: Day '{s['Day']}' is not a teaching day of week {plan['week']}")
-        if not DEMO_RE.match(s["Demo"]):
-            p.append(f"{name}: {tag}: Demo must read NN_<slug>")
-        if not KEY_RE.match(s["Key"]) or s["Key"].rsplit(".", 1)[0] != s["Demo"]:
-            p.append(f"{name}: {tag}: Key must be Demo + .py|.md|.ipynb, got '{s['Key']}'")
+        if s["Slot"] not in SLOTS:
+            p.append(f"{name}: {tag}: Slot must be AM or PM")
+        if not WALK_RE.match(s["Walkthrough"]):
+            p.append(f"{name}: {tag}: Walkthrough must read NN-<slug>")
         if not s["Why it fits no thread"]:
             p.append(f"{name}: {tag}: say why it fits no thread (A23)")
-        demos_by_day.setdefault(s["Day"], []).append((s["Demo"], tag))
-        expected_start[(s["Day"], s["Demo"])] = ("standalone", "cold")
+        if s["Walkthrough"] in expected:
+            p.append(f"{name}: {tag}: walkthrough listed twice")
+        expected[s["Walkthrough"]] = ("standalone", "cold")
+    day_of = {w: next((r["Day"] for t in plan["threads"] for r in t["blocks"] if r["Walkthrough"] == w), None)
+              or next((r["Day"] for r in plan["standalone"] if r["Walkthrough"] == w), None) for w in expected}
+    slot_of = {w: next((r["Slot"] for t in plan["threads"] for r in t["blocks"] if r["Walkthrough"] == w), None)
+               or next((r["Slot"] for r in plan["standalone"] if r["Walkthrough"] == w), None) for w in expected}
     # ladder
-    lo, hi = metrics.get("minutesPerScriptMin", 0), metrics.get("minutesPerScriptMax", 10**6)
+    lo, hi = metrics.get("minutesPerBlockMin", 0), metrics.get("minutesPerBlockMax", 10**6)
     ladder = plan["ladder"]
     if not ladder:
         p.append(f"{name}: Demo ladder table missing (columns {LADDER_COLS})")
-    seen: set[tuple[str, str]] = set()
-    minutes_by: dict[tuple[str, str], int] = {}
+    seen: set[str] = set()
+    minutes_by: dict[str, int] = {}
     order_by_day: dict[str, list[str]] = {}
-    row_no: dict[tuple[str, str], int] = {}
+    row_no: dict[str, int] = {}
+    cites_by: dict[int, set[int]] = {}
     for i, r in enumerate(ladder):
         tag = f"ladder #{r['#'] or '?'}"
+        w = r["Walkthrough"]
         if r["#"] != str(i + 1):
             p.append(f"{name}: {tag}: rows must be numbered 1..n in order")
-        key = (r["Day"], r["Demo"])
-        if key in seen:
-            p.append(f"{name}: {tag}: {r['Day']} {r['Demo']} listed twice")
-        seen.add(key)
-        row_no[key] = i + 1
-        if key not in expected_start:
-            p.append(f"{name}: {tag}: {r['Day']} {r['Demo']} is neither a thread rung nor a standalone demo")
+        if w in seen:
+            p.append(f"{name}: {tag}: {w} listed twice")
+        seen.add(w)
+        row_no[w] = i + 1
+        if w not in expected:
+            p.append(f"{name}: {tag}: {w} is neither a thread block nor a standalone walkthrough")
+        elif day_of.get(w) != r["Day"]:
+            p.append(f"{name}: {tag}: {w} is on {day_of.get(w)} in Threads/Standalone, {r['Day']} here")
         try:
             mins = int(r["Minutes"])
-            minutes_by[key] = mins
+            minutes_by[w] = mins
             if not lo <= mins <= hi:
                 p.append(f"{name}: {tag}: {mins} min outside {lo}..{hi}")
         except ValueError:
             p.append(f"{name}: {tag}: Minutes must be an integer, got '{r['Minutes']}'")
-        order_by_day.setdefault(r["Day"], []).append(r["Demo"])
+        order_by_day.setdefault(r["Day"], []).append(w)
         mf = r["Must follow"]
         cites = set()
         if mf not in ("—", "-", "", "none"):
@@ -288,34 +356,65 @@ def check_plan(path: Path, metrics: dict | None = None, root: Path = ROOT) -> li
                     p.append(f"{name}: {tag}: Must follow '{mf}' must cite earlier ladder numbers only")
                 else:
                     cites.add(int(tok))
-        r["_cites"] = cites
+        cites_by[i + 1] = cites
         prev_day = ladder[i - 1]["Day"] if i > 0 else None
         if prev_day in ids and r["Day"] in ids and ids.index(r["Day"]) < ids.index(prev_day):
             p.append(f"{name}: {tag}: ladder is not in teaching order ({prev_day} before {r['Day']})")
-    for key in expected_start:
-        if key not in seen:
-            p.append(f"{name}: {key[0]} {key[1]} is in Threads/Standalone but not in the Demo ladder")
-    # the previous rung of a thread must be cited in Must follow
+        m = WALK_RE.match(w)
+        if m and int(m.group(1)) != i + 1:
+            p.append(f"{name}: {tag}: walkthroughs are numbered 01.. across the week in ladder order; expected {i + 1:02d}-..., got {w}")
+    for w in expected:
+        if w not in seen:
+            p.append(f"{name}: {w} is in Threads/Standalone but not in the Demo ladder")
     for t in plan["threads"]:
-        for a, b in zip(t["rungs"], t["rungs"][1:]):
-            ka, kb = (a["Day"], a["Demo"]), (b["Day"], b["Demo"])
-            if ka in row_no and kb in row_no:
-                rb = ladder[row_no[kb] - 1]
-                if row_no[ka] not in rb.get("_cites", set()):
-                    p.append(f"{name}: ladder #{row_no[kb]} ({b['Demo']}) must cite #{row_no[ka]} ({a['Demo']}), the previous rung of {t['id']}")
-    smin, smax = metrics.get("scriptsMin", 1), metrics.get("scriptsMax", 99)
+        for a, b in zip(t["blocks"], t["blocks"][1:]):
+            wa, wb = a["Walkthrough"], b["Walkthrough"]
+            if wa in row_no and wb in row_no and row_no[wa] not in cites_by.get(row_no[wb], set()):
+                p.append(f"{name}: ladder #{row_no[wb]} ({wb}) must cite #{row_no[wa]} ({wa}), the previous block of {t['id']}")
+    bmin, bmax = metrics.get("blocksPerDayMin", 0), metrics.get("blocksPerDayMax", 99)
     for did in ids:
         d = next(x for x in teaching if x["id"] == did)
-        demos = order_by_day.get(did, [])
+        ws = order_by_day.get(did, [])
         if d.get("demoFormat") == "none":
-            if demos:
-                p.append(f"{name}: {did} is demoFormat none but the ladder lists {demos}")
+            if ws:
+                p.append(f"{name}: {did} is demoFormat none but the ladder lists {ws}")
             continue
-        if not smin <= len(demos) <= smax:
-            p.append(f"{name}: {did} has {len(demos)} demos in the ladder, band is {smin}..{smax}")
-        nums = [int(x[:2]) for x in demos if DEMO_RE.match(x)]
-        if nums != list(range(1, len(nums) + 1)):
-            p.append(f"{name}: {did} demos must be numbered 01.. in ladder order, got {nums}")
+        if not bmin <= len(ws) <= bmax:
+            p.append(f"{name}: {did} has {len(ws)} walkthroughs in the ladder, band is {bmin}..{bmax}")
+        slots = [slot_of.get(w) for w in ws]
+        if len(set(slots)) != len(slots):
+            p.append(f"{name}: {did} has two walkthroughs in the same slot {slots}; one block per AM/PM slot")
+        if slots != sorted(slots, key=lambda s: SLOTS.index(s) if s in SLOTS else 9):
+            p.append(f"{name}: {did}: the AM block comes before the PM block in the ladder, got {slots}")
+    # series sections
+    stop_names = [s["Walkthrough"] for s in plan["stopPoints"]]
+    for w in seen:
+        if w not in stop_names:
+            p.append(f"{name}: Stop points has no row for {w} (columns {STOP_COLS})")
+    for s in plan["stopPoints"]:
+        if s["Walkthrough"] not in seen:
+            p.append(f"{name}: Stop points row '{s['Walkthrough']}' is not a walkthrough of the ladder")
+        if not s["Clean stop point"] or not s["Resume at"]:
+            p.append(f"{name}: Stop points row '{s['Walkthrough']}' needs a clean stop point and a resume point")
+    if not plan["squeeze"]["cutFirst"]:
+        p.append(f"{name}: Squeeze priorities needs a 'Cut first' list (numbered, cut in this order)")
+    if not plan["squeeze"]["neverCut"]:
+        p.append(f"{name}: Squeeze priorities needs a 'Never cut' list")
+    if len(plan["hardStop"].split()) < 20:
+        p.append(f"{name}: Hard-stop rule must be a short paragraph (>= 20 words)")
+    if not plan["scaffold"]["handouts"]:
+        p.append(f"{name}: Scaffold bundle needs the hand-out table (columns {SCAFFOLD_COLS}; one row per day, 'none' when nothing is pre-provided)")
+    for r in plan["scaffold"]["handouts"]:
+        if r["Day"] not in ids:
+            p.append(f"{name}: Scaffold bundle row Day '{r['Day']}' is not a teaching day of this week")
+    if not plan["scaffold"]["never"]:
+        p.append(f"{name}: Scaffold bundle needs the never-pre-provide table (columns {NEVER_COLS})")
+    for r in plan["scaffold"]["never"]:
+        for w in re.split(r"[,\s]+", r["Walkthrough"].strip()):
+            if w and w not in seen and w != "all":
+                p.append(f"{name}: Scaffold bundle never-pre-provide row names '{w}', not a walkthrough of the ladder")
+    if not plan["prereqs"]:
+        p.append(f"{name}: Run prerequisites needs at least one bullet (the demo repo branch, containers, keys, tools)")
     # coverage map
     cov = plan["coverage"]
     if not cov:
@@ -329,7 +428,7 @@ def check_plan(path: Path, metrics: dict | None = None, root: Path = ROOT) -> li
             p.append(f"{name}: coverage row '{r['Subtopic']}' / {r['Day']} is not a curriculum subtopic of that day (spell it exactly as curriculum.json does)")
         demo = r["Demo"]
         if demo not in ("facilitation", "notes") and demo not in order_by_day.get(r["Day"], []):
-            p.append(f"{name}: coverage row '{r['Subtopic']}': Demo '{demo}' is not a demo of {r['Day']} in the ladder, nor 'facilitation' / 'notes'")
+            p.append(f"{name}: coverage row '{r['Subtopic']}': Demo '{demo}' is not a walkthrough of {r['Day']} in the ladder, nor 'facilitation' / 'notes'")
         if not r["Notes step"].isdigit() or int(r["Notes step"]) < 1:
             p.append(f"{name}: coverage row '{r['Subtopic']}': Notes step must be a positive integer, got '{r['Notes step']}'")
     for key, st in want.items():
@@ -348,35 +447,30 @@ def check_plan(path: Path, metrics: dict | None = None, root: Path = ROOT) -> li
             p.append(f"{name}: anti-spoiler row '{r['Defers']}': To must be a day id or 'week WW', got '{r['To']}'")
     if not plan["deviations"]:
         p.append(f"{name}: deviation ledger table missing or empty (columns {DEVIATION_COLS})")
-    # authored/live days: rows equal the scripts on disk (D-0052)
-    trainer = root / "trainer"
-    for d in teaching:
-        if d.get("status") not in ("authored", "live") or d.get("demoFormat") == "none" or not trainer.exists():
-            continue
-        ddir = trainer / wk["dir"] / d["slug"] / "demos"
-        if d.get("demoFormat") == "loose" and not ddir.is_dir():
-            continue  # D-0050: a loose authored/live day without fallback scripts has nothing to compare to the ladder
-        on_disk = {}
-        for s in sorted(ddir.glob("*.md")):
-            if re.match(r"^\d{2}_", s.name):
-                hdr = demo_check._header(s.read_text(encoding="utf-8"))
-                tm = re.fullmatch(r"(\d+)\s*min", hdr.get("Time", ""))
-                on_disk[s.stem] = (int(tm.group(1)) if tm else None, hdr.get("Thread", ""), hdr.get("Starts from", ""), Path(hdr.get("Answer key", "")).name)
-        planned = order_by_day.get(d["id"], [])
-        if sorted(on_disk) != sorted(planned):
-            p.append(f"{name}: authored/live day {d['id']}: plan lists {planned} but disk has {sorted(on_disk)} (an authored or live day is recorded as-is)")
-            continue
-        for demo, (mins, thread, starts, keyname) in on_disk.items():
-            key = (d["id"], demo)
-            if minutes_by.get(key) != mins:
-                p.append(f"{name}: authored/live day {d['id']} {demo}: ladder says {minutes_by.get(key)} min, script header says {mins}")
-            tid, s = expected_start.get(key, ("", ""))
-            if (tid, s) != (thread, starts):
-                p.append(f"{name}: authored/live day {d['id']} {demo}: plan says thread '{tid}' starts from '{s}', script header says '{thread}' / '{starts}'")
-            row_key = next((r["Key"] for t in plan["threads"] for r in t["rungs"] if (r["Day"], r["Demo"]) == key), None) \
-                or next((r["Key"] for r in plan["standalone"] if (r["Day"], r["Demo"]) == key), None)
-            if row_key != keyname:
-                p.append(f"{name}: authored/live day {d['id']} {demo}: plan Key '{row_key}' but script's Answer key is '{keyname}'")
+    # authored/live days: the walkthroughs on disk equal the plan's rows (D-0052, D-0055)
+    ddir = root / "trainer" / wk["dir"] / "demos"
+    if ddir.is_dir():
+        recorded = {d["id"] for d in teaching if d.get("status") in ("authored", "live")}
+        on_disk = {f.stem: demo_check.header_facts(f) for f in demo_check.walkthroughs(ddir)}
+        for w in on_disk:
+            if w not in seen:
+                p.append(f"{name}: {ddir.name}/{w}.md is on disk but not in the plan's ladder")
+        for w in seen:
+            did = day_of.get(w)
+            if did not in recorded:
+                continue
+            f = on_disk.get(w)
+            if f is None:
+                p.append(f"{name}: authored/live day {did}: walkthrough {w} is in the plan but not on disk under {ddir}")
+                continue
+            if minutes_by.get(w) != f["time"]:
+                p.append(f"{name}: authored/live day {did} {w}: ladder says {minutes_by.get(w)} min, the walkthrough's Time says {f['time']}")
+            tid, s = expected.get(w, ("", ""))
+            if (tid, s) != (f["thread"], f["startsFrom"]):
+                p.append(f"{name}: authored/live day {did} {w}: plan says thread '{tid}' starts from '{s}', the walkthrough says '{f['thread']}' / '{f['startsFrom']}'")
+            msg = next((b["Commit message"] for t in plan["threads"] for b in t["blocks"] if b["Walkthrough"] == w), "")
+            if tid != "standalone" and msg != f["commit"]:
+                p.append(f"{name}: authored/live day {did} {w}: plan commit message '{msg}' but the walkthrough commits '{f['commit']}'")
     return p
 
 

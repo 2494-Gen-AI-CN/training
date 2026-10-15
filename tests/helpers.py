@@ -21,8 +21,8 @@ FORBIDDEN_RE = re.compile(
     r"FDE_|fde_|fde-|roster\.js|progress\.js|day-summary|auth\.js|reading-coach|coding-coach|codex-usage|"
     r"usage-notice|learning-chrome|interactive-rag|interactive-agents|gauntlet|workers\.dev|jestercharles|2463",
 )
-ALLOWED_JS = {"theme.js", "diagram.js", "scrolly.js", "modals.js", "quiz.js", "widgets.js", "glossary.js", "codeviewer.js", "survey.js", "pyworker.js"}
-PAGE_SCRIPT_ORDER = ["diagram.js", "scrolly.js", "modals.js", "quiz.js", "widgets.js", "glossary.js", "codeviewer.js"]
+ALLOWED_JS = {"theme.js", "diagram.js", "scrolly.js", "modals.js", "quiz.js", "widgets.js", "glossary.js", "survey.js", "pyworker.js"}
+PAGE_SCRIPT_ORDER = ["diagram.js", "scrolly.js", "modals.js", "quiz.js", "widgets.js", "glossary.js"]
 SECRET_RE = re.compile(r"sk-ant-[A-Za-z0-9_-]{8,}|AKIA[0-9A-Z]{16}|BEGIN (RSA |EC )?PRIVATE KEY")
 
 
@@ -66,14 +66,16 @@ def authored_days():
             yield w, d, rel
 
 
-def trainer_demos(rel: str) -> Path:
-    """Where a day's demo scripts + key/ are authored (private trainer repo, D-0030)."""
-    return TRAINER / rel / "demos"
+def authored_weeks():
+    """Weeks with at least one authored or live day (D-0052)."""
+    for w in curriculum()["weeks"]:
+        if any(d.get("status") in ("authored", "live") for d in w["days"]):
+            yield w
 
 
-def public_demos(rel: str) -> Path:
-    """Where a day's answer keys land once the day is taught (publish_demos.py, D-0030)."""
-    return ROOT / "demos" / rel
+def week_demos(week_dir: str) -> Path:
+    """Where a week's demo walkthroughs are authored (private trainer repo, D-0055)."""
+    return TRAINER / week_dir / "demos"
 
 
 def node_exe() -> str | None:

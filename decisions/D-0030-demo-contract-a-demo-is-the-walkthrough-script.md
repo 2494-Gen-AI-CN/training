@@ -1,12 +1,12 @@
 # D-0030 — Demo contract: a demo is the walkthrough script the trainer types live (trainer/<rel>/demos/NN_<slug>.md, template demo-script.md) and the committed code is its answer key (key/NN_<slug>.py runnable or .md transcript), checked both ways by harness/demo_check.py; answer keys stay trainer-only until the delivery-day close sets taught:<date>, then harness/publish_demos.py copies them to demos/<rel>/ and flips the notes demo card; concept subtopics get a timed facilitation block in the runbook instead of code, and demoFormat none marks a day with no code demo at all
 
 - Date: 2026-10-11
-- Status: accepted
+- Status: superseded
 - Decision: Demo contract: a demo is the walkthrough script the trainer types live (trainer/<rel>/demos/NN_<slug>.md, template demo-script.md) and the committed code is its answer key (key/NN_<slug>.py runnable or .md transcript), checked both ways by harness/demo_check.py; answer keys stay trainer-only until the delivery-day close sets taught:<date>, then harness/publish_demos.py copies them to demos/<rel>/ and flips the notes demo card; concept subtopics get a timed facilitation block in the runbook instead of code, and demoFormat none marks a day with no code demo at all
 - Why: Mined rules A1/A3/A5/A17/A21/A22/A28 (D-0028): the typing is the lesson for fluency topics, print-style slideware and subprocess runners taught nothing, pre-published answer keys let trainees read ahead, and pre-flight gaps (tokens used before introduction, unstated cwd, unproven tool output) were the recurring defects. Trainer chose: trainer-only until taught, facilitation for concept days, live-typed command scripts for git/terminal, all days.
 - Affects: harness/critics/demos.md (rewrite), harness/critics/notes.md items 7/8/12/16, harness/critics/runbook.md items 1/3/3b, harness/metrics.json demos (scriptsMin/Max, minutesPerScriptMin/Max, maxLinesPerFile), harness/templates/demo-script.md (new), demo-README.md (run-order table only), runbook.md (Demo pointer + Facilitation sections), day.exemplar.html (demo card variants, Demos today list), harness/demo_check.py (new), harness/publish_demos.py (new), harness/build_index.py (demo link only when taught), harness/curriculum.json (demoFormat none, taught field, W1D2 status planned until Stage 3), harness/workflows/day-fanout.js (demos stage, materials prompts, Wire publish step), tests/test_demos.py, test_pages.py, test_curriculum.py, test_trainer.py, helpers.py, AGENTS.md, harness/README.md, README.md
 - Supersedes: —
-- Superseded-by: —
+- Superseded-by: D-0055
 
 ## Notes
 

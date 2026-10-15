@@ -17,7 +17,7 @@
     <a class="topnav" href="../../index.html">Home</a>
   </div>
   <nav class="topbar-center">
-    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
     <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises" target="_blank" rel="noopener">Exercises</a>
   </nav>
   <div class="topbar-right">
@@ -216,7 +216,6 @@ print(parse_id("TD-7"))</code></pre>
         follow-up code is never mistaken for the one you meant to handle. The ticket desk uses the same four-part shape
         around adding a ticket: a rejected ticket is logged as an error, an accepted one as information, and "intake done"
         is logged either way.</p>
-        <button class="code-cta" type="button" data-modal="code-w02d2-intake"><span class="cc-ico">&lt;/&gt;</span> See the ticket intake with try, except, else and finally <span class="cc-meta">· 01_ticket_errors.md</span></button>
         <h3>Catch narrow: the bare except problem</h3>
         <p>A bare <code>except:</code> with no type catches everything, including <code>KeyboardInterrupt</code> and
         <code>SystemExit</code>, so Ctrl+C stops working inside it; name the type you
@@ -622,7 +621,6 @@ ValueError: tickets.json is not valid JSON</code></pre>
         still sees the exact line and column above. Catching <code>JSONDecodeError</code> and
         quietly returning an empty desk would be worse than crashing here: the calling code would see an empty desk, seed
         it and save, overwriting the damaged file, the only copy someone could have repaired by hand.</p>
-        <button class="code-cta" type="button" data-modal="code-w02d2-chain"><span class="cc-ico">&lt;/&gt;</span> See the full chained traceback <span class="cc-meta">· 04_json_errors.md</span></button>
         <h3>Every save rewrites the whole file</h3>
         <p>The save side has its own limit. Saving opens the file with <code>"w"</code>, which empties it the moment it is
         opened, so every save rewrites the whole file.<sup class="cite"><a href="#src-6">6</a></sup> For a desk of a few
@@ -752,11 +750,6 @@ assert raises(TypeError, survives_json, {"opened_at": datetime(2026, 10, 19, 8, 
       </div>
 
       <div class="side-cards">
-        <div class="activity-card demo-card" data-demo="pending">
-          <div class="ac-k">⌨ Code-along files</div>
-          <div class="ac-t">Published after class</div>
-          <div class="ac-meta">typed live in the session · the answer key lands in demos/ afterwards</div>
-        </div>
 
         <button class="activity-card accent" type="button" data-modal="quiz-modal">
           <div class="ac-k">✓ Comprehension check</div>
@@ -801,10 +794,6 @@ assert raises(TypeError, survives_json, {"opened_at": datetime(2026, 10, 19, 8, 
     <div class="ma-k">Today's exercise</div>
     <ul class="deliv-list check">
       <li><a href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-02/day-2-exceptions-files-and-json" target="_blank" rel="noopener">exercises/week-02/day-2-exceptions-files-and-json</a> — a small module that saves a list of ticket dicts to JSON, loads it back, returns an empty list for a missing file, raises <code>ValueError</code> for a corrupt one and deletes a file safely. Run <code>python -m pytest -q</code> until green.</li>
-    </ul>
-    <div class="ma-k">Demos today</div>
-    <ul class="deliv-list">
-      <li>One live walk through the day's topics, built in front of the class and shaped by its questions; the files it produces are published in the demos folder afterwards</li>
     </ul>
     <p class="goals-foot">Wednesday tests the error and storage paths from this page. Finish the check to unlock the next page.</p>
   </div>
@@ -880,72 +869,11 @@ window.QUIZ = {
 };
 </script>
 
-<!-- code popup: excerpt of the errors answer-key transcript -->
-<div id="code-w02d2-intake" class="modal-overlay" hidden>
-  <div class="modal-card code-modal">
-    <button class="modal-close" type="button" aria-label="Close">✕</button>
-    <h2>Answer key excerpt: 01_ticket_errors.md</h2>
-    <p class="cv-cap">From the end of the transcript: the intake in main() with all four clauses, and the two log lines a rejected ticket produces.</p>
-    <div class="cv" data-file="01_ticket_errors.md" data-lang="python"><pre class="cv-raw">    t4.assign(&quot;Priya&quot;)
-    t5.assign(&quot;Marcus&quot;)
-    try:
-        desk.add(Ticket(7, &quot;Refund charged twice&quot;, &quot;urgent&quot;, NOW))
-    except ValueError as err:
-        log.error(&quot;rejected ticket: %s&quot;, err)
-    else:
-        log.info(&quot;accepted ticket 7&quot;)
-    finally:
-        log.info(&quot;intake done&quot;)
-    for t in desk:
-        print(t.ticket_id, t.priority, t.status, t.days_open())
-
-# python ticket_desk.py prints, among the other log lines:
-# ERROR __main__: rejected ticket: unknown priority: 'urgent'
-# INFO __main__: intake done</pre></div>
-    <p class="cv-foot">Only the risky call sits in try. The ValueError comes from the check at the top of Ticket.__init__, and finally logs either way.</p>
-  </div>
-</div>
-
-<!-- code popup: excerpt of the corrupt-JSON answer-key transcript -->
-<div id="code-w02d2-chain" class="modal-overlay" hidden>
-  <div class="modal-card code-modal">
-    <button class="modal-close" type="button" aria-label="Close">✕</button>
-    <h2>Answer key excerpt: 04_json_errors.md</h2>
-    <p class="cv-cap">Step 2 of the transcript: tickets.json has lost its final ], and load_desk logs the error and raises a ValueError from it.</p>
-    <div class="cv" data-file="04_json_errors.md" data-lang="bash"><pre class="cv-raw">$ python ticket_desk.py
-ERROR storage: cannot read tickets.json: Expecting &#x27;,&#x27; delimiter: line 56 column 1 (char 1279)
-Traceback (most recent call last):
-  File &quot;C:\Users\you\demo-repo\ticket-desk\storage.py&quot;, line 82, in load_desk
-    records = json.load(f)
-  File &quot;C:\Users\you\AppData\Local\Python\pythoncore-3.14-64\Lib\json\__init__.py&quot;, line 298, in load
-    return loads(fp.read(),
-...
-  File &quot;C:\Users\you\AppData\Local\Python\pythoncore-3.14-64\Lib\json\decoder.py&quot;, line 361, in raw_decode
-    obj, end = self.scan_once(s, idx)
-               ~~~~~~~~~~~~~~^^^^^^^^
-json.decoder.JSONDecodeError: Expecting &#x27;,&#x27; delimiter: line 56 column 1 (char 1279)
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File &quot;C:\Users\you\demo-repo\ticket-desk\ticket_desk.py&quot;, line 53, in &lt;module&gt;
-    main()
-    ~~~~^^
-  File &quot;C:\Users\you\demo-repo\ticket-desk\ticket_desk.py&quot;, line 15, in main
-    desk = load_desk(DATA)
-  File &quot;C:\Users\you\demo-repo\ticket-desk\storage.py&quot;, line 87, in load_desk
-    raise ValueError(f&quot;{path} is not valid JSON&quot;) from err
-ValueError: tickets.json is not valid JSON</pre></div>
-    <p class="cv-foot">Two tracebacks, oldest first: the JSONDecodeError inside the json package, then the ValueError your code raised from it. Read the last line, then the line above the separator.</p>
-  </div>
-</div>
-
 <script src="../../assets/js/diagram.js?v=20261015"></script>
 <script src="../../assets/js/scrolly.js?v=20261015"></script>
 <script src="../../assets/js/modals.js?v=20261015"></script>
 <script src="../../assets/js/quiz.js?v=20261015"></script>
 <script src="../../assets/js/widgets.js?v=20261015"></script>
 <script src="../../assets/js/glossary.js?v=20261015"></script>
-<script src="../../assets/js/codeviewer.js?v=20261015"></script>
 </body>
 </html>

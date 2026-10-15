@@ -550,56 +550,14 @@ footer.foot { border-top:1px solid var(--line); margin-top:50px; padding: 26px 2
 .modal-overlay[hidden] { display:none; }
 .modal-card { background:var(--surface); border-radius:16px; max-width:720px; width:100%; max-height:88vh; overflow:auto; padding:30px 32px 26px; position:relative; box-shadow:0 24px 64px rgba(0,0,0,.32); }
 .modal-card h2 { margin-top:0; }
+.modal-close:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
 .modal-close { position:absolute; top:14px; right:16px; border:none; background:none; font-size:20px; color:var(--ink-soft); cursor:pointer; line-height:1; }
 .modal-next { display:none; margin-top:22px; padding-top:18px; border-top:1px solid var(--line); align-items:center; gap:14px; }
 
-/* ---- Production-code popups (codeviewer.js) ---- */
-/* Inline trigger — small "see the code" CTA, near-zero length impact. */
-.code-cta { display:inline-flex; align-items:center; gap:7px; margin:14px 0 4px; padding:8px 14px;
-  font:inherit; font-size:13.5px; font-weight:600; cursor:pointer; color:var(--accent);
-  background:var(--surface-2); border:1.5px solid var(--line); border-radius:9px; }
-.code-cta:hover { border-color:var(--accent); background:var(--accent-soft); }
-.code-cta:focus-visible, .modal-close:focus-visible, .cv-tab:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
-.code-cta .cc-ico { font-family:var(--mono); font-size:12px; opacity:.8; }
-.code-cta .cc-meta { color:var(--dim); font-weight:500; }
-.code-modal { max-width:860px; padding:24px 26px 22px; }
-.code-modal h2 { font-size:20px; }
-.code-modal .cv-cap { font-size:13.5px; color:var(--ink-soft); line-height:1.55; margin:2px 0 16px; }
-.code-modal .cv-foot { font-size:12.5px; color:var(--dim); margin-top:14px; line-height:1.5; }
-
-/* The editor — always dark (it's a code editor), independent of page theme. */
-.cv { border-radius:11px; overflow:hidden; border:1px solid #101317; background:#1e1e1e;
-  font-family:var(--mono); box-shadow:0 10px 30px rgba(0,0,0,.28); }
-.cv-bar { display:flex; align-items:center; gap:12px; background:#323233; padding:9px 14px; }
-.cv-dots { display:flex; gap:7px; }
-.cv-dots i { width:11px; height:11px; border-radius:50%; display:block; }
-.cv-dots .d-r { background:#ff5f57; } .cv-dots .d-y { background:#febc2e; } .cv-dots .d-g { background:#28c840; }
-.cv-tabs { display:flex; overflow-x:auto; }
-.cv-tab { font:inherit; font-family:var(--mono); font-size:12px; color:#7d828b; background:transparent; border:none; padding:6px 14px; margin-bottom:-9px; cursor:pointer; white-space:nowrap; }
-.cv-tab.on { color:#e8e6e1; background:#1e1e1e; border-radius:7px 7px 0 0; }   /* active merges into the editor body */
-.cv-tab:hover:not(.on) { color:#cfcfcf; }
 .repo-wrap { margin:22px 0 4px; padding:16px 18px; border:1px solid var(--line); border-radius:12px; background:var(--surface-2); }
 .repo-wrap p { margin:0 0 10px; font-size:14.5px; color:var(--ink-soft); }
-.repo-wrap .code-cta { margin:0; }
-.cv-body { display:flex; overflow-x:auto; padding:12px 0; }
-.cv-gutter { display:flex; flex-direction:column; text-align:right; padding:0 12px 0 16px; color:#5a5f66; user-select:none; flex:none; }
-.cv-gutter span, .cv-line { font-size:13px; line-height:1.62; }
-.cv-pre { margin:0; padding:0 18px 0 0; } .cv-pre code { display:block; }
-.cv-line { display:block; white-space:pre; color:#d4d4d4; }
-/* VS Code Dark+ token palette */
-.cv .t-com { color:#6a9955; font-style:italic; }
-.cv .t-str { color:#ce9178; }
-.cv .t-kw  { color:#569cd6; }
-.cv .t-bif { color:#4ec9b0; }
-.cv .t-fn  { color:#dcdcaa; }
-.cv .t-num { color:#b5cea8; }
-.cv .t-dec { color:#dcdcaa; }
 @media (max-width:480px) {
   .modal-overlay { inset:auto; top:0; left:0; width:100vw; height:100dvh; padding:10px; }
-  .code-modal { width:calc(100vw - 20px); max-height:calc(100dvh - 20px); padding:22px 14px 18px; }
-  .code-modal h2 { padding-right:28px; font-size:18px; line-height:1.25; }
-  .code-cta { max-width:100%; flex-wrap:wrap; }
-  .cv-gutter span, .cv-line { font-size:12px; }
 }
 .modal-next.show { display:flex; }
 .modal-next span { color:var(--ink-soft); font-size:15px; }
@@ -775,17 +733,12 @@ a.snav-btn:hover { border-color:var(--accent); color:var(--accent); }
   html[data-view] .side .snav-btn,
   html[data-view] .side-dgm-btn { flex:0 0 auto; min-width:0; padding:9px 6px; border-radius:10px; text-align:center; font-size:12.5px; font-weight:600; line-height:1.25; }
   html[data-view] .side .activity-card:hover { transform:none; box-shadow:none; }
-  /* quiz.js and publish_demos.py own the text inside these elements, so the short labels are generated content */
+  /* quiz.js owns the text inside these elements, so the short labels are generated content */
   html[data-view] .side .ac-meta, html[data-view] .side .activity-card.accent .ac-t { display:none; }
   html[data-view] .side .ac-k { font-size:0; margin:0; }
   html[data-view] .side .ac-k::before { font-size:12.5px; }
-  html[data-view] .side .demo-card .ac-k::before { content:"Demo"; }
   html[data-view] .side .activity-card.accent .ac-k::before { content:"Quiz"; }
   html[data-view] .side .ac-done { margin:3px 0 0; }
-  html[data-view] .side .demo-card .ac-t { font-size:0; counter-reset:demo-file; }
-  html[data-view] .side .demo-card[data-demo="pending"] .ac-t::before { content:"after class"; font-size:10.5px; font-weight:400; color:var(--dim); }
-  html[data-view] .side .demo-card .ac-t a { counter-increment:demo-file; display:inline-block; min-width:22px; margin:3px 2px 0; border:1px solid var(--line); border-radius:6px; color:var(--accent); text-decoration:none; }
-  html[data-view] .side .demo-card .ac-t a::before { content:counter(demo-file); font-size:11.5px; }
   html[data-view] .side .snav-btn { font-size:0; }
   html[data-view] .side .snav-btn::before { font-size:12.5px; }
   html[data-view] .side-nav a.snav-btn:not(.snav-next)::before { content:"\25C2\00A0 Back"; }
@@ -817,7 +770,6 @@ a.snav-btn:hover { border-color:var(--accent); color:var(--accent); }
   html[data-view="focus"] .side { position:static; order:0; flex-direction:row; flex-wrap:wrap; padding:18px 0 50px; border-top:1px solid var(--line); }
   html[data-view="focus"] .side .activity-card,
   html[data-view="focus"] .side .snav-btn { padding:9px 14px; }
-  html[data-view="focus"] .side .demo-card { display:flex; align-items:baseline; gap:6px; }
   html[data-view="focus"] .reading-col { padding-bottom:30px; }
   html[data-view="focus"] .progressbar { visibility:hidden; }   /* keeps its width, so the switch does not move under the pointer */
   html[data-view="focus"] .gloss-term,
@@ -835,7 +787,6 @@ a.snav-btn:hover { border-color:var(--accent); color:var(--accent); }
   html[data-view="compact"] .side .activity-card,
   html[data-view="compact"] .side .snav-btn,
   html[data-view="compact"] .side-dgm-btn { padding:9px 14px; }
-  html[data-view="compact"] .side .demo-card { display:flex; align-items:baseline; gap:6px; }
   html[data-view="compact"][data-dgm="open"] .side-diagram { position:fixed; z-index:60; top:auto; left:12px; right:12px; bottom:12px; width:auto; height:min(52vh, 440px); }
 }
 
@@ -1535,7 +1486,7 @@ html[data-theme="dark"] .ritual.sd { color:#b197fc; border-color:rgba(132,94,247
   .topbar, .toc, .side-cards, .side-nav, .quiz-fab, .rc-fab,
   .reading-col button, .reading-col input, .reading-col textarea, .reading-col select,
   .ix-btn, .run-go, .run-tabs, .run-bar, .run-editor.ex, .rag-tabs, .rag-chips,
-  .code-cta, .skip-link, footer.foot { display: none !important; }
+  .skip-link, footer.foot { display: none !important; }
 
   .lesson2, .wrap, .closing { max-width: none; padding: 0 !important; margin: 0 !important; }
   .reading2col, .reading { display: block !important; margin: 0 !important; }
@@ -1570,7 +1521,7 @@ html[data-theme="dark"] .ritual.sd { color:#b197fc; border-color:rgba(132,94,247
   }
   .d-el { opacity: 1 !important; }
 
-  pre, code, .cv-body, .ix-snippet { white-space: pre-wrap !important; overflow-wrap: anywhere; }
+  pre, code, .ix-snippet { white-space: pre-wrap !important; overflow-wrap: anywhere; }
   input, textarea, select { box-shadow: none !important; }
   .reading-col pre[data-run][hidden] { display: block !important; }   /* print the block, not the hidden editor */
 }

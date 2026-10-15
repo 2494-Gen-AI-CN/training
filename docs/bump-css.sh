@@ -8,7 +8,7 @@
 # Usage:
 #   ./bump-css.sh                 # bump style.css to today's date (YYYYMMDD)
 #   ./bump-css.sh 20260703        # bump style.css to an explicit version
-#   ./bump-css.sh --all           # also bump every page JS (theme, diagram, scrolly, modals, quiz, widgets, glossary, codeviewer, survey)
+#   ./bump-css.sh --all           # also bump every page JS (theme, diagram, scrolly, modals, quiz, widgets, glossary, survey)
 #   ./bump-css.sh --all 20260703-2  # explicit version, all assets (suffix ok for same-day)
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -17,7 +17,7 @@ ASSETS=(style.css)
 VERSION=""
 for arg in "$@"; do
   case "$arg" in
-    --all) ASSETS=(style.css theme.js diagram.js scrolly.js modals.js quiz.js widgets.js glossary.js codeviewer.js survey.js) ;;
+    --all) ASSETS=(style.css theme.js diagram.js scrolly.js modals.js quiz.js widgets.js glossary.js survey.js) ;;
     -h|--help) grep '^#' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) VERSION="$arg" ;;
   esac

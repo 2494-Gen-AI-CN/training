@@ -17,7 +17,7 @@
     <a class="topnav" href="../../index.html">Home</a>
   </div>
   <nav class="topbar-center">
-    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
     <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises" target="_blank" rel="noopener">Exercises</a>
   </nav>
   <div class="topbar-right">
@@ -614,7 +614,6 @@ print(isinstance(u, Ticket), type(u) == Ticket, issubclass(UrgentTicket, Ticket)
         <code>SLA_HOURS</code> reaches urgent tickets too. Copying the parent's formula into the subclass would work today
         and drift apart the first time someone edits only one copy. You recognise the pattern in other people's code as
         <code>class UrgentTicket(Ticket):</code> with a method whose body calls <code>super().method()</code>.</p>
-        <button class="code-cta" type="button" data-modal="code-w01d5-urgent"><span class="cc-ico">&lt;/&gt;</span> See the subclass and the rule function that accepts both kinds <span class="cc-meta">· 03_ticket_class.py</span></button>
         <h3>isinstance, issubclass and type</h3>
         <p><code>isinstance(obj, Cls)</code> is true for instances of <code>Cls</code> and of its
         subclasses;<sup class="cite"><a href="#src-6">6</a></sup> <code>issubclass(Sub, Base)</code> asks the same question
@@ -730,7 +729,6 @@ print(sorted(desk))</code></pre>
         the first loop would print both titles and every later loop would print nothing. Without <code>__len__</code>,
         <code>len(desk)</code> fails. The underscore on <code>_tickets</code> tells callers to go through the desk's
         methods. You recognise the pattern as <code>def __iter__(self): return iter(self._items)</code>.</p>
-        <button class="code-cta" type="button" data-modal="code-w01d5-desk"><span class="cc-ico">&lt;/&gt;</span> See the full Desk class from the ticket-desk code <span class="cc-meta">· 04_desk_object.py</span></button>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>An iterable is anything I can ask for an iterator, like a list. The iterator keeps a position and hands out
@@ -1008,11 +1006,6 @@ assert [a(), b()] == [2, 50], "two counters count on their own"</code></pre>
       </div>
 
       <div class="side-cards">
-        <div class="activity-card demo-card" data-demo="pending">
-          <div class="ac-k">⌨ Code-along files</div>
-          <div class="ac-t">Published after class</div>
-          <div class="ac-meta">typed live in the session · the answer key lands in demos/ afterwards</div>
-        </div>
 
         <button class="activity-card accent" type="button" data-modal="quiz-modal">
           <div class="ac-k">✓ Comprehension check</div>
@@ -1066,10 +1059,6 @@ assert [a(), b()] == [2, 50], "two counters count on their own"</code></pre>
     <div class="ma-k">Today's exercise</div>
     <ul class="deliv-list check">
       <li><a href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-01/day-5-control-flow-functions-and-classes" target="_blank" rel="noopener">exercises/week-01/day-5-control-flow-functions-and-classes</a> — a pytest-checked module: a Ticket class with a deadline method, a Desk that iterates, a sort by lambda key and a guard clause. Run <code>python -m pytest -q</code> until green.</li>
-    </ul>
-    <div class="ma-k">Demos today</div>
-    <ul class="deliv-list">
-      <li>One live walk through the day's topics, built in front of the class and shaped by its questions; the files it produces are published in the demos folder afterwards</li>
     </ul>
     <p class="goals-foot">This is the last page of week 1. Finish the check, then fill in the weekly feedback form.</p>
   </div>
@@ -1158,67 +1147,12 @@ window.SURVEY = {
 };
 </script>
 
-<!-- code popup: an excerpt of the Ticket class answer key -->
-<div id="code-w01d5-urgent" class="modal-overlay" hidden>
-  <div class="modal-card code-modal">
-    <button class="modal-close" type="button" aria-label="Close">✕</button>
-    <h2>Answer key excerpt: 03_ticket_class.py</h2>
-    <p class="cv-cap">From the ticket-desk code once the dict became a class. UrgentTicket writes one method; is_overdue never asks which kind of ticket it was given.</p>
-    <div class="cv" data-file="03_ticket_class.py" data-lang="python"><pre class="cv-raw">class UrgentTicket(Ticket):
-    &quot;&quot;&quot;A ticket that gets half the usual time.&quot;&quot;&quot;
-
-    def deadline(self):
-        return self.opened_at + (super().deadline() - self.opened_at) / 2
-
-
-def is_overdue(ticket, now=NOW):
-    &quot;&quot;&quot;Return True when the ticket is past its deadline.&quot;&quot;&quot;
-    return now &gt; ticket.deadline()</pre></div>
-    <p class="cv-foot">super().deadline() is the SLA deadline from Ticket. Subtracting opened_at gives the window as a timedelta, and a timedelta can be divided by a number.</p>
-  </div>
-</div>
-
-<!-- code popup: an excerpt of the Desk answer key -->
-<div id="code-w01d5-desk" class="modal-overlay" hidden>
-  <div class="modal-card code-modal">
-    <button class="modal-close" type="button" aria-label="Close">✕</button>
-    <h2>Answer key excerpt: 04_desk_object.py</h2>
-    <p class="cv-cap">From the ticket-desk code's final state. One class attribute, one instance attribute, and the two special methods that make len() and for work.</p>
-    <div class="cv" data-file="04_desk_object.py" data-lang="python"><pre class="cv-raw">class Desk:
-    &quot;&quot;&quot;A desk owns its tickets and hands them out one at a time.&quot;&quot;&quot;
-
-    next_id = 1
-
-    def __init__(self):
-        self._tickets = []
-
-    def add(self, ticket):
-        self._tickets.append(ticket)
-        Desk.next_id = max(Desk.next_id, ticket.ticket_id + 1)
-
-    def __len__(self):
-        return len(self._tickets)
-
-    def __iter__(self):
-        return iter(self._tickets)
-
-    def overdue(self, now):
-        late = []
-        for t in self._tickets:
-            if is_overdue(t, now):
-                late.append(t)
-        return late</pre></div>
-    <p class="cv-foot">next_id sits in the class body, so every Desk shares it. _tickets is created in __init__, so each Desk has its own list.</p>
-  </div>
-</div>
-
 <script src="../../assets/js/diagram.js?v=20261015"></script>
 <script src="../../assets/js/scrolly.js?v=20261015"></script>
 <script src="../../assets/js/modals.js?v=20261015"></script>
 <script src="../../assets/js/quiz.js?v=20261015"></script>
 <script src="../../assets/js/widgets.js?v=20261015"></script>
 <script src="../../assets/js/glossary.js?v=20261015"></script>
-<script src="../../assets/js/codeviewer.js?v=20261015"></script>
 <script src="../../assets/js/survey.js?v=20261015"></script>
 </body>
 </html>

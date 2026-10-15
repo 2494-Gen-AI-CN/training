@@ -1,265 +1,176 @@
-"""Demo contract for every authored or live day (D-0030, D-0052; publish state stays on live/taught).
-
-A demo is a walkthrough script the trainer types (trainer/<rel>/demos/NN_<slug>.md) plus an answer key
-(trainer/<rel>/demos/key/NN_<slug>.py|.md). Answer keys are published to demos/<rel>/ only once the day
-carries `taught` in curriculum.json. demoFormat "none" days have no demos at all. demoFormat "loose" days (D-0050)
-publish whatever the trainer typed in the demo repo (harness/close_day.py); their authored scripts, when present, are
-only a fallback that still passes demo_check and is never published.
-"""
+"""Demo contract (D-0055): one walkthrough per demo block under trainer/week-WW/demos/, format-checked by
+harness/demo_check.py; the answer key is the demo repo at the block's commit on the week's prep branch, so
+nothing here reads keys. Weeks whose trainer folder does not exist (week 1, taught before D-0055) are skipped."""
 
 from __future__ import annotations
 
-import re
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-from helpers import HARNESS, ROOT, SECRET_RE, TRAINER, authored_days, live_days, load_json, metrics, public_demos, trainer_demos
+from helpers import HARNESS, SECRET_RE, TRAINER, authored_weeks, metrics, week_demos
 
 sys.path.insert(0, str(HARNESS))
 import demo_check  # noqa: E402
-import publish_demos  # noqa: E402
-
-CONFIG = load_json(HARNESS / "config.json")
-KEY_RE = re.compile(r"^\d{2}_")
 
 
 class DemoScriptTests(unittest.TestCase):
-    """Scripts + answer keys in the private repo; skipped per day when trainer/ is absent."""
+    """Every authored or live week with a demos folder passes the format check and carries no secret."""
 
-    def test_every_authored_day(self):
-        for w, d, rel in authored_days():  # D-0052: authored or live
-            with self.subTest(rel=rel):
-                if d["demoFormat"] == "none":
-                    self.assertFalse(trainer_demos(rel).exists(), "demoFormat none: no demo folder in trainer/")
-                    continue
-                if not TRAINER.exists():
-                    continue
-                ddir = trainer_demos(rel)
-                if d["demoFormat"] == "loose" and not ddir.is_dir():
-                    continue  # D-0050: a loose day's fallback scripts are optional
-                self.assertTrue(ddir.is_dir(), f"missing {ddir}")
-                problems = demo_check.check_dir(ddir, metrics()["demos"])
-                self.assertEqual([], problems, "\n".join(problems))
-                key_dir = ddir / "key"
-                keys = sorted(p for p in key_dir.iterdir() if p.is_file() and KEY_RE.match(p.name))
-                if d["demoFormat"] == "nb":
-                    self.assertTrue(any(p.suffix == ".ipynb" for p in keys), "nb day needs at least one notebook key")
-                for p in list(keys) + sorted(ddir.glob("*.md")):
-                    self.assertIsNone(SECRET_RE.search(p.read_text(encoding="utf-8")), f"secret-looking string in {p.name}")
-                for p in keys:
-                    if p.suffix == ".ipynb":
-                        try:
-                            import nbformat
-                        except ImportError:
-                            self.skipTest("nbformat not installed (pip install -r requirements-dev.txt)")
-                        nb = nbformat.read(str(p), as_version=4)
-                        nbformat.validate(nb)
-                        for c in nb.cells:
-                            if c.cell_type == "code":
-                                self.assertFalse(c.get("outputs"), f"{p.name} has stored outputs — clear them")
-                env = key_dir / ".env.example"
-                if env.exists():
-                    for line in env.read_text(encoding="utf-8").splitlines():
-                        if "=" in line and not line.startswith("#"):
-                            self.assertFalse(line.split("=", 1)[1].strip(), f".env.example must not contain values: {line}")
-
-
-class ThreadChainTests(unittest.TestCase):
-    """Every authored or live rung's `Starts from` key exists and its surviving lines are still in the rung's key, so
-    re-authoring an earlier day fails the later ones loudly instead of silently staling them (A7, A12; D-0052)."""
-
-    def test_every_authored_rung_chains(self):
+    def test_every_authored_week(self):
         if not TRAINER.exists():
             self.skipTest("trainer/ private repo not cloned here")
-        seen = 0
-        for w, d, rel in authored_days():
-            if d["demoFormat"] == "none":
-                continue
-            ddir = trainer_demos(rel)
-            if d["demoFormat"] == "loose" and not ddir.is_dir():
-                continue  # D-0050: no fallback scripts for this loose day
-            for script in sorted(ddir.glob("*.md")):
-                if not KEY_RE.match(script.name):
-                    continue
-                with self.subTest(script=f"{rel}/{script.name}"):
-                    hdr = demo_check._header(script.read_text(encoding="utf-8"))
-                    self.assertIn("Thread", hdr, "header needs '- Thread:'")
-                    self.assertIn("Starts from", hdr, "header needs '- Starts from:'")
-                    starts = hdr["Starts from"]
-                    if starts == "cold":
-                        continue
-                    seen += 1
-                    start = ROOT / starts
-                    self.assertTrue(start.is_file(), f"Starts from key {starts} missing")
-                    key = ddir / "key" / Path(hdr["Answer key"]).name
-                    if start.suffix == ".py" and key.suffix == ".py":
-                        surviving = demo_check.carried_lines(start) - demo_check.script_replaced_lines(script.read_text(encoding="utf-8"))
-                        klines = set(demo_check._lines(key.read_text(encoding="utf-8")))
-                        self.assertEqual(set(), surviving - klines, f"{key.name} lost carried lines from {starts}")
-        self.assertGreaterEqual(seen, 1, "at least one live rung should start from an earlier rung (W1D2 demo 3)")
-
-
-class PublishStateTests(unittest.TestCase):
-    """Public demos/<rel>/ exists iff the day is taught, and mirrors key/ when the private repo is present."""
-
-    def test_every_live_day(self):
-        for w, d, rel in live_days():
-            with self.subTest(rel=rel):
-                problems = publish_demos.check(d, rel, CONFIG)
+        for w in authored_weeks():
+            ddir = week_demos(w["dir"])
+            with self.subTest(week=w["dir"]):
+                if not ddir.is_dir():
+                    continue  # pre-D-0055 week (per-day demo folders) or a week with no code demo at all
+                problems = demo_check.check_dir(ddir, metrics()["demos"])
                 self.assertEqual([], problems, "\n".join(problems))
-                if d.get("taught") and d["demoFormat"] != "none":
-                    pub = public_demos(rel)
-                    readme = (pub / "README.md").read_text(encoding="utf-8")
-                    if d["demoFormat"] == "loose":  # D-0050: any filename the trainer typed, subfolders included
-                        files = [(f.relative_to(pub).as_posix(), f) for f in publish_demos.bi.published_files(pub)]
-                    else:
-                        files = [(f.name, f) for f in pub.iterdir() if f.is_file() and KEY_RE.match(f.name)]
-                    for name, f in files:
-                        self.assertIn(name, readme, f"published README does not list {name}")
-                        self.assertIsNone(SECRET_RE.search(f.read_text(encoding="utf-8", errors="replace")), f"secret-looking string in {name}")
+                for p in sorted(ddir.glob("*.md")):
+                    self.assertIsNone(SECRET_RE.search(p.read_text(encoding="utf-8")), f"secret-looking string in {p.name}")
+
+    def test_blocks_chain_in_order(self):
+        """Every non-cold block starts from the walkthrough right before it in the folder (one thread per week so far)."""
+        if not TRAINER.exists():
+            self.skipTest("trainer/ private repo not cloned here")
+        for w in authored_weeks():
+            ddir = week_demos(w["dir"])
+            if not ddir.is_dir():
+                continue
+            names = [f.stem for f in demo_check.walkthroughs(ddir)]
+            for i, f in enumerate(demo_check.walkthroughs(ddir)):
+                facts = demo_check.header_facts(f)
+                with self.subTest(file=f"{w['dir']}/{f.name}"):
+                    self.assertIsNotNone(facts["thread"], "Thread line malformed")
+                    if facts["startsFrom"] != "cold":
+                        self.assertIn(facts["startsFrom"], names[:i], f"starts from {facts['startsFrom']}, which is not an earlier walkthrough of the week")
 
 
 class DemoCheckSelfTests(unittest.TestCase):
-    """harness/demo_check.py itself: the template passes once filled; the both-ways check catches drift."""
+    """harness/demo_check.py itself: the template passes once filled; each rule fails once."""
 
-    M = {"scriptsMin": 1, "scriptsMax": 5, "minutesPerScriptMin": 15, "minutesPerScriptMax": 45, "maxLinesPerFile": 90,
-         "maxLinesPerThreadKey": 200, "maxTypedLinesPerRung": 60}
+    M = {"blocksPerDayMin": 0, "blocksPerDayMax": 2, "minutesPerBlockMin": 20, "minutesPerBlockMax": 180,
+         "stepsPerBlockMin": 2, "stepsPerBlockMax": 12, "maxTypedLinesPerBlock": 250}
 
-    def _fixture(self, tmp: Path, key_lines: str, script_blocks: str, key_name: str = "01_demo.py", extra_sections: str = "",
-                 thread: str = "standalone", starts: str = "cold"):
-        (tmp / "key").mkdir(exist_ok=True)
-        (tmp / "key" / key_name).write_text(key_lines, encoding="utf-8")
-        (tmp / "key" / "README.md").write_text(f"| 1 | `{key_name}` | x | run | no |\n", encoding="utf-8")
-        script = (
-            "# 01 — Demo\n\n"
-            "- Objective: do a thing\n- Time: 20 min\n- Before the room arrives: terminal open\n- Delivery mode: typed\n"
-            "- Audience: grads\n- Prerequisite reading: none\n"
-            f"- Answer key: key/{key_name}\n- Hand-typed files: {key_name}\n- Tool-generated files: none\n"
-            f"- Thread: {thread}\n- Starts from: {starts}\n\n"
-            + script_blocks
-            + "\n## Common pitfalls\n\n| a | b |\n\n## What we did NOT cover (intentional)\n\n- x: deferred to later. It is not needed today.\n\n## Wrap-up questions\n\n1. q\n\n## Sequence pointer\n\nnext\n"
-            + extra_sections
-        )
-        (tmp / "01_demo.md").write_text(script, encoding="utf-8")
+    HEAD = ("# Demo: A thing (`p0-demo` -> `01-thing`)\n\n"
+            "> **Objective:** do a thing\n> that spans two lines.\n>\n> **Time:** 20 min (AM block)\n"
+            "> **Audience:** grads\n> **Prerequisite reading:** none\n"
+            "> **Thread:** `p0-demo` — commit `Add the thing`, starts cold\n\n"
+            "Extends nothing.\n\n### Stub manifest\n- None.\n\n---\n\n")
+    CHEAT = "## Presenter cheat-sheet\n\n| # | Step | File touched |\n|---|---|---|\n| 1 | set | `x.py` |\n| 2 | commit | Terminal |\n\n"
+    STEPS = ("## Step 1 — set (10 min)\n\ncwd: `s/`\n\n```python\nx = 1\n```\n\n### Talking points while typing\n\n- x\n\n"
+             "## Step 2 — commit (10 min)\n\ncwd: `s/`\n\n```bash\ngit add .\ngit commit -m \"Add the thing\"\n```\n\n")
+    TAIL = ("## Common pitfalls (call these out proactively)\n\n1. **a.** b\n\n## What we did NOT cover (intentional)\n\n"
+            "- x: deferred to later. It is not needed today.\n\n## End-of-demo wrap-up\n\n1. q\n\n## Sequence pointer\n\nnext\n")
 
-    def test_py_key_both_ways(self):
+    def _write(self, tmp: Path, text: str, name: str = "01-thing.md") -> Path:
+        (tmp / "README.md").write_text("# index\n", encoding="utf-8")
+        f = tmp / name
+        f.write_text(text, encoding="utf-8")
+        return f
+
+    def test_good_walkthrough_passes(self):
         with tempfile.TemporaryDirectory() as t:
             tmp = Path(t)
-            self._fixture(tmp, 'x = 1\nprint(x)\n',
-                          "## Step 1 — set (10 min)\n\ncwd: `s/`\n\n```python\nx = 1\n```\n\n## Step 2 — print (10 min)\n\ncwd: `s/`\n\n```python\nprint(x)\n```\n")
+            self._write(tmp, self.HEAD + self.CHEAT + self.STEPS + self.TAIL)
             self.assertEqual([], demo_check.check_dir(tmp, self.M))
-            # a key line never typed in the script fails; a typed line missing from the key fails
-            (tmp / "key" / "01_demo.py").write_text('x = 1\nprint(x)\ny = 2\n', encoding="utf-8")
-            probs = demo_check.check_dir(tmp, self.M)
-            self.assertTrue(any("never typed" in p for p in probs), probs)
-            (tmp / "key" / "01_demo.py").write_text('x = 1\n', encoding="utf-8")
-            probs = demo_check.check_dir(tmp, self.M)
-            self.assertTrue(any("not in the answer key" in p for p in probs), probs)
+            facts = demo_check.header_facts(tmp / "01-thing.md")
+            self.assertEqual(("01-thing", 20, "p0-demo", "Add the thing", "cold", 2),
+                             (facts["name"], facts["time"], facts["thread"], facts["commit"], facts["startsFrom"], facts["steps"]))
+            self.assertEqual("do a thing that spans two lines.", facts["objective"])
 
-    def test_transcript_key_sequence(self):
+    def test_each_rule_fails_once(self):
+        cases = {
+            "title": (self.HEAD.replace("`01-thing`", "`02-thing`"), "title names"),
+            "field": (self.HEAD.replace("> **Audience:** grads\n", ""), "'> **Audience:**' missing"),
+            "time": (self.HEAD.replace("20 min (AM block)", "about 20 minutes"), "must start with 'N min'"),
+            "band": (self.HEAD.replace("20 min (AM block)", "10 min"), "outside 20..180"),
+            "sum": (self.HEAD.replace("20 min (AM block)", "30 min"), "step minutes sum to 20"),
+            "thread": (self.HEAD.replace("`p0-demo` — commit `Add the thing`, starts cold", "p0-demo, cold"), "Thread must read"),
+            "title-thread": (self.HEAD.replace("(`p0-demo` ->", "(`other` ->"), "differs from the Thread field"),
+            "commit": (self.HEAD.replace("commit `Add the thing`", "commit `Other message`"), "git commit -m \"Other message\""),
+        }
+        for label, (head, needle) in cases.items():
+            with self.subTest(rule=label), tempfile.TemporaryDirectory() as t:
+                tmp = Path(t)
+                self._write(tmp, head + self.CHEAT + self.STEPS + self.TAIL)
+                probs = demo_check.check_dir(tmp, self.M)
+                self.assertTrue(any(needle in p for p in probs), f"{label}: {probs}")
+        body_cases = {
+            "cheat-rows": (self.CHEAT.replace("| 2 | commit | Terminal |\n", ""), self.STEPS, "cheat-sheet rows"),
+            "cheat-missing": ("", self.STEPS, "missing section '## Presenter cheat-sheet'"),
+            "numbering": (self.CHEAT, self.STEPS.replace("## Step 2", "## Step 3"), "numbered 1..n"),
+            "cwd": (self.CHEAT, self.STEPS.replace("cwd: `s/`\n\n```python", "```python"), "no 'cwd:' line"),
+            "steps-band": (self.CHEAT.replace("| 2 | commit | Terminal |\n", ""), self.STEPS.split("## Step 2")[0].replace("(10 min)", "(20 min)"), "band is 2..12"),
+            "no-code-step": (self.CHEAT, self.STEPS.replace("## Step 1 — set (10 min)", "## Step 1 — set (10 min, no code)"), None),
+        }
+        for label, (cheat, steps, needle) in body_cases.items():
+            with self.subTest(rule=label), tempfile.TemporaryDirectory() as t:
+                tmp = Path(t)
+                self._write(tmp, self.HEAD + cheat + steps + self.TAIL)
+                probs = demo_check.check_dir(tmp, self.M)
+                if needle is None:
+                    self.assertEqual([], probs, probs)
+                else:
+                    self.assertTrue(any(needle in p for p in probs), f"{label}: {probs}")
         with tempfile.TemporaryDirectory() as t:
             tmp = Path(t)
-            self._fixture(tmp, "```console\n$ git init\nInitialized empty Git repository\n$ git status\nOn branch main\n```\n",
-                          "## Step 1 — init (10 min)\n\ncwd: `s/`\n\n```bash\n# start here\ngit init\n```\n\n## Step 2 — status (10 min)\n\ncwd: `s/`\n\n```bash\ngit status\n```\n",
-                          key_name="01_demo.md")
+            self._write(tmp, self.HEAD + self.CHEAT + self.STEPS + self.TAIL.replace("## End-of-demo wrap-up", "## Wrap-up questions"))
+            probs = demo_check.check_dir(tmp, self.M)
+            self.assertTrue(any("missing section '## End-of-demo wrap-up'" in p for p in probs), probs)
+            self._write(tmp, self.HEAD + self.CHEAT + self.STEPS + self.TAIL.replace("- x: deferred to later.", "- x — deferred to later;"))
+            probs = demo_check.check_dir(tmp, self.M)
+            self.assertTrue(any("NOT cover" in p for p in probs), probs)
+            probs = demo_check.check_dir(tmp, {**self.M, "maxTypedLinesPerBlock": 1})
+            self.assertTrue(any("maxTypedLinesPerBlock" in p for p in probs), probs)
+            (tmp / "README.md").unlink()
+            probs = demo_check.check_dir(tmp, self.M)
+            self.assertTrue(any("README.md missing" in p for p in probs), probs)
+
+    def test_folder_numbering_and_standalone(self):
+        with tempfile.TemporaryDirectory() as t:
+            tmp = Path(t)
+            self._write(tmp, self.HEAD + self.CHEAT + self.STEPS + self.TAIL)
+            second = (self.HEAD.replace("`01-thing`", "`03-other`").replace("(`p0-demo` ->", "(`standalone` ->")
+                      .replace("> **Thread:** `p0-demo` — commit `Add the thing`, starts cold", "> **Thread:** standalone — starts cold"))
+            steps = self.STEPS.replace("## Step 2 — commit (10 min)\n\ncwd: `s/`\n\n```bash\ngit add .\ngit commit -m \"Add the thing\"\n```\n\n",
+                                       "## Step 2 — talk (10 min, no code)\n\nwords\n\n")
+            self._write(tmp, second + self.CHEAT + steps + self.TAIL, name="03-other.md")
+            probs = demo_check.check_dir(tmp, self.M)
+            self.assertTrue(any("numbered 01..NN" in p for p in probs), probs)
+            self.assertFalse(any("03-other.md" in p for p in probs), f"a standalone block owes no commit: {probs}")
+            self.assertEqual(("standalone", "", "cold"), demo_check.thread_info(demo_check._header((tmp / "03-other.md").read_text(encoding="utf-8"))))
+
+    def test_delivery_record_is_ignored_by_the_header_parser(self):
+        text = self.HEAD.replace("Extends nothing.", "> **DELIVERY RECORD (2026-10-19)** Taught in full; classroom commit abc1234.\n> Steps 1-2 taught.\n\nExtends nothing.")
+        hdr = demo_check._header(text)
+        self.assertEqual("grads", hdr["Audience"])
+        self.assertNotIn("DELIVERY RECORD (2026-10-19)", hdr)
+        self.assertEqual(["2026-10-19"], demo_check.delivery_dates(text))
+        with tempfile.TemporaryDirectory() as t:
+            tmp = Path(t)
+            self._write(tmp, text + self.CHEAT + self.STEPS + self.TAIL)
             self.assertEqual([], demo_check.check_dir(tmp, self.M))
-            (tmp / "key" / "01_demo.md").write_text("```console\n$ git init\n$ git log\n```\n", encoding="utf-8")
-            probs = demo_check.check_dir(tmp, self.M)
-            self.assertTrue(any("command sequences differ" in p for p in probs), probs)
-
-    START = "trainer/week-00/day-1-start/demos/key/01_start.py"
-    TWO_STEPS = ("## Step 1 — add (10 min)\n\ncwd: `ticket-desk/`\n\n```python\ny = 2\n```\n\n"
-                 "## Step 2 — print (10 min)\n\ncwd: `ticket-desk/`\n\n```python\nprint(y)\n```\n")
-
-    def _thread_root(self, root: Path) -> Path:
-        """A scratch repo root with a previous rung's .py key at START; returns this rung's demo dir."""
-        start = root / self.START
-        start.parent.mkdir(parents=True)
-        start.write_text("x = 1\nprint(x)\n", encoding="utf-8")
-        rung = root / "trainer/week-00/day-2-rung/demos"
-        rung.mkdir(parents=True)
-        return rung
-
-    def test_thread_rung_carries_lines_from_starts_from_key(self):
-        with tempfile.TemporaryDirectory() as t:
-            root = Path(t)
-            rung = self._thread_root(root)
-            # the key is the whole end state: carried lines + this rung's typed lines
-            self._fixture(rung, "x = 1\nprint(x)\ny = 2\nprint(y)\n", self.TWO_STEPS, thread="p0-demo", starts=self.START)
-            self.assertEqual([], demo_check.check_dir(rung, self.M, root=root))
-            # a carried line silently dropped from the key fails (chain breaks loudly)
-            (rung / "key" / "01_demo.py").write_text("x = 1\ny = 2\nprint(y)\n", encoding="utf-8")
-            probs = demo_check.check_dir(rung, self.M, root=root)
-            self.assertTrue(any("carried line" in p and "print(x)" in p for p in probs), probs)
-            # ... unless the rung shows it in a ```python replaced block
-            self._fixture(rung, "x = 1\ny = 2\nprint(y)\n",
-                          "## Step 1 — drop (10 min)\n\ncwd: `ticket-desk/`\n\n```python replaced\nprint(x)\n```\n\n```python\ny = 2\n```\n\n"
-                          "## Step 2 — print (10 min)\n\ncwd: `ticket-desk/`\n\n```python\nprint(y)\n```\n",
-                          thread="p0-demo", starts=self.START)
-            self.assertEqual([], demo_check.check_dir(rung, self.M, root=root))
-            # a replaced line that the start key never had fails
-            self._fixture(rung, "x = 1\nprint(x)\ny = 2\nprint(y)\n",
-                          "## Step 1 — bogus (10 min)\n\ncwd: `ticket-desk/`\n\n```python replaced\nz = 9\n```\n\n```python\ny = 2\n```\n\n"
-                          "## Step 2 — print (10 min)\n\ncwd: `ticket-desk/`\n\n```python\nprint(y)\n```\n",
-                          thread="p0-demo", starts=self.START)
-            probs = demo_check.check_dir(rung, self.M, root=root)
-            self.assertTrue(any("replaced line is not in the Starts from key" in p for p in probs), probs)
-            # a key line that is neither typed nor carried still fails
-            self._fixture(rung, "x = 1\nprint(x)\ny = 2\nprint(y)\nw = 0\n", self.TWO_STEPS, thread="p0-demo", starts=self.START)
-            probs = demo_check.check_dir(rung, self.M, root=root)
-            self.assertTrue(any("never typed" in p and "w = 0" in p for p in probs), probs)
-
-    def test_thread_header_rules(self):
-        with tempfile.TemporaryDirectory() as t:
-            root = Path(t)
-            rung = self._thread_root(root)
-            # a standalone demo must start cold
-            self._fixture(rung, "y = 2\nprint(y)\n", self.TWO_STEPS, thread="standalone", starts=self.START)
-            probs = demo_check.check_dir(rung, self.M, root=root)
-            self.assertTrue(any("must start cold" in p for p in probs), probs)
-            # a Starts from key that is not on disk fails (rungs are authored in ladder order)
-            self._fixture(rung, "y = 2\nprint(y)\n", self.TWO_STEPS, thread="p0-demo", starts="trainer/week-00/day-1-start/demos/key/02_missing.py")
-            probs = demo_check.check_dir(rung, self.M, root=root)
-            self.assertTrue(any("does not exist" in p for p in probs), probs)
-            # a transcript start carries nothing: the .py rung types its file from the first line
-            tstart = root / "trainer/week-00/day-1-start/demos/key/02_transcript.md"
-            tstart.write_text("```console\n$ git init\n```\n", encoding="utf-8")
-            self._fixture(rung, "y = 2\nprint(y)\n", self.TWO_STEPS, thread="p0-demo", starts="trainer/week-00/day-1-start/demos/key/02_transcript.md")
-            self.assertEqual([], demo_check.check_dir(rung, self.M, root=root))
-            # the typed-lines cap applies per rung
-            probs = demo_check.check_dir(rung, {**self.M, "maxTypedLinesPerRung": 1}, root=root)
-            self.assertTrue(any("maxTypedLinesPerRung" in p for p in probs), probs)
-            # thread keys get the larger cap, standalone keys the smaller one
-            probs = demo_check.check_dir(rung, {**self.M, "maxLinesPerFile": 1}, root=root)
-            self.assertEqual([], probs, probs)
-            probs = demo_check.check_dir(rung, {**self.M, "maxLinesPerThreadKey": 1}, root=root)
-            self.assertTrue(any("maxLinesPerThreadKey" in p for p in probs), probs)
-
-    def test_header_and_steps_enforced(self):
-        with tempfile.TemporaryDirectory() as t:
-            tmp = Path(t)
-            self._fixture(tmp, 'x = 1\n', "## Step 1 — only one (20 min)\n\n```python\nx = 1\n```\n")
-            probs = demo_check.check_dir(tmp, self.M)
-            self.assertTrue(any(">= 2" in p for p in probs), probs)
-            self.assertTrue(any("cwd" in p for p in probs), probs)
 
     def test_template_is_well_formed(self):
         text = (HARNESS / "templates" / "demo-script.md").read_text(encoding="utf-8")
+        hdr = demo_check._header(text)
         for f in demo_check.HEADER_FIELDS:
-            self.assertIn(f"- {f}:", text)
-        for s in demo_check.REQUIRED_SECTIONS:
+            self.assertIn(f, hdr)
+        for s in [demo_check.CHEAT_HEAD] + demo_check.REQUIRED_SECTIONS:
             self.assertIn(s, text)
         steps = demo_check._steps(text)
-        self.assertEqual([1, 2, 3], [s[0] for s in steps])
-        self.assertEqual(30, sum(s[1] for s in steps))
+        self.assertEqual([1, 2, 3, 4, 5], [s[0] for s in steps])
+        self.assertEqual(demo_check.time_minutes(hdr), sum(s[1] for s in steps))
+        self.assertEqual([1, 2, 3, 4, 5], demo_check.cheat_rows(text))
         self.assertEqual([], demo_check.not_covered_problems(text), "the template's own bullet follows the one format")
 
     def test_not_covered_bullets_take_one_format(self):
         """D-0039: '- <topic>: <where it goes>. <reason>.' on every script, no dash between topic and note."""
         head = "## What we did NOT cover (intentional)\n\n"
-        tail = "\n\n## Wrap-up questions\n\n- not a bullet of that section — ignored\n"
+        tail = "\n\n## End-of-demo wrap-up\n\n- not a bullet of that section — ignored\n"
         good = [
             "- Lists and tuples: deferred to Thursday (w01d4). The ticket stays six flat variables.",
             '- `if __name__ == "__main__":` around the script body: deferred to week 2 day 1, when the file splits into modules.',
@@ -274,47 +185,6 @@ class DemoCheckSelfTests(unittest.TestCase):
         ):
             with self.subTest(bullet=bad):
                 self.assertEqual([bad], demo_check.not_covered_problems(head + bad + tail))
-        with tempfile.TemporaryDirectory() as t:
-            tmp = Path(t)
-            self._fixture(tmp, 'x = 1\nprint(x)\n',
-                          "## Step 1 — set (10 min)\n\ncwd: `s/`\n\n```python\nx = 1\n```\n\n## Step 2 — print (10 min)\n\ncwd: `s/`\n\n```python\nprint(x)\n```\n")
-            self.assertEqual([], demo_check.check_dir(tmp, self.M))
-            script = tmp / "01_demo.md"
-            script.write_text(script.read_text(encoding="utf-8").replace("- x: deferred to later. It is not needed today.", "- x — deferred to later because it is not needed today."), encoding="utf-8")
-            probs = demo_check.check_dir(tmp, self.M)
-            self.assertTrue(any("NOT cover" in p for p in probs), probs)
-
-
-class FlipCardTests(unittest.TestCase):
-    def test_exemplar_card_flips(self):
-        html = (HARNESS / "templates" / "day.exemplar.html").read_text(encoding="utf-8")
-        self.assertIn(publish_demos.CARD_PENDING, html)
-        out = publish_demos.flip_card(html, CONFIG["repoUrl"], "main", "week-00/day-0-example", ["01_a.py", "02_b.md"])
-        self.assertIn('data-demo="published"', out)
-        self.assertIn("/demos/week-00/day-0-example/01_a.py", out)
-        self.assertIn("/demos/week-00/day-0-example/02_b.md", out)
-        self.assertNotIn(publish_demos.PENDING_TEXT, out)
-        self.assertIn(publish_demos.PUBLISHED_META, out)
-
-    def test_loose_card_variants(self):
-        """D-0050: a loose day's card links any typed file (subfolders too), or says there was no code demo."""
-        html = (HARNESS / "templates" / "day.exemplar.html").read_text(encoding="utf-8")
-        rel = "week-00/day-0-example"
-        out = publish_demos.flip_card(html, CONFIG["repoUrl"], "main", rel, ["hello.py", "notes/scratch.py"], meta=publish_demos.LOOSE_META)
-        self.assertIn(publish_demos.CARD_PUBLISHED, out)
-        self.assertIn(f"/demos/{rel}/hello.py", out)
-        self.assertIn(f"/demos/{rel}/notes/scratch.py", out)
-        self.assertIn(publish_demos.LOOSE_META, out)
-        self.assertNotIn(publish_demos.PENDING_TEXT, out)
-        out = publish_demos.flip_card_none(html)
-        self.assertIn(publish_demos.CARD_NONE, out)
-        self.assertIn(publish_demos.NONE_TEXT, out)
-        self.assertNotIn(publish_demos.CARD_PENDING, out)
-        start = out.index(publish_demos.CARD_NONE)
-        card = out[start:out.index(publish_demos.NONE_META, start) + len(publish_demos.NONE_META)]
-        self.assertNotIn("<a ", card)
-        with self.assertRaises(ValueError):
-            publish_demos.flip_card_none(out)
 
 
 if __name__ == "__main__":

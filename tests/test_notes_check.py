@@ -42,7 +42,6 @@ class CountTests(unittest.TestCase):
         self.assertEqual(6, c["sources"])
         self.assertEqual("2026-01-01", c["sourcesChecked"])
         self.assertEqual(35, c["declaredMinutes"])
-        self.assertEqual(1, c["popups"])
 
     def test_words_skip_code_sources_and_citation_markers(self):
         base = self.c["words"]
@@ -65,7 +64,7 @@ class CountTests(unittest.TestCase):
                                  ("interview", [0, 1, 1, 1, 1], "callout.interview"), ("checkDetails", 2, "details.check"),
                                  ("codeBlocks", 1, "code blocks"), ("citations", [0, 2, 2, 2, 2], "citations"), ("quizQ", 5, "quiz"),
                                  ("sources", 2, "sources"), ("declaredMinutes", 10, "min"), ("sourcesChecked", None, "Sources checked"),
-                                 ("popups", 3, "popups"), ("steps", 11, "steps")]:
+                                 ("steps", 11, "steps")]:
             with self.subTest(bar=key):
                 self.assertTrue(any(needle in x for x in notes_check.count_findings(dict(ok, **{key: bad}), m)), key)
 

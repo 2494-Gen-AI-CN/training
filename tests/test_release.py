@@ -170,10 +170,10 @@ class ReleaseWeekTests(unittest.TestCase):
         self.assertIn(f"last-tests.json ({PAGE_DAY}T13:00:00) predates the newest authored page ({page}, {PAGE_DAY}T14:00:00)", out)
 
     def test_past_unclosable_day_does_not_block(self):
-        """close_day.py closes loose days only (O-18 adds py / nb): a past py day without delivery.json is no reason."""
+        """close_day.py refuses a demoFormat none day (nothing to close): a past none day without delivery.json is no reason."""
         d = next(x for x in build_index.teaching_days(self.w1)
                  if build_index.slot_date(self.cur, 1, x["day"]) < dt.date.fromisoformat(TODAY))
-        d["demoFormat"] = "py"
+        d["demoFormat"] = "none"
         self._write_cur()
         (self.root / "trainer" / self._rel(self.w1, d) / "delivery.json").unlink()
         code, out = self._run("--check")

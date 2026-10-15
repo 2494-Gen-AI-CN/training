@@ -13,8 +13,10 @@ one step that makes a week visible. It refuses, naming every reason on its own l
   d. harness/last-tests.json exists, its last contract test run is green, and it is not older than the newest
      authored page of the week (its `at` timestamp against the page mtime; its `date` when `at` is absent);
   e. every teaching day dated strictly before --today, in every week whose Monday is on or before --today, that
-     harness/close_day.py can close (demoFormat loose) is closed: trainer/<rel>/delivery.json exists (D-0050).
-     --today itself is not due yet.
+     harness/close_day.py can close (every demoFormat but none) is closed: trainer/<rel>/delivery.json exists
+     (D-0050, D-0055). --today itself is not due yet;
+  f. when trainer/week-WW/demos/ exists (the week's walkthroughs, D-0055), every walkthrough passes
+     harness/demo_check.py and the series README is fresh (harness/series_readme.py --check).
 
 When every day of the week is already live there is nothing to release (exit 0). Otherwise, with every check
 passing, it renders the new index block and validates the run record, and only then sets status live on each
@@ -38,9 +40,8 @@ import build_index as bi  # noqa: E402
 
 ROOT = bi.ROOT
 RECORDED = ("authored", "live")
-# The demoFormats harness/close_day.py closes today (its locate() refuses every other format).
-# O-18 (the thread-day rung close, week 3) widens this to py / nb.
-CLOSABLE_FORMATS = ("loose",)
+# The demoFormats harness/close_day.py closes (its locate() refuses `none`: nothing to close that day).
+CLOSABLE_FORMATS = ("walkthrough",)
 NOTES_PHASES = {"counts", "phrases", "stamps", "citations"}
 
 
@@ -82,6 +83,30 @@ def plan_problems(week_no: int, root: Path = ROOT) -> list[str]:
     import plan_check  # late import: it loads demo_check
     metrics = json.loads((root / "harness" / "metrics.json").read_text(encoding="utf-8"))["demos"]
     return plan_check.check_plan(plan_file(week_no, root), metrics, root=root)
+
+
+def demo_reasons(wk: dict, root: Path = ROOT) -> list[str]:
+    """Reasons from the week's walkthrough folder when it exists (D-0055): demo_check problems and a stale README."""
+    ddir = root / "trainer" / wk["dir"] / "demos"
+    if not ddir.is_dir():
+        return []
+    import demo_check  # late imports: both load the curriculum
+    import series_readme
+    out = [f"trainer/{wk['dir']}/demos: {x}" for x in demo_check.check_dir(ddir)]
+    out += [f"series README: {x}" for x in series_readme.check(wk["week"], root)]
+    return out
+
+
+def demo_reasons(wk: dict, root: Path = ROOT) -> list[str]:
+    """Reasons from the week's walkthrough folder when it exists (D-0055): demo_check problems and a stale README."""
+    ddir = root / "trainer" / wk["dir"] / "demos"
+    if not ddir.is_dir():
+        return []
+    import demo_check  # late imports: both load the curriculum
+    import series_readme
+    out = [f"trainer/{wk['dir']}/demos: {x}" for x in demo_check.check_dir(ddir)]
+    out += [f"series README: {x}" for x in series_readme.check(wk["week"], root)]
+    return out
 
 
 def plan_reason(week_no: int, root: Path, problems: list[str]) -> str | None:
@@ -187,6 +212,8 @@ def gate(week_no: int, today: dt.date, cur: dict, root: Path = ROOT) -> dict:
     pr = plan_reason(week_no, root, plan_problems(week_no, root))
     if pr:
         reasons.append(pr)
+    reasons += demo_reasons(wk, root)
+    reasons += demo_reasons(wk, root)
     for d in teaching:
         if d.get("status") not in RECORDED:
             reasons.append(f"{d['id']} is {d.get('status')} (not authored)")

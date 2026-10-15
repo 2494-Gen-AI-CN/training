@@ -50,15 +50,15 @@
     "handIn": "commit and push to main; the trainer reads the day's folder in the trainee's repository"
   },
   "demoRepo": {
-    "_comment": "The trainer's live demo repository (D-0050): a PUBLIC GitHub repo separate from this one, cloned at localDir (gitignored, like trainer/). Loose days (demoFormat loose) are typed under layout.loose; thread code from week 3 lives under threads.<id>.repoDir. harness/close_day.py reads it to close a day. Replaces the team-repo wording of D-0033 and D-0037. Change via a decision entry.",
+    "_comment": "The trainer's live demo repository (D-0050, D-0055): a PUBLIC GitHub repo separate from this one, cloned at localDir (gitignored, like trainer/). The trainer types live on branch (and the week plan's feature branches); harness/workflows/demo-series.js authors each week's blocks as one commit per block on prepBranch (WW = zero-padded week number), which is the answer key of every walkthrough; harness/close_day.py diffs the day's live commits against those prep commits to close a day. Thread code lives under threads.<id>.repoDir. Change via a decision entry.",
     "org": "2494-Gen-AI-CN",
     "name": "demos",
     "url": "https://github.com/2494-Gen-AI-CN/demos",
     "branch": "main",
     "localDir": "demo-repo",
+    "prepBranch": "prep/week-{WW}",
     "layout": {
-      "loose": "<week-dir>/<day-slug>/ (the day's rel, the same path as everywhere else); any filenames",
-      "thread": "<threads.<id>.repoDir>/ at the top level, e.g. ticket-desk/ticket_desk.py, one commit per rung"
+      "thread": "<threads.<id>.repoDir>/ at the top level, e.g. ticket-desk/ticket_desk.py, one commit per block on the prep branch; the trainer's live commits on main follow the same ladder"
     }
   },
   "llm": {
@@ -80,13 +80,14 @@
     "rule": "Model ids are resolved in the research brief from current docs, never from memory."
   },
   "models": {
-    "_comment": "Per-stage model and effort for harness/workflows/day-fanout.js, week-plan.js and practice-tasks.js (D-0026, D-0032, D-0040, D-0047). model: sonnet | haiku | opus; effort: low | medium | high | xhigh | max. Every stage is pinned: no stage inherits the session model (D-0040), and tests/test_notes_mode.py fails a null. A repass numbered >= escalateOn uses escalate instead of the stage tier, so a cheap first pass that fails its critic is retried on the strong tier. notes-critic judges the notes page; notes-verify-light runs harness/notes_check.py (links, stamps, citations) on every day; notes-verify-full adds WebFetch claim currency on full-gate and currency-flagged days. practice-suitability proposes practice tasks for an authored page and practice builds the approved ones (D-0047); their critic, verify and record agents use critic, verify and wire. series-review is the one critic that reads a multi-day run's demo scripts as a series at the end of the Demos phase, flags only (D-0053).",
+    "_comment": "Per-stage model and effort for harness/workflows/day-fanout.js, demo-series.js, week-plan.js and practice-tasks.js (D-0026, D-0032, D-0040, D-0047, D-0055). model: sonnet | haiku | opus; effort: low | medium | high | xhigh | max. Every stage is pinned: no stage inherits the session model (D-0040), and tests/test_notes_mode.py fails a null. A repass numbered >= escalateOn uses escalate instead of the stage tier, so a cheap first pass that fails its critic is retried on the strong tier. notes-critic judges the notes page; notes-verify-light runs harness/notes_check.py (links, stamps, citations) on every day; notes-verify-full adds WebFetch claim currency on full-gate and currency-flagged days. practice-suitability proposes practice tasks for an authored page and practice builds the approved ones (D-0047); their critic, verify and record agents use critic, verify and wire. demos authors one walkthrough block and demos-critic judges it against harness/critics/demos.md (D-0055); series-review is the one critic that reads a demo-series run's walkthroughs as a series at the end, flags only (D-0053).",
     "escalateOn": 2,
     "escalate": { "model": "opus", "effort": "high" },
     "stages": {
       "research-light": { "model": "sonnet", "effort": "medium" },
       "research-full": { "model": "opus", "effort": "high" },
       "demos": { "model": "sonnet", "effort": "medium" },
+      "demos-critic": { "model": "opus", "effort": "medium" },
       "notes": { "model": "opus", "effort": "high" },
       "notes-critic": { "model": "opus", "effort": "medium" },
       "notes-verify-light": { "model": "haiku", "effort": "low" },
@@ -106,7 +107,7 @@
     }
   },
   "threads": {
-    "_comment": "Demo threads (D-0033, D-0034, D-0050): one demo codebase per project block that grows rung by rung across days and weeks. repoDir and file name where the thread lives inside demoRepo (one commit per rung, the rung-diff close reads it from week 3). args_for.py --plan passes the threads whose week range covers the week; the week-plan author may not invent a thread. Add P1/P2 threads via a decision entry before their first week is planned.",
+    "_comment": "Demo threads (D-0033, D-0034, D-0050, D-0055): one demo codebase per project block that grows block by block across days and weeks (a block = one walkthrough = one commit on the week's prep branch). repoDir and file name where the thread lives inside demoRepo. args_for.py --plan passes the threads whose week range covers the week; the week-plan author may not invent a thread. Add P1/P2 threads via a decision entry before their first week is planned.",
     "p0-ticket-desk": {
       "domain": "A support-ticket desk for a small software team: tickets with a title, priority, status and history, filed by customers and triaged by agents. Week 1 keeps tickets in Python variables, lists, dicts and classes; week 2 splits the desk into modules with logging, keeps tickets in JSON files with error handling, puts resolution hours in NumPy arrays tested with pytest, loads the tickets into a pandas DataFrame and draws a Matplotlib chart of tickets per status; week 3 moves tickets, customers and agents into MySQL tables with joins and transactions on assignment; week 4 loads ticket events into a BigQuery star schema through an ETL job; week 5 sends tickets to an LLM for triage, summaries and draft replies.",
       "project": "P0",

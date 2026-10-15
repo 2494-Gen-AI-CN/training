@@ -17,7 +17,7 @@
     <a class="topnav" href="../../index.html">Home</a>
   </div>
   <nav class="topbar-center">
-    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
     <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises" target="_blank" rel="noopener">Exercises</a>
   </nav>
   <div class="topbar-right">
@@ -415,7 +415,6 @@ print(not 1 == 2)</code></pre>
         Python reads the expression, and parentheses show the next reader what you meant. When an expression mixes
         <code>and</code> with <code>or</code>, or a minus sign with <code>**</code>, add the parentheses even where they
         change nothing.</p>
-        <button class="code-cta" type="button" data-modal="code-w01d3-rules"><span class="cc-ico">&lt;/&gt;</span> See the ticket rules computed for one ticket <span class="cc-meta">· 02_ticket_rules.py</span></button>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>Slash is true division and always returns a float. Double slash is floor division, and it floors toward
@@ -517,7 +516,6 @@ python ticket_desk.py 2&gt; err.txt</code></pre>
         Standard output is line-buffered at a terminal (written at every newline) and block-buffered otherwise (written
         when the buffer fills), so piped text can lag; <code>flush=True</code> on a <code>print</code> call writes it at
         once.<sup class="cite"><a href="#src-15">15</a></sup></p>
-        <button class="code-cta" type="button" data-modal="code-w01d3-intake"><span class="cc-ico">&lt;/&gt;</span> See the guarded intake and the aligned board <span class="cc-meta">· 03_desk_intake.py</span></button>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>input writes the prompt, reads one line, strips the newline and always gives me a str, so if I need a
@@ -599,13 +597,6 @@ assert is_open == False and reopen_count == 0 and priority == "high", "the three
       </div>
 
       <div class="side-cards">
-        <div class="activity-card demo-card" data-demo="published">
-          <div class="ac-k">⌨ Code-along files</div>
-          <div class="ac-t">
-            <a href="https://github.com/2494-Gen-AI-CN/training/tree/main/demos/week-01/day-3-python-basics/hello.py" target="_blank" rel="noopener">hello.py</a>
-          </div>
-          <div class="ac-meta">files typed live in the session · README lists them</div>
-        </div>
 
         <button class="activity-card accent" type="button" data-modal="quiz-modal">
           <div class="ac-k">✓ Comprehension check</div>
@@ -651,10 +642,6 @@ assert is_open == False and reopen_count == 0 and priority == "high", "the three
     <div class="ma-k">Today's exercise</div>
     <ul class="deliv-list check">
       <li><a href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-01/day-3-python-basics" target="_blank" rel="noopener">exercises/week-01/day-3-python-basics</a> — a pytest-checked module written to PEP 8 that builds a ticket summary line from given variables with the day's operators and f-string formats.</li>
-    </ul>
-    <div class="ma-k">Demos today</div>
-    <ul class="deliv-list">
-      <li>One live walk through the day's topics, built in front of the class and shaped by its questions; the files it produces are published in the demos folder afterwards</li>
     </ul>
     <p class="goals-foot">Thursday assumes these names and operators. Finish the check to unlock the next page.</p>
   </div>
@@ -729,54 +716,11 @@ window.QUIZ = {
 };
 </script>
 
-<!-- code popup: excerpt of the ticket-rules answer key -->
-<div id="code-w01d3-rules" class="modal-overlay" hidden>
-  <div class="modal-card code-modal">
-    <button class="modal-close" type="button" aria-label="Close">✕</button>
-    <h2>Answer key excerpt: 02_ticket_rules.py</h2>
-    <p class="cv-cap">The operators applied to one ticket: age, hours left, the breach flag, the priority check written out in full, a chained comparison and membership.</p>
-    <div class="cv" data-file="02_ticket_rules.py" data-lang="python"><pre class="cv-raw">age_days = hours_open // 24
-print(f&quot;exact days: {hours_open / 24}, whole days: {age_days}&quot;)
-hours_left = SLA_HOURS_HIGH - hours_open
-is_breached = is_open and hours_left &lt; 0
-print(f&quot;hours left: {hours_left}, breached: {is_breached}&quot;)
-
-priority_ok = priority == &quot;high&quot; or priority == &quot;normal&quot; or priority == &quot;low&quot;
-print(f&quot;priority ok: {priority_ok}&quot;)
-print(f&quot;under a day old: {0 &lt;= hours_open &lt; 24}&quot;)
-print(f&quot;still on time: {not is_breached}&quot;)
-mentions_login = &quot;Login&quot; in title
-print(f&quot;mentions login: {mentions_login}&quot;)</pre></div>
-    <p class="cv-foot">With hours_open = 5.5 and SLA_HOURS_HIGH = 4, hours_left is -1.5 and is_breached is True. The priority check repeats == for each value, so "low" passes only because it is listed.</p>
-  </div>
-</div>
-
-<!-- code popup: excerpt of the desk-intake answer key -->
-<div id="code-w01d3-intake" class="modal-overlay" hidden>
-  <div class="modal-card code-modal">
-    <button class="modal-close" type="button" aria-label="Close">✕</button>
-    <h2>Answer key excerpt: 03_desk_intake.py</h2>
-    <p class="cv-cap">The intake guard near the top of the file and the board at the bottom: prompts only at a terminal, aligned columns, and a warning on stderr.</p>
-    <div class="cv" data-file="03_desk_intake.py" data-lang="python"><pre class="cv-raw">import sys
-...
-if sys.stdin.isatty():
-    title = input(&quot;Title: &quot;)
-    priority = input(&quot;Priority (high, normal, low): &quot;)
-...
-print(&quot;Ticket&quot;, &quot;desk&quot;, &quot;board&quot;, sep=&quot;-&quot;, end=&quot; ready\n&quot;)
-print(f&quot;{&#x27;Title&#x27;:&lt;30}{&#x27;Priority&#x27;:&gt;8}{&#x27;Hours&#x27;:&gt;6}&quot;)
-print(f&quot;{title:&lt;30}{priority:&gt;8}{hours_open:&gt;6.1f}&quot;)
-print(f&quot;warning: ticket {ticket_id} breached={is_breached}&quot;, file=sys.stderr)</pre></div>
-    <p class="cv-foot">Piped input skips the two prompts and keeps the sample title and priority; 2&gt; err.txt catches the warning line on its own.</p>
-  </div>
-</div>
-
 <script src="../../assets/js/diagram.js?v=20261015"></script>
 <script src="../../assets/js/scrolly.js?v=20261015"></script>
 <script src="../../assets/js/modals.js?v=20261015"></script>
 <script src="../../assets/js/quiz.js?v=20261015"></script>
 <script src="../../assets/js/widgets.js?v=20261015"></script>
 <script src="../../assets/js/glossary.js?v=20261015"></script>
-<script src="../../assets/js/codeviewer.js?v=20261015"></script>
 </body>
 </html>

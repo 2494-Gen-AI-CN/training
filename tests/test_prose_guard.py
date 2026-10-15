@@ -174,30 +174,39 @@ class HtmlTests(unittest.TestCase):
 
 
 class WorkflowWiringTests(unittest.TestCase):
-    """Static: day-fanout.js humanizes the demo scripts and the runbook between author and critic (D-0039)."""
+    """Static: day-fanout.js humanizes the runbook and demo-series.js humanizes each walkthrough, between author and
+    critic (D-0039, D-0055)."""
 
     def setUp(self):
         self.src = (HARNESS / "workflows" / "day-fanout.js").read_text(encoding="utf-8")
+        self.series = (HARNESS / "workflows" / "demo-series.js").read_text(encoding="utf-8")
 
     def test_humanize_runs_after_each_author_and_before_its_critic(self):
         src = self.src
         self.assertEqual(1, src.count("const humanizeTrainer = "))
-        self.assertEqual(2, src.count("humanizeTrainer("), "one call for the scripts, one for the runbook")
-        demos = src[src.index("async function demosStage"):src.index("const humanize = ")]
-        self.assertLess(demos.index("You are the DEMO author"), demos.index("humanizeTrainer(d, 'demos'"))
-        self.assertLess(demos.index("humanizeTrainer(d, 'demos'"), demos.index("DEMOS CRITIC"))
+        self.assertEqual(1, src.count("humanizeTrainer("), "one call, for the runbook (the walkthroughs are humanized in demo-series.js)")
         runbook = src[src.index("const runbook = () =>"):src.index("// notes + exercise first")]
         self.assertLess(runbook.index("You are the RUNBOOK author"), runbook.index("humanizeTrainer(d, 'runbook'"))
         self.assertLess(runbook.index("humanizeTrainer(d, 'runbook'"), runbook.index("RUNBOOK CRITIC"))
+        series = self.series
+        self.assertEqual(1, series.count("const humanizeBlock = "))
+        block = series[series.index("async function blockStage"):series.index("phase('Blocks')")]
+        self.assertLess(block.index("You are the DEMO author"), block.index("humanizeBlock(b)"))
+        self.assertLess(block.index("humanizeBlock(b)"), block.index("DEMOS CRITIC"))
 
     def test_the_pass_is_guarded_and_on_the_humanize_tier(self):
-        body = self.src[self.src.index("const humanizeTrainer = "):self.src.index("async function materialsStage")]
-        for needle in ("humanizer:humanizer", "prose_guard.py snapshot", "prose_guard.py check", "demo_check.py", "...tier('humanize')", "-humanize`"):
+        body = self.src[self.src.index("const humanizeTrainer = "):self.src.index("function demoFacts")]
+        for needle in ("humanizer:humanizer", "prose_guard.py snapshot", "prose_guard.py check", "...tier('humanize')", "-humanize`"):
             self.assertIn(needle, body)
         self.assertRegex(body, r"contrast that corrects what the room really assumes", "the prompt keeps real spoken contrasts")
+        sbody = self.series[self.series.index("const humanizeBlock = "):self.series.index("async function blockStage")]
+        for needle in ("humanizer:humanizer", "prose_guard.py snapshot", "prose_guard.py check", "demo_check.py", "...tier('humanize')", ":humanize`"):
+            self.assertIn(needle, sbody)
+        self.assertRegex(sbody, r"contrast that corrects what the room really assumes")
 
     def test_authors_are_told_the_wording_rule(self):
-        self.assertEqual(2, self.src.count("Wording (D-0039)"), "the demo author and the runbook author both carry the wording line")
+        self.assertEqual(1, self.src.count("Wording (D-0039)"), "the runbook author carries the wording line")
+        self.assertEqual(1, self.series.count("Wording (D-0039)"), "the demo author carries the wording line")
         template = (HARNESS / "templates" / "demo-script.md").read_text(encoding="utf-8")
         self.assertIn("Wording (D-0039)", template)
         self.assertNotRegex(template, r"^- <topic[^\n]*—", "the not-covered bullet in the template has no dash")

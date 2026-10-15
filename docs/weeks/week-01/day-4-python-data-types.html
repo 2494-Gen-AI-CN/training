@@ -17,7 +17,7 @@
     <a class="topnav" href="../../index.html">Home</a>
   </div>
   <nav class="topbar-center">
-    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
     <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises" target="_blank" rel="noopener">Exercises</a>
   </nav>
   <div class="topbar-right">
@@ -519,7 +519,6 @@ print(list(ticket))</code></pre>
         ten.<sup class="cite"><a href="#src-20">20</a></sup> The
         same mechanism powers sets, which is why both need hashable members: if a key's hash could change after insertion,
         the table would look in the wrong slot.<sup class="cite"><a href="#src-24">24</a></sup></p>
-        <button class="code-cta" type="button" data-modal="code-w01d4-dict"><span class="cc-ico">&lt;/&gt;</span> See the ticket record as the desk code builds it <span class="cc-meta">· 03_ticket_dict.py</span></button>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>None is the single value of NoneType. I compare with is None because there's only one None object, so an
@@ -614,7 +613,6 @@ parsed = datetime.strptime("2026-10-15 09:30", "%Y-%m-%d %H:%M")
 print(parsed == opened_at)</code></pre>
         <p>This prints <code>2026-10-15T13:30:00</code>, then <code>Thu 13:30</code>, then <code>True</code>: the parsed text
         names the same moment as <code>opened_at</code>.</p>
-        <button class="code-cta" type="button" data-modal="code-w01d4-clock"><span class="cc-ico">&lt;/&gt;</span> See the age and deadline lines in the desk code <span class="cc-meta">· 04_ticket_clock.py</span></button>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>Binary floating point can't store 0.1 or 0.2 exactly, so their sum comes out a tiny bit off and the equality
@@ -856,11 +854,6 @@ assert count == 3, "count is 3"</code></pre>
       </div>
 
       <div class="side-cards">
-        <div class="activity-card demo-card" data-demo="pending">
-          <div class="ac-k">⌨ Code-along files</div>
-          <div class="ac-t">Published after class</div>
-          <div class="ac-meta">typed live in the session · the answer key lands in demos/ afterwards</div>
-        </div>
 
         <button class="activity-card accent" type="button" data-modal="quiz-modal">
           <div class="ac-k">✓ Comprehension check</div>
@@ -905,10 +898,6 @@ assert count == 3, "count is 3"</code></pre>
     <div class="ma-k">Today's exercise</div>
     <ul class="deliv-list check">
       <li><a href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-01/day-4-python-data-types" target="_blank" rel="noopener">exercises/week-01/day-4-python-data-types</a> — a pytest-checked module: normalise a ticket title, build the queue as tuples, look up SLA hours from a dict, and compute a deadline with <code>timedelta</code>.</li>
-    </ul>
-    <div class="ma-k">Demos today</div>
-    <ul class="deliv-list">
-      <li>One live walk through the day's topics, built in front of the class and shaped by its questions; the files it produces are published in the demos folder afterwards</li>
     </ul>
     <p class="goals-foot">Friday assumes these types. Finish the check to unlock the next page.</p>
   </div>
@@ -989,67 +978,11 @@ window.QUIZ = {
 };
 </script>
 
-<!-- code popup: excerpt of the ticket-dict answer key -->
-<div id="code-w01d4-dict" class="modal-overlay" hidden>
-  <div class="modal-card code-modal">
-    <button class="modal-close" type="button" aria-label="Close">✕</button>
-    <h2>Answer key excerpt: 03_ticket_dict.py</h2>
-    <p class="cv-cap">The end of the dict rung: a placeholder assignee, the ticket as a dict, a safe read with a default, and a registry keyed by id.</p>
-    <div class="cv" data-file="03_ticket_dict.py" data-lang="python"><pre class="cv-raw">assignee = None
-print(assignee is None)
-
-ticket = {
-    &quot;id&quot;: ticket_id,
-    &quot;title&quot;: title,
-    &quot;priority&quot;: priority,
-    &quot;assignee&quot;: assignee,
-    &quot;history&quot;: [],
-}
-print(ticket.get(&quot;owner&quot;, &quot;unassigned&quot;))
-ticket[&quot;assignee&quot;] = &quot;lee&quot;
-ticket[&quot;history&quot;].append(&quot;assigned to lee&quot;)
-print(ticket)
-print(&quot;id&quot; in ticket)
-print(list(ticket.items()))
-tickets_by_id = {ticket[&quot;id&quot;]: ticket}
-print(tickets_by_id[ticket_id][&quot;title&quot;])</pre></div>
-    <p class="cv-foot">.get returns the default and adds no key; the history list is mutated in place through the dict; tickets_by_id is the registry a later class replaces.</p>
-  </div>
-</div>
-
-<!-- code popup: excerpt of the ticket-clock answer key -->
-<div id="code-w01d4-clock" class="modal-overlay" hidden>
-  <div class="modal-card code-modal">
-    <button class="modal-close" type="button" aria-label="Close">✕</button>
-    <h2>Answer key excerpt: 04_ticket_clock.py</h2>
-    <p class="cv-cap">The clock rung: hours_open now comes from two datetimes, and the deadline from the SLA table.</p>
-    <div class="cv" data-file="04_ticket_clock.py" data-lang="python"><pre class="cv-raw">from datetime import datetime, timedelta
-...
-opened_at = datetime(2026, 10, 15, 9, 30)
-NOW = datetime(2026, 10, 15, 14, 0)
-age = NOW - opened_at
-hours_open = age.total_seconds() / 3600
-...
-print(round(0.1 + 0.2, 2) == 0.3, abs((0.1 + 0.2) - 0.3) &lt; 1e-9)
-print(10 / 4, 10 // 4)
-print(divmod(int(hours_open), 24))
-print(1_000_000)
-
-print(age)
-deadline = opened_at + timedelta(hours=SLA_HOURS[priority])
-print(f&quot;opened {opened_at.isoformat()}, deadline {deadline.isoformat()}&quot;)
-print(f&quot;past deadline: {NOW &gt; deadline}&quot;)
-print(deadline.strftime(&quot;%a %H:%M&quot;))</pre></div>
-    <p class="cv-foot">NOW is pinned so every run prints the same age, 4:30:00; with a high priority the deadline is 13:30 and the breach flag is True.</p>
-  </div>
-</div>
-
 <script src="../../assets/js/diagram.js?v=20261015"></script>
 <script src="../../assets/js/scrolly.js?v=20261015"></script>
 <script src="../../assets/js/modals.js?v=20261015"></script>
 <script src="../../assets/js/quiz.js?v=20261015"></script>
 <script src="../../assets/js/widgets.js?v=20261015"></script>
 <script src="../../assets/js/glossary.js?v=20261015"></script>
-<script src="../../assets/js/codeviewer.js?v=20261015"></script>
 </body>
 </html>

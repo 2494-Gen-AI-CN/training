@@ -9,7 +9,7 @@ import subprocess
 import sys
 import unittest
 
-from helpers import HARNESS, ROOT, TRAINER, live_days
+from helpers import HARNESS, ROOT, live_days
 
 ARGS_FOR = HARNESS / "args_for.py"
 FANOUT = (HARNESS / "workflows" / "day-fanout.js").read_text(encoding="utf-8")
@@ -29,10 +29,7 @@ class ArgsForTests(unittest.TestCase):
         self.assertTrue(a["notesOnly"])
         self.assertFalse(a["skipResearch"], "the research depth pass runs in a notes-only run")
         self.assertEqual("w01d2", a["days"][0]["id"])
-        if TRAINER.exists():
-            scripts = a["days"][0]["existingScripts"]
-            self.assertTrue(scripts)
-            self.assertEqual({"name", "key", "time", "thread", "startsFrom", "objective"}, set(scripts[0]))
+        self.assertNotIn("existingScripts", a["days"][0], "D-0055: demos are a separate run; a notes-only run needs no scripts on disk")
 
     def test_template_override(self):
         r = _args("1", "2", "--notes-only", "--template", "harness/templates/day.exemplar.html", "--today", "2026-10-13")
@@ -52,11 +49,9 @@ class WorkflowWiringTests(unittest.TestCase):
         self.assertIn("const NOTES_ONLY = !!A.notesOnly", FANOUT)
         self.assertEqual(1, FANOUT.count("async function notesStage("))
         self.assertEqual(1, FANOUT.count("async function researchDepthStage("))
-        self.assertIn("const notes = () => notesStage(d, demo)", FANOUT, "materialsStage delegates to notesStage")
-        self.assertIn("notes: await notesStage(d, demos)", FANOUT, "the notes-only branch calls notesStage")
-        branch = FANOUT[FANOUT.index("if (NOTES_ONLY) {"):FANOUT.index("} else {", FANOUT.index("if (NOTES_ONLY) {"))]
-        self.assertNotIn("demosStage(", branch)
-        self.assertIn("existingScripts", branch)
+        self.assertIn("const notes = () => notesStage(d)", FANOUT, "materialsStage delegates to notesStage")
+        self.assertIn("notes: await notesStage(d)", FANOUT, "the notes-only branch calls notesStage")
+        self.assertNotIn("demosStage(", FANOUT, "demos left day-fanout.js (D-0055)")
         self.assertIn("researchDepthStage(d) : researchStage(d)", FANOUT)
         self.assertIn("'cached'", FANOUT[FANOUT.index("if (NOTES_ONLY) {", FANOUT.index("phase('Materials')")):])
 
@@ -112,8 +107,13 @@ class TierTests(unittest.TestCase):
             used = set(re.findall(r"tier\('([\w-]+)'", src))
             self.assertTrue(used, label)
             self.assertEqual(set(), used - stages, f"{label} uses tiers config.json does not define")
-        for name in ("notes-critic", "notes-verify-light", "notes-verify-full", "series-review"):
+        for name in ("notes-critic", "notes-verify-light", "notes-verify-full"):
             self.assertIn(name, FANOUT[FANOUT.index("const TIER_LABELS"):FANOUT.index("const NOTES_ONLY")])
+        series = (HARNESS / "workflows" / "demo-series.js").read_text(encoding="utf-8")
+        used = set(re.findall(r"tier\('([\w-]+)'", series))
+        self.assertEqual(set(), used - stages, "demo-series.js uses tiers config.json does not define")
+        for name in ("demos", "demos-critic", "series-review", "humanize"):
+            self.assertIn(name, series[series.index("const TIER_LABELS"):series.index("const J = ")])
 
 
 class LiveBriefTests(unittest.TestCase):

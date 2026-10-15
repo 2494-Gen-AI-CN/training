@@ -1,17 +1,16 @@
 # Delivery close checklist
 
-Run in the first session after a teaching day, on the Friday before a week starts, and before every push. Decisions behind it: D-0050 (loose close), D-0052 (authored status, release gate, drift check). Scripts and flags are documented in `harness/README.md`; this page is the order of operations.
+Run in the first session after a teaching day, on the Friday before a week starts, and before every push. Decisions behind it: D-0050 (the close), D-0052 (authored status, release gate, drift check), D-0055 (walkthrough blocks, the prep branch as the answer key). Scripts and flags are documented in `harness/README.md`; this page is the order of operations.
 
 ## Every teaching morning
 
 Close yesterday's day, one catch-up close per missed day.
 
-1. Dry run: `python harness/close_day.py <week> <day>`. Read the file list and the date it picked; override with `--date YYYY-MM-DD`, `--files ...` or `--notes "..."` if the demo repo's commits do not match what happened.
+1. Dry run: `python harness/close_day.py <week> <day>`. Read the block list: each block of the day is `reached` (the room's commit matches the prep commit), `diverged` (it differs; the diffstat is printed) or `not reached` (no live commit with that message on that date). Override with `--date YYYY-MM-DD`, `--match NN-slug=<sha>` (when the room's commit message was not typed verbatim) or `--notes "..."` if the demo repo's commits do not match what happened.
 2. Apply: `python harness/close_day.py <week> <day> --apply`.
+3. Fold back by hand what diverged: edit the walkthrough so it says what the room really typed, and rebase or amend the block's commit on `prep/week-WW` so the prep branch equals the room's reality; run `python harness/demo_check.py trainer/week-WW/demos` and `prose_guard.py git` on the edited file. The steps a `not reached` block left over open the next block (its first step), as the plan's Stop points row says; put a line about it in the next day's runbook.
 
-What `--apply` writes: `taught` in `curriculum.json` (this script is its only writer), `demos/<rel>/` with a generated README.md, `trainer/<rel>/delivery.json`, the notes demo card, `## Delivery record (<date>)` in the runbook, a `manual` run in `runs.jsonl`, and a rebuilt index and tracker. Add the printed Log line to `STATUS.md`.
-
-Python and notebook days (`demoFormat` not `loose`) are not closed by this script: `python harness/publish_demos.py <week> <day>` publishes them. Thread days that need the rung-diff close wait for week 3 (STATUS O-18).
+What `--apply` writes: `taught` in `curriculum.json` (this script is its only writer), `trainer/<rel>/delivery.json` (per block: prep sha, live sha, state, diffstat), a `> **DELIVERY RECORD (<date>)**` blockquote under each block's walkthrough header, `## Delivery record (<date>)` in the runbook, the re-rendered `trainer/week-WW/demos/README.md`, a `manual` run in `runs.jsonl`, and a rebuilt index and tracker. Add the printed Log line to `STATUS.md`. A `demoFormat: none` day has nothing to close.
 
 ## Friday
 
@@ -20,6 +19,7 @@ Release next week.
 1. `python harness/release_week.py <week+1> --today <date> --check`. It never writes. Read every reason it prints.
 2. Fix what it names, then run it again until it is clean.
 3. `python harness/release_week.py <week+1> --today <date>`. Add the printed Log line to `STATUS.md`.
+4. Push the week's prep branch so the trainer can rehearse from it and the close can diff against it: `git -C demo-repo push -u origin prep/week-WW`.
 
 What refuses it, and the fix:
 
@@ -27,7 +27,8 @@ What refuses it, and the fix:
 - The week plan fails `plan_check`: `python harness/plan_check.py harness/plans/week-WW.md` and repair the plan.
 - A page or exercise README is missing for an authored day: re-author that day.
 - `harness/last-tests.json` is red or missing: run the tests, then `python harness/log_run.py tests`.
-- A teaching day of the current week before `--today` has no `trainer/<rel>/delivery.json`: close it with `close_day.py` (section above).
+- A teaching day before `--today` has no `trainer/<rel>/delivery.json`: close it with `close_day.py` (section above).
+- A walkthrough fails `demo_check` or the series README is stale: fix the walkthrough, or `python harness/series_readme.py <week>`.
 
 ## Before every push
 
@@ -38,4 +39,4 @@ What refuses it, and the fix:
 
 ## What hidden means
 
-An `authored` page is written but not linked from `docs/index.html`; `build_index.py` links `live` days only. GitHub Pages still serves the file at its URL, so anyone with the address can open it. This keeps a week out of the learners' way. It is not access control.
+An `authored` page is written but not linked from `docs/index.html`; `build_index.py` links `live` days only. GitHub Pages still serves the file at its URL, so anyone with the address can open it. This keeps a week out of the learners' way. It is not access control. The walkthroughs are trainer-only (the private repo); the prep branch of the public demo repo holds their end state and is visible to anyone who looks (D-0055).

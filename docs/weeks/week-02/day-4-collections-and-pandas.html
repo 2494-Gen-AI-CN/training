@@ -17,7 +17,7 @@
     <a class="topnav" href="../../index.html">Home</a>
   </div>
   <nav class="topbar-center">
-    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
     <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises" target="_blank" rel="noopener">Exercises</a>
   </nav>
   <div class="topbar-right">
@@ -322,7 +322,6 @@ print(a == dict(b))</code></pre>
         methods is memory, since an <code>OrderedDict</code> uses more of it than a plain dict holding the same
         items.<sup class="cite"><a href="#src-1">1</a></sup> For a queue of a few hundred tickets that does not matter; for
         millions of small mappings it does, and it is one more reason the plain dict is the default.</p>
-        <button class="code-cta" type="button" data-modal="code-w02d4-queue"><span class="cc-ico">&lt;/&gt;</span> See the work queue and agent groups from the ticket-desk code <span class="cc-meta">· 02_ticket_rows.md</span></button>
         <div class="ix-predict" data-q="A test asserts work_queue(desk) == {4: t4, 6: t6, 5: t5}, a plain dict literal. The function wrongly returns the tickets in the order 5, 4, 6. Does the test pass?" data-a="Yes, it passes. Comparing an OrderedDict with a plain dict ignores order. To prove the order, compare list(queue) with [4, 6, 5], or compare against another OrderedDict."></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
@@ -604,7 +603,6 @@ print(table.to_dict() == dict(Counter(df["status"])))</code></pre>
         nothing from PyPI.<sup class="cite"><a href="#src-17">17</a></sup> The ticket desk uses both on purpose: the
         collections functions for the desk's own rules, the DataFrame for reports over the saved file, which Friday's page
         turns into a chart.</p>
-        <button class="code-cta" type="button" data-modal="code-w02d4-frame"><span class="cc-ico">&lt;/&gt;</span> See the frame functions and the test that ties them to Counter <span class="cc-meta">· 04_frame_groups.md</span></button>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>groupby splits the rows by a key column, applies an aggregation like mean to each group, and combines the
@@ -711,11 +709,6 @@ assert idle_agents(groups, ["Lee", "Priya", "Marcus"]) == ["Lee", "Marcus"], "ke
       </div>
 
       <div class="side-cards">
-        <div class="activity-card demo-card" data-demo="pending">
-          <div class="ac-k">⌨ Code-along files</div>
-          <div class="ac-t">Published after class</div>
-          <div class="ac-meta">typed live in the session · the answer key lands in demos/ afterwards</div>
-        </div>
 
         <button class="activity-card accent" type="button" data-modal="quiz-modal">
           <div class="ac-k">✓ Comprehension check</div>
@@ -761,10 +754,6 @@ assert idle_agents(groups, ["Lee", "Priya", "Marcus"]) == ["Lee", "Marcus"], "ke
     <div class="ma-k">Today's exercise</div>
     <ul class="deliv-list check">
       <li><a href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-02/day-4-collections-and-pandas" target="_blank" rel="noopener">exercises/week-02/day-4-collections-and-pandas</a> — a pytest-checked module: status counts with <code>Counter</code>, a <code>namedtuple</code> row type, then the same counts from a DataFrame built from a JSON file.</li>
-    </ul>
-    <div class="ma-k">Demos today</div>
-    <ul class="deliv-list">
-      <li>One live walk through the day's topics, built in front of the class and shaped by its questions; the files it produces are published in the demos folder afterwards</li>
     </ul>
     <p class="goals-foot">Friday assumes the DataFrame from today. Finish the check to unlock the next page.</p>
   </div>
@@ -837,67 +826,11 @@ window.QUIZ = {
 };
 </script>
 
-<!-- code popup: excerpt of the ticket-rows answer key -->
-<div id="code-w02d4-queue" class="modal-overlay" hidden>
-  <div class="modal-card code-modal">
-    <button class="modal-close" type="button" aria-label="Close">✕</button>
-    <h2>Answer key excerpt: 02_ticket_rows.md</h2>
-    <p class="cv-cap">Two functions from report.py: an OrderedDict of live tickets, soonest deadline first, and a defaultdict of ticket ids per agent.</p>
-    <div class="cv" data-file="02_ticket_rows.md" data-lang="python"><pre class="cv-raw">def work_queue(desk):
-    &quot;&quot;&quot;Return the open and assigned tickets by id, soonest deadline first.&quot;&quot;&quot;
-    live = []
-    for t in desk:
-        if t.status != &quot;closed&quot;:
-            live.append(t)
-    queue = OrderedDict()
-    for t in sorted(live, key=lambda t: t.deadline()):
-        queue[t.ticket_id] = t
-    return queue
-
-
-def by_agent(desk):
-    &quot;&quot;&quot;Return the ticket ids each agent holds.&quot;&quot;&quot;
-    groups = defaultdict(list)
-    for t in desk:
-        if t.assignee is not None:
-            groups[t.assignee].append(t.ticket_id)
-    return groups</pre></div>
-    <p class="cv-foot">In the REPL, list(work_queue(desk)) gives [4, 6, 5] and by_agent(desk) gives defaultdict(&lt;class 'list'&gt;, {'Priya': [4], 'Marcus': [5]}).</p>
-  </div>
-</div>
-
-<!-- code popup: excerpt of the frame-groups answer key -->
-<div id="code-w02d4-frame" class="modal-overlay" hidden>
-  <div class="modal-card code-modal">
-    <button class="modal-close" type="button" aria-label="Close">✕</button>
-    <h2>Answer key excerpt: 04_frame_groups.md</h2>
-    <p class="cv-cap">The counting and grouping functions from frame.py, and the test that proves the pandas counts equal the Counter.</p>
-    <div class="cv" data-file="04_frame_groups.md" data-lang="python"><pre class="cv-raw">def status_table(df):
-    &quot;&quot;&quot;Return how many tickets are in each status.&quot;&quot;&quot;
-    return df[&quot;status&quot;].value_counts()
-
-
-def hours_by_priority(df):
-    &quot;&quot;&quot;Return the mean hours to close for each priority.&quot;&quot;&quot;
-    return df.groupby(&quot;priority&quot;)[&quot;hours&quot;].mean()
-
-
-def test_value_counts_match_counter(tmp_path, sample_desk):
-    &quot;&quot;&quot;Counting with pandas gives the same numbers as Counter.&quot;&quot;&quot;
-    path = tmp_path / &quot;tickets.json&quot;
-    save_desk(sample_desk, path)
-    df = load_frame(path)
-    assert status_table(df).to_dict() == dict(status_counts(sample_desk))</pre></div>
-    <p class="cv-foot">On the six-ticket desk, hours_by_priority prints high 1.500, low NaN and normal 38.875: the low group holds only the open ticket.</p>
-  </div>
-</div>
-
 <script src="../../assets/js/diagram.js?v=20261015"></script>
 <script src="../../assets/js/scrolly.js?v=20261015"></script>
 <script src="../../assets/js/modals.js?v=20261015"></script>
 <script src="../../assets/js/quiz.js?v=20261015"></script>
 <script src="../../assets/js/widgets.js?v=20261015"></script>
 <script src="../../assets/js/glossary.js?v=20261015"></script>
-<script src="../../assets/js/codeviewer.js?v=20261015"></script>
 </body>
 </html>

@@ -20,10 +20,11 @@ Usage:
     python harness/args_for.py 1 --plan --today 2026-10-12   # week-plan args for week 1
     python harness/args_for.py 2 --plan --cold --today 2026-10-14   # D-0050: previousEndState {} + coldRestart, every
                                                      # thread starts cold (the previous week's ladder was not delivered)
-    python harness/args_for.py 1 2 3 --notes-only    # D-0040: research depth + notes page only; the brief, demo
-                                                     # scripts and keys must already be on disk (a demoFormat loose
-                                                     # day, D-0050, needs neither: no key README only warns);
-                                                     # exercise and runbook are untouched
+    python harness/args_for.py 1 2 3 --notes-only    # D-0040: research depth + notes page only; the brief must
+                                                     # already be on disk; exercise and runbook are untouched
+    python harness/args_for.py 2 1 2 --runbook-only  # D-0055: the runbook alone (brief and notes page on disk)
+    python harness/args_for.py 2 --demos --today 2026-10-15   # D-0055: demo-series.js args: the week's walkthrough
+                                                     # blocks in ladder order (plan must pass; a brief per day)
     python harness/args_for.py 1 2 --notes-only --template harness/templates/day.exemplar.html
                                                      # override the config template (pilot of a new page shape)
     python harness/args_for.py 2 --practice          # D-0047: practice-tasks.js, suitability pass over the week's
@@ -57,20 +58,16 @@ def _fwd(p: Path) -> str:
     return str(p).replace("\\", "/")
 
 
-def _existing_scripts(rel: str) -> list[dict]:
-    """Header facts of the demo scripts already on disk for a day (authored or live days are recorded as-is in the plan, D-0052)."""
-    ddir = ROOT / "trainer" / rel / "demos"
-    out = []
+def _existing_walkthroughs(week_dir: str) -> list[dict]:
+    """Header facts of the walkthroughs already on disk for a week (authored or live days are recorded as-is in the plan, D-0052, D-0055)."""
+    ddir = ROOT / "trainer" / week_dir / "demos"
     if not ddir.is_dir():
-        return out
-    for s in sorted(ddir.glob("*.md")):
-        if not re.match(r"^\d{2}_", s.name):
-            continue
-        hdr = demo_check._header(s.read_text(encoding="utf-8"))
-        tm = re.fullmatch(r"(\d+)\s*min", hdr.get("Time", ""))
-        out.append({"name": s.stem, "key": Path(hdr.get("Answer key", "")).name, "time": int(tm.group(1)) if tm else None,
-                    "thread": hdr.get("Thread", ""), "startsFrom": hdr.get("Starts from", ""), "objective": hdr.get("Objective", "")})
-    return out
+        return []
+    return [demo_check.header_facts(f) for f in demo_check.walkthroughs(ddir)]
+
+
+def prep_branch(config: dict, week_no: int) -> str:
+    return (config.get("demoRepo", {}).get("prepBranch") or "prep/week-{WW}").replace("{WW}", f"{week_no:02d}")
 
 
 def _day_base(cur: dict, week: dict, d: dict, s: dict) -> dict:
@@ -127,21 +124,12 @@ def plan_args(cur: dict, week: dict, today: str | None, metrics: dict, config: d
     days = []
     for d in bi.teaching_days(week):
         base = _day_base(cur, week, d, by_slot[d["day"]])
-        base["existingScripts"] = _existing_scripts(base["rel"])
         brief = ROOT / "harness" / "research" / f"{base['rel']}.md"
         base["researchBrief"] = _fwd(brief) if brief.is_file() else None
         days.append(base)
     week_no = week["week"]
     prev = plan_path(week_no - 1)
-    prev_end = {}
-    if prev.is_file():
-        try:
-            pp = plan_check.load_plan(prev)
-            for t in pp["threads"]:
-                if t["rungs"]:
-                    prev_end[t["id"]] = t["rungs"][-1]["keyPath"]
-        except ValueError:
-            pass
+    prev_end = plan_check.previous_last_block(week_no) if prev.is_file() else {}
     threads = {tid: t for tid, t in (config.get("threads") or {}).items()
                if isinstance(t, dict) and (not t.get("weeks") or t["weeks"][0] <= week_no <= t["weeks"][1])}
     cold_args = {}
@@ -152,6 +140,9 @@ def plan_args(cur: dict, week: dict, today: str | None, metrics: dict, config: d
         **_common(cur, week, ew, today, metrics, config),
         **cold_args,
         "days": days,
+        "existingWalkthroughs": _existing_walkthroughs(week["dir"]),
+        "demosDir": _fwd(ROOT / "trainer" / week["dir"] / "demos"),
+        "prepBranch": prep_branch(config, week_no),
         "projects": cur.get("projects", {}),
         "threads": threads,
         "planFile": _fwd(plan_path(week_no)),
@@ -162,6 +153,60 @@ def plan_args(cur: dict, week: dict, today: str | None, metrics: dict, config: d
         "demoTemplate": _fwd(ROOT / "harness" / "templates" / "demo-script.md"),
         "demosCritic": _fwd(ROOT / "harness" / "critics" / "demos.md"),
     }
+
+
+def demos_args(cur: dict, week: dict, today: str | None, metrics: dict, config: dict) -> tuple[dict | None, list[str]]:
+    """Args for harness/workflows/demo-series.js (D-0055): the week's walkthrough blocks in ladder order, each with its
+    plan row, its ladder minutes, its stop point and its day's research brief. Refused while the plan is missing or
+    fails plan_check, or while a block's day has no research brief (authoring is research-first)."""
+    ew = bi.expand_week(cur, week)
+    by_slot = {s["slot"]: s for s in ew["slots"]}
+    week_no = week["week"]
+    pfile = plan_path(week_no)
+    if not pfile.is_file():
+        return None, [f"BLOCKED: no week plan at {pfile}; run the week-plan workflow first"]
+    problems = plan_check.check_plan(pfile, metrics["demos"])
+    if problems:
+        return None, [f"BLOCKED: {pfile} fails plan_check ({len(problems)} problem(s)):"] + ["  " + x for x in problems]
+    plan = plan_check.load_plan(pfile)
+    days = {d["id"]: d for d in bi.teaching_days(week)}
+    blocks, missing = [], []
+    for b in plan_check.week_blocks(plan):
+        d = days[b["day"]]
+        rel = f"{week['dir']}/{d['slug']}"
+        brief = ROOT / "harness" / "research" / f"{rel}.md"
+        if not brief.is_file():
+            missing.append(f"{b['name']} ({b['day']}): no research brief at {brief}")
+        s = by_slot[d["day"]]
+        blocks.append({**b, "dayId": b["day"], "rel": rel, "slug": d["slug"], "title": d["title"], "subtopics": d["subtopics"],
+                       "date": s["date"].isoformat(), "dateLabel": bi.date_label(s["date"], year=True),
+                       "dayNotes": d.get("notes", ""), "status": d.get("status", "planned"),
+                       "researchBrief": _fwd(brief) if brief.is_file() else None,
+                       "spoilerRows": [r for r in plan["spoilers"] if r["Day"] == b["day"] or r["To"] == b["day"]],
+                       "coverageRows": [r for r in plan["coverage"] if r["Day"] == b["day"]]})
+    if missing:
+        return None, ["BLOCKED: every block's day needs a research brief (research-first); run the day workflow's research for:"] + ["  " + x for x in missing]
+    if not blocks:
+        return None, [f"week {week_no} plan has no walkthrough blocks"]
+    return {
+        **_common(cur, week, ew, today, metrics, config),
+        "blocks": blocks,
+        "threads": {tid: th for tid, th in (config.get("threads") or {}).items()
+                    if isinstance(th, dict) and (not th.get("weeks") or th["weeks"][0] <= week_no <= th["weeks"][1])},
+        "epic": plan["epic"],
+        "hardStop": plan["hardStop"],
+        "cutFirst": plan["squeeze"]["cutFirst"],
+        "neverCut": plan["squeeze"]["neverCut"],
+        "prereqs": plan["prereqs"],
+        "existingWalkthroughs": _existing_walkthroughs(week["dir"]),
+        "demosDir": _fwd(ROOT / "trainer" / week["dir"] / "demos"),
+        "demoRepo": {**{k: v for k, v in config["demoRepo"].items() if not k.startswith("_")}, "localPath": _fwd(ROOT / config["demoRepo"]["localDir"])},
+        "prepBranch": prep_branch(config, week_no),
+        "weekPlan": _fwd(pfile),
+        "template": _fwd(ROOT / "harness" / "templates" / "demo-script.md"),
+        "critic": _fwd(ROOT / "harness" / "critics" / "demos.md"),
+        "seriesCritic": _fwd(ROOT / "harness" / "critics" / "series-review.md"),
+    }, []
 
 
 def practice_args(cur: dict, week: dict, day_nos: list[int], build: bool, today: str | None, metrics: dict, config: dict) -> tuple[dict | None, list[str]]:
@@ -267,9 +312,9 @@ def main(argv: list[str]) -> int:
         i = argv.index("--template")
         template_override = argv[i + 1]
         del argv[i:i + 2]
-    flags = {f: f in argv for f in ("--skip-research", "--plan", "--no-plan", "--notes-only", "--practice", "--practice-build", "--cold")}
+    flags = {f: f in argv for f in ("--skip-research", "--plan", "--no-plan", "--notes-only", "--runbook-only", "--practice", "--practice-build", "--cold", "--demos")}
     argv = [a for a in argv if a not in flags]
-    skip_research, plan_mode, no_plan, notes_only = flags["--skip-research"], flags["--plan"], flags["--no-plan"], flags["--notes-only"]
+    skip_research, plan_mode, no_plan, notes_only, runbook_only = flags["--skip-research"], flags["--plan"], flags["--no-plan"], flags["--notes-only"], flags["--runbook-only"]
     nums = [int(a) for a in argv]
     cur = bi.load_curriculum()
     metrics = json.loads((ROOT / "harness" / "metrics.json").read_text(encoding="utf-8"))
@@ -283,6 +328,18 @@ def main(argv: list[str]) -> int:
             print(f"no week {nums[0]}", file=sys.stderr)
             return 2
         print(json.dumps(plan_args(cur, week, today, metrics, config, cold=flags["--cold"]), indent=2, ensure_ascii=False))
+        return 0
+    if flags["--demos"]:
+        week = next((w for w in cur["weeks"] if w["week"] == nums[0]), None) if len(nums) == 1 else None
+        if week is None:
+            print("--demos takes exactly one week number", file=sys.stderr)
+            return 2
+        out, notes = demos_args(cur, week, today, metrics, config)
+        for n in notes:
+            print(n, file=sys.stderr)
+        if out is None:
+            return 2
+        print(json.dumps(out, indent=2, ensure_ascii=False))
         return 0
     if flags["--practice"] or flags["--practice-build"]:
         week = next((w for w in cur["weeks"] if w["week"] == nums[0]), None) if nums else None
@@ -346,7 +403,7 @@ def main(argv: list[str]) -> int:
                 nxt.get("status") == "live"
                 or (nxt.get("status") == "authored" and not release_wire and d.get("status") != "live")):
             nxt = None
-        rows = plan_check.day_rows(plan, d["id"]) if plan else {"weekPlanRows": [], "threadRows": [], "ladderRows": [], "dayShape": "", "spoilerRows": []}
+        rows = plan_check.day_rows(plan, d["id"]) if plan else {"weekPlanRows": [], "blockRows": [], "ladderRows": [], "dayShape": "", "spoilerRows": [], "cutFirst": [], "neverCut": []}
         rel = f"{week['dir']}/{d['slug']}"
         day_args = {
             **_day_base(cur, week, d, s),
@@ -355,22 +412,13 @@ def main(argv: list[str]) -> int:
             **rows,
         }
         brief = ROOT / "harness" / "research" / f"{rel}.md"
-        if (skip_research or notes_only) and not brief.is_file():
-            print(f"{'--notes-only' if notes_only else '--skip-research'} needs an existing brief at {brief}", file=sys.stderr)
+        if (skip_research or notes_only or runbook_only) and not brief.is_file():
+            mode = "--notes-only" if notes_only else "--runbook-only" if runbook_only else "--skip-research"
+            print(f"{mode} needs an existing brief at {brief}", file=sys.stderr)
             return 2
-        if notes_only:
-            # D-0040: the notes page is re-authored on top of the day's existing demo scripts and keys.
-            scripts = _existing_scripts(rel)
-            fmt = d.get("demoFormat")
-            has_readme = (ROOT / "trainer" / rel / "demos" / "key" / "README.md").is_file()
-            if fmt == "loose":
-                # D-0050: loose days may have no scripts at all; fallback scripts without a key README only warn.
-                if scripts and not has_readme:
-                    print(f"WARNING: loose day {rel} has fallback scripts but no key/README.md under trainer/{rel}/demos/; continuing", file=sys.stderr)
-            elif fmt != "none" and (not scripts or not has_readme):
-                print(f"--notes-only needs the day's demo scripts and key/README.md on disk under trainer/{rel}/demos/", file=sys.stderr)
-                return 2
-            day_args["existingScripts"] = scripts
+        if runbook_only and not (ROOT / "docs" / "weeks" / f"{rel}.html").is_file():
+            print(f"--runbook-only needs the day's notes page at docs/weeks/{rel}.html", file=sys.stderr)
+            return 2
         days.append(day_args)
     # Notes-page template (D-0031): the promoted page named in config.json, else the exemplar; --template overrides.
     exemplar = ROOT / "harness" / "templates" / "day.exemplar.html"
@@ -391,6 +439,9 @@ def main(argv: list[str]) -> int:
         "days": days,
         "skipResearch": skip_research,
         "notesOnly": notes_only,
+        "runbookOnly": runbook_only,
+        "demosDir": _fwd(ROOT / "trainer" / week["dir"] / "demos"),
+        "prepBranch": prep_branch(config, week_no),
         "template": _fwd(template),
         "weekPlan": _fwd(pfile) if plan else None,
         "noPlan": no_plan,

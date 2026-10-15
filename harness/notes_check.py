@@ -170,7 +170,6 @@ def counts(text: str) -> dict:
         "declaredMinutes": int(mins.group(1)) if mins else None,
         "sourcesChecked": verified.group(1) if verified else None,
         "sources": len(src_items),
-        "popups": len(art.find_all("button", "code-cta")),
     }
 
 
@@ -228,8 +227,6 @@ def count_findings(c: dict, m: dict, tolerance: int = 0) -> list[str]:
         f.append(f"meta says ~{c['declaredMinutes']} min, words give ~{want}")
     if not c["sourcesChecked"]:
         f.append("meta line has no 'Sources checked YYYY-MM-DD'")
-    if not (m["codePopupsMin"] <= c["popups"] <= m["codePopupsMax"]):
-        f.append(f"{c['popups']} code popups outside {m['codePopupsMin']}..{m['codePopupsMax']}")
     return f
 
 

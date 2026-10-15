@@ -17,7 +17,7 @@
     <a class="topnav" href="../../index.html">Home</a>
   </div>
   <nav class="topbar-center">
-    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
     <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises" target="_blank" rel="noopener">Exercises</a>
   </nav>
   <div class="topbar-right">
@@ -469,7 +469,6 @@ Your code has been rated at 5.00/10</code></pre>
         desk's own first report, excerpted below, names ten missing docstrings, two warnings about variables inside a
         method sharing a name with variables at the file's top level, and one naming message; the last three go away
         once the script's code moves into a function in step 6.</p>
-        <button class="code-cta" type="button" data-modal="code-w02d1-pylint"><span class="cc-ico">&lt;/&gt;</span> See the desk's first pylint report <span class="cc-meta">· 04_pip_and_pylint.md</span></button>
         <h3>Silencing one message</h3>
         <p>Sometimes the code is right and the message is not useful. A class with one method is a reasonable shape for a
         small record, so the R0903 hint above can be switched off for that class alone with a comment on its line:</p>
@@ -559,7 +558,6 @@ ls __pycache__</code></pre>
         <code>desk.py</code> now receives the module's name.<sup class="cite"><a href="#src-17">17</a></sup> Leave the
         guard out and the cost shows up the first time someone imports the file: the board prints, and
         <code>basicConfig</code> configures logging for a program that never asked for it.</p>
-        <button class="code-cta" type="button" data-modal="code-w02d1-main"><span class="cc-ico">&lt;/&gt;</span> See the desk's main() and its guard <span class="cc-meta">· 05_desk_module.md</span></button>
         <h3>Where Python looks, and names that collide</h3>
         <p>An import looks in the running script's own directory first, then in the rest of <code>sys.path</code>, a
         list of folders Python searches.<sup class="cite"><a href="#src-16">16</a></sup> That order means a file of your
@@ -680,11 +678,6 @@ assert first_tag("Login page returns 500") == None, "returns None when the subje
       </div>
 
       <div class="side-cards">
-        <div class="activity-card demo-card" data-demo="pending">
-          <div class="ac-k">⌨ Code-along files</div>
-          <div class="ac-t">Published after class</div>
-          <div class="ac-meta">typed live in the session · the answer key lands in demos/ afterwards</div>
-        </div>
 
         <button class="activity-card accent" type="button" data-modal="quiz-modal">
           <div class="ac-k">✓ Comprehension check</div>
@@ -730,10 +723,6 @@ assert first_tag("Login page returns 500") == None, "returns None when the subje
     <div class="ma-k">Today's exercise</div>
     <ul class="deliv-list check">
       <li><a href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-02/day-1-modules-packaging-and-pip" target="_blank" rel="noopener">exercises/week-02/day-1-modules-packaging-and-pip</a> — write a small module of your own: <code>days_open</code> with <code>math.ceil</code>, a module-level logger and <code>ticket_refs</code> with a compiled pattern, all importable with no output thanks to the <code>__name__</code> guard. Run <code>python -m pytest -q</code> until green.</li>
-    </ul>
-    <div class="ma-k">Demos today</div>
-    <ul class="deliv-list">
-      <li>One live walk through the day's topics, built in front of the class and shaped by its questions; the files it produces are published in the demos folder afterwards</li>
     </ul>
     <p class="goals-foot">Tuesday builds on the two-module desk. Finish the check to unlock the next page.</p>
   </div>
@@ -805,64 +794,11 @@ window.QUIZ = {
 };
 </script>
 
-<!-- code popup: excerpt of the pip and pylint answer-key transcript -->
-<div id="code-w02d1-pylint" class="modal-overlay" hidden>
-  <div class="modal-card code-modal">
-    <button class="modal-close" type="button" aria-label="Close">✕</button>
-    <h2>Answer key excerpt: 04_pip_and_pylint.md</h2>
-    <p class="cv-cap">Step 3 of the transcript: pylint's first report on the single-file desk, read inside the activated venv.</p>
-    <div class="cv" data-file="04_pip_and_pylint.md" data-lang="bash"><pre class="cv-raw">$ pylint ticket_desk.py
-************* Module ticket_desk
-ticket_desk.py:14:0: C0115: Missing class docstring (missing-class-docstring)
-ticket_desk.py:27:4: C0116: Missing function or method docstring (missing-function-docstring)
-...
-ticket_desk.py:60:8: W0621: Redefining name 'late' from outer scope (line 96) (redefined-outer-name)
-ticket_desk.py:61:12: W0621: Redefining name 't' from outer scope (line 87) (redefined-outer-name)
-ticket_desk.py:68:0: C0116: Missing function or method docstring (missing-function-docstring)
-ticket_desk.py:75:0: C0116: Missing function or method docstring (missing-function-docstring)
-ticket_desk.py:98:0: C0103: Constant name &quot;note&quot; doesn't conform to UPPER_CASE naming style (invalid-name)
-
------------------------------------
-Your code has been rated at 8.35/10</pre></div>
-    <p class="cv-foot">The C messages are docstrings and one name; the two W0621 lines are the script's top-level late and t sharing names with variables inside Desk.overdue.</p>
-  </div>
-</div>
-
-<!-- code popup: excerpt of the desk-module answer-key transcript -->
-<div id="code-w02d1-main" class="modal-overlay" hidden>
-  <div class="modal-card code-modal">
-    <button class="modal-close" type="button" aria-label="Close">✕</button>
-    <h2>Answer key excerpt: 05_desk_module.md</h2>
-    <p class="cv-cap">Step 2 of the transcript: the top and bottom of ticket_desk.py once the model has moved into desk.py.</p>
-    <div class="cv" data-file="05_desk_module.md" data-lang="python"><pre class="cv-raw">&quot;&quot;&quot;Support ticket desk: tickets, SLA deadlines and a board.&quot;&quot;&quot;
-import logging
-from datetime import datetime
-
-from desk import Desk, Ticket, redact, ticket_refs
-
-
-def main():
-    &quot;&quot;&quot;Build the sample desk, print the board and the late tickets.&quot;&quot;&quot;
-    logging.basicConfig(level=logging.INFO, format=&quot;%(levelname)s %(name)s: %(message)s&quot;)
-    ...
-    desk = Desk()
-    for t in [t1, t2, t3, t4, t5, t6]:
-        desk.add(t)
-    ...
-
-
-if __name__ == &quot;__main__&quot;:
-    main()</pre></div>
-    <p class="cv-foot">The local variable desk is safe here: the file imported names from desk, never the module itself.</p>
-  </div>
-</div>
-
 <script src="../../assets/js/diagram.js?v=20261015"></script>
 <script src="../../assets/js/scrolly.js?v=20261015"></script>
 <script src="../../assets/js/modals.js?v=20261015"></script>
 <script src="../../assets/js/quiz.js?v=20261015"></script>
 <script src="../../assets/js/widgets.js?v=20261015"></script>
 <script src="../../assets/js/glossary.js?v=20261015"></script>
-<script src="../../assets/js/codeviewer.js?v=20261015"></script>
 </body>
 </html>

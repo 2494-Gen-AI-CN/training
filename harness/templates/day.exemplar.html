@@ -17,7 +17,7 @@
     <a class="topnav" href="../../index.html">Home</a>
   </div>
   <nav class="topbar-center">
-    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
     <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises" target="_blank" rel="noopener">Exercises</a>
   </nav>
   <div class="topbar-right">
@@ -88,7 +88,6 @@ git commit -m "greet from feature"</code></pre>
         <h3>Recognise it on sight</h3>
         <p>What the pattern looks like in a codebase you did not write: the one- or two-line shape, the name people use for it,
         the review comment it usually draws.</p>
-        <button class="code-cta" type="button" data-modal="code-w00d0"><span class="cc-ico">&lt;/&gt;</span> See an excerpt of the answer key <span class="cc-meta">· 01_example.py</span></button>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>A spoken answer to "how does this work under the hood?" in two or three sentences.</p>
@@ -176,32 +175,6 @@ git commit -m "greet from feature"</code></pre>
       </div>
 
       <div class="side-cards">
-        <!-- Demo card (D-0030). Authors write variant A exactly; harness/publish_demos.py turns it into variant B once
-             curriculum.json carries taught:<date>. On a demoFormat "none" day omit the card entirely (variant C). -->
-        <!-- A: pending (what every fresh page carries) -->
-        <div class="activity-card demo-card" data-demo="pending">
-          <div class="ac-k">⌨ Code-along files</div>
-          <div class="ac-t">Published after class</div>
-          <div class="ac-meta">typed live in the session · the answer key lands in demos/ afterwards</div>
-        </div>
-        <!-- B: published (written by publish_demos.py, never by an author)
-        <div class="activity-card demo-card" data-demo="published">
-          <div class="ac-k">⌨ Code-along files</div>
-          <div class="ac-t">
-            <a href="https://github.com/2494-Gen-AI-CN/training/tree/main/demos/week-00/day-0-example/01_example.py" target="_blank" rel="noopener">01_example.py</a> ·
-            <a href="https://github.com/2494-Gen-AI-CN/training/tree/main/demos/week-00/day-0-example/02_example.md" target="_blank" rel="noopener">02_example.md</a>
-          </div>
-          <div class="ac-meta">answer keys from the session · README has the run order</div>
-        </div>
-        -->
-        <!-- D: loose day closed with no file (written by harness/close_day.py, D-0050; never by an author)
-        <div class="activity-card demo-card" data-demo="none">
-          <div class="ac-k">⌨ Code-along files</div>
-          <div class="ac-t">No code demo this day</div>
-          <div class="ac-meta">nothing was saved from the live walk-through</div>
-        </div>
-        -->
-        <!-- C: demoFormat "none" day: no demo card -->
 
         <button class="activity-card" type="button" data-modal="deep-modal">
           <div class="ac-k">⌖ Deep dive</div>
@@ -261,11 +234,6 @@ git commit -m "greet from feature"</code></pre>
     <ul class="deliv-list check">
       <li><a href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-00/day-0-example" target="_blank" rel="noopener">exercises/week-00/day-0-example</a> — one line on the task. Run <code>python -m pytest -q</code> until green.</li>
     </ul>
-    <div class="ma-k">Demos today</div>
-    <ul class="deliv-list">
-      <li>Demo 1 — the objective of the first demo, phrased as what you can do after it</li>
-      <li>Demo 2 — the objective of the second demo</li>
-    </ul>
     <p class="goals-foot">Tomorrow builds on this. Finish the check to unlock the next page.</p>
   </div>
 </div>
@@ -324,33 +292,11 @@ window.QUIZ = {
 };
 </script>
 
-<!-- code popup: a SHORT excerpt of a REAL answer key (the only place a key filename appears) -->
-<div id="code-w00d0" class="modal-overlay" hidden>
-  <div class="modal-card code-modal">
-    <button class="modal-close" type="button" aria-label="Close">✕</button>
-    <h2>Answer key excerpt: 01_example.py</h2>
-    <p class="cv-cap">What this excerpt shows and which part of the key it comes from.</p>
-    <div class="cv" data-file="01_example.py" data-lang="python"><pre class="cv-raw">&quot;&quot;&quot;Demo 1 — what it demonstrates.
-
-Expected output:
-    hello, world
-&quot;&quot;&quot;
-# --- STEP 1: print something ---
-print(&quot;hello, world&quot;)
-
-# --- STEP 2: a function ---
-def greet(name: str) -&gt; str:
-    return f&quot;hello, {name}&quot;</pre></div>
-    <p class="cv-foot">One line on what to notice.</p>
-  </div>
-</div>
-
 <script src="../../assets/js/diagram.js?v=20261013-8"></script>
 <script src="../../assets/js/scrolly.js?v=20261013-8"></script>
 <script src="../../assets/js/modals.js?v=20261013-8"></script>
 <script src="../../assets/js/quiz.js?v=20261013-8"></script>
 <script src="../../assets/js/widgets.js?v=20261013-8"></script>
 <script src="../../assets/js/glossary.js?v=20261013-8"></script>
-<script src="../../assets/js/codeviewer.js?v=20261013-8"></script>
 </body>
 </html>
