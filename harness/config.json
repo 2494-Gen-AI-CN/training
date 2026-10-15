@@ -80,13 +80,13 @@
     "rule": "Model ids are resolved in the research brief from current docs, never from memory."
   },
   "models": {
-    "_comment": "Per-stage model and effort for harness/workflows/day-fanout.js, demo-series.js, week-plan.js and practice-tasks.js (D-0026, D-0032, D-0040, D-0047, D-0055). model: sonnet | haiku | opus; effort: low | medium | high | xhigh | max. Every stage is pinned: no stage inherits the session model (D-0040), and tests/test_notes_mode.py fails a null. A repass numbered >= escalateOn uses escalate instead of the stage tier, so a cheap first pass that fails its critic is retried on the strong tier. notes-critic judges the notes page; notes-verify-light runs harness/notes_check.py (links, stamps, citations) on every day; notes-verify-full adds WebFetch claim currency on full-gate and currency-flagged days. practice-suitability proposes practice tasks for an authored page and practice builds the approved ones (D-0047); their critic, verify and record agents use critic, verify and wire. demos authors one walkthrough block and demos-critic judges it against harness/critics/demos.md (D-0055); series-review is the one critic that reads a demo-series run's walkthroughs as a series at the end, flags only (D-0053).",
+    "_comment": "Per-stage model and effort for harness/workflows/day-fanout.js, demo-series.js, week-plan.js and practice-tasks.js (D-0026, D-0032, D-0040, D-0047, D-0055). model: sonnet | haiku | opus; effort: low | medium | high | xhigh | max. Every stage is pinned: no stage inherits the session model (D-0040), and tests/test_notes_mode.py fails a null. A repass numbered >= escalateOn uses escalate instead of the stage tier, so a cheap first pass that fails its critic is retried on the strong tier. notes-critic judges the notes page; notes-verify-light runs harness/notes_check.py (links, stamps, citations) on every day; notes-verify-full adds WebFetch claim currency on full-gate and currency-flagged days. practice-suitability proposes practice tasks for an authored page and practice builds the approved ones (D-0047); their critic, verify and record agents use critic, verify and wire. demos authors one walkthrough block and demos-critic judges it against harness/critics/demos.md (D-0055); series-review is the one critic that reads a demo-series run's walkthroughs as a series at the end, flags only (D-0053). demos and runbook start on opus/high (D-0056): in the week-2 runs the sonnet first pass failed its critic on most items and the escalate tier ran anyway.",
     "escalateOn": 2,
     "escalate": { "model": "opus", "effort": "high" },
     "stages": {
       "research-light": { "model": "sonnet", "effort": "medium" },
       "research-full": { "model": "opus", "effort": "high" },
-      "demos": { "model": "sonnet", "effort": "medium" },
+      "demos": { "model": "opus", "effort": "high" },
       "demos-critic": { "model": "opus", "effort": "medium" },
       "notes": { "model": "opus", "effort": "high" },
       "notes-critic": { "model": "opus", "effort": "medium" },
@@ -94,7 +94,7 @@
       "notes-verify-full": { "model": "sonnet", "effort": "medium" },
       "humanize": { "model": "sonnet", "effort": "medium" },
       "exercise": { "model": "sonnet", "effort": "medium" },
-      "runbook": { "model": "sonnet", "effort": "medium" },
+      "runbook": { "model": "opus", "effort": "high" },
       "critic": { "model": "opus", "effort": "medium" },
       "wire": { "model": "haiku", "effort": "low" },
       "verify": { "model": "haiku", "effort": "low" },
