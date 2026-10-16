@@ -206,6 +206,23 @@ class TrackerPageTests(unittest.TestCase):
             self.assertTrue((ROOT / font).is_file(), f"font {font} missing")
 
     @unittest.skipUnless(node_exe(), "node not found")
+    def test_phase_parts(self):
+        """The Phase line splits into a lead paragraph and its 'Next, in order:' steps, in the page's own JS."""
+        scripts = [s for s in INLINE_SCRIPT_RE.findall(shell_html())]
+        prog = (
+            "const vm=require('vm');let s='';process.stdin.setEncoding('utf8');process.stdin.on('data',c=>s+=c);"
+            "process.stdin.on('end',()=>{const i=JSON.parse(s);const sb={window:{}};vm.runInNewContext(i.src,sb);"
+            "process.stdout.write(JSON.stringify(i.texts.map(t=>sb.window.TR.phaseParts(t))));});"
+        )
+        texts = ["week 1 closed; week 2 `live` (D-0052). Next, in order: close W2D1 (`close_day.py 2 1`); the week-3 plan by Fri; release Fri.",
+                 "Next: one step", "no steps here at all"]
+        out = json.loads(run_node(prog, json.dumps({"src": "\n".join(scripts), "texts": texts})))
+        self.assertEqual(out[0], {"now": "week 1 closed; week 2 `live` (D-0052).",
+                                  "next": ["close W2D1 (`close_day.py 2 1`)", "the week-3 plan by Fri", "release Fri"]})
+        self.assertEqual(out[1], {"now": "", "next": ["one step"]})
+        self.assertEqual(out[2], {"now": "no steps here at all", "next": []})
+
+    @unittest.skipUnless(node_exe(), "node not found")
     def test_alarm_rules(self):
         """The previous-Friday readiness rule and the other alarms, on synthetic data, in the page's own JS."""
         scripts = [s for s in INLINE_SCRIPT_RE.findall(shell_html())]

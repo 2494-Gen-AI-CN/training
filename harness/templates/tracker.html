@@ -67,7 +67,14 @@ h1 { font-size: 20px; margin: 0; } h2 { font-size: 15px; margin: 0 0 10px; lette
 .topbar .meta { color: var(--ink-soft); font-size: 13px; display: flex; gap: 14px; flex-wrap: wrap; margin-left: auto; align-items: center; }
 .btn { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 5px 11px; cursor: pointer; font-size: 13px; }
 .btn:hover { border-color: var(--accent); } .btn[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); font-weight: 600; }
-.phase { color: var(--ink-soft); margin: 14px 0 16px; max-width: 1100px; }
+/* Where we are: the STATUS.md Phase line as a lead paragraph plus its "Next, in order:" steps */
+.phase { margin: 14px 0 0; }
+.phase .now { margin: 0; max-width: 1100px; }
+.phase .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--dim); font-weight: 700; margin: 12px 0 2px; }
+.phase ol { margin: 0; padding-left: 22px; max-width: 1100px; }
+.phase li { margin: 3px 0; padding-left: 4px; }
+.phase li::marker { color: var(--accent); font-weight: 700; }
+.row2 { margin-top: 14px; }
 
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
 .row2 { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 14px; }
@@ -169,7 +176,10 @@ noscript p { padding: 20px; }
 </div>
 <noscript><p>This tracker needs JavaScript to draw its data block. The same facts are in STATUS.md and harness/curriculum.json.</p></noscript>
 <main class="wrap">
-  <p class="phase" id="phase"></p>
+  <section class="card phase" aria-labelledby="h-phase">
+    <div class="kicker" id="h-phase">Where we are</div>
+    <div id="phase"></div>
+  </section>
 
   <div class="row2">
     <section class="card next" aria-labelledby="h-next">
@@ -240,6 +250,15 @@ window.TRACKER = null;
   TR.ms = function (iso) { var p = iso.split("-"); return Date.UTC(+p[0], +p[1] - 1, +p[2]); };
   TR.diff = function (a, b) { return Math.round((TR.ms(b) - TR.ms(a)) / DAYMS); };   // days from a to b
   TR.fmt = function (iso) { var d = new Date(TR.ms(iso)); return WD[d.getUTCDay()] + " " + MON[d.getUTCMonth()] + " " + d.getUTCDate(); };
+  // STATUS.md Phase line: "<where things stand>. Next, in order: <step>; <step>; <step>." -> lead text + steps.
+  TR.phaseParts = function (text) {
+    var s = String(text || "").trim();
+    var m = /\bNext(?:,\s*in\s+order)?:\s*/.exec(s);
+    if (!m) return { now: s, next: [] };
+    var steps = s.slice(m.index + m[0].length).replace(/\.\s*$/, "").split(/;\s*/)
+      .map(function (x) { return x.trim(); }).filter(Boolean);
+    return { now: s.slice(0, m.index).trim(), next: steps };
+  };
   TR.teaching = function (data) {
     var out = [];
     data.weeks.forEach(function (w) { w.days.forEach(function (d) { if (d.kind !== "holiday") out.push({ w: w, d: d }); }); });
@@ -409,7 +428,12 @@ window.TRACKER = null;
   function renderTop() {
     $("m-today").textContent = "Today " + TR.fmt(today) + ", " + today.slice(0, 4);
     $("m-updated").textContent = "STATUS.md updated " + (D.status.updated || "unknown");
-    fill("phase", [rich(D.status.phase)]);
+    var pp = TR.phaseParts(D.status.phase);
+    fill("phase", [
+      h("p", { class: "now" }, [rich(pp.now)]),
+      pp.next.length ? h("div", { class: "lbl", text: "Next, in order" }) : null,
+      pp.next.length ? h("ol", {}, pp.next.map(function (s) { return h("li", {}, [rich(s)]); })) : null
+    ]);
   }
 
   function renderNext() {

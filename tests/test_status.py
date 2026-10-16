@@ -26,6 +26,15 @@ class StatusShapeTests(unittest.TestCase):
         self.assertRegex(self.text, re.compile(r"^\*\*Last updated:\*\* \d{4}-\d{2}-\d{2}\s*$", re.M),
                          "STATUS.md needs '**Last updated:** YYYY-MM-DD'")
 
+    def test_phase_is_a_summary_with_next_steps(self):
+        """One short paragraph (where things stand, then 'Next, in order:' steps split by ';'); history goes in the Log."""
+        phase = re.search(r"^\*\*Phase:\*\* (.*)$", self.text, re.M).group(1)
+        self.assertLess(len(phase), 1600, "the Phase line is a summary; move history to the Log section")
+        m = re.search(r"Next, in order:\s*(.+)$", phase)
+        self.assertIsNotNone(m, "the Phase line ends with 'Next, in order: step; step; ...'")
+        steps = [s.strip() for s in m.group(1).rstrip(". ").split(";") if s.strip()]
+        self.assertGreaterEqual(len(steps), 2, "list the next steps separated by semicolons")
+
     def test_milestones_table(self):
         self.assertIn(bt.MILESTONE_HEADER, self.text.splitlines(), "Milestones table header changed")
         rows = bt._table(self.text, bt.MILESTONE_HEADER)
