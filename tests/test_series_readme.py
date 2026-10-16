@@ -28,7 +28,7 @@ class SeriesReadmeTests(unittest.TestCase):
             with self.subTest(week=w["week"]):
                 text = series_readme.render(w["week"])
                 plan = plan_check.load_plan(PLANS / f"week-{w['week']:02d}.md")
-                for h in ("## Ordered demo table", "## Cross-demo dependency graph", "## Stop points if splitting", "## Squeeze priorities",
+                for h in ("## Conventions", "## Ordered demo table", "## Cross-demo dependency graph", "## Stop points if splitting", "## Squeeze priorities",
                           "## Hard-stop rule", "## Scaffold bundle", "## Run prerequisites", "## Per-day shape", "## Anti-spoiler ledger",
                           "## Real-world framing"):
                     self.assertIn(h, text, f"README lacks {h}")

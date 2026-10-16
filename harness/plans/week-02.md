@@ -38,8 +38,6 @@ By Friday afternoon a trainee opens `ticket-desk/` in the demo repo, creates a `
 - Domain: a support-ticket desk for a small software team: tickets with an id, title, priority, status, assignee, open and close times, filed by customers and triaged by agents. The same records survive every week of the scope: week 1 holds them in Python variables, lists, dicts and a `Ticket` class; week 2 keeps that class in a `desk` module with logging, saves the records to `tickets.json` with error handling, tests the rules with pytest, puts resolution hours in a NumPy array, loads the JSON into a pandas DataFrame and charts tickets per status with Matplotlib; week 3 moves the same tickets, customers and agents into MySQL tables with joins and a transaction on assignment; week 4 loads ticket events into a BigQuery star schema through an ETL job; week 5 sends tickets to an LLM for triage, summaries and draft replies.
 - Scope: weeks 1–5 (project P0); this week plans blocks 1–9.
 - Start state this week: cold (coldRestart: the week-1 ladder was not delivered; 01-desk-modules creates `ticket-desk/ticket_desk.py` in the demo repo).
-- Typed-line counts in Adds count every non-blank line the room types: editor lines, REPL lines and commands. Lines moved by cut and paste and lines re-indented in place are not counted.
-- pylint convention from 02-pip-and-module-split on (so 09-status-charts' "only W0621 remains" holds): every new module, class, function and test function gets a one-line docstring (pylint C0114/C0115/C0116 fire otherwise, and the default `no-docstring-rgx` `^_` does not exempt `test_*`), and every `open(...)` passes `encoding="utf-8"` (W1514 otherwise). Both count in each block's typed lines.
 - End state this week: the commit of `09-status-charts` on `prep/week-02` (and `main` after the Friday merge): about 450 lines of Python in eight files: `desk.py` (about 90), `ticket_desk.py` (about 60), `storage.py` (about 60), `stats.py` (about 30), `report.py` (about 40), `frame.py` (about 25), `chart.py` (about 35) and `test_desk.py` (about 110), plus `requirements.txt`, `.gitignore` and `tickets.json`. Nine commits on five day branches (`feature/desk-modules`, `feature/desk-storage`, `feature/desk-tests`, `feature/desk-reports`, `feature/desk-charts`) merged into `main`.
 
 | Block | Day | Slot | Walkthrough | Starts from | Adds | End state | Commit message |
@@ -61,6 +59,20 @@ previous block's Walkthrough; the block's commit on the demo repo's prep branch 
 about metrics.demos.maxTypedLinesPerBlock typed lines. An authored or live day's rows are recorded as-is from its
 walkthroughs on disk (D-0052).
 -->
+
+## Conventions
+
+<!-- Backfilled 2026-10-16 (D-0057): the two bullets that sat under the thread (typed-line tally, pylint) moved here as
+     rows, plus the rules the three hand critic rounds of 2026-10-15 found one at a time (record keys, basicConfig
+     ordering, the push and the slid-merge rule). Block rows are untouched: week 2 is live (critic item 5). -->
+
+| Convention | Kind | Applies from | Rule | Why |
+|---|---|---|---|---|
+| typed-line tally | tally | all | every non-blank line the room types counts: editor lines, REPL lines and commands; lines moved by cut and paste and lines re-indented in place are not counted | the Adds budgets (about `maxTypedLinesPerBlock` at 1.5 per minute) are checked against it |
+| pylint docstrings and encoding | lint | 02-pip-and-module-split | every new module, class, function and test function gets a one-line docstring (pylint C0114/C0115/C0116 fire otherwise, and the default `no-docstring-rgx` `^_` does not exempt `test_*`); every `open(...)` passes `encoding="utf-8"` (W1514 otherwise); both count in each block's typed lines | 09-status-charts claims "only W0621 remains" and the claim must hold on every earlier block's commit |
+| ticket record keys | schema | 04-desk-json | a saved ticket is a dict whose keys are exactly the `Ticket` attribute names `ticket_id`, `title`, `priority`, `status`, `assignee`, `opened_at`, `closed_at`, with `opened_at` and `closed_at` as ISO text or `None`; `tickets.json` is a list of such dicts | 07-collections selects these keys by name and 08-ticket-frame reads them as the DataFrame columns (`pd.read_json`, `pd.to_datetime` on both time columns) |
+| logging config first | config | 01-desk-modules | `logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")` is the first line of the script body, before any `log.info`; no `%(asctime)s` so recorded output is stable | a log call before the config silently installs the default handler and the recorded output in the walkthrough no longer matches |
+| branch per day, push at the merge | git | 01-desk-modules | each day's AM block opens `feature/<slug>` (`desk-modules`, `desk-storage`, `desk-tests`, `desk-reports`, `desk-charts`); the day's last block merges it into `main` and runs `git push origin main`; when a merge slid to the next morning, the next AM block starts with `git switch main`, `git merge feature/<slug>`, `git push origin main` before any new line | the Weekly Epic needs `main` on GitHub to hold the work; the demos critic runs each block's commit on `prep/week-02` |
 
 ## Standalone demos
 

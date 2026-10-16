@@ -198,6 +198,7 @@ def demos_args(cur: dict, week: dict, today: str | None, metrics: dict, config: 
         "cutFirst": plan["squeeze"]["cutFirst"],
         "neverCut": plan["squeeze"]["neverCut"],
         "prereqs": plan["prereqs"],
+        "conventions": plan["conventions"],
         "existingWalkthroughs": _existing_walkthroughs(week["dir"]),
         "demosDir": _fwd(ROOT / "trainer" / week["dir"] / "demos"),
         "demoRepo": {**{k: v for k, v in config["demoRepo"].items() if not k.startswith("_")}, "localPath": _fwd(ROOT / config["demoRepo"]["localDir"])},
@@ -403,7 +404,7 @@ def main(argv: list[str]) -> int:
                 nxt.get("status") == "live"
                 or (nxt.get("status") == "authored" and not release_wire and d.get("status") != "live")):
             nxt = None
-        rows = plan_check.day_rows(plan, d["id"]) if plan else {"weekPlanRows": [], "blockRows": [], "ladderRows": [], "dayShape": "", "spoilerRows": [], "cutFirst": [], "neverCut": []}
+        rows = plan_check.day_rows(plan, d["id"]) if plan else {"weekPlanRows": [], "blockRows": [], "conventions": [], "ladderRows": [], "dayShape": "", "spoilerRows": [], "cutFirst": [], "neverCut": []}
         rel = f"{week['dir']}/{d['slug']}"
         day_args = {
             **_day_base(cur, week, d, s),

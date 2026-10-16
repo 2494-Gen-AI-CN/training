@@ -89,6 +89,7 @@ const header =
   (CFG.audience ? `Audience: ${CFG.audience.summary} Assume known: ${(CFG.audience.assumeKnown || []).join('; ')}. Do NOT assume: ${(CFG.audience.assumeNotKnown || []).join('; ')}. ${CFG.audience.rule || ''} Emphasise: ${(CFG.audience.emphasise || []).join('; ')}.\n` : '') +
   `Week plan (binding): ${A.weekPlan}. Weekly Epic: ${A.epic}\n` +
   `Threads (config.json): ${J(A.threads || {})}\n` +
+  `Conventions (from the plan, D-0057; binding: a block that breaks one is a critic FAIL, and a rule applies from the walkthrough its Applies from names): ${J(A.conventions || [])}\n` +
   `Demo repo (the answer key): ${REPO.url || ''}, cloned at ${REPO_DIR}; the trainer types live on ${REPO.branch || 'main'}; THIS run commits each block on branch ${PREP} (one commit per block, in ladder order). Never commit to ${REPO.branch || 'main'}; never push.\n` +
   `Walkthroughs go to ${A.demosDir}/NN-<slug>.md (private trainer repo; create the folder). Template ${A.template}; critic ${A.critic}.\n` +
   `Metrics: demos ${J(MD)}. Python ${CFG.python}. LLM config this week: ${J(LLM)}. Root: ${ROOT}.\n`

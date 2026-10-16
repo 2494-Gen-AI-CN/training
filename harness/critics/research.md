@@ -17,12 +17,12 @@ You are judging `harness/research/<week>/<day>.md`. You are NOT the author. Retu
 
 8. Every claim carries a `[title](url)` source.
 9. Spot-check ≥3 URLs with WebFetch: the page exists and supports the claim it is attached to. Any 404 / unrelated page = fail.
-10. Version stamps are CURRENT: check the library's docs for the latest stable version. Model ids for LLM calls must come from the provider's current model list, not memory.
+10. Version stamps are CURRENT: check the library's docs for the latest stable version. Model ids for LLM calls must come from the provider's current model list, not memory. Wheel rule (D-0058): for every third-party library the demos install, the stamp line names, after the version (inside the parenthetical or the trailing `#` comment, never before the version), the wheel pip will pick for the course Python (`config.json` `python`) on `win_amd64`: a `cpXYZ-cpXYZ-win_amd64` wheel or a pure-Python `py3-none-any` / `py2.py3-none-any` wheel, checked on PyPI (`https://pypi.org/pypi/<name>/json`, the `releases[<version>]` filenames). A library with neither for the course Python is a FAIL that names the newest Python every library of the week supports, so the pin (D-0041) can be revisited by a decision entry.
 11. Deprecated-API sweep — FAIL if the brief presents any of these as current without naming the 1.x replacement: LangChain `LLMChain`, `SimpleSequentialChain`, `SequentialChain`, `LLMRouterChain`, `TransformChain`, `LLMMathChain`, `ConversationChain`, `ConversationBufferMemory` / `ConversationBufferWindowMemory` / `ConversationSummaryMemory`, `initialize_agent`, `AgentExecutor`, `langchain.chains.*` imports; LangGraph pre-1.0 `create_react_agent` naming if the current docs say otherwise; TF1 `Session` / `placeholder`; TFLearn; Pinecone v2 client (`pinecone.init`). The brief must cite the current docs page for the replacement (LCEL runnables, `with_structured_output`, `RunnableWithMessageHistory` or LangGraph checkpointers, `create_agent`, `StateGraph`, `interrupt`). Curriculum topic names may stay in page titles for grid consistency; the taught API must be current.
 
 ## Light gate only (weeks 1–4, 6, 7)
 
-12. No WebFetch required. Version stamps may cite the known-stable major version (e.g. python 3.15, MySQL 8.x, TensorFlow 2.x) but must still be present.
+12. No WebFetch required for claims. Version stamps may cite the known-stable major version (e.g. python 3.15, MySQL 9.x, TensorFlow 2.x) but must still be present; the one fetch a light gate still makes is the PyPI wheel check of item 10 for each library the demos install.
 13. Week 7 (TFLearn): the brief must state that TFLearn is unmaintained and name the Keras / TF2 equivalent for each listed topic.
 
 Return a one-sentence summary plus critiques as a list of concrete fixes.

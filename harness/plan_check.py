@@ -19,6 +19,10 @@ Checks (stdlib only):
               cites earlier rows and includes the previous block of the same thread
   series    - Stop points (one row per walkthrough), Squeeze priorities (Cut first + Never cut lists),
               Hard-stop rule (prose), Scaffold bundle (two tables), Run prerequisites (bullets)
+  conventions - the rules a day or demo author could not infer from the block table (D-0057): a table with
+              Convention / Kind / Applies from / Rule / Why; Kind in CONVENTION_KINDS, at least one tally and
+              one git row, Applies from = all or a walkthrough of the ladder, no empty Rule; the rows travel
+              into every day's args (day_rows) and the week's demo args
   coverage  - every curriculum subtopic of every teaching day of the week appears once, with its own day,
               Demo = a walkthrough of that day | facilitation | notes, Notes step a positive integer
   authored/live days - once trainer/week-WW/demos/ exists, the walkthroughs on disk equal the plan's for every
@@ -41,10 +45,16 @@ import demo_check  # noqa: E402
 
 ROOT = bi.ROOT
 METRICS = ROOT / "harness" / "metrics.json"
-SECTIONS = ["## Weekly Epic", "## Assumes from the previous week", "## Threads", "## Standalone demos", "## Demo ladder",
+SECTIONS = ["## Weekly Epic", "## Assumes from the previous week", "## Threads", "## Conventions", "## Standalone demos", "## Demo ladder",
             "## Per-day shape", "## Stop points", "## Squeeze priorities", "## Hard-stop rule", "## Scaffold bundle",
             "## Run prerequisites", "## Anti-spoiler ledger", "## Real-world framing and deliberate deviations", "## Coverage map"]
 BLOCK_COLS = ["Block", "Day", "Slot", "Walkthrough", "Starts from", "Adds", "End state", "Commit message"]
+CONVENTION_COLS = ["Convention", "Kind", "Applies from", "Rule", "Why"]
+# D-0057: the fixed vocabulary of the Kind column. tally = how typed lines are counted; lint = linter rules and what
+# they force into the typed lines; schema = record keys / columns later blocks select; git = branch, merge and push
+# cadence; config = ordering rules (a basicConfig before the first log call); tooling = container, venv and CLI
+# conventions; carried-lines = which earlier lines a rewriting block replaces.
+CONVENTION_KINDS = ("tally", "lint", "schema", "git", "config", "tooling", "carried-lines")
 STANDALONE_COLS = ["Day", "Slot", "Walkthrough", "Minutes", "Why it fits no thread"]
 LADDER_COLS = ["#", "Day", "Walkthrough", "Minutes", "Must follow", "Guarantees"]
 STOP_COLS = ["Walkthrough", "Clean stop point", "Resume at"]
@@ -145,6 +155,7 @@ def load_plan(path: Path) -> dict:
         threads.append({"id": h.group(1), "domain": meta.get("Domain", ""), "scope": meta.get("Scope", ""),
                         "startState": meta.get("Start state this week", ""), "endState": meta.get("End state this week", ""),
                         "blocks": blocks})
+    conventions = [{k: r[k] for k in CONVENTION_COLS} for r in (_table_with(_section(text, "## Conventions"), CONVENTION_COLS) or [])]
     standalone = [{k: r[k] for k in STANDALONE_COLS} for r in (_table_with(_section(text, "## Standalone demos"), STANDALONE_COLS) or [])]
     ladder = [{k: r[k] for k in LADDER_COLS} for r in (_table_with(_section(text, "## Demo ladder"), LADDER_COLS) or [])]
     coverage = [{k: r[k] for k in COVERAGE_COLS} for r in (_table_with(_section(text, "## Coverage map"), COVERAGE_COLS) or [])]
@@ -160,7 +171,7 @@ def load_plan(path: Path) -> dict:
     for i, h in enumerate(dh):
         end = dh[i + 1].start() if i + 1 < len(dh) else len(shape_body)
         day_shape[h.group(1)] = shape_body[h.start():end].strip()
-    return {"path": str(path), "week": week, "weekDir": wk["dir"], "threads": threads, "standalone": standalone,
+    return {"path": str(path), "week": week, "weekDir": wk["dir"], "threads": threads, "conventions": conventions, "standalone": standalone,
             "ladder": ladder, "coverage": coverage, "spoilers": spoilers, "deviations": deviations, "dayShape": day_shape,
             "epic": _section(text, "## Weekly Epic").strip(),
             "assumes": _bullets(_section(text, "## Assumes from the previous week")),
@@ -203,6 +214,7 @@ def day_rows(plan: dict, day_id: str) -> dict:
     return {
         "weekPlanRows": [r for r in plan["coverage"] if r["Day"] == day_id],
         "blockRows": [b for b in week_blocks(plan) if b["day"] == day_id],
+        "conventions": plan["conventions"],
         "ladderRows": [r for r in plan["ladder"] if r["Day"] == day_id],
         "dayShape": plan["dayShape"].get(day_id, ""),
         "spoilerRows": [r for r in plan["spoilers"] if r["Day"] == day_id or r["To"] == day_id],
@@ -415,6 +427,22 @@ def check_plan(path: Path, metrics: dict | None = None, root: Path = ROOT) -> li
                 p.append(f"{name}: Scaffold bundle never-pre-provide row names '{w}', not a walkthrough of the ladder")
     if not plan["prereqs"]:
         p.append(f"{name}: Run prerequisites needs at least one bullet (the demo repo branch, containers, keys, tools)")
+    # conventions (D-0057): the rules a day or demo author could not infer from the block table
+    conv = plan["conventions"]
+    if not conv:
+        p.append(f"{name}: Conventions needs a table (columns {CONVENTION_COLS}) with at least a tally and a git row")
+    kinds = {r["Kind"] for r in conv}
+    for need in ("tally", "git"):
+        if conv and need not in kinds:
+            p.append(f"{name}: Conventions needs a row of kind '{need}' (every week counts typed lines and commits)")
+    for r in conv:
+        tag = f"Conventions row '{r['Convention'] or '?'}'"
+        if r["Kind"] not in CONVENTION_KINDS:
+            p.append(f"{name}: {tag}: Kind must be one of {', '.join(CONVENTION_KINDS)}, got '{r['Kind']}'")
+        if r["Applies from"] != "all" and r["Applies from"] not in seen:
+            p.append(f"{name}: {tag}: Applies from must be 'all' or a walkthrough of the ladder, got '{r['Applies from']}'")
+        if not r["Rule"]:
+            p.append(f"{name}: {tag}: Rule is empty")
     # coverage map
     cov = plan["coverage"]
     if not cov:

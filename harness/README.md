@@ -11,7 +11,7 @@ harness/
   args_for.py          prints the Workflow args for <week> <day...> (day = weekday slot; holiday slots refused; BLOCKED until the
                        week's plan exists, escape --no-plan; --notes-only / --runbook-only re-author one artifact), with <week> --plan
                        the args for the week-plan workflow (D-0034), with <week> --demos the week's walkthrough blocks for demo-series.js (D-0055)
-  plan_check.py        parses + checks one week plan (block chain, ladder, series sections, coverage map, authored days as-is); args_for and tests call it
+  plan_check.py        parses + checks one week plan (block chain, conventions table, ladder, series sections, coverage map, authored days as-is); args_for and tests call it
   demo_check.py        FORMAT check for one walkthrough or a week's folder (D-0055): title, the five header fields, Time = sum of step
                        minutes within metrics.demos, cheat-sheet rows = steps, cwd lines, closing sections, the last step's commit,
                        typed-line cap; "What we did NOT cover" bullets take one format (D-0039). The answer key is the demo repo commit.
@@ -44,7 +44,7 @@ harness/
                        read from repo state; --check in tests (D-0035)
   log_run.py           add / amend one record per workflow run in runs.jsonl; `tests` records the suite result in last-tests.json
   runs.jsonl           the run log (committed): agents, passes per artifact, flagged items, tiers, test result per run
-  workflows/week-plan.js    once per week, before the first day: author + critic write plans/week-WW.md, then a Record agent (<=5 agents)
+  workflows/week-plan.js    once per week, before the first day: author + critic write plans/week-WW.md (up to two repasses, D-0057), then a Record agent (<=7 agents)
   workflows/demo-series.js  once per week, after the plan and the briefs: per block author -> humanize -> critic in ladder order, each block
                        one commit on the demo repo's prep branch; then one series-review critic, the series README, Record, Verify (D-0055)
   workflows/day-fanout.js   the per-day Workflow-tool script (research -> notes ∥ exercise -> runbook -> wire; no demos stage)

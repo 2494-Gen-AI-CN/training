@@ -47,6 +47,17 @@ about metrics.demos.maxTypedLinesPerBlock typed lines. An authored or live day's
 walkthroughs on disk (D-0052).
 -->
 
+## Conventions
+
+<!-- Backfilled 2026-10-16 (D-0057) from the plan's own text; week 1 ran as loose days (D-0050), so these rows are the
+     record of what the walkthroughs assumed, not a rule the room followed. -->
+
+| Convention | Kind | Applies from | Rule | Why |
+|---|---|---|---|---|
+| typed-line tally | tally | all | every non-blank line the room types counts: editor lines, REPL lines and shell commands; lines moved or re-indented in place do not | the Adds budgets are checked against it |
+| feature branch per day | git | 02-ticket-record-and-rules | Wednesday, Thursday and Friday each open one branch (`feature/ticket-record`, `feature/data-types`, `feature/design-choices`) in the AM block; the PM block's commit ends the day and the branch fast-forwards into `main` | the end state is seven commits on top of Tuesday's scratch repo with three fast-forward merges |
+| replaced blocks | carried-lines | 04-ticket-text-and-queue | a block that rewrites earlier lines names every line it replaces in its Adds ("replaced block"): the three SLA constants and rung 4's `hours_left` line (block 5), the `is_breached` booleans and the per-tuple prints (block 6), `make_ticket`, `deadline_for` and the `ticket[...]` accesses (block 7); a replaced line is deleted in the same step, never left beside its replacement | the week-1 critic rounds all found carried-line gaps; naming the fate of every surviving line up front is what closed them |
+
 ## Standalone demos
 
 <!-- Blocks that fit no thread (A23). None this week. -->

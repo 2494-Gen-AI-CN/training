@@ -139,6 +139,7 @@ const planCtx = (d) => A.noPlan
   : `WEEK PLAN (binding): ${A.weekPlan}. Coverage rows for this day (subtopic -> walkthrough | facilitation | notes -> notes step): ${J(d.weekPlanRows || [])}\n` +
     `Walkthrough blocks of this day (authored by demo-series.js under ${DEMOS_DIR}; one commit each on ${PREP} of the demo repo; a block EXTENDS its startsFrom block, D-0055): ${J((d.blockRows || []).map(b => ({ name: b.name, slot: b.slot, minutes: b.minutes, thread: b.thread, startsFrom: b.startsFrom, commitMessage: b.commitMessage, stopPoint: b.stopPoint, resumeAt: b.resumeAt, endState: b.endState })))}\n` +
     `Ladder rows (minutes, must-follow, guarantees): ${J(d.ladderRows || [])}\n` +
+    `Conventions (week-level, D-0057; binding for every artifact: lint rules, record keys, git cadence, typed-line tally, tooling): ${J(d.conventions || [])}\n` +
     (d.dayShape ? `Day shape from the plan (AM/PM lines):\n${d.dayShape}\n` : '') +
     (d.cutFirst && d.cutFirst.length ? `Squeeze priorities (week-level): cut first ${J(d.cutFirst)}; never cut ${J(d.neverCut || [])}\n` : '') +
     (d.spoilerRows && d.spoilerRows.length ? `Anti-spoiler rows touching this day: ${J(d.spoilerRows)}\n` : '')

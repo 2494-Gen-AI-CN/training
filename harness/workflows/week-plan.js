@@ -4,8 +4,8 @@
 //   python harness/args_for.py <week> --plan --today YYYY-MM-DD   -> paste as args (the ONLY source of these args)
 //   Workflow({ scriptPath: "harness/workflows/week-plan.js", args: <that JSON> })
 //
-// One author agent + one critic (harness/critics/week-plan.md); one repass at most; then one Record agent that
-// appends the run to harness/runs.jsonl and rebuilds tracker.html (D-0035). So <= 5 agents.
+// One author agent + one critic (harness/critics/week-plan.md); up to two repasses (D-0057); then one Record agent
+// that appends the run to harness/runs.jsonl and rebuilds tracker.html (D-0035). So <= 7 agents.
 // The plan carries the Weekly Epic, the demo THREADS (one codebase growing block by block: one walkthrough per
 // AM/PM demo slot, one commit per block on the demo repo's prep branch, D-0033, D-0055), the ordered demo ladder
 // with minutes and dependency guarantees, the per-day AM/PM shape, the series sections the trainer's README is
@@ -19,7 +19,7 @@
 
 export const meta = {
   name: 'week-plan',
-  description: 'Week plan before any day: epic, demo threads and ladder, per-day shape, ledgers, coverage map (author + critic, one repass)',
+  description: 'Week plan before any day: epic, demo threads, conventions and ladder, per-day shape, ledgers, coverage map (author + critic, up to two repasses)',
   phases: [
     { title: 'Plan' },
     { title: 'Record' },
@@ -74,10 +74,12 @@ const header =
 
 async function gated(gen, crit) {
   let result = await gen(null, 1)
-  for (let pass = 1; pass <= 2; pass++) {
+  // D-0057: up to three critic passes (two repasses). Both earlier plans needed five passes; the third in-run pass
+  // absorbs the round that used to be done by hand. escalateOn 2 puts passes 2 and 3 on the escalate tier.
+  for (let pass = 1; pass <= 3; pass++) {
     const v = await crit(result, pass)
     if (v && v.pass) return { status:'done', passes: pass, summary: (v.summary || (result && result.summary) || ''), result }
-    if (pass === 2) return { status:'flagged', passes: 2, flags: (v ? v.critiques : ['critic returned null']), summary: (result && result.summary) || (v && v.summary) || '', result }
+    if (pass === 3) return { status:'flagged', passes: 3, flags: (v ? v.critiques : ['critic returned null']), summary: (result && result.summary) || (v && v.summary) || '', result }
     result = await gen(v ? v.critiques : ['prior critic hard-failed (returned null) — regenerate from scratch, full quality bar'], pass + 1)
   }
 }
@@ -91,6 +93,7 @@ const plan = await gated(
     `Write ${A.planFile} (create harness/plans/). Decide and record:\n` +
     `- Weekly Epic: one paragraph, what the learner can DO by Friday in the thread's domain, naming the artifact built along the trainer; it must be something the learner project of this block will need (A24).\n` +
     `- Threads: one "### <thread-id>" per thread in scope (ids and domains from the args; do not invent a thread). One block row per AM or PM demo slot of every planned day (Slot column), plus the authored or live days' rows as-is. A block ADDS to the previous block's end state (never re-scaffolds; a rewrite names what it replaces in Adds), ends runnable, and ends in ONE commit whose message is the row's Commit message (imperative, <= 50 chars); a day's PM block also merges the day's feature branch into main when the week uses one branch per day. Size each block so Adds fits about ${(M.demos || {}).maxTypedLinesPerBlock} typed lines in its minutes (1.5 per minute, less where the talking points are dense) and state the repo's size in "End state this week". Walkthrough names are NN-<slug> with NN counting 01.. across the week in ladder order. The Domain line says how the same records survive every week of the thread's scope.\n` +
+    `- Conventions (D-0057): BEFORE sizing the block table, list every rule a day or demo author could not infer from the blocks, one row each (Convention, Kind, Applies from, Rule, Why; Kind in tally | lint | schema | git | config | tooling | carried-lines): how typed lines are counted, each lint rule and what it forces into the typed lines (docstrings, encoding=, pins), the record keys and columns later blocks select by name, ordering rules, the branch/merge/push cadence and the slid-merge rule, container/venv/client conventions (image tag, container name, port, env names), and for a rewriting block the lines it replaces. At least one tally and one git row; Applies from is all or the walkthrough the rule starts at. The critic reports a line-level gap as a missing row here, so write the row first and size the Adds to it.\n` +
     `- Standalone demos: only subtopics that fit no thread, each with its reason (A23); "none this week" rows are not needed, an empty table is fine but keep the heading.\n` +
     `- Demo ladder: every block and standalone walkthrough once, in teaching order, with minutes (${(M.demos || {}).minutesPerBlockMin}–${(M.demos || {}).minutesPerBlockMax} each, ${(M.demos || {}).blocksPerDayMin}–${(M.demos || {}).blocksPerDayMax} per day, one per AM/PM slot, NN equal to the ladder number), Must follow (cite the previous block at least) and a concrete Guarantee.\n` +
     `- Per-day shape for EVERY teaching day (authored or live ones too, matching their runbook): AM and PM lines naming the walkthrough of each slot (with its minutes and where its break falls), every facilitation subtopic, the notes handoff, the exercise briefing and the exercise; a Demo minutes line. The whole day must fit ${(M.runbook || {}).dayMinutesMin}–${(M.runbook || {}).dayMinutesMax} minutes with a 60-minute lunch and breaks.\n` +

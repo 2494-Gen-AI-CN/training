@@ -48,6 +48,27 @@ metrics.demos.maxTypedLinesPerBlock typed lines (1.5 per minute). An authored or
 as-is from its walkthroughs on disk (D-0052).
 -->
 
+## Conventions
+
+<!-- D-0057. Every rule a day author or a demo author could NOT infer from the block table, written BEFORE the block
+     table is sized (the rows change what counts as a typed line). Kind is one of:
+       tally          how typed lines are counted (editor, REPL, shell; what is not counted)
+       lint           linter rules and what they force into the typed lines (docstrings, encoding=, pins)
+       schema         the record keys / columns / file names later blocks select by name
+       git            branch, merge and push cadence, incl. what to do when a merge slid to the next morning
+       config         ordering rules (a basicConfig before the first log call, an import before its first use)
+       tooling        container, venv, CLI and client conventions (image tag, container name, port, env names)
+       carried-lines  which earlier lines a rewriting block replaces, line by line
+     Applies from = all, or the walkthrough the rule starts at. Cells may not contain a pipe character.
+     plan_check.py requires at least one tally and one git row. The critic reports a line-level gap as a missing or
+     wrong row here, never as a per-block critique; the rows reach every day and demo author and the trainer README. -->
+
+| Convention | Kind | Applies from | Rule | Why |
+|---|---|---|---|---|
+| typed-line tally | tally | all | every non-blank line the room types counts: editor lines, REPL lines and shell commands; lines moved by cut and paste or re-indented in place do not | the Adds budgets (metrics.demos.maxTypedLinesPerBlock at 1.5 per minute) are checked against it |
+| branch per day | git | all | each day's AM block opens `feature/<slug>`; the PM block merges it into `main` and pushes; a merge that slid is made first thing in the next AM block before any new line | the Weekly Epic needs `main` on GitHub to hold the week's work; the demos critic runs each block's commit |
+| pylint docstrings | lint | 02-pip-and-module-split | every new module, class, function and test function gets a one-line docstring; every `open()` passes `encoding="utf-8"` | C0114/C0115/C0116/W1514 fire otherwise and the later "only W0621 remains" claim must hold; both count in each block's typed lines |
+
 ## Standalone demos
 
 <!-- Blocks that fit no thread (A23). Each says why. Leave the table empty if there is none. -->

@@ -94,6 +94,13 @@ def render(week: int, root: Path = ROOT) -> str:
     if plan["standalone"]:
         L.append("- **Standalone** (no thread): " + "; ".join(f"`{s['Walkthrough']}` ({s['Why it fits no thread']})" for s in plan["standalone"]))
     L.append("")
+    L.append("## Conventions")
+    L.append("")
+    L.append("The rules every block follows that the block table does not spell out (D-0057); a rule applies from the walkthrough named, or from the first block.")
+    L.append("")
+    L.append(_table(["Convention", "Kind", "Applies from", "Rule"],
+                    [[r["Convention"], r["Kind"], f"`{r['Applies from']}`", r["Rule"]] for r in plan["conventions"]]))
+    L.append("")
     L.append("## Ordered demo table (calendar order)")
     L.append("")
     rows, cum = [], 0

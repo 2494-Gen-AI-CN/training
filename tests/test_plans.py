@@ -83,9 +83,30 @@ class PlanFileTests(unittest.TestCase):
         text = (HARNESS / "templates" / "week-plan.md").read_text(encoding="utf-8")
         for s in plan_check.SECTIONS:
             self.assertIn(s, text)
-        for cols in (plan_check.BLOCK_COLS, plan_check.LADDER_COLS, plan_check.COVERAGE_COLS, plan_check.STANDALONE_COLS,
+        for cols in (plan_check.BLOCK_COLS, plan_check.CONVENTION_COLS, plan_check.LADDER_COLS, plan_check.COVERAGE_COLS, plan_check.STANDALONE_COLS,
                      plan_check.STOP_COLS, plan_check.SCAFFOLD_COLS, plan_check.NEVER_COLS, plan_check.SPOILER_COLS, plan_check.DEVIATION_COLS):
             self.assertIn("| " + " | ".join(cols) + " |", text)
+
+    def test_conventions_table_is_checked(self):
+        """D-0057: the Conventions table is required, its Kind vocabulary fixed, its Applies from a ladder walkthrough."""
+        import tempfile
+        src = PLANS / "week-02.md"
+        text = src.read_text(encoding="utf-8")
+        plan = plan_check.load_plan(src)
+        self.assertTrue(plan["conventions"], "week-02 plan carries Conventions rows")
+        self.assertEqual({"tally", "git"} & {r["Kind"] for r in plan["conventions"]}, {"tally", "git"})
+        self.assertIn("conventions", plan_check.day_rows(plan, "w02d1"))
+        head, rest = text.split("## Conventions", 1)
+        body, tail = rest.split("## Standalone demos", 1)
+        with tempfile.TemporaryDirectory() as td:
+            def problems(t: str) -> str:
+                p = Path(td) / "week-02.md"
+                p.write_text(t, encoding="utf-8")
+                return "\n".join(plan_check.check_plan(p))
+            self.assertIn("Conventions needs a table", problems(head + "## Conventions\n\n" + "## Standalone demos" + tail))
+            self.assertIn("Kind must be one of", problems(head + "## Conventions" + body.replace("| tally |", "| vibes |", 1) + "## Standalone demos" + tail))
+            self.assertIn("Applies from must be 'all' or a walkthrough", problems(head + "## Conventions" + body.replace("| all |", "| 99-nowhere |", 1) + "## Standalone demos" + tail))
+            self.assertEqual("", problems(text))
 
 
 class PlanArgsTests(unittest.TestCase):
@@ -169,8 +190,13 @@ class WeekPlanScriptTests(unittest.TestCase):
 
     def test_day_fanout_reads_plan_rows(self):
         src = (HARNESS / "workflows" / "day-fanout.js").read_text(encoding="utf-8")
-        for needle in ("weekPlanRows", "blockRows", "startsFrom", "noPlan"):
-            self.assertIn(needle, src, f"day-fanout.js must use {needle} from args (D-0034, D-0055)")
+        for needle in ("weekPlanRows", "blockRows", "startsFrom", "noPlan", "d.conventions"):
+            self.assertIn(needle, src, f"day-fanout.js must use {needle} from args (D-0034, D-0055, D-0057)")
+        series = (HARNESS / "workflows" / "demo-series.js").read_text(encoding="utf-8")
+        self.assertIn("A.conventions", series, "demo-series.js must pass the plan's Conventions rows to every block author (D-0057)")
+        plan_js = WEEK_PLAN_JS.read_text(encoding="utf-8")
+        self.assertIn("pass <= 3", plan_js, "week-plan.js runs up to three critic passes (D-0057)")
+        self.assertIn("Conventions", plan_js)
 
 
 class WeekBatchTests(unittest.TestCase):
@@ -236,8 +262,9 @@ class DemoSeriesArgsTests(unittest.TestCase):
             self.skipTest("the week's research briefs are not on disk")
         self.assertEqual(0, res.returncode, res.stderr)
         a = json.loads(res.stdout)
-        for k in ("root", "today", "week", "weekDir", "blocks", "demosDir", "template", "critic", "seriesCritic", "weekPlan", "models", "config", "demoRepo", "prepBranch"):
+        for k in ("root", "today", "week", "weekDir", "blocks", "demosDir", "template", "critic", "seriesCritic", "weekPlan", "models", "config", "demoRepo", "prepBranch", "conventions"):
             self.assertIn(k, a, f"demos args lack {k}")
+        self.assertTrue(a["conventions"], "demos args carry the plan's Conventions rows (D-0057)")
         self.assertTrue(a["blocks"])
         self.assertEqual([b["n"] for b in a["blocks"]], list(range(1, len(a["blocks"]) + 1)))
         for b in a["blocks"]:

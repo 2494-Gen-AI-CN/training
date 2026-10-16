@@ -7,7 +7,7 @@ day: {{day}} · {{slug}}
 
 version-stamps:
   - python: {{python}} (verified {{today}})
-  - <library>: <version> (verified {{today}})   # one line per library the demos import
+  - <library>: <version> (verified {{today}})   # one line per library the demos import; after the version, name the wheel pip picks on the course Python (D-0058): <name>-<version>-cp315-cp315-win_amd64.whl, or the pure-Python <name>-<version>-py3-none-any.whl
 
 ## Claims (≥ metrics.research.claimsMin; each MUST carry a source on a full gate; light gate: source optional but recommended)
 
