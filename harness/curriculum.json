@@ -204,7 +204,7 @@
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "walkthrough",
-          "status": "authored",
+          "status": "live",
           "title": "Modules, packaging & pip",
           "subtitle": "math · logging · regex · pip · pylint · writing your own module",
           "subtopics": [
@@ -223,7 +223,7 @@
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "walkthrough",
-          "status": "authored",
+          "status": "live",
           "title": "Exceptions, files & JSON",
           "subtitle": "errors · try/except · read, write, create, delete files · JSON",
           "subtopics": [
@@ -244,7 +244,7 @@
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "walkthrough",
-          "status": "authored",
+          "status": "live",
           "title": "Testing with pytest & NumPy",
           "subtitle": "testing overview · unit testing · pytest · NumPy · interview mindset pt 1",
           "subtopics": [
@@ -263,7 +263,7 @@
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "walkthrough",
-          "status": "authored",
+          "status": "live",
           "title": "Collections & pandas",
           "subtitle": "Counter · namedtuple · OrderedDict · collections · pandas",
           "subtopics": [
@@ -282,7 +282,7 @@
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "walkthrough",
-          "status": "authored",
+          "status": "live",
           "title": "Review, Matplotlib & mini-project",
           "subtitle": "data visualisation · Matplotlib · Python review · mini-project",
           "exerciseKind": "rubric",
