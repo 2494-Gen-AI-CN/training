@@ -36,7 +36,7 @@
           <span><b>Week 2</b> · Day 1</span>
           <span>Mon Oct 19, 2026</span>
           <span>Python advanced</span>
-          <span><b>~35 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span><b>~36 min</b> · reference notes @150 wpm · diagram · check</span>
           <span class="verified">Sources checked 2026-10-15 · python 3.15 · pip 26 · pylint 4.0.0</span>
         </div>
         <p class="summary">This page assumes the functions and classes from the end of week 1, plus the branch, merge
@@ -62,7 +62,8 @@
         <code>math.ceil</code>.<sup class="cite"><a href="#src-1">1</a></sup> <code>from math import ceil</code> loads
         the same module but binds only the name <code>ceil</code>; the name <code>math</code> stays undefined in your
         file.<sup class="cite"><a href="#src-1">1</a></sup> <code>import math as m</code> changes nothing about loading. It
-        only binds the module under a shorter name.<sup class="cite"><a href="#src-1">1</a></sup> A module is loaded once
+        only binds the module under a shorter name.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <p>A module is loaded once
         per interpreter and cached in <code>sys.modules</code>, so a second import of the same module, under any spelling,
         reuses the object that is already there.<sup class="cite"><a href="#src-1">1</a></sup></p>
 <pre><code>import math
@@ -132,6 +133,11 @@ print(math.isclose(1e-12, 0), math.isclose(1e-12, 0, abs_tol=1e-9))</code></pre>
         </table>
         <p>floor always moves toward minus infinity, so -2.5 floors to -3, which surprises anyone who expects it to drop
         the fraction.<sup class="cite"><a href="#src-3">3</a></sup> Ties to even avoid always rounding halves up.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>An import binds a name; the module itself loads once and is cached.</li>
+          <li>Compare computed floats with isclose, and give it abs_tol when zero is involved.</li>
+          <li>floor, ceil and round treat halves and negatives differently.</li>
+        </ul></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>import math binds the module itself to the name math, so I write math.ceil at each call and the reader sees
@@ -155,11 +161,19 @@ print(math.isclose(1e-12, 0), math.isclose(1e-12, 0, abs_tol=1e-9))</code></pre>
         message carries more. It has a level that says how serious it is, a logger name that says which part of the code
         sent it, and a destination chosen once for the whole program. You get a logger with
         <code>logging.getLogger(__name__)</code>, which returns a logger named after the current
-        module.<sup class="cite"><a href="#src-4">4</a></sup> <code>__name__</code> is a variable Python sets in every
+        module.<sup class="cite"><a href="#src-4">4</a></sup></p>
+        <p><code>__name__</code> is a variable Python sets in every
         file; when the file is run directly it holds <code>"__main__"</code>, a detail first met on week 1's data-types
         day that step 6 comes back to. The five
-        standard levels, in rising order, are DEBUG (10), INFO (20), WARNING (30), ERROR (40) and CRITICAL
-        (50).<sup class="cite"><a href="#src-4">4</a></sup></p>
+        standard levels, in rising order, are</p>
+        <ul>
+          <li>DEBUG (10),</li>
+          <li>INFO (20),</li>
+          <li>WARNING (30),</li>
+          <li>ERROR (40)</li>
+          <li>and CRITICAL
+        (50).<sup class="cite"><a href="#src-4">4</a></sup></li>
+        </ul>
         <p>There is a second practical difference. The default handler writes log output to stderr, the error stream,
         while <code>print</code> writes to stdout.<sup class="cite"><a href="#src-5">5</a></sup> A terminal shows both
         streams mixed together, but they are separate, so the desk's board can go one way and its log another.</p>
@@ -189,9 +203,14 @@ print("overdue: 1")</code></pre>
 python levels.py 2&gt;/dev/null</code></pre>
         <p>The second run prints only <code>overdue: 1</code>, because both log lines went to stderr.</p>
         <h3>Format strings and lazy arguments</h3>
-        <p>The <code>format</code> argument of <code>basicConfig</code> is built from LogRecord attributes such as
-        <code>%(levelname)s</code>, <code>%(name)s</code>, <code>%(message)s</code> and
-        <code>%(asctime)s</code>.<sup class="cite"><a href="#src-4">4</a></sup> Adding <code>%(asctime)s</code> puts a
+        <p>The <code>format</code> argument of <code>basicConfig</code> is built from LogRecord attributes such as</p>
+        <ul>
+          <li><code>%(levelname)s</code>,</li>
+          <li><code>%(name)s</code>,</li>
+          <li><code>%(message)s</code> and</li>
+          <li><code>%(asctime)s</code>.<sup class="cite"><a href="#src-4">4</a></sup></li>
+        </ul>
+        <p>Adding <code>%(asctime)s</code> puts a
         timestamp on every line, which production logs want and which makes example output change on every run, so the
         desk leaves it out.<sup class="cite"><a href="#src-4">4</a></sup></p>
         <p>The message is written as <code>log.info("added %s", ticket)</code>, with the value passed as a
@@ -212,11 +231,17 @@ python levels.py 2&gt;/dev/null</code></pre>
         <p><code>basicConfig</code> is a one-shot convenience. It does nothing if the root logger
         already has handlers, unless you pass <code>force=True</code>, so it belongs once, at the program's entry
         point.<sup class="cite"><a href="#src-4">4</a></sup> Code meant to be imported by other code never calls it; only
-        the application that runs does.<sup class="cite"><a href="#src-5">5</a></sup> That rule also explains a common
+        the application that runs does.<sup class="cite"><a href="#src-5">5</a></sup></p>
+        <p>That rule also explains a common
         surprise. Calling the module-level <code>logging.warning("too early")</code> before <code>basicConfig</code>
         configures the root logger on the spot, so the later <code>basicConfig</code> is silently ignored and its INFO
         level and format never apply. Calling <code>log.info</code> on a named logger configures nothing, so it does not
         cause this.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Each log message has a level, a logger name and one chosen destination.</li>
+          <li>The default threshold is WARNING, so info and debug are dropped.</li>
+          <li>Only the application's entry point calls basicConfig, once.</li>
+        </ul></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>I use logging instead of print because each message gets a level, a logger name and a destination I set
@@ -237,16 +262,24 @@ python levels.py 2&gt;/dev/null</code></pre>
         regular expression is a small pattern language for finding or replacing text that follows a shape, and Python's
         <code>re</code> module runs them.</p>
         <h3>Reading a pattern</h3>
-        <p>A handful of symbols cover most real patterns. <code>\b</code> is a word boundary, <code>\d</code> a digit,
-        <code>\w</code> a word character (a letter, a digit or an underscore), <code>+</code> means one or more of what
-        comes before it, <code>*</code> zero or more, and parentheses make a capturing group that remembers the text
-        inside them.<sup class="cite"><a href="#src-6">6</a></sup> Inside square brackets most symbols lose their special
+        <p>A handful of symbols cover most real patterns.</p>
+        <ul>
+          <li><code>\b</code> is a word boundary,</li>
+          <li><code>\d</code> a digit,</li>
+          <li><code>\w</code> a word character (a letter, a digit or an underscore),</li>
+          <li><code>+</code> means one or more of what comes before it,</li>
+          <li><code>*</code> zero or more, and</li>
+          <li>parentheses make a capturing group that remembers the text
+        inside them.<sup class="cite"><a href="#src-6">6</a></sup></li>
+        </ul>
+        <p>Inside square brackets most symbols lose their special
         meaning, so <code>[\w.+-]+</code> matches one or more letters, digits, underscores, dots, plus signs and
         hyphens.<sup class="cite"><a href="#src-6">6</a></sup> A backslash in front of a special symbol makes it literal,
         so <code>\.</code> outside brackets matches a real dot.<sup class="cite"><a href="#src-6">6</a></sup></p>
         <p>Read the desk's two patterns left to right with that list. <code>\bTD-(\d+)\b</code> is a word boundary, the
         letters <code>TD-</code>, a group of one or more digits, and another boundary, so <code>TD-12</code> matches while
-        <code>XTD-9</code> and <code>TD-3a</code> do not. <code>[\w.+-]+@[\w-]+\.[\w.]+</code> is a run of name
+        <code>XTD-9</code> and <code>TD-3a</code> do not.</p>
+        <p><code>[\w.+-]+@[\w-]+\.[\w.]+</code> is a run of name
         characters, an <code>@</code>, a domain word, a literal dot, and the rest of the domain. That email pattern only
         approximates the real address grammar, so it suits redacting likely addresses and would be the wrong tool for
         proving an address can receive mail.</p>
@@ -314,6 +347,11 @@ print(re.search(r"&lt;.*?&gt;", html).group())</code></pre>
         expression is the wrong tool when you are looking for a fixed piece of text. <code>"TD-2" in note</code> or
         <code>note.replace("Same", "Similar")</code> is simpler to read and faster when no pattern is
         needed.<sup class="cite"><a href="#src-6">6</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Compile a named pattern once, then use finditer, findall or sub on it.</li>
+          <li>match tries only the start of the string; search scans all of it.</li>
+          <li>Write every pattern as a raw string.</li>
+        </ul></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>re.match only tries at the start of the string, re.search scans the whole string for the first match, and
@@ -338,7 +376,8 @@ print(re.search(r"&lt;.*?&gt;", html).group())</code></pre>
         own site-packages folder where installed packages live. Once the environment is activated, pip installs into that
         folder and nowhere else.<sup class="cite"><a href="#src-8">8</a></sup> The activation scripts live in
         <code>.venv/Scripts/</code> on Windows and in <code>.venv/bin/</code> on macOS and
-        Linux.<sup class="cite"><a href="#src-8">8</a></sup> On Windows the <code>py</code> launcher picks an interpreter
+        Linux.<sup class="cite"><a href="#src-8">8</a></sup></p>
+        <p>On Windows the <code>py</code> launcher picks an interpreter
         version, as in <code>py -3.15</code>.<sup class="cite"><a href="#src-9">9</a></sup> This course builds the
         desk's environment on 3.14 because the research for this page found no pylint release that declares 3.15; the
         desk code runs the same on both.</p>
@@ -388,16 +427,24 @@ python -m pip install -r requirements.txt</code></pre>
         common slip is order: if <code>git add .</code> runs before <code>.gitignore</code> exists, the whole
         <code>.venv/</code> folder is staged. Write the ignore file first, and add files by name, as in
         <code>git add .gitignore requirements.txt ticket_desk.py</code>.</p>
-        <p>You recognise this setup on sight in any Python repository: a <code>requirements.txt</code> of
-        <code>name==version</code> lines, <code>.venv/</code> in the <code>.gitignore</code>, a README that says
-        <code>python -m pip install -r requirements.txt</code>, and a terminal prompt that begins with
-        <code>(.venv)</code>.</p>
+        <p>You recognise this setup on sight in any Python repository:</p>
+        <ul>
+          <li>a <code>requirements.txt</code> of <code>name==version</code> lines,</li>
+          <li><code>.venv/</code> in the <code>.gitignore</code>,</li>
+          <li>a README that says <code>python -m pip install -r requirements.txt</code>, and</li>
+          <li>a terminal prompt that begins with <code>(.venv)</code>.</li>
+        </ul>
         <h3>PyPI, where packages come from</h3>
         <p>By default pip downloads from PyPI,
         the Python Package Index, the public online index of Python
         packages.<sup class="cite"><a href="#src-11">11</a></sup> The name after <code>pip install</code> is a project on
         PyPI, and the version in a pin is one of that project's releases.<sup class="cite"><a href="#src-13">13</a></sup>
         That is why a pin such as <code>pylint==4.0.0</code> asks every machine for the same release of the same project.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Each project gets its own virtual environment, which is never committed.</li>
+          <li>Run pip as python -m pip so it matches the interpreter.</li>
+          <li>A requirements file pins exact versions so every machine installs the same set.</li>
+        </ul></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>pip installs Python packages, by default from PyPI, into whichever environment is active. I run it as python
@@ -418,9 +465,11 @@ python -m pip install -r requirements.txt</code></pre>
         teammate ever sees it.</p>
         <h3>What a linter checks</h3>
         <p>pylint prints each finding on one line in the shape <code>file:line:column: ID: text (symbol)</code>, then a
-        score out of 10.<sup class="cite"><a href="#src-10">10</a></sup> The first letter of the ID says what kind of
+        score out of 10.<sup class="cite"><a href="#src-10">10</a></sup></p>
+        <p>The first letter of the ID says what kind of
         finding it is: C for convention, R for refactor, W for warning, E for error and F for
-        fatal.<sup class="cite"><a href="#src-10">10</a></sup> On new code the first messages are nearly always the
+        fatal.<sup class="cite"><a href="#src-10">10</a></sup></p>
+        <p>On new code the first messages are nearly always the
         missing-docstring family: <code>missing-module-docstring</code> (C0114), <code>missing-class-docstring</code>
         (C0115) and <code>missing-function-docstring</code> (C0116).<sup class="cite"><a href="#src-14">14</a></sup> A
         docstring is a string literal written as the first statement of a module, class or function, and PEP 257 sets the
@@ -465,9 +514,10 @@ Your code has been rated at 5.00/10</code></pre>
         the previous run's score and the change, so you can see what the fixes were worth.</p>
         <p>pylint also exits with a non-zero status whenever it reports messages.<sup class="cite"><a href="#src-10">10</a></sup>
         That status is how CI uses it. CI, continuous integration, is a server that runs checks on every push, and a
-        non-zero exit fails the check, so a branch with lint findings is flagged before anyone reviews it. The ticket
+        non-zero exit fails the check, so a branch with lint findings is flagged before anyone reviews it.</p>
+        <p>The ticket
         desk's own first report, excerpted below, names ten missing docstrings, two warnings about variables inside a
-        method sharing a name with variables at the file's top level, and one naming message; the last three go away
+        method sharing a name with variables at the file's top level, and one naming message. The last three go away
         once the script's code moves into a function in step 6.</p>
         <h3>Silencing one message</h3>
         <p>Sometimes the code is right and the message is not useful. A class with one method is a reasonable shape for a
@@ -484,6 +534,11 @@ Your code has been rated at 5.00/10</code></pre>
         anything, while a test runs the code and checks its behaviour; testing is Wednesday's subject. You recognise a
         pylint report on sight by lines such as <code>ticket_desk.py:12:0: C0115: Missing class docstring
         (missing-class-docstring)</code>.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A linter reads code without running it and reports style problems and likely mistakes.</li>
+          <li>Each message ID starts with a letter naming its kind.</li>
+          <li>The score is a heuristic, and a test is what checks behaviour.</li>
+        </ul></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>A linter reads code without running it and reports style problems and likely bugs. pylint checks naming,
@@ -506,7 +561,8 @@ Your code has been rated at 5.00/10</code></pre>
         <p>Any <code>.py</code> file can be imported by its file name without the <code>.py</code>. Importing a module
         runs its top-level statements once. A <code>def</code> statement at the top level only defines the function,
         and a <code>class</code> statement defines the class and its methods; the body of a function or method runs
-        later, when something calls it.<sup class="cite"><a href="#src-16">16</a></sup> While a file is being imported, its <code>__name__</code> is
+        later, when something calls it.<sup class="cite"><a href="#src-16">16</a></sup></p>
+        <p>While a file is being imported, its <code>__name__</code> is
         the module's name; when the same file is run as a script, <code>__name__</code> is
         <code>"__main__"</code>.<sup class="cite"><a href="#src-17">17</a></sup> A small module shows all of this:</p>
 <pre><code>"""SLA rules for the ticket desk."""
@@ -536,24 +592,37 @@ python -c "import sla; import sla; print(sla.__name__, sla.days_open(25))"
 ls __pycache__</code></pre>
         <p><code>python sla.py</code> prints <code>loading __main__</code> and <code>3</code>. <code>python board.py</code>
         prints <code>loading sla</code>, <code>normal SLA: 24 hours</code> and <code>days open: 3</code>; the guarded line
-        in <code>sla.py</code> did not run, because the file was imported. The third command prints <code>loading
+        in <code>sla.py</code> did not run, because the file was imported.</p>
+        <p>The third command prints <code>loading
         sla</code> only once despite two imports, because the module is cached after the first, then
-        <code>sla 2</code>.<sup class="cite"><a href="#src-1">1</a></sup> The last command lists a file such as
+        <code>sla 2</code>.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <p>The last command lists a file such as
         <code>sla.cpython-314.pyc</code> (the number is the Python version that ran it). Python caches the compiled
         bytecode of imported modules in <code>__pycache__/</code>, and that folder belongs in
         <code>.gitignore</code>.<sup class="cite"><a href="#src-16">16</a></sup> Bytecode is the lower-level form Python
         turns your source into before running it, so the next import can skip that step.<sup class="cite"><a href="#src-16">16</a></sup></p>
         <h3>The __name__ guard and main()</h3>
         <p>The test <code>if __name__ == "__main__":</code> keeps importing free of side effects: the code under it runs
-        when the file is the script and is skipped when another file imports it.<sup class="cite"><a href="#src-17">17</a></sup>
-        Teams go one step further and move the script's lines into a function named <code>main()</code>, with the guard
+        when the file is the script and is skipped when another file imports it.<sup class="cite"><a href="#src-17">17</a></sup></p>
+        <p>Teams go one step further and move the script's lines into a function named <code>main()</code>, with the guard
         calling it. The script's variables then belong to <code>main()</code>, so they cannot clash with names elsewhere
         in the file, and the module can be imported by another script, or later by a test, without printing a thing.</p>
-        <p>The desk ends up with exactly that layout. <code>desk.py</code>, about 86 lines, holds the imports,
-        <code>SLA_HOURS</code>, <code>NOW</code>, the two compiled patterns, the logger, <code>Ticket</code>,
-        <code>Desk</code>, <code>ticket_refs</code> and <code>redact</code>. <code>ticket_desk.py</code>, about 35 lines,
-        holds <code>from desk import Desk, Ticket, redact, ticket_refs</code>, a <code>main()</code> whose first line is
-        the <code>basicConfig</code> call, and the guard. The board prints exactly as before, with one visible change:
+        <p>The desk ends up with exactly that layout.</p>
+        <table>
+          <thead><tr><th>File</th><th>Size</th><th>Contents</th></tr></thead>
+          <tbody>
+            <tr><td><code>desk.py</code>,</td><td>about 86 lines,</td><td>holds
+        <ul>
+          <li>the imports,</li>
+          <li><code>SLA_HOURS</code>, <code>NOW</code>,</li>
+          <li>the two compiled patterns, the logger,</li>
+          <li><code>Ticket</code>, <code>Desk</code>, <code>ticket_refs</code> and <code>redact</code>.</li>
+        </ul></td></tr>
+            <tr><td><code>ticket_desk.py</code>,</td><td>about 35 lines,</td><td>holds <code>from desk import Desk, Ticket, redact, ticket_refs</code>, a <code>main()</code> whose first line is
+        the <code>basicConfig</code> call, and the guard.</td></tr>
+          </tbody>
+        </table>
+        <p>The board prints exactly as before, with one visible change:
         the log lines now read <code>INFO desk: ...</code>, because <code>getLogger(__name__)</code> inside
         <code>desk.py</code> now receives the module's name.<sup class="cite"><a href="#src-17">17</a></sup> Leave the
         guard out and the cost shows up the first time someone imports the file: the board prints, and
@@ -578,7 +647,8 @@ ls __pycache__</code></pre>
         <p>A module is one file. A package is a folder of modules imported with dotted names, such as
         <code>helpdesk.storage</code>.<sup class="cite"><a href="#src-16">16</a></sup> The classic failure once code is
         spread across files is the circular import, where <code>a.py</code> imports <code>b</code> and
-        <code>b.py</code> imports <code>a</code>. Splitting too early has a cost as well: small code is scattered across files that nothing else imports. A module earns its own file by being imported by
+        <code>b.py</code> imports <code>a</code>.</p>
+        <p>Splitting too early has a cost as well: small code is scattered across files that nothing else imports. A module earns its own file by being imported by
         more than one caller or by having one clear job, and <code>desk.py</code> qualifies on the second
         count.<sup class="cite"><a href="#src-16">16</a></sup></p>
         <p>The day's work ends with the Git loop week 1 taught: commit on the feature branch, merge it into
@@ -590,6 +660,11 @@ git merge feature/desk-modules
 git push origin main</code></pre>
         <p>Because <code>main</code> gained no commits while the branch was open, the merge prints
         <code>Fast-forward</code>, and the push moves <code>origin/main</code> to the same commit.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Importing a module runs its top-level statements once.</li>
+          <li>The name guard keeps importing free of side effects.</li>
+          <li>Your own file names must not shadow library modules or variables.</li>
+        </ul></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>A module is a single Python file I import by name. A package is a folder of modules that I import with dotted

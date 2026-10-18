@@ -52,9 +52,11 @@
         <p>Python reads blocks and lines in a fixed way, and a reviewer checks a file's layout before its logic.</p>
         <h3>Indentation marks a block</h3>
         <p>A block is a group of statements that run together, such as the body of a branch. Many languages wrap a block
-        in braces; Python has no braces. A compound statement such as <code>if</code>, which runs its block only when its
-        condition is true (Friday's page teaches it properly), ends its header line with a colon, and the
-        statements that belong to it are the lines below it indented further than the header. The block ends at the first
+        in braces; Python has no braces.</p>
+        <p>A compound statement such as <code>if</code>, which runs its block only when its
+        condition is true (Friday's page teaches it properly), ends its header line with a colon. And the
+        statements that belong to it are the lines below it indented further than the header.</p>
+        <p>The block ends at the first
         line that comes back to the outer level. Python groups the statements of a block by their indentation, so the
         whitespace at the start of a line is part of the grammar.<sup class="cite"><a href="#src-2">2</a></sup></p>
 <pre><code>hours_open = 5.5
@@ -65,7 +67,8 @@ print("checked")</code></pre>
         <p>Run the file with <code>python</code> and its name, the way any script such as <code>hello.py</code> is run, and it prints all three lines. <code>print</code>
         writes its values to the screen as one line of text. The two indented calls belong to the <code>if</code> and
         run because 5.5 is greater than 4, and <code>checked</code> runs either way because it sits back at the outer
-        level. Move the second indented line two spaces to the left and Python reports
+        level.</p>
+        <p>Move the second indented line two spaces to the left and Python reports
         <code>IndentationError: unindent does not match any outer indentation level</code>, because a
         dedent (a line that moves back to the left) has to land exactly on the level of an enclosing
         block.<sup class="cite"><a href="#src-2">2</a></sup> Python checks the layout of the whole file before it runs
@@ -92,12 +95,18 @@ print(priority_ok)</code></pre>
         parentheses.</p>
         <h3>PEP 8 layout: line length, blank lines, imports</h3>
         <p>PEP 8 is the style guide for Python code, and most teams adopt it as the default contract for layout and
-        naming.<sup class="cite"><a href="#src-1">1</a></sup> Four of its rules come up in nearly every review. Lines are
+        naming.<sup class="cite"><a href="#src-1">1</a></sup> Four of its rules come up in nearly every review.</p>
+        <ul>
+          <li>Lines are
         limited to 79 characters, and the guide itself says a team may agree on a longer
-        limit.<sup class="cite"><a href="#src-1">1</a></sup> Top-level function and class definitions get two blank lines
-        around them.<sup class="cite"><a href="#src-1">1</a></sup> Imports go at the top of the file, after the module
+        limit.<sup class="cite"><a href="#src-1">1</a></sup></li>
+          <li>Top-level function and class definitions get two blank lines
+        around them.<sup class="cite"><a href="#src-1">1</a></sup></li>
+          <li>Imports go at the top of the file, after the module
         docstring and before module-level globals, with standard-library imports
-        first.<sup class="cite"><a href="#src-1">1</a></sup> Indentation is four spaces per level, as above.</p>
+        first.<sup class="cite"><a href="#src-1">1</a></sup></li>
+          <li>Indentation is four spaces per level, as above.</li>
+        </ul>
         <p>A module is a single <code>.py</code> file. An <code>import</code> loads another module, here
         <code>sys</code> from Python's standard library. A module docstring is the quoted sentence on the first line
         saying what the file is for.</p>
@@ -119,10 +128,18 @@ print(SLA_HOURS_HIGH, SLA_HOURS_LOW)</code></pre>
         blank line above it.</p>
         <h3>Naming conventions</h3>
         <p>PEP 8 names variables and functions in lowercase words joined by underscores (snake_case), constants in UPPER_CASE with
-        underscores, and classes in CapWords.<sup class="cite"><a href="#src-1">1</a></sup> Under the conventions sit the
-        language's own rules: identifiers (the names you choose) are case-sensitive, may contain letters, digits and
-        underscores, cannot start with a digit and cannot be a keyword, one of the words the language reserves for
-        itself such as <code>if</code>, <code>def</code> or <code>class</code>.<sup class="cite"><a href="#src-2">2</a></sup> So <code>hours_open</code> and
+        underscores, and classes in CapWords.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <p>Under the conventions sit the
+        language's own rules: identifiers (the names you choose)</p>
+        <ul>
+          <li>are case-sensitive,</li>
+          <li>may contain letters, digits and
+        underscores,</li>
+          <li>cannot start with a digit</li>
+          <li>and cannot be a keyword, one of the words the language reserves for
+        itself such as <code>if</code>, <code>def</code> or <code>class</code>.<sup class="cite"><a href="#src-2">2</a></sup></li>
+        </ul>
+        <p>So <code>hours_open</code> and
         <code>Hours_Open</code> are two different variables, <code>2nd_reporter</code> is a syntax error, and
         <code>class = "high"</code> fails because <code>class</code> is a keyword.</p>
         <p>A name carries information the language does not enforce. <code>SLA_HOURS_HIGH</code> tells the reader the
@@ -131,6 +148,12 @@ print(SLA_HOURS_HIGH, SLA_HOURS_LOW)</code></pre>
         <code>hoursOpen</code>, and a module-level <code>Total_Count = 3</code> mixes two styles at once. Each one costs
         a review comment.</p>
         <div class="ix-spot" data-snippet="&quot;&quot;&quot;Ticket desk.&quot;&quot;&quot;&#10;ticketId = 101&#10;import sys&#10;sla_hours_high = 4" data-q="Name three things a PEP 8 reviewer would flag in these four lines." data-a="ticketId should be ticket_id; the import belongs straight after the docstring, above the variables; and a constant is written SLA_HOURS_HIGH in upper case."></div>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Python marks a block by indentation, and the header line ends in a colon.</li>
+          <li>The style guide asks for a line length limit, two blank lines around definitions and imports at the top.</li>
+          <li>A project's own style guide takes precedence over the general one.</li>
+          <li>Identifiers are case-sensitive, cannot start with a digit and cannot be a keyword.</li>
+        </ul></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>Python marks a block by indentation. The header line ends in a colon and the block is everything indented
@@ -149,8 +172,8 @@ print(SLA_HOURS_HIGH, SLA_HOURS_LOW)</code></pre>
         <h3>What Python does with a #</h3>
         <p>A literal is a value written directly in the source, such as <code>101</code> or <code>"high"</code>, and a
         string literal is text between quotes. A comment starts with a <code>#</code> that is not inside a string literal
-        and runs to the end of the physical line, and the tokenizer ignores it.<sup class="cite"><a href="#src-2">2</a></sup>
-        There is one exception: a comment in the first or second line that declares the source encoding is read. Some
+        and runs to the end of the physical line, and the tokenizer ignores it.<sup class="cite"><a href="#src-2">2</a></sup></p>
+        <p>There is one exception: a comment in the first or second line that declares the source encoding is read. Some
         scripts start with a <code>#!</code> line, called a "shebang", which the operating system reads to choose an
         interpreter; Python itself skips it like any other comment.<sup class="cite"><a href="#src-2">2</a></sup> A
         <code>#</code> inside a string literal is part of the string.<sup class="cite"><a href="#src-2">2</a></sup></p>
@@ -164,7 +187,8 @@ print(channel)  # the hash inside the quotes is data</code></pre>
         <h3>Why-comments and what-comments</h3>
         <p>PEP 8 makes two statements about comments that count for more than any formatting rule. Comments that contradict
         the code are worse than no comments, and an inline comment that states the obvious is unnecessary and
-        distracting.<sup class="cite"><a href="#src-1">1</a></sup> It also asks that comments be complete sentences and be
+        distracting.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <p>It also asks that comments be complete sentences and be
         kept up to date when the code changes.<sup class="cite"><a href="#src-1">1</a></sup> This course draws a short
         team rule from those statements: a comment says why, and the code says what. That phrase is the course's summary;
         PEP 8 never says it in those words.</p>
@@ -178,16 +202,23 @@ hours_open = 5.5  # set hours_open to 5.5</code></pre>
         <p>The block comment above the constants records something the code cannot show: where the numbers come from and
         who is allowed to change them. A developer who wants to "tidy" 4 into 6 now knows to ask first. The inline comment
         on the last line repeats the assignment in English and adds nothing; deleting it makes the file shorter and loses
-        no information. In a review you will see both kinds side by side. Delete the second
+        no information.</p>
+        <p>In a review you will see both kinds side by side. Delete the second
         kind and write more of the first.</p>
         <p>The trade-off is length against context. Every comment is a second description of the code that a reader has
         to check against the first, so a file with a comment on every line is slower to read than one with three comments
-        in the right places. Good candidates are a business rule, a workaround with the reason it exists, or a choice that
-        looks wrong but is deliberate.</p>
+        in the right places. Good candidates are</p>
+        <ul>
+          <li>a business rule,</li>
+          <li>a workaround with the reason it exists,</li>
+          <li>or a choice that
+        looks wrong but is deliberate.</li>
+        </ul>
         <h3>Docstrings, and names that need no comment</h3>
         <p>An interviewer who hears "I comment my code" usually asks what you try before reaching for a comment. The two
         answers are a clearer name and a docstring. A docstring is a string literal that is the first statement of a
-        module, function or class, and PEP 257 sets its conventions.<sup class="cite"><a href="#src-3">3</a></sup> Unlike
+        module, function or class, and PEP 257 sets its conventions.<sup class="cite"><a href="#src-3">3</a></sup></p>
+        <p>Unlike
         a comment it survives compilation: it is stored as the <code>__doc__</code> attribute and can be read while the
         program runs.<sup class="cite"><a href="#src-3">3</a></sup> An attribute is a value attached to an object and read
         with a dot or, at the top of a module, by its bare name.</p>
@@ -210,6 +241,12 @@ print(__doc__)</code></pre>
         that comment again. When you change a line, read the comments next to it as part of the change, and update or
         delete them in the same commit.</p>
         <div class="ix-spot" data-snippet="# High-priority tickets breach after four hours.&#10;SLA_HOURS_HIGH = 8&#10;&#10;ticket_id = 101  # the ticket id" data-q="Two comments here should not survive review. What is wrong with each?" data-a="The first contradicts the code: the value is 8, so either the comment or the number is stale, and a reader cannot tell which. The second restates the name and adds nothing; delete it."></div>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>The interpreter ignores comments, so their only cost is the time a reader spends on them.</li>
+          <li>A comment says why, and the code says what.</li>
+          <li>A docstring is kept at run time as an attribute, and a comment is not.</li>
+          <li>A comment that contradicts the code is worse than no comment.</li>
+        </ul></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>A comment is skipped when Python reads the file, so it never exists at run time. A docstring is a string literal that's
@@ -250,15 +287,24 @@ reporter = "Grace Hopper"
 print(owner, owner is reporter)</code></pre>
         <p>This prints <code>Ada Lovelace False</code>. After the second line both names were bound to one string; the third
         line bound <code>reporter</code> to a different string, and <code>owner</code> kept the first. This is
-        rebinding a name, as opposed to changing an object. Rebinding moves one name; changing an object in place would
+        rebinding a name, as opposed to changing an object.</p>
+        <p>Rebinding moves one name; changing an object in place would
         show through every name bound to it. With the types on this page you only
         ever rebind: even <code>hours_open += 0.5</code> evaluates the target, applies the operator and binds the name to
         the result.<sup class="cite"><a href="#src-5">5</a></sup> Objects that change in place, such as lists, are
         Thursday's subject.</p>
         <h3>The four scalar types</h3>
-        <p>The built-in scalar types this page uses are <code>int</code>, <code>float</code>, <code>str</code> and
-        <code>bool</code>: whole numbers, numbers with a fractional part, text, and the two values <code>True</code> and
-        <code>False</code>. An <code>int</code> has unbounded precision, meaning it grows as large as memory allows. A
+        <p>The built-in scalar types this page uses are:</p>
+        <table>
+          <thead><tr><th>Type</th><th>Holds</th></tr></thead>
+          <tbody>
+            <tr><td><code>int</code></td><td>whole numbers</td></tr>
+            <tr><td><code>float</code></td><td>numbers with a fractional part</td></tr>
+            <tr><td><code>str</code></td><td>text</td></tr>
+            <tr><td><code>bool</code></td><td>the two values <code>True</code> and <code>False</code></td></tr>
+          </tbody>
+        </table>
+        <p>An <code>int</code> has unbounded precision, meaning it grows as large as memory allows. A
         <code>float</code> is a number stored in binary with a fixed number of digits. <code>bool</code> is
         a subclass of <code>int</code>, a specialised kind of <code>int</code> (Friday's page explains subclasses), so
         <code>True + 1</code> is <code>2</code>.<sup class="cite"><a href="#src-6">6</a></sup> Binary floats cannot store most decimal fractions
@@ -280,11 +326,13 @@ print(0.1 + 0.2 == 0.3)</code></pre>
 <pre><code>count = "3"
 total = count + 1</code></pre>
         <p>The first line is fine. The second raises <code>TypeError: can only concatenate str (not "int") to str</code>
-        when it runs. Raising an exception is how Python reports an error at run time: the script stops at that line and
-        prints the exception's name and message, and if that line sat in a branch nobody exercised, the bug would wait for a user to find it.
-        Converting typed text into numbers is Thursday's topic. When a value behaves strangely, printing
+        when it runs.</p>
+        <p>Raising an exception is how Python reports an error at run time. The script stops at that line and
+        prints the exception's name and message, and if that line sat in a branch nobody exercised, the bug would wait for a user to find it.</p>
+        <p>Converting typed text into numbers is Thursday's topic. When a value behaves strangely, printing
         its <code>type()</code> is the cheapest first question: it names the type of the object bound on that
-        line.<sup class="cite"><a href="#src-4">4</a></sup> The constant problem looks like
+        line.<sup class="cite"><a href="#src-4">4</a></sup></p>
+        <p>The constant problem looks like
         <code>MAX_RETRIES = 3</code> at the top of a file and <code>MAX_RETRIES = 5</code> forty lines down: Python runs it
         without complaint, and only the naming convention told anyone it was wrong.</p>
         <p>An f-string is a string literal with an <code>f</code> before the opening quote, and each expression inside
@@ -311,6 +359,12 @@ print(priority is "high")</code></pre>
         <code>==</code> for values and keep <code>is</code> for asking whether two names share an object, as
         <code>owner is reporter</code> did above.</p>
         <div class="ix-predict" data-q="hours_open = 5.5, then line = f&quot;{hours_open}h&quot;, then hours_open += 0.5. What does print(line) show?" data-a="5.5h. The f-string was evaluated when line was assigned, and += rebinds hours_open to a new float without touching the string already built."></div>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A variable is a name bound to an object, and the object carries the type.</li>
+          <li>Assignment binds a name to an object; it does not copy a value.</li>
+          <li>Binary floats cannot store most decimal fractions exactly.</li>
+          <li>Use the equality operator for values and the identity operator for objects.</li>
+        </ul></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>Python is dynamically typed. Names don't have types, objects do, and type of x tells me the type of the
@@ -332,11 +386,17 @@ print(priority is "high")</code></pre>
         interviews probe, and what goes wrong in real code, is what each one returns and which one binds first.</p>
         <h3>Arithmetic: /, //, % and **, and round()</h3>
         <p><code>/</code> is true division and always returns a float, even when the division is exact, so
-        <code>6 / 2</code> is <code>3.0</code>. <code>//</code> is floor division, <code>%</code> is the remainder and
-        <code>**</code> is the power operator.<sup class="cite"><a href="#src-4">4</a></sup> <code>//</code> floors toward
+        <code>6 / 2</code> is <code>3.0</code>.</p>
+        <ul>
+          <li><code>//</code> is floor division,</li>
+          <li><code>%</code> is the remainder and</li>
+          <li><code>**</code> is the power operator.<sup class="cite"><a href="#src-4">4</a></sup></li>
+        </ul>
+        <p><code>//</code> floors toward
         negative infinity, so <code>-7 // 2</code> is <code>-4</code>, and <code>%</code> takes the sign of the right
         operand, which keeps <code>a == (a // b) * b + a % b</code> true for every
-        pair.<sup class="cite"><a href="#src-9">9</a></sup> To floor is to round down to the whole number below, and
+        pair.<sup class="cite"><a href="#src-9">9</a></sup></p>
+        <p>To floor is to round down to the whole number below, and
         below means toward the more negative side. <code>**</code> binds tighter than a unary minus (a minus sign in front
         of a single value) on its left, so <code>-2 ** 2</code> is <code>-4</code>.<sup class="cite"><a href="#src-4">4</a></sup></p>
 <pre><code>hours_open = 5.5
@@ -354,8 +414,8 @@ print(101 % 3 == 0, 102 % 3 == 0)</code></pre>
         <code>round(2.5)</code> is <code>2</code> and <code>round(3.5)</code> is <code>4</code>; 2.5 is exactly
         representable as a float, so that result is the tie rule alone.<sup class="cite"><a href="#src-11">11</a></sup>
         Separately, <code>round(2.675, 2)</code> is <code>2.67</code>, because most decimal fractions cannot be stored
-        exactly as a binary float and the stored value is slightly below 2.675.<sup class="cite"><a href="#src-11">11</a></sup>
-        <code>print(round(2.5), round(3.5), round(2.675, 2))</code> prints <code>2 4 2.67</code>. If an interviewer asks
+        exactly as a binary float and the stored value is slightly below 2.675.<sup class="cite"><a href="#src-11">11</a></sup></p>
+        <p><code>print(round(2.5), round(3.5), round(2.675, 2))</code> prints <code>2 4 2.67</code>. If an interviewer asks
         why the last one is not 2.68, the answer is float representation. The tie rule does not apply. Integer
         division or modulo by zero raises <code>ZeroDivisionError</code>.<sup class="cite"><a href="#src-12">12</a></sup></p>
         <h3>Comparisons, chains, membership and +=</h3>
@@ -380,10 +440,12 @@ print(hours_open)</code></pre>
         one of their operands rather than a fresh <code>True</code> or <code>False</code>. <code>not</code> always returns
         <code>True</code> or <code>False</code>.<sup class="cite"><a href="#src-9">9</a></sup> With bools on both sides the
         difference is invisible, so <code>is_breached = is_open and hours_left &lt; 0</code> gives a bool. With other
-        values you can see it, and it explains a logic bug reviewers meet often. The expression
+        values you can see it, and it explains a logic bug reviewers meet often.</p>
+        <p>The expression
         <code>x == "a" or "b"</code> parses as <code>(x == "a") or "b"</code>. A value is truthy when Python treats it as
         true in a test, and a non-empty string is truthy; falsy values, such as <code>0</code> and <code>""</code>,
-        count as false in a test. So when the comparison is false, the whole expression evaluates
+        count as false in a test.</p>
+        <p>So when the comparison is false, the whole expression evaluates
         to the string <code>"b"</code>, which is truthy, and the check never
         fails.<sup class="cite"><a href="#src-9">9</a></sup></p>
 <pre><code>priority = "low"
@@ -415,6 +477,12 @@ print(not 1 == 2)</code></pre>
         Python reads the expression, and parentheses show the next reader what you meant. When an expression mixes
         <code>and</code> with <code>or</code>, or a minus sign with <code>**</code>, add the parentheses even where they
         change nothing.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>True division always returns a float, and floor division rounds toward negative infinity.</li>
+          <li>Ties round to the even neighbour, and float representation explains the other surprise.</li>
+          <li>The words and and or return one of their operands, not always a bool.</li>
+          <li>Parentheses show the next reader which operator binds first.</li>
+        </ul></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>Slash is true division and always returns a float. Double slash is floor division, and it floors toward
@@ -434,8 +502,14 @@ print(not 1 == 2)</code></pre>
         <p>A script talks to people and to other programs through three streams.</p>
         <h3>print: sep, end, file and flush</h3>
         <p><code>print()</code> takes the values to print plus four keyword arguments, which are arguments passed by name
-        as in <code>sep="-"</code>: <code>sep</code>, <code>end</code>, <code>file</code> and
-        <code>flush</code>.<sup class="cite"><a href="#src-11">11</a></sup> It
+        as in <code>sep="-"</code>:</p>
+        <ul>
+          <li><code>sep</code>,</li>
+          <li><code>end</code>,</li>
+          <li><code>file</code> and</li>
+          <li><code>flush</code>.<sup class="cite"><a href="#src-11">11</a></sup></li>
+        </ul>
+        <p>It
         converts each non-string argument with <code>str()</code>, joins the results with <code>sep</code>, which defaults
         to a single space, and writes <code>end</code> after them, which defaults to a
         newline.<sup class="cite"><a href="#src-11">11</a></sup> <code>file=sys.stderr</code> sends the line to the error
@@ -482,11 +556,24 @@ print(type(priority), priority)</code></pre>
         <code>sys.stdin.isatty()</code> first.<sup class="cite"><a href="#src-11">11</a></sup></p>
         <h3>Standard streams, redirection and the isatty guard</h3>
         <p>A process is one running program, and a stream is a channel that text flows through, one line after another.
-        Every process gets three standard streams: stdin for input, stdout for normal output and stderr for warnings and
-        errors. At a terminal all three are connected to the window you type in. In Python, <code>sys.stdout</code> and <code>sys.stderr</code> are separate text streams, so a shell can
-        send them to different places.<sup class="cite"><a href="#src-15">15</a></sup> In a shell, <code>&gt;</code>
-        redirects stdout to a file, <code>2&gt;</code> redirects stderr, and <code>|</code> pipes one program's stdout into
-        the next program's stdin. That is the reason a warning goes to stderr. Someone who saves the board with
+        Every process gets three standard streams:</p>
+        <ul>
+          <li>stdin for input,</li>
+          <li>stdout for normal output and</li>
+          <li>stderr for warnings and
+        errors.</li>
+        </ul>
+        <p>At a terminal all three are connected to the window you type in. In Python, <code>sys.stdout</code> and <code>sys.stderr</code> are separate text streams, so a shell can
+        send them to different places.<sup class="cite"><a href="#src-15">15</a></sup></p>
+        <p>In a shell,</p>
+        <ul>
+          <li><code>&gt;</code>
+        redirects stdout to a file,</li>
+          <li><code>2&gt;</code> redirects stderr, and</li>
+          <li><code>|</code> pipes one program's stdout into
+        the next program's stdin.</li>
+        </ul>
+        <p>That is the reason a warning goes to stderr. Someone who saves the board with
         <code>&gt; board.txt</code> still sees the warning on screen, and the file holds only the board.</p>
         <p><code>sys.stdin.isatty()</code> is true when standard input is a character device (a device that passes
         characters one at a time, such as an interactive terminal), and false when it is a pipe or a regular
@@ -516,6 +603,12 @@ python ticket_desk.py 2&gt; err.txt</code></pre>
         Standard output is line-buffered at a terminal (written at every newline) and block-buffered otherwise (written
         when the buffer fills), so piped text can lag; <code>flush=True</code> on a <code>print</code> call writes it at
         once.<sup class="cite"><a href="#src-15">15</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Print joins its values with a separator and ends the line with an ending.</li>
+          <li>Input always returns a string.</li>
+          <li>Standard output and standard error are separate streams, so a shell can redirect them separately.</li>
+          <li>Guard prompts with the terminal check so a script still runs when nobody is at the keyboard.</li>
+        </ul></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>input writes the prompt, reads one line, strips the newline and always gives me a str, so if I need a

@@ -36,7 +36,7 @@
           <span><b>Week 2</b> · Day 4</span>
           <span>Thu Oct 22, 2026</span>
           <span>Python advanced</span>
-          <span><b>~34 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span><b>~36 min</b> · reference notes @150 wpm · diagram · check</span>
           <span class="verified">Sources checked 2026-10-15 · python 3.15 · pandas 3.0.6</span>
         </div>
         <p class="summary">This page assumes Wednesday's pytest tests and NumPy arrays, and Tuesday's
@@ -71,8 +71,9 @@ print(counts["escalated"])</code></pre>
         <p>Saved as a script and run, the first <code>print</code> shows <code>{'closed': 3, 'assigned': 2, 'open': 1}</code>,
         with the keys in the order they were first inserted.<sup class="cite"><a href="#src-2">2</a></sup> The second line
         stops the program with <code>KeyError: 'escalated'</code>, because indexing a plain dict with a key it does not hold
-        raises that error.<sup class="cite"><a href="#src-2">2</a></sup> The loop works, and it still turns up in older code
-        and in code written by people who learned to count this way in another language. Its weakness is repetition: every
+        raises that error.<sup class="cite"><a href="#src-2">2</a></sup></p>
+        <p>The loop works, and it still turns up in older code
+        and in code written by people who learned to count this way in another language. Its weakness is repetition. Every
         counting loop restates the same three ideas (start at zero, add one, guard the missing key), and the guard is the
         part that gets forgotten when someone writes <code>counts[s] += 1</code> on a key that is not there yet.</p>
         <h3>Counter, a dict that counts</h3>
@@ -103,11 +104,15 @@ print(counts == {"closed": 3, "assigned": 2, "open": 1})</code></pre>
         into a list and hands the list to <code>Counter</code>.</p>
         <div class="ix-predict" data-q="counts = Counter([&quot;closed&quot;, &quot;open&quot;, &quot;closed&quot;]). You run print(counts[&quot;escalated&quot;]) and then print(len(counts)). What do the two lines print?" data-a="0, then 2. Reading a missing key returns 0 without inserting it, so the Counter still holds only closed and open."></div>
         <h3>most_common, update and the arithmetic</h3>
-        <p>Three methods carry most of the everyday use. <code>most_common(n)</code> returns the <code>n</code> most common
-        elements as <code>(element, count)</code> pairs, highest count first.<sup class="cite"><a href="#src-1">1</a></sup>
-        <code>update</code> adds the counts from an iterable to the ones the <code>Counter</code> holds, where
-        <code>dict.update</code> would replace each value.<sup class="cite"><a href="#src-1">1</a></sup> And
-        <code>elements()</code> expands the counts back into repeated items.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <p>Three methods carry most of the everyday use.</p>
+        <ul>
+        <li><code>most_common(n)</code> returns the <code>n</code> most common
+        elements as <code>(element, count)</code> pairs, highest count first.<sup class="cite"><a href="#src-1">1</a></sup></li>
+        <li><code>update</code> adds the counts from an iterable to the ones the <code>Counter</code> holds, where
+        <code>dict.update</code> would replace each value.<sup class="cite"><a href="#src-1">1</a></sup></li>
+        <li>And
+        <code>elements()</code> expands the counts back into repeated items.<sup class="cite"><a href="#src-1">1</a></sup></li>
+        </ul>
 <pre><code>from collections import Counter
 
 counts = Counter(["closed", "assigned", "closed", "open", "closed", "assigned"])
@@ -133,6 +138,11 @@ print(sorted(Counter(["b", "a", "a"]).elements()))</code></pre>
         <code>Counter(item.status for item in items)</code>; the parentheses hold a generator expression, which works like
         a list comprehension without building the list and hands the statuses over one at a time. The other is
         <code>counts.most_common(3)</code> feeding a "top three" line in a report or a log message.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+        <li>Counter is a dict subclass that counts hashable elements.</li>
+        <li>Reading a missing key neither raises an error nor inserts the key.</li>
+        <li>On a Counter, update adds to the counts; on a dict it replaces them.</li>
+        </ul></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>Counter is a dict subclass from the collections module that counts hashable things. I pass it a list and it
@@ -154,9 +164,10 @@ print(sorted(Counter(["b", "a", "a"]).elements()))</code></pre>
         <h3>Why a plain tuple is not enough</h3>
         <p>A tuple is an ordered, fixed-length sequence written with parentheses, such as
         <code>(4, "normal", "assigned", None)</code>. You read it by position, so <code>row[2]</code> is the status. That
-        is fine inside three lines of code and a trap everywhere else: a reader has to remember that position 2 is the
+        is fine inside three lines of code and a trap everywhere else. A reader has to remember that position 2 is the
         status, and if someone later inserts a field at the front, every <code>row[2]</code> in the codebase silently reads
-        the wrong thing. A tuple does have a property worth keeping, though. Its unpacking assigns each position to a name
+        the wrong thing.</p>
+        <p>A tuple does have a property worth keeping, though. Its unpacking assigns each position to a name
         in one line, and that is the adjacent idea interviewers often connect to named tuples.</p>
 <pre><code>row = (4, "normal", "assigned", None)
 ticket_id, priority, status, hours = row
@@ -183,7 +194,8 @@ print(TicketRow._fields)</code></pre>
         then <code>assigned normal 4</code>, then
         <code>{'ticket_id': 4, 'priority': 'normal', 'status': 'assigned', 'hours': None}</code>, then
         <code>('ticket_id', 'priority', 'status', 'hours')</code>. The printed form names every field, which makes log
-        lines and pytest failure messages readable. Because a named tuple is still a tuple, <code>row[1]</code> and
+        lines and pytest failure messages readable.</p>
+        <p>Because a named tuple is still a tuple, <code>row[1]</code> and
         <code>len(row)</code> work exactly as they would on the plain version.<sup class="cite"><a href="#src-1">1</a></sup>
         <code>_asdict()</code> returns the fields as a dict, and <code>_fields</code> lists the field names as a tuple of
         strings.<sup class="cite"><a href="#src-1">1</a></sup> The leading <code>_</code> on these method names is there so they
@@ -213,7 +225,8 @@ print(row.status)</code></pre>
         <h3>Named tuple, dict, class or typing.NamedTuple</h3>
         <p>Instances of a named tuple have no per-instance dictionary, so each one takes the same memory as a plain
         tuple.<sup class="cite"><a href="#src-1">1</a></sup> A dict holding the same four values is mutable and
-        bigger, and its keys are strings, so a typo like <code>row["staus"]</code> is only caught when that line runs. A
+        bigger, and its keys are strings, so a typo like <code>row["staus"]</code> is only caught when that line runs.</p>
+        <p>A
         class is the right shape when the record has behaviour, such as the desk's <code>Ticket</code> with its
         <code>deadline()</code> method, or when its fields must change over time. A named tuple sits between them: a fixed
         set of named fields, no behaviour to speak of, and no changes after creation.</p>
@@ -232,6 +245,11 @@ print(TicketRow(6, "low", "open", None).priority)</code></pre>
         <p>This prints <code>low</code>. Newer codebases tend to prefer this spelling because editors and type checkers can
         read the annotations, while <code>Point = namedtuple("Point", ["x", "y"])</code> followed by <code>p.x</code> is
         the older shape you will spot in existing code.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+        <li>A named tuple is a tuple whose fields can also be read by name.</li>
+        <li>Changing a field means building a new row, not assigning to it.</li>
+        <li>Use a class when the record needs behaviour or changing fields.</li>
+        </ul></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>A namedtuple is a tuple whose positions also have names. I'd use one over a plain tuple when the record has
@@ -254,7 +272,8 @@ print(TicketRow(6, "low", "open", None).priority)</code></pre>
         inserted.<sup class="cite"><a href="#src-1">1</a></sup> When it was added to the standard library that was a genuine
         difference, because plain dicts made no promise about order. Since Python 3.7, insertion order for plain dicts is
         a language guarantee: iterating a dict gives the keys in the order they were first
-        added.<sup class="cite"><a href="#src-2">2</a></sup> So the old reason for <code>OrderedDict</code> is gone, and the
+        added.<sup class="cite"><a href="#src-2">2</a></sup></p>
+        <p>So the old reason for <code>OrderedDict</code> is gone, and the
         first interview question about it is usually a version of "why does it still exist?"</p>
         <p>The answer is that <code>OrderedDict</code> still differs in two ways: it has methods for reordering, and its
         equality checks care about order.<sup class="cite"><a href="#src-1">1</a></sup> If your code only needs to remember
@@ -318,11 +337,17 @@ print(dict(a) == dict(b))
 print(a == dict(b))</code></pre>
         <p>The three lines print <code>False</code>, <code>True</code> and <code>True</code>. That makes
         <code>OrderedDict</code> useful in a test that has to prove the order of a queue as well as its contents: an
-        assertion against another <code>OrderedDict</code> fails if two tickets swap places. The cost of the reordering
+        assertion against another <code>OrderedDict</code> fails if two tickets swap places.</p>
+        <p>The cost of the reordering
         methods is memory, since an <code>OrderedDict</code> uses more of it than a plain dict holding the same
         items.<sup class="cite"><a href="#src-1">1</a></sup> For a queue of a few hundred tickets that does not matter; for
         millions of small mappings it does, and it is one more reason the plain dict is the default.</p>
         <div class="ix-predict" data-q="A test asserts work_queue(desk) == {4: t4, 6: t6, 5: t5}, a plain dict literal. The function wrongly returns the tickets in the order 5, 4, 6. Does the test pass?" data-a="Yes, it passes. Comparing an OrderedDict with a plain dict ignores order. To prove the order, compare list(queue) with [4, 6, 5], or compare against another OrderedDict."></div>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+        <li>Plain dicts keep insertion order, so OrderedDict is for reordering.</li>
+        <li>Moving a key to an end or popping from the front is what it adds.</li>
+        <li>Its equality checks key order, and it uses more memory.</li>
+        </ul></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>Plain dicts have kept insertion order since Python 3.7, so I don't need OrderedDict just to remember order.
@@ -366,7 +391,8 @@ print(groups["Lee"])
 print(len(groups))</code></pre>
         <p>The output is <code>{'Priya': [4, 7], 'Marcus': [5]}</code>, then <code>[]</code>, then <code>3</code>. That last
         number is the trap. A <code>defaultdict</code> inserts the key on every lookup of a missing key, including a lookup
-        that was only meant to read, so asking about Lee added Lee.<sup class="cite"><a href="#src-1">1</a></sup> If you
+        that was only meant to read, so asking about Lee added Lee.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <p>If you
         only want to check, use <code>"Lee" in groups</code> or <code>groups.get("Lee")</code>, which never call the
         factory. Compare that with <code>Counter</code>, whose missing-key read returns 0 and leaves the dict alone. In the
         ticket-desk code, a <code>by_agent</code> function builds exactly this kind of <code>defaultdict(list)</code> of
@@ -377,7 +403,8 @@ print(len(groups))</code></pre>
         <p>A dict finds a key quickly by first turning it into a hash, an integer computed from the key's value, and using
         that number to jump to the right place instead of searching every entry. That only works if the value, and so the
         hash, can never change while the key sits in the dict. So dict keys must be
-        hashable.<sup class="cite"><a href="#src-2">2</a></sup> Numbers, strings and tuples of them are hashable; lists
+        hashable.<sup class="cite"><a href="#src-2">2</a></sup></p>
+        <p>Numbers, strings and tuples of them are hashable; lists
         and dicts can change after they are created, so they are not, and using one as a key fails with a
         <code>TypeError</code>. The same rule explains why a <code>Counter</code> accepts only hashable
         elements:<sup class="cite"><a href="#src-1">1</a></sup> each element becomes a key. To count pairs such as
@@ -387,7 +414,8 @@ print(len(groups))</code></pre>
         (short for double-ended queue) gives O(1) appends and pops at both ends, where a list is O(n) at
         the left end.<sup class="cite"><a href="#src-1">1</a></sup> O(1) means the cost stays the same however long the
         sequence is, and O(n) means it grows in step with the length, because every remaining item of a list shifts one
-        place when the first is removed. A <code>deque</code> created with <code>maxlen=n</code> discards from the
+        place when the first is removed.</p>
+        <p>A <code>deque</code> created with <code>maxlen=n</code> discards from the
         opposite end once it is full.<sup class="cite"><a href="#src-1">1</a></sup></p>
 <pre><code>from collections import deque
 
@@ -421,8 +449,20 @@ print(defaults)</code></pre>
         <code>defaults</code> is unchanged.</p>
         <p>To see everything a module offers, <code>dir(module)</code> lists the names it
         defines.<sup class="cite"><a href="#src-5">5</a></sup> In the REPL, <code>import collections</code> followed by
-        <code>dir(collections)</code> shows <code>ChainMap</code>, <code>Counter</code>, <code>OrderedDict</code>,
-        <code>defaultdict</code>, <code>deque</code> and <code>namedtuple</code> among a longer list.</p>
+        <code>dir(collections)</code> shows:</p>
+        <ul>
+        <li><code>ChainMap</code></li>
+        <li><code>Counter</code></li>
+        <li><code>OrderedDict</code></li>
+        <li><code>defaultdict</code></li>
+        <li><code>deque</code></li>
+        <li>and <code>namedtuple</code> among a longer list.</li>
+        </ul>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+        <li>A defaultdict creates a starting value the first time a missing key is used.</li>
+        <li>Dict keys must be hashable, so lists and dicts cannot be keys.</li>
+        <li>A deque is fast at both ends; a ChainMap searches layered mappings in order.</li>
+        </ul></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>I reach for defaultdict when I'm grouping, like a list of ticket ids per agent: I write groups of key dot
@@ -465,8 +505,9 @@ python -c "import pandas as pd; print(pd.__version__)"</code></pre>
         <p>The question interviewers ask here is how a DataFrame differs from a list of dicts. A list of dicts is organised
         by row: to get every status you loop over the rows and pull one key from each. A DataFrame is organised by column,
         with each column stored together and holding one type, so <code>df["status"]</code> is every status at once and an
-        operation like a comparison applies to the whole column in one expression. The columns also play the part that
-        <code>namedtuple</code> fields played: <code>list(df.columns)</code> for the desk's table lists
+        operation like a comparison applies to the whole column in one expression.</p>
+        <p>The columns also play the part that
+        <code>namedtuple</code> fields played. <code>list(df.columns)</code> for the desk's table lists
         <code>ticket_id</code>, <code>priority</code> and <code>status</code> just as <code>TicketRow._fields</code> does,
         alongside the extra keys the JSON file carries.</p>
         <h3>read_json and datetime columns</h3>
@@ -499,7 +540,8 @@ print(df)</code></pre>
         <p>The first line printed is <code>(3, 5)</code>: three tickets, five keys. Then comes the table, with the index
         0 to 2 down the left, one column per key, and the open ticket's <code>closed_at</code> shown as <code>NaT</code>,
         "not a time", because its JSON value was <code>null</code>. <code>df.dtypes</code> would report
-        <code>int64</code> for <code>ticket_id</code> and a <code>datetime64</code> type for both date columns. The
+        <code>int64</code> for <code>ticket_id</code> and a <code>datetime64</code> type for both date columns.</p>
+        <p>The
         ticket-desk code wraps these lines in a <code>load_frame(path)</code> function, so every report starts from the same
         typed table. Converting explicitly, rather than trusting whatever the reader guessed, means the function's result
         does not depend on how the dates happen to be spelled in the file.</p>
@@ -515,11 +557,19 @@ print(df.loc[2, "status"])</code></pre>
         <p>Added to the end of the script above, these print a two-column table of ids and statuses, then <code>[1]</code>,
         then <code>[2]</code>, then <code>open</code>. The comparison <code>df["priority"] == "high"</code> does not give a
         single <code>True</code> or <code>False</code>; it gives a Series of them, one per row, and the outer brackets keep
-        the rows marked <code>True</code>. Two pitfalls live here. <code>df["status"]</code> and
-        <code>df[["status"]]</code> look almost the same and return different things, a Series and a one-column DataFrame.
-        And combining two conditions needs <code>&amp;</code> with each condition in parentheses; Python's
-        <code>and</code> cannot combine two whole columns.<sup class="cite"><a href="#src-12">12</a></sup></p>
+        the rows marked <code>True</code>. Two pitfalls live here.</p>
+        <ul>
+        <li><code>df["status"]</code> and
+        <code>df[["status"]]</code> look almost the same and return different things, a Series and a one-column DataFrame.</li>
+        <li>And combining two conditions needs <code>&amp;</code> with each condition in parentheses; Python's
+        <code>and</code> cannot combine two whole columns.<sup class="cite"><a href="#src-12">12</a></sup></li>
+        </ul>
         <div class="ix-predict" data-q="df has the three tickets above. What does df[df[&quot;status&quot;] == &quot;open&quot;].shape give?" data-a="(1, 5). The filter keeps the rows where the status is open, which is only ticket 6, and keeps all five columns."></div>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+        <li>A DataFrame is organised by column; a list of dicts is organised by row.</li>
+        <li>pandas reads a JSON list of objects as one row per object.</li>
+        <li>Square brackets select columns, and a boolean Series selects rows.</li>
+        </ul></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>A DataFrame is pandas' table: labelled rows and columns, where each column is a Series of one type. A list of
@@ -559,7 +609,8 @@ print(df["hours"].mean())</code></pre>
         <p>NaN has one behaviour that catches everyone once: <code>NaN == NaN</code> is <code>False</code>, so you cannot
         find missing values with <code>==</code>.<sup class="cite"><a href="#src-13">13</a></sup> Use
         <code>df["hours"].isna()</code>, which returns a boolean Series you can filter with, and
-        <code>df[df["hours"].isna()]</code> gives the open tickets.<sup class="cite"><a href="#src-13">13</a></sup> The follow-up interview question is usually "what do you
+        <code>df[df["hours"].isna()]</code> gives the open tickets.<sup class="cite"><a href="#src-13">13</a></sup></p>
+        <p>The follow-up interview question is usually "what do you
         do with missing values?", and the answer is "it depends what the gap means". Here a missing duration means
         "not closed yet", so skipping it in an average is right, while filling it with 0 would claim the ticket closed
         instantly.</p>
@@ -586,7 +637,8 @@ print(table.to_dict() == dict(Counter(df["status"])))</code></pre>
 <pre><code>print(df.groupby("priority")["hours"].mean())</code></pre>
         <p>This prints one line per priority: <code>high 1.50</code>, <code>low NaN</code> and
         <code>normal 54.75</code>.<sup class="cite"><a href="#src-15">15</a></sup> The low group holds only the open ticket, so it has nothing to average and its result
-        is NaN. <code>value_counts</code> is the counting special case of the same idea: group by the column's values,
+        is NaN.</p>
+        <p><code>value_counts</code> is the counting special case of the same idea: group by the column's values,
         count each group, sort by the count. In the ticket desk, <code>defaultdict(list)</code> did the split by hand; here
         the split, the aggregation and the combine are one chained expression. You recognise the pattern in analysis code
         as <code>df.groupby("priority")["hours"].mean()</code> or the same shape with <code>sum</code> or
@@ -598,11 +650,16 @@ print(table.to_dict() == dict(Counter(df["status"])))</code></pre>
         Forgetting to assign the result is the usual slip, because nothing fails; the frame simply stays in its old
         order.</p>
         <p>The limit is size, in both directions. A DataFrame lives in memory, so a dataset larger than the machine's RAM
-        needs a different approach, and pandas is a large dependency to install.<sup class="cite"><a href="#src-17">17</a></sup>
-        For a handful of records, a <code>Counter</code> or a list of named tuples is lighter, starts faster and needs
+        needs a different approach, and pandas is a large dependency to install.<sup class="cite"><a href="#src-17">17</a></sup></p>
+        <p>For a handful of records, a <code>Counter</code> or a list of named tuples is lighter, starts faster and needs
         nothing from PyPI.<sup class="cite"><a href="#src-17">17</a></sup> The ticket desk uses both on purpose: the
         collections functions for the desk's own rules, the DataFrame for reports over the saved file, which Friday's page
         turns into a chart.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+        <li>Column arithmetic runs over a whole column with no loop.</li>
+        <li>NaN marks a missing number; mean skips it and isna finds it.</li>
+        <li>value_counts and groupby replace hand-written counting and grouping.</li>
+        </ul></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>groupby splits the rows by a key column, applies an aggregation like mean to each group, and combines the

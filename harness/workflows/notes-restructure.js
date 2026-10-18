@@ -126,23 +126,33 @@ const flagged = report.filter(r => r.status === 'flagged').map((r, i) => ({ day:
 
 // ---------- RECORD (work tracker, D-0035) ----------
 phase('Record')
+// log_run.py takes one week per record, and a restructure run may span weeks: one record per week, the shared
+// record/verify agents counted on the last one.
 const REPORT_FILE = `${H}/run-report.tmp.json`
 const DAY_IDS = PAGES.map(p => p.id).join(',')
-const runRecord = {
-  kind: 'notes-restructure', date: A.today, week: A.week, days: PAGES.map(p => p.id), runId: null,
-  agents: AGENTS + 1, minutes: null, tokens: null,
-  tiers: { labels: TIER_LABELS, verified: null },
-  artifacts: report.map(r => ({ day: r.task.split(' ')[0], name: 'notes', status: r.status, passes: r.passes })),
-  flagged: flagged.length,
-  flags: flagged.map(f => ({ day: f.day, artifact: f.artifact, flags: (f.flags || []).slice(0, 6).map(x => String(x).slice(0, 300)) })),
-  tests: null, resolved: false, note: 'readability restructure pass (D-0060): containers only, prose-guarded --restructure, gated by notes_check.py --style',
-}
+const WEEKS = [...new Set(PAGES.map(p => p.week))].sort((a, b) => a - b)
+const perPageAgents = PAGES.length ? Math.floor(AGENTS / PAGES.length) : AGENTS
+const runRecords = WEEKS.map((w, i) => {
+  const ids = PAGES.filter(p => p.week === w).map(p => p.id)
+  const fl = flagged.filter(f => ids.includes(f.day))
+  return {
+    kind: 'notes-restructure', date: A.today, week: w, days: ids, runId: null,
+    agents: perPageAgents * ids.length + (i === WEEKS.length - 1 ? (AGENTS - perPageAgents * PAGES.length) + 1 : 0), minutes: null, tokens: null,
+    tiers: { labels: TIER_LABELS, verified: null },
+    artifacts: report.filter(r => ids.includes(r.task.split(' ')[0])).map(r => ({ day: r.task.split(' ')[0], name: 'notes', status: r.status, passes: r.passes })),
+    flagged: fl.length,
+    flags: fl.map(f => ({ day: f.day, artifact: f.artifact, flags: (f.flags || []).slice(0, 6).map(x => String(x).slice(0, 300)) })),
+    tests: null, resolved: false,
+    note: 'readability restructure pass (D-0060): containers only, prose-guarded --restructure, gated by notes_check.py --style' + (WEEKS.length > 1 ? `; one run over weeks ${WEEKS.join(', ')}, recorded per week` : ''),
+  }
+})
 const recorded = await agent(
-  `RECORD step (work tracker, D-0035).\n` +
-  `1. With the Write tool (not echo, not a heredoc) create ${REPORT_FILE} containing EXACTLY this JSON:\n${JSON.stringify(runRecord)}\n` +
-  `2. From ${ROOT} run: python harness/log_run.py add harness/run-report.tmp.json\n` +
-  `   It validates the record, appends it to harness/runs.jsonl, deletes the temp file and rebuilds tracker.html. If it rejects the record, fix only what its message names in the temp file and retry. Never edit harness/runs.jsonl or tracker.html by hand.\n` +
-  `3. Run: python harness/build_tracker.py --check   and return its one-line output.`,
+  `RECORD step (work tracker, D-0035). ${runRecords.length} record(s), one per week, in this order.\n` +
+  runRecords.map((rec, i) =>
+    `${i + 1}a. With the Write tool (not echo, not a heredoc) create ${REPORT_FILE} containing EXACTLY this JSON:\n${JSON.stringify(rec)}\n` +
+    `${i + 1}b. From ${ROOT} run: python harness/log_run.py add harness/run-report.tmp.json\n` +
+    `   It validates the record, appends it to harness/runs.jsonl, deletes the temp file and rebuilds tracker.html. If it rejects the record, fix only what its message names in the temp file and retry. Never edit harness/runs.jsonl or tracker.html by hand.\n`).join('') +
+  `Finally run: python harness/build_tracker.py --check   and return its one-line output.`,
   { label:'record', phase:'Record', ...tier('wire') })
 
 // ---------- VERIFY ----------
@@ -152,7 +162,7 @@ for (let attempt = 1; attempt <= 3; attempt++) {
   verify = await agent(
     `VERIFY step. From ${ROOT}: first run python harness/build_tracker.py (work tracker, D-0035), then run: python -m unittest discover -s tests -v   Report passed=true only if everything passes. List each failure as "<test>: <one-line cause>".\n` +
     (recorded
-      ? `Then record the result: python harness/log_run.py amend --last --match-days ${DAY_IDS} --agents ${AGENTS + 1} --tests pass   (use --tests fail when anything failed). If it refuses because the last record is not this run's, skip it and say so.`
+      ? `Then record the result on the last record of this run: python harness/log_run.py amend --last --match-days ${PAGES.filter(p => p.week === WEEKS[WEEKS.length - 1]).map(p => p.id).join(',')} --tests pass   (use --tests fail when anything failed). If it refuses because the last record is not this run's, skip it and say so.`
       : `The Record step did not complete; do not amend the run log.`),
     { schema: VERIFY_SCHEMA, label:`verify:${attempt}`, phase:'Verify', ...tier('verify') })
   if (!verify || verify.passed || attempt === 3) break

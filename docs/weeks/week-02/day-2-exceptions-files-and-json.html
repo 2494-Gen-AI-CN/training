@@ -36,7 +36,7 @@
           <span><b>Week 2</b> · Day 2</span>
           <span>Tue Oct 20, 2026</span>
           <span>Python advanced</span>
-          <span><b>~35 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span><b>~38 min</b> · reference notes @150 wpm · diagram · check</span>
           <span class="verified">Sources checked 2026-10-15 · python 3.15</span>
         </div>
         <p class="summary">This page assumes the ticket desk as the first day of week 2 left it: a <code>desk</code>
@@ -60,7 +60,8 @@
         <p>An exception is an object Python creates when a line cannot do what it was asked to do, such as looking up a
         dictionary key that is not there. Python abandons that line and looks for code that has said it handles that kind
         of exception. If it finds none, the program stops and Python prints a traceback, the report of where things went
-        wrong. A raised exception that nothing handles ends the program with a non-zero exit
+        wrong.</p>
+        <p>A raised exception that nothing handles ends the program with a non-zero exit
         status.<sup class="cite"><a href="#src-1">1</a></sup> The exit status is the number a program hands back to
         whatever started it, and a non-zero status marks the run as failed.</p>
         <p>The word "error" is used loosely. Strictly, Python separates syntax errors, found while the file is being read,
@@ -70,7 +71,8 @@
         <p>A traceback lists the chain of calls that led to the failure with the most recent call last, so the line you
         read first is the final one: it holds the exception's type and its message.<sup class="cite"><a href="#src-1">1</a></sup>
         Each pair of lines above it names a file, a line number and the function that was running, and shows the source
-        line. You read upward until you reach a line in a file you wrote, which is usually where the bad value came from.
+        line.</p>
+        <p>You read upward until you reach a line in a file you wrote, which is usually where the bad value came from.
         <code>python -c</code> runs the quoted text as a one-line program, which makes it handy for trying a single
         expression against the <code>desk</code> module the ticket-desk code was split into:</p>
 <pre><code>python -c "from desk import SLA_HOURS; SLA_HOURS['urgent']"</code></pre>
@@ -88,13 +90,16 @@ KeyError: 'urgent'</code></pre>
         that last line is the first thing a teammate asks you to paste.</p>
         <div class="ix-predict" data-q="A traceback has three frames: main() in ticket_desk.py, then load_desk in storage.py, then a file inside Python's own json package. Which line do you read first, and which frame are you most likely to change?" data-a="The last line, with the exception type and message. Then walk up to the lowest frame in a file you wrote, here storage.py: the library frame is where the bad value arrived, and your code is where it came from."></div>
         <h3>KeyError, ValueError and TypeError</h3>
-        <p>Three built-in exceptions turn up most often, and each has a precise meaning. A
-        <code>KeyError</code> is raised when a mapping (a dictionary) is asked for a key it does not
-        hold.<sup class="cite"><a href="#src-2">2</a></sup> A <code>ValueError</code> is raised when an argument has the
-        right type but an unacceptable value; <code>int("TD-7")</code> is the classic case, because <code>int()</code>
-        accepts a string and this string does not spell a number.<sup class="cite"><a href="#src-2">2</a></sup> A
-        <code>TypeError</code> is raised when an operation is applied to the wrong type altogether, as in
-        <code>len(5)</code>: a whole number has no length.<sup class="cite"><a href="#src-2">2</a></sup></p>
+        <p>Three built-in exceptions turn up most often, and each has a precise meaning.</p>
+        <ul>
+          <li>A <code>KeyError</code> is raised when a mapping (a dictionary) is asked for a key it does not
+          hold.<sup class="cite"><a href="#src-2">2</a></sup></li>
+          <li>A <code>ValueError</code> is raised when an argument has the
+          right type but an unacceptable value; <code>int("TD-7")</code> is the classic case, because <code>int()</code>
+          accepts a string and this string does not spell a number.<sup class="cite"><a href="#src-2">2</a></sup></li>
+          <li>A <code>TypeError</code> is raised when an operation is applied to the wrong type altogether, as in
+          <code>len(5)</code>: a whole number has no length.<sup class="cite"><a href="#src-2">2</a></sup></li>
+        </ul>
 <pre><code>python -c "int('TD-7')"
 python -c "len(5)"</code></pre>
         <p>The first command ends with <code>ValueError: invalid literal for int() with base 10: 'TD-7'</code> and the
@@ -119,11 +124,18 @@ SyntaxError: expected ':'</code></pre>
         <p>Exception types are classes arranged in a family tree. <code>BaseException</code> sits at the top, and
         <code>Exception</code> under it is the parent of nearly every error a program should handle.
         <code>KeyboardInterrupt</code>, raised when you press Ctrl+C, and <code>SystemExit</code> sit beside
-        <code>Exception</code> rather than under it.<sup class="cite"><a href="#src-2">2</a></sup> <code>OSError</code>
+        <code>Exception</code> rather than under it.<sup class="cite"><a href="#src-2">2</a></sup></p>
+        <p><code>OSError</code>
         groups failures reported by the operating system, and <code>FileNotFoundError</code> and
         <code>FileExistsError</code> are both its subclasses.<sup class="cite"><a href="#src-2">2</a></sup> The tree
         decides what a handler matches: a handler written for a parent type also catches every child, which is why the
         next step insists on naming the narrowest type you can deal with.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>An exception is an object Python creates when a line cannot do its job; unhandled, it stops the program.</li>
+          <li>Read a traceback from the last line upward to the first line in your own code.</li>
+          <li>A KeyError is a missing key, a ValueError a bad value, and a TypeError the wrong type.</li>
+          <li>A SyntaxError is found before anything runs, so a try statement cannot catch it.</li>
+        </ul></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>I read a traceback from the bottom. The last line gives me the exception type and the message, and the lines
@@ -166,7 +178,8 @@ Ticket(7, "Refund charged twice", "urgent")</code></pre>
         <h3>Validating at the boundary</h3>
         <p>Putting the check at the very top of <code>__init__</code> is a design decision with a name: validate at the
         boundary. If the constructor refuses bad input, no invalid <code>Ticket</code> ever exists, so no other method has
-        to wonder whether <code>self.priority</code> is usable. The pattern is an <code>if</code>
+        to wonder whether <code>self.priority</code> is usable.</p>
+        <p>The pattern is an <code>if</code>
         guard followed by <code>raise ValueError(...)</code> as the first lines of a constructor or a public function.
         Raise when your code is handed something it cannot work with and the caller is better placed to decide what happens
         next. Code that silently "fixes" bad input, say by quietly treating <code>urgent</code> as <code>high</code>, hides
@@ -210,10 +223,12 @@ print(parse_id("TD-7"))</code></pre>
         <p>The <code>else</code> clause runs only when the <code>try</code> body raised nothing, and the
         <code>finally</code> clause runs on every path, whether or not an exception occurred and even if a handler itself
         raises.<sup class="cite"><a href="#src-1">1</a></sup> In the example, <code>parse done</code> is logged before each
-        <code>return</code> completes. That guarantee is what <code>finally</code> is for: closing, releasing or logging
+        <code>return</code> completes.</p>
+        <p>That guarantee is what <code>finally</code> is for: closing, releasing or logging
         "done" whatever happened. <code>else</code> answers a subtler need. Keep only the risky line inside
         <code>try</code> and put the follow-up work in <code>else</code>, so a <code>ValueError</code> raised by the
-        follow-up code is never mistaken for the one you meant to handle. The ticket desk uses the same four-part shape
+        follow-up code is never mistaken for the one you meant to handle.</p>
+        <p>The ticket desk uses the same four-part shape
         around adding a ticket: a rejected ticket is logged as an error, an accepted one as information, and "intake done"
         is logged either way.</p>
         <h3>Catch narrow: the bare except problem</h3>
@@ -225,6 +240,11 @@ print(parse_id("TD-7"))</code></pre>
         is too wide hides real bugs, so catch the narrowest type the code can actually recover
         from.<sup class="cite"><a href="#src-1">1</a></sup></p>
         <div class="ix-spot" data-snippet="try:&#10;    desk.add(Ticket(7, &quot;Refund charged twice&quot;, &quot;urgent&quot;, NOW))&#10;except:&#10;    pass" data-q="A reviewer will not approve this. What is wrong, and what should it say?" data-a="The bare except with pass swallows every failure silently, including a typo in the code and Ctrl+C. Catch only ValueError, the type the constructor raises, and log it: except ValueError as err: log.error(&quot;rejected ticket: %s&quot;, err)."></div>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Raise when your code is handed something it cannot use and the caller can decide what happens next.</li>
+          <li>The first matching except clause runs, and finally runs on every path.</li>
+          <li>A bare except hides real bugs, so catch the narrowest type the code can recover from.</li>
+        </ul></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>I raise an exception when my code is handed something it can't work with and the caller is better placed to
@@ -247,7 +267,8 @@ print(parse_id("TD-7"))</code></pre>
         <p><code>open()</code> returns a file object, and in text mode that object converts the bytes on disk into Python
         strings using an encoding.<sup class="cite"><a href="#src-6">6</a></sup> A file you open has to be closed again,
         and the reliable way to do that is a <code>with</code> statement: the file is closed when the block ends, even if
-        an exception is raised inside it.<sup class="cite"><a href="#src-7">7</a></sup> An object that sets something up on
+        an exception is raised inside it.<sup class="cite"><a href="#src-7">7</a></sup></p>
+        <p>An object that sets something up on
         entry to a <code>with</code> block and cleans it up on exit is called a context manager, and an open file is the
         one you will meet most.</p>
 <pre><code>def read_lines(path):
@@ -268,10 +289,12 @@ print(read_lines("missing.txt"))</code></pre>
         <p>The default mode is <code>"r"</code>, read text, so <code>open(path)</code> with no mode reads
         text.<sup class="cite"><a href="#src-6">6</a></sup> Adding <code>b</code> to the mode, as in <code>"rb"</code>,
         opens the file in binary mode, which returns raw <code>bytes</code> with no decoding; images and other non-text
-        files are read that way.<sup class="cite"><a href="#src-6">6</a></sup> Text mode needs an encoding to turn bytes
+        files are read that way.<sup class="cite"><a href="#src-6">6</a></sup></p>
+        <p>Text mode needs an encoding to turn bytes
         into characters, and when you leave the <code>encoding</code> argument out, Python uses a default that depends on
         the platform.<sup class="cite"><a href="#src-6">6</a></sup> Reviewers look for this: without <code>encoding="utf-8"</code>, the same code can read the same file differently on a Windows
-        laptop and on a Linux server, and a title such as "Zoë can't log in" comes back garbled on one of them. You will
+        laptop and on a Linux server, and a title such as "Zoë can't log in" comes back garbled on one of them.</p>
+        <p>You will
         see <code>with open(path, encoding="utf-8") as f:</code> in nearly every codebase that handles text files.</p>
         <h3>Reading the whole file, or one line at a time</h3>
         <p><code>f.read()</code> returns the whole content as one string, and <code>f.readline()</code> returns the next
@@ -302,6 +325,12 @@ print(text.splitlines())</code></pre>
         Python, which is not necessarily the folder that holds the script. Start the ticket desk from its parent folder and
         the same <code>open("requirements.txt")</code> looks in the parent, then reports <code>FileNotFoundError</code> for
         a file you can see in your editor. When that happens, check where the terminal is before you check the code.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A with block closes the file when the block ends, even if an exception is raised inside it.</li>
+          <li>Name the encoding, because the default depends on the platform.</li>
+          <li>read() loads the whole file at once; looping over the file object reads one line at a time.</li>
+          <li>A relative path is resolved against the working directory, not the script's folder.</li>
+        </ul></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>I open files in a with block because it closes the file when the block ends, even if an exception is raised
@@ -320,9 +349,14 @@ print(text.splitlines())</code></pre>
         <p>Writing uses the same <code>open()</code> and the same <code>with</code> block as reading. What changes is the
         mode string, and choosing the wrong one is the most common way to lose data in a file.</p>
         <h3>Three modes for writing: w, a and x</h3>
-        <p>Mode <code>"w"</code> creates the file if it is absent and empties it if it is present. Mode <code>"a"</code>
-        also creates a missing file, but writes at the end of an existing one. Mode <code>"x"</code> creates the file and
-        raises <code>FileExistsError</code> if it already exists.<sup class="cite"><a href="#src-6">6</a></sup> The detail
+        <ul>
+          <li>Mode <code>"w"</code> creates the file if it is absent and empties it if it is present.</li>
+          <li>Mode <code>"a"</code>
+          also creates a missing file, but writes at the end of an existing one.</li>
+          <li>Mode <code>"x"</code> creates the file and
+          raises <code>FileExistsError</code> if it already exists.<sup class="cite"><a href="#src-6">6</a></sup></li>
+        </ul>
+        <p>The detail
         that catches people out is when <code>"w"</code> empties the file: at the moment it is opened, before a single
         character is written.<sup class="cite"><a href="#src-6">6</a></sup> Open a file with <code>"w"</code> intending to
         add to it, and the old content is already gone.</p>
@@ -381,6 +415,11 @@ with open("board.txt", encoding="utf-8") as f:
         even when the program exits normally.<sup class="cite"><a href="#src-7">7</a></sup> Closing the file pushes out
         whatever is still buffered, and that is the second reason, after error safety, that file code lives inside a
         <code>with</code> block.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Mode w empties the file when it is opened, a adds to the end, and x refuses to overwrite.</li>
+          <li>The write method adds no newline and returns the number of characters written.</li>
+          <li>Writes are buffered, so closing the file pushes the rest out to disk.</li>
+        </ul></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>"w" creates the file or empties it the moment it's opened, "a" creates it or adds to the end, and "x" creates
@@ -424,7 +463,8 @@ print(delete_file("board.txt"), delete_file("board.txt"))</code></pre>
         looks like in someone else's code.</p>
         <p>There are two variations you will meet. <code>Path(path).unlink(missing_ok=True)</code> ignores a missing file in
         one line,<sup class="cite"><a href="#src-10">10</a></sup> which suits a cleanup step that does not care, at the
-        price of never knowing whether anything was deleted. Older code uses <code>os.remove(path)</code>, which does the
+        price of never knowing whether anything was deleted.</p>
+        <p>Older code uses <code>os.remove(path)</code>, which does the
         same job on a plain string path.<sup class="cite"><a href="#src-11">11</a></sup> Both have the same limit:
         <code>unlink</code> removes only files and links, and a directory needs <code>Path.rmdir()</code>
         instead,<sup class="cite"><a href="#src-10">10</a></sup> while <code>os.remove()</code> raises
@@ -447,10 +487,15 @@ if Path(path).exists():
         frequent one.</p>
         <p>The other style is EAFP, easier to ask forgiveness than permission: try the operation and handle the failure,
         which is what <code>delete_file</code> does. Python code leans towards EAFP because the operation itself is the
-        only reliable test of whether it can succeed, and the <code>try</code> statement makes the failure path explicit.
-        LBYL still has its place where the check is cheap and nothing else can change the answer in between, such as
+        only reliable test of whether it can succeed, and the <code>try</code> statement makes the failure path explicit.</p>
+        <p>LBYL still has its place where the check is cheap and nothing else can change the answer in between, such as
         testing whether a dictionary holds a key before reading it. Files live on a disk other processes share, so for
         files EAFP is the safer habit.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Unlink deletes a file and raises FileNotFoundError when there is nothing to delete.</li>
+          <li>Checking first, called LBYL, leaves a gap in which another program can remove the file.</li>
+          <li>Trying the operation and handling the failure, called EAFP, is the safer habit for files.</li>
+        </ul></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>I delete a file with Path.unlink from pathlib, or os.remove on a plain string path. If the file doesn't exist
@@ -525,22 +570,41 @@ text = opened.isoformat()
 print(text)
 print(datetime.fromisoformat(text) == opened)</code></pre>
         <p>The output is <code>2026-10-19T08:30:00</code>, then <code>True</code>. ISO text has a second advantage: written
-        year first, it sorts into date order as plain text. The ticket desk wraps this in two small functions.
-        <code>to_record</code> turns a <code>Ticket</code> into a dict of plain values whose keys are exactly its attribute
-        names (<code>ticket_id</code>, <code>title</code>, <code>priority</code>, <code>status</code>,
-        <code>assignee</code>, <code>opened_at</code> and <code>closed_at</code>), with each date as ISO text and
-        <code>closed_at</code> left as <code>None</code> while the ticket is open. <code>from_record</code> does the reverse,
-        building a <code>Ticket</code> and restoring its dates with <code>fromisoformat</code>. Saving the desk becomes a
+        year first, it sorts into date order as plain text. The ticket desk wraps this in two small functions.</p>
+        <ul>
+          <li><code>to_record</code> turns a <code>Ticket</code> into a dict of plain values whose keys are exactly its attribute
+          names:
+            <ul>
+              <li><code>ticket_id</code></li>
+              <li><code>title</code></li>
+              <li><code>priority</code></li>
+              <li><code>status</code></li>
+              <li><code>assignee</code></li>
+              <li><code>opened_at</code> and <code>closed_at</code></li>
+            </ul>
+          With each date as ISO text and
+          <code>closed_at</code> left as <code>None</code> while the ticket is open.</li>
+          <li><code>from_record</code> does the reverse,
+          building a <code>Ticket</code> and restoring its dates with <code>fromisoformat</code>.</li>
+        </ul>
+        <p>Saving the desk becomes a
         loop of <code>to_record</code> calls followed by one <code>json.dump</code>.</p>
         <h3>Round trips: how a storage layer is checked</h3>
         <p>Converting an object in memory into text or bytes that can be stored or sent is called serialization, and
         rebuilding it is deserialization. The property that matters is the round trip: save, then load, and you must get
-        back something equal to what you saved. The <code>== records</code> line above is that check in its smallest form.
+        back something equal to what you saved.</p>
+        <p>The <code>== records</code> line above is that check in its smallest form.
         It is also where the limits show. A tuple saved and loaded comes back as a list, and a date comes back as a string
         unless your loading code converts it, so a round trip is only exact when you design the record format for
-        it.<sup class="cite"><a href="#src-12">12</a></sup> That is why the desk converts tickets to records of plain
+        it.<sup class="cite"><a href="#src-12">12</a></sup></p>
+        <p>That is why the desk converts tickets to records of plain
         values and ISO dates before saving: every field then survives the trip. Turning such round trips into automated
         tests is the next day's topic.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>JSON stores structure along with values, but tuples come back as lists and dates need converting.</li>
+          <li>The functions with an s work on strings; the ones without it work on file objects.</li>
+          <li>Store dates as ISO text so a saved and loaded record comes back equal.</li>
+        </ul></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>dump writes JSON to an open file object and dumps returns it as a string; load and loads are the same pair for
@@ -558,11 +622,11 @@ print(datetime.fromisoformat(text) == opened)</code></pre>
         <div class="tag">JSON</div>
         <h2>When the JSON file is missing or corrupt</h2>
         <p>Loading is where files and exceptions meet. The file may not exist yet, or someone may have edited it by hand and
-        broken it, and the two cases need different handling. Here is the ticket desk's loader. It is an excerpt of
+        broken it, and the two cases need different handling.</p>
+        <p>Here is the ticket desk's loader. It is an excerpt of
         the <code>storage</code> module and does not run on its own: the module above it imports <code>json</code> and
         defines <code>log</code>, the module's logger, and it brings in <code>Desk</code> and <code>from_record</code>,
-        the pieces described in the previous step. The run further down this step shows what it prints on a corrupt
-        file.</p>
+        the pieces described in the previous step.</p>
 <pre><code>def load_desk(path):
     """Read a JSON file into a new desk, or return an empty desk if there is none."""
     try:
@@ -577,12 +641,15 @@ print(datetime.fromisoformat(text) == opened)</code></pre>
     for record in records:
         desk.add(from_record(record))
     return desk</code></pre>
+        <p>The run further down this step shows what it prints on a corrupt
+        file.</p>
         <h3>A missing file is a normal first run</h3>
         <p>The first time the program runs there is no <code>tickets.json</code>, and <code>open()</code> raises
         <code>FileNotFoundError</code>.<sup class="cite"><a href="#src-2">2</a></sup> That is an expected situation, so the
         loader handles it by returning an empty <code>Desk</code>. The calling code checks for an empty desk, seeds the six
         sample tickets, and saves at the end of the run; on the second run the file exists, the six tickets are loaded and
-        nothing is seeded again. Only the risky part, opening and parsing, sits inside <code>try</code>, and the loop that
+        nothing is seeded again.</p>
+        <p>Only the risky part, opening and parsing, sits inside <code>try</code>, and the loop that
         rebuilds tickets runs after it, so an error in <code>from_record</code> is never mistaken for a file problem.</p>
         <h3>A corrupt file raises JSONDecodeError</h3>
         <p>Delete the final <code>]</code> from <code>tickets.json</code> by hand and <code>json.load</code> raises
@@ -590,7 +657,8 @@ print(datetime.fromisoformat(text) == opened)</code></pre>
         column where parsing failed.<sup class="cite"><a href="#src-12">12</a></sup> Without the second
         <code>except</code> clause, the traceback runs through several frames inside Python's own <code>json</code> package
         and ends with
-        <code>json.decoder.JSONDecodeError: Expecting ',' delimiter: line 56 column 1 (char 1279)</code>. Read bottom-up as
+        <code>json.decoder.JSONDecodeError: Expecting ',' delimiter: line 56 column 1 (char 1279)</code>.</p>
+        <p>Read bottom-up as
         usual: the last line says the parser expected a comma on line 56, one line past the last <code>}</code>, which is
         where it noticed the list had not been closed. Walking up, the lowest frame in a file you wrote is the
         <code>json.load(f)</code> line in <code>load_desk</code>.</p>
@@ -601,11 +669,13 @@ print(datetime.fromisoformat(text) == opened)</code></pre>
         <p>The second clause logs the problem and raises a new exception. <code>raise ... from err</code> records
         <code>err</code> as the direct cause of the new exception, stored in its <code>__cause__</code> attribute, and the
         traceback prints both, joined by the line "The above exception was the direct
-        cause of the following exception".<sup class="cite"><a href="#src-3">3</a></sup> Without <code>from</code>, an
-        exception raised inside an <code>except</code> clause is still chained, implicitly: the handled exception lands in
+        cause of the following exception".<sup class="cite"><a href="#src-3">3</a></sup></p>
+        <p>Without <code>from</code>, an
+        exception raised inside an <code>except</code> clause is still chained, implicitly. The handled exception lands in
         the new one's <code>__context__</code> attribute and the traceback joins them with "During handling of the above
-        exception, another exception occurred", which reads like a second bug in the handler; <code>from</code> sets
-        <code>__cause__</code> and states the link was intended.<sup class="cite"><a href="#src-3">3</a></sup> Shortened, a run on the damaged
+        exception, another exception occurred", which reads like a second bug in the handler. <code>from</code> sets
+        <code>__cause__</code> and states the link was intended.<sup class="cite"><a href="#src-3">3</a></sup></p>
+        <p>Shortened, a run on the damaged
         file prints:</p>
 <pre><code>ERROR storage: cannot read tickets.json: Expecting ',' delimiter: line 56 column 1 (char 1279)
 Traceback (most recent call last):
@@ -625,9 +695,15 @@ ValueError: tickets.json is not valid JSON</code></pre>
         <p>The save side has its own limit. Saving opens the file with <code>"w"</code>, which empties it the moment it is
         opened, so every save rewrites the whole file.<sup class="cite"><a href="#src-6">6</a></sup> For a desk of a few
         hundred tickets that is quick and simple. It also means a program killed halfway through a save leaves a partial
-        file, which the next load reports as exactly the <code>JSONDecodeError</code> above. A single JSON file suits one
+        file, which the next load reports as exactly the <code>JSONDecodeError</code> above.</p>
+        <p>A single JSON file suits one
         program and modest data. Two programs saving at once can overwrite or corrupt each other's work, which is the
         reason databases exist; week 3 introduces one.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A missing file on the first run is expected, so the loader returns an empty desk.</li>
+          <li>A corrupt file raises JSONDecodeError, which the loader logs and raises again as a ValueError naming the file.</li>
+          <li>Returning an empty desk for a corrupt file would let the next save overwrite the only copy.</li>
+        </ul></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>A missing file on the first run is normal, so I catch FileNotFoundError and start with an empty collection. A
