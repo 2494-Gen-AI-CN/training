@@ -21,7 +21,7 @@ FORBIDDEN_RE = re.compile(
     r"FDE_|fde_|fde-|roster\.js|progress\.js|day-summary|auth\.js|reading-coach|coding-coach|codex-usage|"
     r"usage-notice|learning-chrome|interactive-rag|interactive-agents|gauntlet|workers\.dev|jestercharles|2463",
 )
-ALLOWED_JS = {"theme.js", "diagram.js", "scrolly.js", "modals.js", "quiz.js", "widgets.js", "glossary.js", "survey.js", "pyworker.js"}
+ALLOWED_JS = {"theme.js", "diagram.js", "scrolly.js", "modals.js", "quiz.js", "widgets.js", "glossary.js", "pyworker.js"}
 PAGE_SCRIPT_ORDER = ["diagram.js", "scrolly.js", "modals.js", "quiz.js", "widgets.js", "glossary.js"]
 SECRET_RE = re.compile(r"sk-ant-[A-Za-z0-9_-]{8,}|AKIA[0-9A-Z]{16}|BEGIN (RSA |EC )?PRIVATE KEY")
 

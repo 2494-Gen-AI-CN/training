@@ -296,7 +296,7 @@ def parse_notes_output(stdout: str, strict: bool) -> list[dict]:
 
 def check_notes(root: Path, links: bool = True, strict: bool = False) -> list[dict]:
     cmd = [sys.executable, str(root / "harness" / "notes_check.py"), "--all-authored",
-           "--counts", "--phrases", "--stamps", "--citations"] + (["--links"] if links else []) + ["--json"]
+           "--counts", "--phrases", "--stamps", "--citations", "--style"] + (["--links"] if links else []) + ["--json"]
     res = subprocess.run(cmd, cwd=str(root), capture_output=True, text=True, encoding="utf-8", errors="replace")
     if res.returncode == 2:
         return [finding(SOFT, "notes", "notes_check.py found no authored or live pages")]

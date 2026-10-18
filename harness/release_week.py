@@ -42,7 +42,7 @@ ROOT = bi.ROOT
 RECORDED = ("authored", "live")
 # The demoFormats harness/close_day.py closes (its locate() refuses `none`: nothing to close that day).
 CLOSABLE_FORMATS = ("walkthrough",)
-NOTES_PHASES = {"counts", "phrases", "stamps", "citations"}
+NOTES_PHASES = {"counts", "phrases", "stamps", "citations", "style"}
 
 
 # ---------------------------------------------------------------- paths (all relative to a root, so tests can use a temp tree)

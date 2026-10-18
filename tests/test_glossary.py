@@ -35,6 +35,12 @@ process.stdin.on('end', () => {
         self.assertIn("// GLOSSARY:BEGIN", src)
         self.assertIn("// GLOSSARY:END", src)
 
+    def test_one_underline_per_term_per_step(self):
+        """D-0060: the first occurrence of a term in a section.step gets the tooltip; later ones stay plain text."""
+        src = (DOCS / "assets" / "js" / "glossary.js").read_text(encoding="utf-8")
+        for needle in ('classList.contains("step")', "seenInScope", "if (seen[entry.term]) continue;"):
+            self.assertIn(needle, src)
+
 
 if __name__ == "__main__":
     unittest.main()

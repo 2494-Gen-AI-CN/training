@@ -623,8 +623,17 @@ footer.foot { border-top:1px solid var(--line); margin-top:50px; padding: 26px 2
 .reading-col .step h3 { font-size:24px; line-height:1.25; margin:30px 0 10px; scroll-margin-top:80px; }
 .reading-col .step ul, .reading-col .step ol { font-size:20px; line-height:1.7; margin:0 0 18px; padding-left:26px; }
 .reading-col .step li { margin:0 0 6px; }
-.reading-col .step table { font-size:17px; border-collapse:collapse; margin:0 0 18px; }
+.reading-col .step table { font-size:17px; line-height:1.5; border-collapse:collapse; margin:0 0 18px; display:block; max-width:100%; overflow-x:auto; }
 .reading-col .step th, .reading-col .step td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; }
+.reading-col .step th { background:var(--surface-2); font-weight:600; }
+/* Readability bar (D-0060): a Takeaways recap closes each teaching step before its interview callout; an output
+   block sits directly under the code it belongs to. */
+.reading-col .step .recap { border:1px solid var(--line); border-left:4px solid var(--accent); border-radius:12px; padding:14px 18px 8px; margin:22px 0; background:var(--surface); }
+.reading-col .step .recap .k { font-size:12px; text-transform:uppercase; letter-spacing:.12em; font-weight:700; color:var(--accent); margin-bottom:6px; }
+.reading-col .step .recap ul { font-size:18px; line-height:1.55; margin:0 0 6px; padding-left:22px; }
+.reading-col .step .recap li { margin:0 0 4px; }
+.reading-col pre.out { margin-top:-10px; border-top-left-radius:0; border-top-right-radius:0; background:var(--surface-2); color:var(--ink-soft); position:relative; padding-top:22px; }
+.reading-col pre.out::before { content:"output"; position:absolute; top:4px; left:14px; font-family:var(--sans, inherit); font-size:10.5px; text-transform:uppercase; letter-spacing:.12em; color:var(--dim); }
 .callout.interview { background:var(--accent-soft); }
 .callout.interview .k { color:var(--accent); }
 .reading-col .step .callout.interview p { font-size:19px; }

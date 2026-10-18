@@ -297,14 +297,31 @@
     var tn;
     while ((tn = walker.nextNode())) textNodes.push(tn);
 
+    // One underline per term per section.step (D-0060): the first occurrence in a step gets the tooltip, later
+    // ones stay plain text, so a page with "module" 76 times is not underlined 76 times. Text outside any step
+    // (the lede) is its own scope. The Key terms block still lists every term the page uses.
+    var seenInScope = {};
+    function scopeOf(node) {
+      var el = node.parentNode;
+      while (el && el.nodeType === 1 && el !== root) {
+        if (el.classList && el.classList.contains("step")) return el.getAttribute("data-step") || "step";
+        el = el.parentNode;
+      }
+      return "lede";
+    }
+
     textNodes.forEach(function (node) {
       var text = node.nodeValue;
+      var scope = scopeOf(node);
+      var seen = seenInScope[scope] || (seenInScope[scope] = {});
       RE.lastIndex = 0;
       var m, hits = [];
       while ((m = RE.exec(text))) {
         var entry = BY_FORM[m[1].toLowerCase()];
         if (!entry) continue;
         if (!found[entry.term]) { found[entry.term] = entry; foundOrder.push(entry.term); }
+        if (seen[entry.term]) continue;
+        seen[entry.term] = true;
         hits.push({ start: m.index, end: m.index + m[0].length, entry: entry, text: m[0] });
       }
       if (!hits.length) return;

@@ -15,7 +15,14 @@
     "goalsMin": 3, "goalsMax": 5,
     "sourcesMin": 6,
     "deliveryPhrases": ["the trainer", "in class", "you watched", "you saw", "this morning", "this afternoon", "today's demo", "today's session", "typed live", "live demo", "the room", "in the room", "code-along", "after class", "during the demo", "earlier today"],
-    "assumptionPhrases": ["you already", "already know", "from coursework", "in coursework", "for coursework", "from university", "from your degree", "since your first", "first programming course", "as you know", "you will recall", "you may recall", "you may remember", "you might remember", "you are familiar", "you're familiar", "by now you", "syntax from zero"]
+    "assumptionPhrases": ["you already", "already know", "from coursework", "in coursework", "for coursework", "from university", "from your degree", "since your first", "first programming course", "as you know", "you will recall", "you may recall", "you may remember", "you might remember", "you are familiar", "you're familiar", "by now you", "syntax from zero"],
+    "prose": {
+      "_comment": "D-0060: readability bar checked by notes_check.py --style inside the TEACHING steps (hard; binding through the notes-verify agent). Paragraph = a <p> outside callouts, details, lists, .recap and .ix-* widgets. Sentence caps skip .callout.interview p and details.check (spoken answers run long on purpose). structuredBlocks = ul/ol/table in teaching steps, the recap lists excluded. Every teaching step ends with div.recap (div.k recapLabel + ul of recapItemsMin..Max one-line items) immediately before its interview callout. outputAfterCode: each <pre> is followed by <pre class=\"out\"> or by a <p>.",
+      "paragraphWordsMax": 80, "sentenceWordsMax": 40, "codeSpansPerSentenceMax": 5,
+      "structuredBlocksMin": 3,
+      "recapPerStep": 1, "recapItemsMin": 2, "recapItemsMax": 4, "recapItemWordsMax": 20, "recapLabel": "Takeaways",
+      "outputAfterCode": true
+    }
   },
   "demos": { "_comment": "D-0055: one walkthrough per demo block (AM/PM) under trainer/week-WW/demos/; typed = non-blank python lines + bash commands, about 1.5 lines per minute.", "blocksPerDayMin": 0, "blocksPerDayMax": 2, "minutesPerBlockMin": 30, "minutesPerBlockMax": 180, "stepsPerBlockMin": 4, "stepsPerBlockMax": 12, "maxTypedLinesPerBlock": 250 },
   "practice": { "_comment": "D-0047: practice tasks on a notes page (harness/practice_tasks.py verify, harness/critics/practice.md). At most one task per teaching step.", "checksPerTaskMin": 2, "checksPerTaskMax": 4, "acceptMin": 1, "starterLinesMax": 12, "modelLinesMax": 15 },

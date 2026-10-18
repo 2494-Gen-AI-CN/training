@@ -33,7 +33,7 @@ class CountTests(unittest.TestCase):
         self.assertEqual(6, c["captions"])
         self.assertTrue(c["lastIsCheck"])
         self.assertEqual(5, c["teachingSteps"])
-        self.assertEqual([2] * 5, c["h3"])
+        self.assertEqual([2, 2, 2, 3, 2], c["h3"])   # step 3 gained a "Side by side" table subsection (D-0060)
         self.assertEqual([1] * 5, c["interview"])
         self.assertEqual(5, c["checkDetails"])
         self.assertGreaterEqual(c["codeBlocks"], 6)
@@ -119,6 +119,83 @@ class PhraseStampCitationTests(unittest.TestCase):
         self.assertEqual(len(links), len(set(links)))
         self.assertIn("https://peps.python.org/pep-0008/", links)
         self.assertTrue(all(l.startswith("http") for l in links))
+
+
+class StyleTests(unittest.TestCase):
+    """--style (D-0060): the readability bar of the teaching steps."""
+
+    def setUp(self):
+        self.text = EXEMPLAR.read_text(encoding="utf-8")
+        self.mp = metrics()["notes"]["prose"]
+
+    def _findings(self, text: str) -> list[str]:
+        return notes_check.style_findings(notes_check.style(text), self.mp)
+
+    def test_exemplar_is_clean(self):
+        self.assertEqual([], self._findings(self.text))
+        s = notes_check.style_summary(notes_check.style(self.text), self.mp)
+        self.assertEqual(5, s["recaps"])
+        self.assertGreaterEqual(s["structuredBlocks"], self.mp["structuredBlocksMin"])
+        self.assertEqual(0, s["codeNoOutput"])
+
+    def test_sentences_split_on_blocks_not_line_wraps(self):
+        marked = ("First sentence runs\n        over a wrap. Second one, e.g. with an abbreviation and 3.5 inside, ends here."
+                  + notes_check.BLOCK_MARK + "A list item without a stop" + notes_check.BLOCK_MARK)
+        s = notes_check.sentences(marked)
+        self.assertEqual(["First sentence runs over a wrap.", "Second one, e.g. with an abbreviation and 3.5 inside, ends here.", "A list item without a stop"],
+                         [x["text"] for x in s])
+        code = f"Call {notes_check.CODE_MARK} then {notes_check.CODE_MARK} twice."
+        self.assertEqual([(3, 2)], [(x["words"], x["codeSpans"]) for x in notes_check.sentences(code)])   # Call, then, twice.
+
+    def test_each_cap_is_named(self):
+        anchor = "<h3>First subtopic as an h3</h3>"
+        cases = {
+            "paragraph of": anchor + "<p>" + "word " * 81 + "</p>",
+            "sentence of": anchor + "<p>" + "word " * 41 + ".</p>",
+            "code spans": anchor + "<p>" + "<code>x</code> and " * 6 + "done.</p>",
+            "<pre> followed by": anchor + "<pre><code>print(1)</code></pre><h3>Bare</h3>",
+        }
+        for needle, insert in cases.items():
+            with self.subTest(cap=needle):
+                f = self._findings(self.text.replace(anchor, insert, 1))
+                self.assertTrue(any(needle in x and x.startswith("style:") for x in f), f)
+        import re
+        no_blocks = re.sub(r"<table>.*?</table>", "<p>The table, as prose.</p>", self.text, flags=re.S)
+        no_blocks = re.sub(r"<ul>\s*<li>the first thing.*?</ul>", "<p>The list, as prose.</p>", no_blocks, flags=re.S)
+        no_blocks = re.sub(r"<ul>\s*<li>The first subtopic.*?</ul>", "<p>The list, as prose.</p>", no_blocks, flags=re.S)
+        self.assertEqual(0, notes_check.style(no_blocks)["structuredBlocks"])
+        for needle, bad in {
+            "structured blocks": no_blocks,
+            "div.recap, expected": self.text.replace('<div class="recap">', '<div class="recap-x">', 1),
+            "recap label": self.text.replace('<div class="k">Takeaways</div>', '<div class="k">Recap</div>', 1),
+            "recap has": self.text.replace("<li>A second line: the trade-off or limit this step named.</li>\n            <li>A third line, optional: how to recognise the thing in someone else's code.</li>", "", 1),
+            "recap item": self.text.replace("<li>A second line: the trade-off or limit this step named.</li>", "<li>" + "word " * 21 + "</li>", 1),
+        }.items():
+            with self.subTest(cap=needle):
+                f = self._findings(bad)
+                self.assertTrue(any(needle in x for x in f), f)
+
+    def test_callouts_and_check_answers_are_exempt(self):
+        long = "word " * 45 + "."
+        t = self.text.replace('<p>A spoken answer to "how does this work under the hood?" in two or three sentences.</p>', f"<p>{long}</p>", 1)
+        t = t.replace("<p>The answer in one to four sentences, correct against the brief.</p>", f"<p>{long}</p>", 1)
+        self.assertEqual([], self._findings(t))
+
+    def test_output_block_counts_as_output_not_code(self):
+        c = notes_check.counts(self.text)
+        self.assertEqual(c["codeBlocks"], self.text.count("<pre><code>"))
+        self.assertIn('<pre class="out">', self.text)
+        t = self.text.replace('<pre><code>print("option a")</code></pre>\n        <p>Prints <code>option a</code>. What it buys and what it costs.</p>',
+                              '<pre><code>print("option a")</code></pre>\n<pre class="out">option a</pre>\n        <p>What it buys and what it costs.</p>', 1)
+        self.assertEqual([], self._findings(t))
+
+    def test_style_is_a_default_phase_and_in_the_json(self):
+        self.assertIn("style", notes_check.DEFAULT_PHASES)
+        r = subprocess.run([sys.executable, str(HARNESS / "notes_check.py"), str(EXEMPLAR), "--style", "--json"], capture_output=True, text=True, encoding="utf-8", cwd=ROOT)
+        data = json.loads(r.stdout.strip().splitlines()[-1])
+        self.assertEqual(0, r.returncode, r.stdout)
+        self.assertIn("style", data["pages"][0])
+        self.assertEqual(5, data["pages"][0]["style"]["recaps"])
 
 
 class CliTests(unittest.TestCase):

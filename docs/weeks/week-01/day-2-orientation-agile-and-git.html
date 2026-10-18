@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="tc-day" content="w01d2">
 <title>W1·D2 — Orientation, Agile &amp; Git fundamentals | 2494 · Gen-AI Python</title>
-<link rel="stylesheet" href="../../assets/css/style.css?v=20261015">
-<script src="../../assets/js/theme.js?v=20261015"></script>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261017">
+<script src="../../assets/js/theme.js?v=20261017"></script>
 </head>
 <body>
 <a class="skip-link" href="#reading-main">Skip to content</a>
@@ -36,7 +36,7 @@
           <span><b>Week 1</b> · Day 2</span>
           <span>Tue Oct 13, 2026</span>
           <span>Agile for developers, Git &amp; Python fundamentals</span>
-          <span><b>~41 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span><b>~44 min</b> · reference notes @150 wpm · diagram · check</span>
           <span class="verified">Sources checked 2026-10-13 · python 3.15 · git 2.50 · notebook 7.x</span>
         </div>
         <p class="summary">This is the first page of the program, so it assumes only some programming in another
@@ -58,7 +58,7 @@
         high level dynamic data types and classes.<sup class="cite"><a href="#src-1">1</a></sup> Memory is reclaimed by
         reference counting plus a cyclic garbage collector.<sup class="cite"><a href="#src-2">2</a></sup> Teams choose it
         for back-end and data work mostly for the standard library, which covers internet protocols and operating-system
-        interfaces among much else,<sup class="cite"><a href="#src-1">1</a></sup> and for readability: "Readability counts" is a line of the
+        interfaces among much else,<sup class="cite"><a href="#src-1">1</a></sup> and for readability. "Readability counts" is a line of the
         Zen of Python that people still quote in code review.<sup class="cite"><a href="#src-3">3</a></sup></p>
         <p>The Python you run is CPython, the reference implementation, pinned here at 3.15.<sup class="cite"><a href="#src-2">2</a></sup> Its limit worth naming early is the global interpreter lock,
         which lets only one thread execute Python bytecode at a time, so CPU-bound threads do not run in
@@ -124,12 +124,18 @@ exit()</code></pre>
         <h3>Where Python sits in a full stack</h3>
         <p>A web application has a browser front end, a server back end and a database. python.org lists web development
         and scientific and numeric work among Python's main uses,<sup class="cite"><a href="#src-16">16</a></sup> and
-        here it sits in the back end and the data layer. The layers talk HTTP, a stateless protocol in which a client sends a request and a server
+        here it sits in the back end and the data layer.</p>
+        <p>The layers talk HTTP, a stateless protocol in which a client sends a request and a server
         returns a response.<sup class="cite"><a href="#src-17">17</a></sup> The standard library's
         <code>python -m http.server</code> shows a back end answering, but it is not recommended for production
         because it implements only basic security checks.<sup class="cite"><a href="#src-18">18</a></sup> A full-stack
         repository usually shows <code>frontend/</code> and <code>backend/</code> folders beside a
         <code>docker-compose.yml</code>.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>CPython compiles source to bytecode and runs it on a virtual machine.</li>
+          <li>The global interpreter lock stops CPU-bound threads running in parallel.</li>
+          <li>In a full stack, Python sits in the back end and the data layer.</li>
+        </ul></div>
 <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>Python is an interpreted, dynamically typed, garbage-collected language. Teams pick it for back-end and data
@@ -150,12 +156,14 @@ exit()</code></pre>
         regardless of method: requirements and planning, design, implementation, testing, deployment and maintenance. Where
         methods differ is how often they go round. Waterfall runs the phases once, in order. Agile methods repeat all of
         them in short cycles, and Scrum, founded on empiricism (transparency, inspection and adaptation), runs every phase
-        inside every Sprint.<sup class="cite"><a href="#src-5">5</a></sup> The Scrum Guide says all the work needed to
+        inside every Sprint.<sup class="cite"><a href="#src-5">5</a></sup></p>
+        <p>The Scrum Guide says all the work needed to
         reach the Product Goal, including Sprint Planning, the Daily Scrums, the Sprint Review and the Retrospective,
         happens within Sprints.<sup class="cite"><a href="#src-5">5</a></sup></p>
         <p>That answers a common interview question: where does testing happen in Scrum? Inside the Sprint. Each Increment
         is additive to all prior Increments and thoroughly verified, so a team cannot push testing into a later
-        phase.<sup class="cite"><a href="#src-5">5</a></sup> The limit is that the Guide calls Scrum "purposefully
+        phase.<sup class="cite"><a href="#src-5">5</a></sup></p>
+        <p>The limit is that the Guide calls Scrum "purposefully
         incomplete": it does not tell you how to design or how to deploy, and each team fills those gaps with its own
         practices.<sup class="cite"><a href="#src-5">5</a></sup> On a real team you see the phases as columns on a board
         (To Do, In Progress, Review, Done), and you see testing and deployment as a pipeline file that builds and tests the
@@ -167,7 +175,8 @@ exit()</code></pre>
         the requirements in month one is discovered in testing, months later, when every phase built on it has to be
         reopened.</p>
         <p>The shorter the cycle between building something and a customer seeing it, the cheaper a wrong assumption is to
-        fix. Most of what Agile methods do follows from that idea. It also tells you when a waterfall-like plan can still
+        fix. Most of what Agile methods do follows from that idea.</p>
+        <p>It also tells you when a waterfall-like plan can still
         be the honest choice: when the requirements are genuinely fixed and well understood, and changing them later would
         be expensive for reasons outside the software. You recognise the two styles on sight: a Gantt chart with phases in
         sequence is waterfall, and a Sprint board with a burndown chart is Agile.</p>
@@ -178,11 +187,16 @@ exit()</code></pre>
         collaboration over contract negotiation, and responding to change over following a plan.<sup class="cite"><a href="#src-19">19</a></sup>
         The sentence after the four values matters in interviews: there is value in the items on the right, and the
         signatories value the items on the left more. Agile does not mean "no documentation" or "no plan".<sup class="cite"><a href="#src-19">19</a></sup></p>
-        <p>The twelve principles behind the Manifesto turn the values into practice. Teams deliver working software
-        frequently, "from a couple of weeks to a couple of months", with a preference for the shorter timescale; they
-        welcome changing requirements, even late in development; working software is the primary measure of progress; and
-        continuous attention to technical excellence and good design enhances agility.<sup class="cite"><a href="#src-4">4</a></sup>
-        Scrum is one way to live by these. The Scrum Guide defines it as a lightweight framework founded on empiricism and
+        <p>The twelve principles behind the Manifesto turn the values into practice.</p>
+        <ul>
+          <li>Teams deliver working software
+        frequently, "from a couple of weeks to a couple of months", with a preference for the shorter timescale</li>
+          <li>they
+        welcome changing requirements, even late in development</li>
+          <li>working software is the primary measure of progress</li>
+          <li>continuous attention to technical excellence and good design enhances agility.<sup class="cite"><a href="#src-4">4</a></sup></li>
+        </ul>
+        <p>Scrum is one way to live by these. The Scrum Guide defines it as a lightweight framework founded on empiricism and
         lean thinking, and never claims to be the definition of Agile.<sup class="cite"><a href="#src-5">5</a></sup> If an
         interviewer says "Agile" and means "Scrum", answer the question, then note the difference in a sentence.</p>
         <h3>The Definition of Done</h3>
@@ -198,6 +212,11 @@ exit()</code></pre>
         </ul>
         <p>Without one, "done" means whatever the person reporting it wanted it to mean, and the Sprint Review turns into an
         argument. With one, an item that is coded but untested is visibly not done.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Waterfall runs the phases once; Scrum repeats every phase inside each Sprint.</li>
+          <li>The Manifesto still values the items on the right, just less than the left.</li>
+          <li>A Definition of Done is the exit test for whether an item is really done.</li>
+        </ul></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>The SDLC phases are requirements, design, implementation, testing, deployment and maintenance. Waterfall runs
@@ -219,7 +238,8 @@ exit()</code></pre>
         <p>A Scrum Team has three accountabilities: the Product Owner, the Scrum Master and the
         Developers.<sup class="cite"><a href="#src-5">5</a></sup> The Product Owner owns the Product Backlog and decides its
         order. The Developers are the people who build the Increment, and they are the ones accountable for sizing the
-        work. Only the Product Owner can cancel a Sprint.<sup class="cite"><a href="#src-5">5</a></sup> As a graduate hire
+        work. Only the Product Owner can cancel a Sprint.<sup class="cite"><a href="#src-5">5</a></sup></p>
+        <p>As a graduate hire
         you will be one of the Developers, which means the estimates, the daily plan and the quality of the Increment are
         partly yours from your first week.</p>
         <p>The Guide also sets a size limit with a reason attached. A Scrum Team is typically 10 or fewer people, small
@@ -233,31 +253,57 @@ exit()</code></pre>
         Sprint starts immediately after the previous one ends.<sup class="cite"><a href="#src-5">5</a></sup></p>
         <p>Sprint Planning addresses three topics: why this Sprint is valuable, what can be done in it, and how the chosen
         work will get done.<sup class="cite"><a href="#src-5">5</a></sup> The answer to the first question is the Sprint
-        Goal, the single objective that tells everyone why the Sprint matters even if some items slip. The Daily Scrum is
+        Goal, the single objective that tells everyone why the Sprint matters even if some items slip.</p>
+        <p>The Daily Scrum is
         time-boxed to 15 minutes, and the Developers choose its structure and techniques.<sup class="cite"><a href="#src-5">5</a></sup>
         The familiar stand-up questions ("What did I do yesterday, what will I do today, any blockers?") are one common
-        structure, not a rule from the Guide. For a one-month Sprint, Sprint Planning is capped at eight hours, the Sprint
-        Review at four hours and the Retrospective at three hours, with shorter caps for shorter
-        Sprints.<sup class="cite"><a href="#src-5">5</a></sup></p>
+        structure, not a rule from the Guide.</p>
+        <p>For a one-month Sprint:</p>
+        <ul>
+          <li>Sprint Planning is capped at eight hours</li>
+          <li>the Sprint Review at four hours</li>
+          <li>the Retrospective at three hours, with shorter caps for shorter
+        Sprints.<sup class="cite"><a href="#src-5">5</a></sup></li>
+        </ul>
         <div class="ix-predict" data-q="A team runs two-week Sprints and its Sprint Planning regularly takes six hours. Is that inside the Scrum Guide's time-box?" data-a="It is under the eight-hour cap, but that cap is for a one-month Sprint and shorter Sprints get shorter caps. Six hours for a two-week Sprint is worth raising at the Retrospective."></div>
         <h3>Sprint Review versus Sprint Retrospective</h3>
         <p>These two are the follow-up question people stumble on, because both happen at the end of the Sprint. The Sprint
         Review inspects the outcome of the Sprint with stakeholders and decides what to adapt next; it is about the product.
         The Sprint Retrospective plans ways to increase the quality and effectiveness of the team itself; it is about how
-        the team worked.<sup class="cite"><a href="#src-5">5</a></sup> A retrospective board with Start, Stop and Continue
+        the team worked.<sup class="cite"><a href="#src-5">5</a></sup></p>
+        <p>A retrospective board with Start, Stop and Continue
         columns is the version you will see most often. The Retrospective is also where the Agile principle about reflecting
         at regular intervals and tuning behaviour becomes a calendar entry.<sup class="cite"><a href="#src-4">4</a></sup></p>
         <h3>The three artifacts and their commitments</h3>
         <p>The three artifacts are the Product Backlog, the Sprint Backlog and the Increment, and each carries a commitment
-        that gives it a purpose: the Product Backlog has the Product Goal, the Sprint Backlog has the Sprint Goal, and the
-        Increment has the Definition of Done.<sup class="cite"><a href="#src-5">5</a></sup> The Sprint Backlog is the Sprint
+        that gives it a purpose:</p>
+        <ul>
+          <li>the Product Backlog has the Product Goal</li>
+          <li>the Sprint Backlog has the Sprint Goal</li>
+          <li>the
+        Increment has the Definition of Done.<sup class="cite"><a href="#src-5">5</a></sup></li>
+        </ul>
+        <p>The Sprint Backlog is the Sprint
         Goal, the Product Backlog items selected for the Sprint, and a plan for delivering
         them.<sup class="cite"><a href="#src-5">5</a></sup></p>
         <p>Take a single backlog item such as "set up the team's shared
-        repository". It is pulled into the Sprint Backlog at Sprint Planning, someone opens a feature branch for it, its
-        commits land on that branch, it is merged once it meets the Definition of Done, and the merged result is part of
-        the Increment shown at the Sprint Review. Burndown charts, story points and velocity are common additions, and the
+        repository".</p>
+        <ol>
+          <li>It is pulled into the Sprint Backlog at Sprint Planning</li>
+          <li>someone opens a feature branch for it</li>
+          <li>its
+        commits land on that branch</li>
+          <li>it is merged once it meets the Definition of Done</li>
+          <li>the merged result is part of
+        the Increment shown at the Sprint Review.</li>
+        </ol>
+        <p>Burndown charts, story points and velocity are common additions, and the
         Guide defines none of them.<sup class="cite"><a href="#src-5">5</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>The Product Owner owns and orders the Product Backlog; the Developers size the work.</li>
+          <li>The Sprint Review is about the product; the Retrospective is about the team.</li>
+          <li>Burndown charts, story points and velocity are common additions that the Guide does not define.</li>
+        </ul></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>Scrum has five events. The Sprint is the container, one month or less. Inside it there's Sprint Planning,
@@ -274,8 +320,8 @@ exit()</code></pre>
         <h3>What a story point measures</h3>
         <p>The Scrum Guide says the Developers who will do the work are responsible for sizing Product Backlog
         items.<sup class="cite"><a href="#src-5">5</a></sup> It does not say how. Story points, planning poker and velocity
-        appear nowhere in the Guide; they are practices that teams layer on top of it.<sup class="cite"><a href="#src-5">5</a></sup>
-        A story point is a relative size: the team gives each item a number by comparing it with items it has already
+        appear nowhere in the Guide; they are practices that teams layer on top of it.<sup class="cite"><a href="#src-5">5</a></sup></p>
+        <p>A story point is a relative size: the team gives each item a number by comparing it with items it has already
         sized, usually on a Fibonacci-like scale of 1, 2, 3, 5, 8 and 13. The widening gaps are deliberate. Nobody can tell
         a 7 from an 8 in advance, so the scale does not ask.</p>
         <p>Relative sizing works because people are poor at saying "this will take eleven hours" and fairly good at saying
@@ -285,7 +331,8 @@ exit()</code></pre>
         <div class="ix-spot" data-snippet="TD-14  Set up the shared repository&#10;Story Points: 5&#10;Comment: 5 points = 5 hours, so this is done by lunch" data-q="What is wrong with the comment on this ticket?" data-a="It converts points into hours. A 5 means about the size of the team's other 5s, compared item to item. It is not a time, and the team never agreed it was."></div>
         <h3>Planning poker</h3>
         <p>Planning poker is a common way for a team to reach a number together. Each Developer puts forward a size from
-        the scale, and the team agrees one figure for the item by comparing it with items it has sized before. The value of
+        the scale, and the team agrees one figure for the item by comparing it with items it has sized before.</p>
+        <p>The value of
         the practice is the conversation it forces. When one person says 3 and another says 8, the question "why is yours a
         3 and mine an 8?" usually brings out work that one of them had not thought about. The number belongs to the whole
         team, so the loudest voice in the conversation does not get to set it.</p>
@@ -301,13 +348,15 @@ exit()</code></pre>
         <p>The first item needs little discussion. On the second, the person who said 8 was counting access rights, a
         README and the protection rules themselves, and the people who said 3 knew a repository template already existed.
         After comparing it again with items the team has sized, everyone settles on 5, meaning several times the size of
-        the hello script. You recognise the practice by cards or buttons showing 1, 2, 3, 5, 8, 13, and by a "Story Points"
+        the hello script.</p>
+        <p>You recognise the practice by cards or buttons showing 1, 2, 3, 5, 8, 13, and by a "Story Points"
         field on a ticket.</p>
         <h3>Velocity, and why it does not travel between teams</h3>
         <p>Velocity is the number of points a team completes per Sprint. It is meaningful only within one team, measured
         over several Sprints. Its job is forecasting: the Guide notes that the
         more the Developers know about their past performance, their upcoming capacity and their Definition of Done, the
-        more confident they will be in their Sprint forecasts.<sup class="cite"><a href="#src-5">5</a></sup> A team that
+        more confident they will be in their Sprint forecasts.<sup class="cite"><a href="#src-5">5</a></sup></p>
+        <p>A team that
         finished 20, 22 and 19 points in its last three Sprints has a reasonable basis for pulling about 20 into the next
         one.</p>
         <p>Comparing velocity between teams is misleading because each team built its own scale. A team that calls a small
@@ -320,6 +369,11 @@ exit()</code></pre>
         ones.<sup class="cite"><a href="#src-5">5</a></sup> By the time Sprint Planning needs a number, the item should
         already have one, and large items have already been broken down. What reaches the Sprint Backlog is the Sprint
         Goal, the selected items and a plan for delivering them.<sup class="cite"><a href="#src-5">5</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A story point is a relative size agreed by comparing items, and it is not hours.</li>
+          <li>Planning poker gets the team to one agreed figure through conversation.</li>
+          <li>Velocity is meaningful only within one team, measured over several Sprints.</li>
+        </ul></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>A story point is a relative measure of effort that the team agrees by comparing items, usually on a scale
@@ -335,15 +389,28 @@ exit()</code></pre>
         <div class="tag">Mechanics</div>
         <h2>Version control and the three areas</h2>
         <h3>Local, centralised and distributed version control</h3>
-        <p>Version control answers three questions a team keeps asking: what changed, who changed it, and how do two people
-        change the same code without overwriting each other. Version control systems have come in three generations: local
-        systems such as RCS, centralised ones such as CVS and Subversion, where one server holds the history and each client
-        checks out a working copy, and distributed ones such as Git and Mercurial, where every clone fully mirrors the
-        repository, history included.<sup class="cite"><a href="#src-20">20</a></sup> A centralised server is a single point
+        <p>Version control answers three questions a team keeps asking:</p>
+        <ul>
+          <li>what changed</li>
+          <li>who changed it</li>
+          <li>how do two people
+        change the same code without overwriting each other.</li>
+        </ul>
+        <p>Version control systems have come in three generations:</p>
+        <ul>
+          <li>local
+        systems such as RCS</li>
+          <li>centralised ones such as CVS and Subversion, where one server holds the history and each client
+        checks out a working copy</li>
+          <li>distributed ones such as Git and Mercurial, where every clone fully mirrors the
+        repository, history included.<sup class="cite"><a href="#src-20">20</a></sup></li>
+        </ul>
+        <p>A centralised server is a single point
         of failure: while it is down nobody can collaborate or save versioned changes, and if its disk is lost without
         backups the history goes with it. In a distributed system any clone can restore the
-        server.<sup class="cite"><a href="#src-20">20</a></sup> Because most Git operations need only local files,
-        <code>log</code>, <code>diff</code>, <code>commit</code> and <code>branch</code> work offline, and only
+        server.<sup class="cite"><a href="#src-20">20</a></sup></p>
+        <p>Because most Git operations need only local files,
+        <code>log</code>, <code>diff</code>, <code>commit</code> and <code>branch</code> work offline. Only
         <code>push</code>, <code>pull</code> and <code>fetch</code> touch the network.<sup class="cite"><a href="#src-21">21</a></sup></p>
         <p>Git is the tool; GitHub is one service that hosts Git repositories as remotes you reach over HTTPS or
         SSH.<sup class="cite"><a href="#src-22">22</a></sup> If every clone has the full history, the GitHub copy is simply
@@ -353,7 +420,8 @@ exit()</code></pre>
         <h3>Three areas, three states</h3>
         <p>Git stores each commit as a snapshot of the whole tree rather than a list of per-file differences, and an
         unchanged file is stored as a link to the previous identical one. It checksums everything with a hash before storing
-        it, so content cannot change without Git noticing; that hash is the 40-character commit id. A file is in one of
+        it, so content cannot change without Git noticing; that hash is the 40-character commit id.</p>
+        <p>A file is in one of
         three states, modified, staged or committed, matching three areas: the working tree, the staging area and the
         <code>.git</code> directory. The staging area is a file in the Git directory that stores what will go into the next
         commit, and its technical name is the index.<sup class="cite"><a href="#src-21">21</a></sup>
@@ -367,7 +435,8 @@ git diff --staged</code></pre>
         staged for commit" and the first <code>git diff</code> shows your edit, because plain <code>git diff</code> compares
         the working tree with the index. After <code>git add</code>, the second <code>git diff</code> prints nothing and
         <code>git diff --staged</code> shows the change, because it compares the index with the last
-        commit.<sup class="cite"><a href="#src-24">24</a></sup> The first line of <code>git status</code>, "On branch main",
+        commit.<sup class="cite"><a href="#src-24">24</a></sup></p>
+        <p>The first line of <code>git status</code>, "On branch main",
         comes from HEAD, the pointer to the branch you are on. One shortcut has a cost: <code>git commit -a</code> stages
         every change to files Git already tracks, which saves the <code>add</code>, and silently leaves a new, untracked file
         out of the commit.<sup class="cite"><a href="#src-25">25</a></sup></p>
@@ -375,7 +444,8 @@ git diff --staged</code></pre>
         <p><code>git init</code> creates a <code>.git</code> subdirectory, and nothing is tracked until you
         <code>git add</code> it; <code>add</code> both starts tracking new files and stages modified ones. <code>git clone</code>
         copies an existing repository with its history, while <code>git init</code> starts an empty
-        one.<sup class="cite"><a href="#src-26">26</a></sup> Git also needs to know who you are. It guesses an identity from
+        one.<sup class="cite"><a href="#src-26">26</a></sup></p>
+        <p>Git also needs to know who you are. It guesses an identity from
         the OS user name and host name, and when it cannot (the usual case on Windows) the first commit fails with "Author
         identity unknown" until <code>user.name</code> and <code>user.email</code> are set. <code>init.defaultBranch</code>
         (Git 2.28 and later) names the first branch of new repositories and defaults to <code>master</code> unless you set
@@ -393,10 +463,16 @@ git status</code></pre>
         setting.<sup class="cite"><a href="#src-28">28</a></sup> The first or second commit is usually a
         <code>.gitignore</code>; for Python that means at least <code>__pycache__/</code>, <code>*.pyc</code> and
         <code>.venv/</code>, and a pattern added after a file was committed does not untrack
-        it.<sup class="cite"><a href="#src-29">29</a></sup> The whole history lives in
-        <code>.git</code>, so deleting that folder deletes the history and leaves the files, and running <code>git init</code>
+        it.<sup class="cite"><a href="#src-29">29</a></sup></p>
+        <p>The whole history lives in
+        <code>.git</code>, so deleting that folder deletes the history and leaves the files. Running <code>git init</code>
         inside a folder that is already part of a repository (all of Documents, say) creates a nested repository that
         confuses every later command.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A file is modified, staged or committed, matching the working tree, staging area and Git directory.</li>
+          <li>Centralised servers are a single point of failure; in a distributed system any clone can restore the server.</li>
+          <li>Most Git operations need only local files, so they work offline.</li>
+        </ul></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>Git has three areas. The working tree is where I edit, the staging area or index holds exactly what goes into
@@ -415,11 +491,12 @@ git status</code></pre>
         <h3>Commit, branch and merge</h3>
         <p><code>git commit -m "message"</code> records the staged snapshot; without <code>-m</code> it opens the configured
         editor. <code>git log --oneline</code> lists one commit per line.<sup class="cite"><a href="#src-25">25</a></sup> A
-        branch is a lightweight movable pointer to a commit.<sup class="cite"><a href="#src-30">30</a></sup>
-        <code>git branch feature</code> creates one and leaves you where you were; <code>git switch</code> (Git 2.23 and
+        branch is a lightweight movable pointer to a commit.<sup class="cite"><a href="#src-30">30</a></sup></p>
+        <p><code>git branch feature</code> creates one and leaves you where you were; <code>git switch</code> (Git 2.23 and
         later) moves HEAD, and <code>git switch -c</code> creates and switches in one
         step.<sup class="cite"><a href="#src-31">31</a></sup> Forget the switch and your commits land on <code>main</code>,
-        so the later merge reports "Already up to date". Short-lived feature branches merged into a main line are how teams
+        so the later merge reports "Already up to date".</p>
+        <p>Short-lived feature branches merged into a main line are how teams
         keep work in progress away from everyone else. Because a branch is only a pointer, creating one costs almost
         nothing, and HEAD tells Git which pointer moves forward when you commit.<sup class="cite"><a href="#src-30">30</a></sup></p>
 <pre><code>git add hello.py .gitignore
@@ -454,10 +531,16 @@ print(greet("Toronto").upper())
         <p>How big a conflict gets is largely in your hands. A branch that lives for a day and is merged soon shares few
         changed lines with anyone else's work, so it collides less often, and when it does the markers surround a few lines
         rather than half a file. Long-lived branches drift apart, and the merge at the end of them is where whole afternoons
-        go. In someone else's history you recognise a resolved conflict as a diamond in the graph whose merge commit
+        go.</p>
+        <p>In someone else's history you recognise a resolved conflict as a diamond in the graph whose merge commit
         names the branch it brought in, such as "Merge feature/shout into main". A file in a pull request that still
         contains <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code> is the mistake a reviewer spots first, because the file no longer
         runs.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A branch is a lightweight movable pointer to a commit.</li>
+          <li>A fast-forward only moves the pointer; diverged branches get a merge commit with two parents.</li>
+          <li>A conflict means both branches changed the same lines; you edit the file and remove the markers.</li>
+        </ul></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>git branch creates a branch but leaves me where I am; git switch with -c creates it and moves me onto it. If I
@@ -517,7 +600,8 @@ git log --oneline --graph
 git push</code></pre>
         <p>The first command fetches, sees the histories cannot be fast-forwarded, and stops with "Not possible to
         fast-forward, aborting." without touching your files. The second merges the two histories with a merge commit, and
-        the graph shows a new split and rejoin.<sup class="cite"><a href="#src-39">39</a></sup> Rebasing is the other way to reconcile, and week 2 covers it. The same rule
+        the graph shows a new split and rejoin.<sup class="cite"><a href="#src-39">39</a></sup> Rebasing is the other way to reconcile, and week 2 covers it.</p>
+        <p>The same rule
         explains a rejected push: the remote refuses a non-fast-forward update, one where the remote branch has commits you
         do not have, so you fetch and merge before pushing again rather than overwrite a teammate's
         work.<sup class="cite"><a href="#src-37">37</a></sup> On screen it reads
@@ -528,6 +612,11 @@ git push</code></pre>
         a browser sign-in on the first push.<sup class="cite"><a href="#src-22">22</a></sup> SSH authenticates with a key pair
         registered on GitHub instead of a token.<sup class="cite"><a href="#src-22">22</a></sup> The usual first-day failure is a password typed at an
         HTTPS prompt and rejected; the fix is the token or the browser sign-in.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>origin is only a short name for a URL.</li>
+          <li>Setting the upstream once means later push and pull need no arguments.</li>
+          <li>Fetch first to look before you integrate; pull is a fetch followed by a merge.</li>
+        </ul></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>origin is just the default short name for the remote URL a repository was cloned from. The -u on the first
@@ -581,9 +670,15 @@ git commit -m "Merge feature/shout into main"</code></pre>
         <p>Feature branches isolate work in progress from the main line until it is ready to
         merge.<sup class="cite"><a href="#src-43">43</a></sup> The alternative is everyone committing straight to
         <code>main</code>, which is simpler and works for one person, and turns every half-finished change into everyone's
-        problem once there are several. Teams choose a strategy and write it down, usually in the same working agreement
+        problem once there are several.</p>
+        <p>Teams choose a strategy and write it down, usually in the same working agreement
         that holds the Definition of Done. For the exercise the strategy is fixed: work on a feature branch, merge it into
         <code>main</code>, and push both to GitHub.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A good commit summary is short, imperative, and stands alone.</li>
+          <li>Resolving a conflict means removing all three marker lines, then staging and committing.</li>
+          <li>Feature branches keep work in progress away from the main line until it is ready.</li>
+        </ul></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>A good commit message has a short imperative summary, around fifty characters, like "Add farewell function",
@@ -812,11 +907,11 @@ window.QUIZ = {
 };
 </script>
 
-<script src="../../assets/js/diagram.js?v=20261015"></script>
-<script src="../../assets/js/scrolly.js?v=20261015"></script>
-<script src="../../assets/js/modals.js?v=20261015"></script>
-<script src="../../assets/js/quiz.js?v=20261015"></script>
-<script src="../../assets/js/widgets.js?v=20261015"></script>
-<script src="../../assets/js/glossary.js?v=20261015"></script>
+<script src="../../assets/js/diagram.js?v=20261017"></script>
+<script src="../../assets/js/scrolly.js?v=20261017"></script>
+<script src="../../assets/js/modals.js?v=20261017"></script>
+<script src="../../assets/js/quiz.js?v=20261017"></script>
+<script src="../../assets/js/widgets.js?v=20261017"></script>
+<script src="../../assets/js/glossary.js?v=20261017"></script>
 </body>
 </html>

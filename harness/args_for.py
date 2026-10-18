@@ -31,6 +31,8 @@ Usage:
                                                      # authored pages (name day slots to narrow it)
     python harness/args_for.py 2 --practice-build    # D-0047: practice-tasks.js, build the tasks the trainer approved
                                                      # (refused while a proposed task has no answer)
+    python harness/args_for.py --restructure         # D-0060: notes-restructure.js, the readability pass over every
+    python harness/args_for.py 1 2 --restructure     # authored or live page, one week's, or named days of one week
 """
 from __future__ import annotations
 
@@ -109,6 +111,34 @@ def _common(cur: dict, week: dict, ew: dict, today: str | None, metrics: dict, c
         "weekNotes": week.get("notes", ""),
         "metrics": metrics,
         "llm": config["llm"]["byWeek"].get(str(week_no), config["llm"]["default"]),
+        "models": config.get("models", {}),
+        "config": {k: config[k] for k in CONFIG_KEYS},
+    }
+
+
+def restructure_args(cur: dict, nums: list[int], today: str | None, metrics: dict, config: dict) -> dict:
+    """Args for harness/workflows/notes-restructure.js (D-0060): every authored or live notes page (no number), one
+    week's (one number) or named day slots of one week (week then days). The brief travels too so the pass can
+    check it adds no fact; metrics.notes.prose and the model tiers come as the day args carry them."""
+    pages = []
+    for w in cur["weeks"]:
+        if nums and w["week"] != nums[0]:
+            continue
+        for d in w["days"]:
+            if d.get("kind") == "holiday" or d.get("status") not in ("authored", "live"):
+                continue
+            if len(nums) > 1 and d["day"] not in nums[1:]:
+                continue
+            rel = f"{w['dir']}/{d['slug']}"
+            pages.append({"id": d["id"], "week": w["week"], "day": d["day"], "title": d["title"], "rel": rel, "status": d["status"],
+                          "pageFile": _fwd(ROOT / "docs" / "weeks" / f"{rel}.html"), "researchFile": _fwd(ROOT / "harness" / "research" / f"{rel}.md")})
+    return {
+        "root": _fwd(ROOT),
+        "today": _today(today).isoformat(),
+        "mode": "restructure",
+        "week": nums[0] if nums else None,
+        "pages": pages,
+        "metrics": metrics,
         "models": config.get("models", {}),
         "config": {k: config[k] for k in CONFIG_KEYS},
     }
@@ -313,13 +343,16 @@ def main(argv: list[str]) -> int:
         i = argv.index("--template")
         template_override = argv[i + 1]
         del argv[i:i + 2]
-    flags = {f: f in argv for f in ("--skip-research", "--plan", "--no-plan", "--notes-only", "--runbook-only", "--practice", "--practice-build", "--cold", "--demos")}
+    flags = {f: f in argv for f in ("--skip-research", "--plan", "--no-plan", "--notes-only", "--runbook-only", "--practice", "--practice-build", "--cold", "--demos", "--restructure")}
     argv = [a for a in argv if a not in flags]
     skip_research, plan_mode, no_plan, notes_only, runbook_only = flags["--skip-research"], flags["--plan"], flags["--no-plan"], flags["--notes-only"], flags["--runbook-only"]
     nums = [int(a) for a in argv]
     cur = bi.load_curriculum()
     metrics = json.loads((ROOT / "harness" / "metrics.json").read_text(encoding="utf-8"))
     config = json.loads((ROOT / "harness" / "config.json").read_text(encoding="utf-8"))
+    if flags["--restructure"]:
+        print(json.dumps(restructure_args(cur, nums, today, metrics, config), indent=2, ensure_ascii=False))
+        return 0
     if plan_mode:
         if len(nums) != 1:
             print("--plan takes exactly one week number", file=sys.stderr)

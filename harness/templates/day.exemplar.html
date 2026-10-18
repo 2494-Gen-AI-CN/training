@@ -32,8 +32,10 @@
     <article class="reading-col">
       <!-- Reference-depth notes page (D-0040). The page is study material a learner reads on their own:
            4500–7000 prose words, 6–10 steps. Every step but the last is a TEACHING step with ≥2 h3 subsections,
-           ≥2 inline citations and one "Say it in an interview" callout as its last element. The last step is
-           "Check yourself". Facts come only from the research brief (Claims + Notes depth); every version, API
+           ≥2 inline citations, a "Takeaways" recap (div.recap, 2–4 one-line items) and then one "Say it in an
+           interview" callout as its last element (D-0060). Paragraphs stay under 80 prose words, sentences under 40,
+           three or more parallel things are a list or a table, and a code block is followed by its output
+           (pre.out) or one sentence that states it. The last step is "Check yourself". Facts come only from the research brief (Claims + Notes depth); every version, API
            name, default, limit or price cites a Sources entry. Prose never refers to the classroom
            (metrics.notes.deliveryPhrases); broad strokes about what the demo thread builds are fine. -->
       <div class="lede">
@@ -54,8 +56,8 @@
       <section class="step" data-diagram="0" data-step="0">
         <div class="tag">Framing</div>
         <h2>Section heading that states the idea</h2>
-        <p>Each teaching step is 450–900 prose words and teaches one or two subtopics to junior-interview depth: a plain
-        explanation, a runnable example with its output stated, a trade-off or limit, how to recognise the thing in
+        <p>Each teaching step is 450–900 prose words and teaches one or two subtopics to junior-interview depth. Each one gets a plain
+        explanation, a runnable example with its output shown, a trade-off or limit, how to recognise the thing in
         someone else's code, and the words to say when asked. Facts come only from the brief; a sentence that states a
         version, an API name's behaviour, a default or a limit cites its source like this.<sup class="cite"><a href="#src-1">1</a></sup></p>
         <h3>First subtopic as an h3</h3>
@@ -64,10 +66,26 @@
         says what the output is.<sup class="cite"><a href="#src-2">2</a></sup></p>
 <pre><code>python --version
 python -c "import sys; print(sys.version_info[:2])"</code></pre>
+<pre class="out">Python 3.12.1
+(3, 12)</pre>
         <p>The second command prints <code>(3, 12)</code>. Say what to notice and why it matters when the version differs.</p>
         <h3>The adjacent concept</h3>
         <p>The follow-up an interviewer asks next, from the brief's Notes depth. One level beyond the subtopic, never a later
         day's topic as a section. A later day's topic may be named in one sentence that says where it lands.</p>
+        <p>Three or more parallel things are a list, not a sentence:</p>
+        <ul>
+          <li>the first thing, with the one fact that matters about it;</li>
+          <li>the second thing, stated the same way;</li>
+          <li>the third thing, and where it comes up.</li>
+        </ul>
+        <div class="recap">
+          <div class="k">Takeaways</div>
+          <ul>
+            <li>One line the reader can check themselves against, drawn from this step's prose.</li>
+            <li>A second line: the trade-off or limit this step named.</li>
+            <li>A third line, optional: how to recognise the thing in someone else's code.</li>
+          </ul>
+        </div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>One to three spoken-form answers, first person, no code, each sayable in ten to twenty seconds, each answering
@@ -88,6 +106,14 @@ git commit -m "greet from feature"</code></pre>
         <h3>Recognise it on sight</h3>
         <p>What the pattern looks like in a codebase you did not write: the one- or two-line shape, the name people use for it,
         the review comment it usually draws.</p>
+        <div class="recap">
+          <div class="k">Takeaways</div>
+          <ul>
+            <li>One line the reader can check themselves against, drawn from this step's prose.</li>
+            <li>A second line: the trade-off or limit this step named.</li>
+            <li>A third line, optional: how to recognise the thing in someone else's code.</li>
+          </ul>
+        </div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>A spoken answer to "how does this work under the hood?" in two or three sentences.</p>
@@ -105,6 +131,14 @@ git commit -m "greet from feature"</code></pre>
 <pre><code>for item in items:
     print(item)</code></pre>
         <p>When the index really is needed, and what to reach for then.</p>
+        <div class="recap">
+          <div class="k">Takeaways</div>
+          <ul>
+            <li>One line the reader can check themselves against, drawn from this step's prose.</li>
+            <li>A second line: the trade-off or limit this step named.</li>
+            <li>A third line, optional: how to recognise the thing in someone else's code.</li>
+          </ul>
+        </div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>A spoken answer to "what is the common mistake here and how do you avoid it?"</p>
@@ -121,6 +155,23 @@ git commit -m "greet from feature"</code></pre>
         <h3>Option B</h3>
 <pre><code>print("option b")</code></pre>
         <p>Prints <code>option b</code>. When this one wins.<sup class="cite"><a href="#src-5">5</a></sup></p>
+        <h3>Side by side</h3>
+        <p>A comparison of options is a table, one row per option, one column per thing the reader weighs:</p>
+        <table>
+          <thead><tr><th>Option</th><th>What it buys</th><th>What it costs</th><th>Pick it when</th></tr></thead>
+          <tbody>
+            <tr><td>A</td><td>One line on the gain.</td><td>One line on the price.</td><td>The usual case.</td></tr>
+            <tr><td>B</td><td>One line on the gain.</td><td>One line on the price.</td><td>The exception, named.</td></tr>
+          </tbody>
+        </table>
+        <div class="recap">
+          <div class="k">Takeaways</div>
+          <ul>
+            <li>One line the reader can check themselves against, drawn from this step's prose.</li>
+            <li>A second line: the trade-off or limit this step named.</li>
+            <li>A third line, optional: how to recognise the thing in someone else's code.</li>
+          </ul>
+        </div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>A spoken answer to "when would you choose A over B?"</p>
@@ -132,10 +183,24 @@ git commit -m "greet from feature"</code></pre>
         <h2>What to remember</h2>
         <p>Revision notes a learner can reread the night before an interview: the three or four ideas of the day in plain sentences.<sup class="cite"><a href="#src-6">6</a></sup></p>
         <h3>The one-line summary of each subtopic</h3>
-        <p>One sentence per subtopic, in the order the page taught them.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <p>One sentence per subtopic, in the order the page taught them:<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <ul>
+          <li>The first subtopic in one sentence.</li>
+          <li>The mechanism in one sentence.</li>
+          <li>The pitfall and its fix in one sentence.</li>
+          <li>The design choice and the usual pick in one sentence.</li>
+        </ul>
         <h3>Where this goes next</h3>
 <pre><code>python -m pytest -q</code></pre>
         <p>One sentence naming the next day's topic and what it assumes from this page.</p>
+        <div class="recap">
+          <div class="k">Takeaways</div>
+          <ul>
+            <li>One line the reader can check themselves against, drawn from this step's prose.</li>
+            <li>A second line: the trade-off or limit this step named.</li>
+            <li>A third line, optional: how to recognise the thing in someone else's code.</li>
+          </ul>
+        </div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>The thirty-second spoken summary of the whole day.</p>

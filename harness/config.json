@@ -103,7 +103,8 @@
       "week-plan-critic": { "model": "opus", "effort": "high" },
       "practice-suitability": { "model": "opus", "effort": "medium" },
       "practice": { "model": "opus", "effort": "high" },
-      "series-review": { "model": "opus", "effort": "medium" }
+      "series-review": { "model": "opus", "effort": "medium" },
+      "restructure": { "model": "sonnet", "effort": "medium" }
     }
   },
   "threads": {

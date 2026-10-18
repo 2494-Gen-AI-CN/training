@@ -18,7 +18,7 @@ EXEMPLAR = HARNESS / "templates" / "day.exemplar.html"
 DEMO_REPO_URL = load_json(HARNESS / "config.json")["demoRepo"]["url"]
 
 
-def _structure_checks(tc: unittest.TestCase, page: ParsedPage, day_id: str | None, feedback: bool):
+def _structure_checks(tc: unittest.TestCase, page: ParsedPage, day_id: str | None):
     r = page.root
     tc.assertIn("tc-day", page.meta)
     if day_id:
@@ -59,8 +59,7 @@ def _structure_checks(tc: unittest.TestCase, page: ParsedPage, day_id: str | Non
     # scripts
     srcs = page.script_srcs
     tc.assertEqual("theme.js", srcs[0])
-    expected = PAGE_SCRIPT_ORDER + (["survey.js"] if feedback else [])
-    tc.assertEqual(expected, srcs[1:])
+    tc.assertEqual(PAGE_SCRIPT_ORDER, srcs[1:])   # D-0061: no survey.js, on any day
     tc.assertIsNone(FORBIDDEN_RE.search(page.raw), FORBIDDEN_RE.search(page.raw))
 
 
@@ -74,12 +73,12 @@ class ExemplarTests(unittest.TestCase):
         path = ROOT / tpl
         self.assertTrue(path.is_file(), f"config.json template {tpl} missing")
         self.assertTrue(tpl.startswith("docs/weeks/") or tpl.startswith("harness/templates/"), tpl)
-        _structure_checks(self, ParsedPage(path), None, feedback="survey.js" in path.read_text(encoding="utf-8"))
+        _structure_checks(self, ParsedPage(path), None)
 
     def test_exemplar_structure(self):
         self.assertTrue(EXEMPLAR.exists())
         page = ParsedPage(EXEMPLAR)
-        _structure_checks(self, page, None, feedback=False)
+        _structure_checks(self, page, None)
         c = notes_check.counts(page.raw)
         M = metrics()["notes"]
         self.assertTrue(c["lastIsCheck"])
@@ -103,7 +102,7 @@ class AuthoredPageTests(unittest.TestCase):
             path = DOCS / "weeks" / f"{rel}.html"
             with self.subTest(rel=rel):
                 page = ParsedPage(path)
-                _structure_checks(self, page, d["id"], build_index.is_feedback(w, d))
+                _structure_checks(self, page, d["id"])
                 steps = page.root.find_all("section", "step")
                 self.assertTrue(M["stepsMin"] <= len(steps) <= M["stepsMax"], len(steps))
                 words = page.prose_words()
@@ -112,7 +111,7 @@ class AuthoredPageTests(unittest.TestCase):
                 self.assertIsNotNone(mins, "meta line needs ~N min")
                 self.assertAlmostEqual(round(words / M["readingWpm"]), int(mins.group(1)), delta=1)
                 # reference-depth bars (D-0040): one checker for the author, the critic and this test
-                rep = notes_check.check_page(path, {"counts", "phrases", "stamps", "citations"}, M, tolerance=M["wordTolerance"])
+                rep = notes_check.check_page(path, {"counts", "phrases", "stamps", "citations", "style"}, M, tolerance=M["wordTolerance"])
                 self.assertEqual([], rep["findings"], "\n".join(rep["findings"]))
                 self.assertEqual(words, rep["counts"]["words"], "helpers.prose_words and notes_check.counts must agree")
                 goals = page.root.find("ul", "goals-list").find_all("li")

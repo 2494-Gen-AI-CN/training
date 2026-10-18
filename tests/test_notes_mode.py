@@ -57,12 +57,14 @@ class WorkflowWiringTests(unittest.TestCase):
 
     def test_notes_schema_and_author_prompt(self):
         schema = FANOUT[FANOUT.index("const NOTES_SCHEMA"):FANOUT.index("const VERIFY_NOTES_SCHEMA")]
-        for key in ("h3Count", "interviewCount", "checkYourselfCount", "codeBlocks", "citations", "sourcesChecked", "stepMap"):
+        for key in ("h3Count", "interviewCount", "checkYourselfCount", "codeBlocks", "citations", "recaps", "structuredBlocks", "sourcesChecked", "stepMap"):
             self.assertIn(key, schema)
         author = FANOUT[FANOUT.index("You are the NOTES-PAGE author"):FANOUT.index("NOTES CRITIC")]
         for needle in ("notes_check.py", "Say it in an interview", "Check yourself", "deliveryPhrases", "Notes depth", "WRITE INCREMENTALLY",
-                       "ONE Write of the whole shell", "Fill ONE step per Edit", "sup class=\"cite\"", "Sources checked", "stepMap", "...tier('notes', pass)"):
+                       "ONE Write of the whole shell", "Fill ONE step per Edit", "sup class=\"cite\"", "Sources checked", "stepMap", "...tier('notes', pass)",
+                       "READABILITY (D-0060", 'class="recap"', 'pre class="out"', "--style"):   # D-0060
             self.assertIn(needle, author)
+        self.assertNotIn("#survey", author)   # D-0061: no survey section on any page
         self.assertNotIn("deepens what the trainer types live", author)
 
     def test_verify_agent_binds_the_critic(self):
@@ -74,12 +76,13 @@ class WorkflowWiringTests(unittest.TestCase):
         verify = FANOUT[FANOUT.index("const notesVerify"):FANOUT.index("async function notesStage")]
         self.assertIn("notes_check.py", verify)
         self.assertIn("--links", verify)
+        self.assertIn("--style", verify)   # D-0060: style findings bind the critic as structural
         self.assertIn("WebFetch", verify)
         self.assertIn("'notes-verify-full' : 'notes-verify-light'", verify)
 
     def test_humanizer_is_prose_guarded(self):
         body = FANOUT[FANOUT.index("const humanize = "):FANOUT.index("const humanizeTrainer = ")]
-        for needle in ("prose_guard.py snapshot", "prose_guard.py check", "one section.step", "notes_check.py", "...tier('humanize')"):
+        for needle in ("prose_guard.py snapshot", "prose_guard.py check", "one section.step", "notes_check.py", "--style", "...tier('humanize')"):
             self.assertIn(needle, body)
 
     def test_wire_realigns_the_coverage_map(self):
