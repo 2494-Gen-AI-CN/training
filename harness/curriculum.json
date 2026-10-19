@@ -214,7 +214,8 @@
             "pip and installing packages",
             "pylint",
             "Writing your own module"
-          ]
+          ],
+          "taught": "2026-10-19"
         },
         {
           "day": 2,
