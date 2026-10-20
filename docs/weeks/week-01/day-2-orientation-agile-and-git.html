@@ -37,7 +37,7 @@
           <span><b>Week 1</b> · Day 2</span>
           <span>Tue Oct 13, 2026</span>
           <span>Agile for developers, Git &amp; Python fundamentals</span>
-          <span><b>~44 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span><b>~47 min</b> · reference notes @150 wpm · diagram · check</span>
           <span class="verified">Sources checked 2026-10-13 · python 3.15 · git 2.50 · notebook 7.x</span>
         </div>
         <p class="summary">This is the first page of the program, so it assumes only some programming in another
@@ -370,6 +370,20 @@ exit()</code></pre>
         ones.<sup class="cite"><a href="#src-5">5</a></sup> By the time Sprint Planning needs a number, the item should
         already have one, and large items have already been broken down. What reaches the Sprint Backlog is the Sprint
         Goal, the selected items and a plan for delivering them.<sup class="cite"><a href="#src-5">5</a></sup></p>
+        <h3>From a backlog item to a user story and its tasks</h3>
+        <p>Many teams write a Product Backlog item as a user story: one sentence naming a role, a goal and a benefit.
+        The common template is "As a [type of user], I want [some goal], so that [some
+        reason]".<sup class="cite"><a href="#src-44">44</a></sup> A story that drops one of the three parts reads as
+        vague, because nobody can tell who gains or why.<sup class="cite"><a href="#src-44">44</a></sup></p>
+        <p>One from a ticket desk: "As a support agent, I want the open tickets sorted by age, so that the oldest request
+        is answered first." The story describes an outcome, and the tasks are the work the team does to deliver
+        it.<sup class="cite"><a href="#src-44">44</a></sup> At Sprint Planning the Developers often break an
+        item into work items of one day or less.<sup class="cite"><a href="#src-5">5</a></sup> For that story:</p>
+        <ul>
+          <li>Add a sort-by-age query to the ticket list.</li>
+          <li>Show an age column in the agent's view.</li>
+          <li>Write a test with three tickets of different ages.</li>
+        </ul>
         <div class="recap"><div class="k">Takeaways</div><ul>
           <li>A story point is a relative size agreed by comparing items, and it is not hours.</li>
           <li>Planning poker gets the team to one agreed figure through conversation.</li>
@@ -383,6 +397,9 @@ exit()</code></pre>
           <p>Comparing velocity between teams is misleading because each team's points are its own scale. A five on my
           team and a five on yours don't mean the same thing, so velocity only helps a team forecast its own next
           Sprint.</p>
+          <p>A user story is one sentence with three parts: a role, a goal and a benefit, like "As a support agent, I
+          want tickets sorted by age, so that the oldest is answered first." Then I break it into tasks of a day or
+          less, such as adding the sort and writing a test.</p>
         </div>
       </section>
 
@@ -537,6 +554,34 @@ print(greet("Toronto").upper())
         names the branch it brought in, such as "Merge feature/shout into main". A file in a pull request that still
         contains <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code> is the mistake a reviewer spots first, because the file no longer
         runs.</p>
+        <h3>Setting changes aside with git stash</h3>
+        <p>Halfway through an edit you may need a clean working tree, because a quick fix belongs on <code>main</code>.
+        <code>git stash</code> saves your local modifications to a new stash entry and rolls the working tree and the
+        index back to <code>HEAD</code>.<sup class="cite"><a href="#src-45">45</a></sup> The files look untouched, so
+        you can switch branches freely.</p>
+<pre><code>git stash
+git switch main
+# ...fix, commit, switch back...
+git stash pop</code></pre>
+        <p><code>git stash pop</code> removes the most recent entry from the list and applies it on top of the current
+        working tree.<sup class="cite"><a href="#src-45">45</a></sup> <code>git stash list</code> shows every entry,
+        newest first as <code>stash@{0}</code>.<sup class="cite"><a href="#src-45">45</a></sup> If the pop hits a
+        conflict, Git keeps the entry until you resolve it and drop it
+        yourself.<sup class="cite"><a href="#src-45">45</a></sup></p>
+        <h3>Branching from an older commit</h3>
+        <p>A branch does not have to start at the tip. When a fix should build on the point before a change you do not
+        want, read the history and pick the commit.</p>
+<pre><code>git log --oneline</code></pre>
+<pre class="out">c3d4e5f Add farewell function
+b2c3d4e Add greet function and .gitignore
+a1b2c3d Initial commit</pre>
+        <p>Each line starts with an abbreviated hash, enough to name the
+        commit.<sup class="cite"><a href="#src-34">34</a></sup> Both branch-creating commands accept a start point after
+        the name. <code>git switch -c fix/greeting b2c3d4e</code> creates the branch at that commit and moves you onto
+        it.<sup class="cite"><a href="#src-31">31</a></sup> <code>git branch fix/greeting b2c3d4e</code> creates it
+        there and leaves you where you are.<sup class="cite"><a href="#src-46">46</a></sup> With no start point the branch
+        begins at <code>HEAD</code>, which is why every earlier example started at the
+        tip.<sup class="cite"><a href="#src-46">46</a></sup></p>
         <div class="recap"><div class="k">Takeaways</div><ul>
           <li>A branch is a lightweight movable pointer to a commit.</li>
           <li>A fast-forward only moves the pointer; diverged branches get a merge commit with two parents.</li>
@@ -549,6 +594,9 @@ print(greet("Toronto").upper())
           <p>A fast-forward happens when main has no new commits since my branch split off, so Git just moves the pointer.
           If main has moved too, Git makes a merge commit with two parents, and if both sides touched the same lines it
           stops with a conflict that I resolve by hand.</p>
+          <p>If I'm mid-edit and need a clean tree, git stash sets my changes aside and resets the files to HEAD; git
+          stash pop brings them back afterwards. A branch doesn't have to start at the tip: I read git log --oneline,
+          take the short hash I want, and git switch -c with that hash starts the branch there.</p>
         </div>
       </section>
 
@@ -753,6 +801,9 @@ git commit -m "Merge feature/shout into main"</code></pre>
           <li id="src-41"><a href="https://git-scm.com/book/en/v2/Distributed-Git-Contributing-to-a-Project" target="_blank" rel="noopener">Pro Git — Contributing to a Project</a> — the commit guidelines most teams adopt.</li>
           <li id="src-42"><a href="https://git-scm.com/docs/git-commit#_discussion" target="_blank" rel="noopener">git-commit reference — Discussion</a> — the shape of a commit message and why the first line matters.</li>
           <li id="src-43"><a href="https://git-scm.com/book/en/v2/Git-Branching-Branching-Workflows" target="_blank" rel="noopener">Pro Git — Branching Workflows</a> — feature branches against a main line.</li>
+          <li id="src-44"><a href="https://www.mountaingoatsoftware.com/agile/user-stories" target="_blank" rel="noopener">Mountain Goat Software — User Stories</a> — the "As a … I want … so that …" template, its three parts, and tasks against stories.</li>
+          <li id="src-45"><a href="https://git-scm.com/docs/git-stash" target="_blank" rel="noopener">git-stash reference</a> — <code>stash</code>, <code>stash pop</code> and <code>stash list</code>.</li>
+          <li id="src-46"><a href="https://git-scm.com/docs/git-branch" target="_blank" rel="noopener">git-branch reference</a> — the optional <code>&lt;start-point&gt;</code> after a branch name.</li>
         </ul>
       </section>
 

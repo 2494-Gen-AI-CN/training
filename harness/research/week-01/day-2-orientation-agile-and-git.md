@@ -43,6 +43,12 @@ version-stamps:
 - On Windows 10/11, a `python` command that opens the Microsoft Store is the App execution alias stub; its resolved path contains `WindowsApps` (`where.exe python` or `sys.executable` shows it), which is the tell on a trainee's screen — [Python on Windows: Microsoft Store package and the py launcher](https://docs.python.org/3/using/windows.html)
 - The Store stub is turned off in Windows Settings under Apps > Advanced app settings > App execution aliases (the two `python` / `python3` entries); using `py` sidesteps it without changing settings — [Python on Windows: Python Launcher for Windows](https://docs.python.org/3/using/windows.html#python-launcher-for-windows)
 - `git commit --amend --reset-author` rewrites the most recent commit with the author set from the current `user.name` / `user.email` config; it only repairs the tip, so commits made earlier with a wrong identity are either left and noted or require an interactive rebase, which is not on today's syllabus — [git-commit reference: --reset-author](https://git-scm.com/docs/git-commit#Documentation/git-commit.txt---reset-author)
+- `git stash` (the same as `git stash push`) saves the local modifications of the working tree and the index to a new stash entry and rolls both back to `HEAD`; `git stash list` shows the entries newest first as `stash@{0}`, `stash@{1}`, each naming the branch it was made on — [git-stash documentation](https://git-scm.com/docs/git-stash)
+- `git stash pop` removes the most recent stash entry from the list and applies it on top of the current working tree; when applying conflicts, the entry is not removed until the conflicts are resolved and `git stash drop` is run by hand — [git-stash documentation](https://git-scm.com/docs/git-stash)
+- Both branch-creating commands take an optional start point after the name: `git switch -c <name> <start-point>` grows a new branch from any commit (`git switch -c fixup HEAD~3` is the manual's example) and `git branch <name> <start-point>` accepts a branch name, a commit id or a tag; when the start point is omitted the current `HEAD` is used — [git-switch documentation](https://git-scm.com/docs/git-switch) and [git-branch documentation](https://git-scm.com/docs/git-branch)
+- `git log --oneline` is shorthand for `--pretty=oneline --abbrev-commit`, so each line starts with an abbreviated hash that is enough to name the commit on the command line — [git-log documentation](https://git-scm.com/docs/git-log)
+- A user story is a short plain-language description of an outcome; the common template "As a [type of user], I want [some goal], so that [some reason]" names who it is for, what they need and why it matters, and a story missing one of the three parts reads as vague; tasks are the work the team does to deliver the outcome and are not themselves stories; the template is optional — [Mountain Goat Software: User Stories](https://www.mountaingoatsoftware.com/agile/user-stories)
+- At Sprint Planning the Developers plan the work needed to create an Increment that meets the Definition of Done, often by decomposing Product Backlog items into smaller work items of one day or less — [The 2020 Scrum Guide: Sprint Planning](https://scrumguides.org/scrum-guide.html)
 
 ## Notes depth (D-0040; one block per curriculum subtopic, sized for a 4500–7000-word study page; every claim-bearing line carries [title](official url))
 
@@ -154,16 +160,18 @@ version-stamps:
   - Only the Product Owner can cancel a Sprint — [The 2020 Scrum Guide: The Sprint](https://scrumguides.org/scrum-guide.html)
 
 ### Story pointing
-- Interview questions: What is a story point?; How does a team estimate with planning poker?; Follow-up: why is comparing velocity between two teams misleading?
+- Interview questions: What is a story point?; How does a team estimate with planning poker?; Follow-up: why is comparing velocity between two teams misleading?; Write a user story for one feature, name its three parts and list the tasks that deliver it (qc1.agile.P03)
 - Adjacent concept: backlog refinement — estimates are added as items are broken down, before Sprint Planning needs them.
 - Trade-off or limit: the Scrum Guide gives no estimation unit; points are a team convention, so one team's 5 is not another team's 5 and neither equals hours — [The 2020 Scrum Guide: Product Backlog](https://scrumguides.org/scrum-guide.html)
-- Recognise on sight: cards or buttons showing 1, 2, 3, 5, 8, 13; a Jira or board ticket with a "Story Points" field; a team velocity chart.
+- Recognise on sight: cards or buttons showing 1, 2, 3, 5, 8, 13; a Jira or board ticket with a "Story Points" field; a team velocity chart; a ticket whose title reads "As a … I want … so that …" with sub-tasks listed underneath.
 - Claims:
   - The Developers who will do the work are responsible for sizing Product Backlog items — [The 2020 Scrum Guide: Product Backlog](https://scrumguides.org/scrum-guide.html)
   - Product Backlog refinement adds detail such as description, order and size to items — [The 2020 Scrum Guide: Product Backlog](https://scrumguides.org/scrum-guide.html)
   - The Scrum Guide does not mention story points, planning poker or velocity; they are practices layered on top — [The 2020 Scrum Guide](https://scrumguides.org/scrum-guide.html)
   - The Sprint Backlog is the Sprint Goal, the selected Product Backlog items and a plan for delivering them — [The 2020 Scrum Guide: Sprint Backlog](https://scrumguides.org/scrum-guide.html)
   - The more the Developers know about their past performance, their upcoming capacity and their Definition of Done, the more confident they will be in their Sprint forecasts — [The 2020 Scrum Guide: Sprint Planning](https://scrumguides.org/scrum-guide.html)
+  - A user story's common template "As a [type of user], I want [some goal], so that [some reason]" names who it is for, what they need and why it matters; a story missing one part reads as vague; tasks are the work the team does to deliver the outcome, not stories themselves — [Mountain Goat Software: User Stories](https://www.mountaingoatsoftware.com/agile/user-stories)
+  - The Developers plan the work for the Sprint, often by decomposing Product Backlog items into smaller work items of one day or less — [The 2020 Scrum Guide: Sprint Planning](https://scrumguides.org/scrum-guide.html)
 
 ### Source control management (git, vcs, cvcs, dvcs)
 - Interview questions: What problems does version control solve?; What is the difference between centralised and distributed version control?; Follow-up: if every clone has the full history, what does the "central" GitHub repository actually do?
@@ -202,10 +210,10 @@ version-stamps:
   - `git clone` copies an existing repository with its history, while `git init` starts an empty one — [Pro Git: Getting a Git Repository](https://git-scm.com/book/en/v2/Git-Basics-Getting-a-Git-Repository)
 
 ### Commit, branch, merge, push, pull
-- Interview questions: What is a branch in Git?; What is a fast-forward merge and when can it not happen?; Follow-up: you pull and Git stops with a conflict; walk through finishing the merge or backing out.
+- Interview questions: What is a branch in Git?; What is a fast-forward merge and when can it not happen?; Follow-up: you pull and Git stops with a conflict; walk through finishing the merge or backing out.; How do you set uncommitted changes aside without committing, and get them back? (qc1.git.P03); How do you start a branch from a commit that is not the tip? (qc1.git.P05)
 - Adjacent concept: the feature-branch workflow — short-lived branches merged to a main line, which is how teams isolate work in progress.
 - Trade-off or limit: `git pull` is fetch plus merge, so it can create an unplanned merge commit or a conflict in your working tree; `git fetch` first lets you inspect before integrating — [git-pull documentation](https://git-scm.com/docs/git-pull)
-- Recognise on sight: `<<<<<<< HEAD`, `=======` and `>>>>>>> feature/shout` inside a source file; `git log --oneline --graph` drawing a diamond.
+- Recognise on sight: `<<<<<<< HEAD`, `=======` and `>>>>>>> feature/shout` inside a source file; `git log --oneline --graph` drawing a diamond; `stash@{0}: WIP on main: …` from `git stash list`; a seven-character hash after a branch name in `git switch -c`.
 - Claims:
   - A branch is a lightweight movable pointer to a commit — [Pro Git: Branches in a Nutshell](https://git-scm.com/book/en/v2/Git-Branching-Branches-in-a-Nutshell)
   - `git switch -c <name>` creates a branch and switches to it in one step — [git-switch documentation](https://git-scm.com/docs/git-switch)
@@ -213,6 +221,10 @@ version-stamps:
   - `git merge --no-ff` forces a merge commit even when a fast-forward is possible — [git-merge documentation](https://git-scm.com/docs/git-merge)
   - `git merge --abort` restores the pre-merge state after a conflicted merge — [git-merge documentation](https://git-scm.com/docs/git-merge)
   - `git log --oneline --graph` draws the commit graph one line per commit — [git-log documentation](https://git-scm.com/docs/git-log)
+  - `git stash` saves the working tree and index modifications to a new stash entry and rolls both back to `HEAD`; `git stash list` shows the entries newest first as `stash@{0}` — [git-stash documentation](https://git-scm.com/docs/git-stash)
+  - `git stash pop` removes the most recent entry from the list and applies it on top of the current working tree; on a conflict the entry is kept until resolved and dropped by hand — [git-stash documentation](https://git-scm.com/docs/git-stash)
+  - `git switch -c <name> <start-point>` grows a new branch from any commit and `git branch <name> <start-point>` accepts a commit id; omitted, the start point is the current `HEAD` — [git-switch documentation](https://git-scm.com/docs/git-switch) and [git-branch documentation](https://git-scm.com/docs/git-branch)
+  - `--oneline` is shorthand for `--pretty=oneline --abbrev-commit`, so each line starts with an abbreviated hash that names the commit — [git-log documentation](https://git-scm.com/docs/git-log)
 
 ### Pushing to a remote repository
 - Interview questions: What is `origin`?; Why was my push rejected?; Follow-up: what does `-u` do on `git push -u origin main` and why only once?
@@ -292,6 +304,9 @@ version-stamps:
 - RFC 9110 — HTTP Semantics (primary source for HTTP; MDN overview above is a supplement) — https://www.rfc-editor.org/rfc/rfc9110
 - http.server — HTTP servers (not recommended for production) — https://docs.python.org/3/library/http.server.html
 - Jupyter Notebook documentation — The Jupyter Notebook — https://jupyter-notebook.readthedocs.io/en/stable/notebook.html
+- Mountain Goat Software — User Stories (template and the three parts) — https://www.mountaingoatsoftware.com/agile/user-stories
+- git-stash reference — https://git-scm.com/docs/git-stash
+- git-branch reference (`<start-point>`) — https://git-scm.com/docs/git-branch
 
 ## Glossary terms (3–8; one-sentence plain-language definitions; aka = alternate surface forms)
 

@@ -37,7 +37,7 @@
           <span><b>Week 2</b> · Day 5</span>
           <span>Fri Oct 23, 2026</span>
           <span>Python advanced</span>
-          <span><b>~37 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span><b>~42 min</b> · reference notes @150 wpm · diagram · check</span>
           <span class="verified">Sources checked 2026-10-15 · python 3.15 · matplotlib 3.11.2 · pandas 3.0.6 · numpy 2.5.4 · pytest 9.1.1</span>
         </div>
         <p class="summary">This page assumes Thursday's ticket desk, whose tickets load from the JSON file into a
@@ -481,6 +481,167 @@ print(load_tickets("missing.json"))</code></pre>
         hide that one.<sup class="cite"><a href="#src-25">25</a></sup> It raises a clear error instead, because starting
         empty would throw a day's tickets away at the next save. In other people's code, <code>try:</code> around a
         <code>json.load</code> with an <code>except FileNotFoundError:</code> under it is this pattern.</p>
+        <h3>Abstract classes: a base that only its subclasses can build</h3>
+        <p>The desk will one day tell people about their tickets, by email or by chat. Both channels keep the same
+        state, a name and a count of messages sent, and both must offer a <code>send</code> method; only the delivery
+        differs. Python writes that contract with <code>abc.ABC</code> and <code>@abstractmethod</code>: a class that
+        derives from <code>ABC</code> is an abstract base class, and a method marked abstract has to be implemented by a
+        subclass before any object can be built.<sup class="cite"><a href="#src-31">31</a></sup></p>
+<pre><code>from abc import ABC, abstractmethod
+
+
+class Channel(ABC):
+    """A way of telling someone about a ticket."""
+
+    def __init__(self, name):
+        self.name = name
+        self.sent = 0
+
+    @abstractmethod
+    def send(self, ticket_id, text):
+        """Deliver one message about a ticket."""
+
+    def notify(self, ticket_id, text):
+        self.send(ticket_id, text)
+        self.sent += 1
+
+
+class EmailChannel(Channel):
+    def send(self, ticket_id, text):
+        print(f"[email via {self.name}] TD-{ticket_id}: {text}")
+
+
+class ChatChannel(Channel):
+    def send(self, ticket_id, text):
+        print(f"[chat #{self.name}] TD-{ticket_id}: {text}")
+
+
+for channel in (EmailChannel("support@desk"), ChatChannel("tickets")):
+    channel.notify(7, "status is now closed")
+    print(channel.name, "sent", channel.sent)
+
+try:
+    Channel("base")
+except TypeError as err:
+    print("TypeError:", err)</code></pre>
+<pre class="out">[email via support@desk] TD-7: status is now closed
+support@desk sent 1
+[chat #tickets] TD-7: status is now closed
+tickets sent 1
+TypeError: Can't instantiate abstract class Channel without an implementation for abstract method 'send'</pre>
+        <p>The shared <code>__init__</code> and <code>notify</code> live once, in the base, and each subclass writes only
+        its own <code>send</code>. <code>Channel("base")</code> raises <code>TypeError</code> because the class still has
+        an abstract method, and the message names the method that is
+        missing.<sup class="cite"><a href="#src-31">31</a></sup> A subclass that forgets <code>send</code> fails the same
+        way, at construction, long before the first ticket is notified.</p>
+        <p>Without the base class Python would still accept any object that happens to have a <code>send</code> method.
+        That is duck typing, and it works until someone passes a channel without the method and the failure turns up
+        mid-run. A team reaches for the abstract class when several classes share state and a required method, so the
+        expectation is written in code and checked early. An abstract method may carry a body, which a subclass can call
+        through <code>super()</code>.<sup class="cite"><a href="#src-31">31</a></sup></p>
+        <h3>map, filter and reduce beside the comprehension</h3>
+        <p>Thursday's page built new lists with a loop and with a comprehension. Three built-in functions do the
+        same jobs in a functional style. <code>map(function, items)</code> applies a function to every item and
+        <code>filter(function, items)</code> keeps the items the function is true for; both return an iterator, so
+        nothing is computed until something consumes it, and printing one shows only an
+        object.<sup class="cite"><a href="#src-32">32</a></sup><sup class="cite"><a href="#src-33">33</a></sup>
+        <code>functools.reduce(function, items, initial)</code> folds the items into one value, calling the function
+        with the running total and the next item, left to right.<sup class="cite"><a href="#src-34">34</a></sup></p>
+<pre><code>from functools import reduce
+
+hours = [1.5, 54.75, 23.0, 30.25]
+
+over_24 = filter(lambda h: h > 24, hours)
+print(over_24)
+print(list(map(lambda h: h - 24, hours)))
+print(list(over_24))
+print(reduce(lambda total, h: total + h, hours, 0))
+
+print([h - 24 for h in hours])
+print([h for h in hours if h > 24])
+print(sum(hours))</code></pre>
+<pre class="out">&lt;filter object at 0x00000278E44551B0&gt;
+[-22.5, 30.75, -1.0, 6.25]
+[54.75, 30.25]
+109.5
+[-22.5, 30.75, -1.0, 6.25]
+[54.75, 30.25]
+109.5</pre>
+        <p>The last three lines are the same transformations as comprehensions, plus <code>sum</code>, which already
+        folds a list of numbers. The comprehension carries its condition and its expression in one readable line, and the
+        <code>filter</code> call is documented as equivalent to the generator form of
+        it.<sup class="cite"><a href="#src-33">33</a></sup> Which is faster is a question to measure, and
+        <code>timeit</code> is the standard library's tool for that: it runs a statement a given number of times and
+        returns the total seconds.<sup class="cite"><a href="#src-35">35</a></sup></p>
+<pre><code>import timeit
+
+setup = "hours = list(range(10_000))"
+runs = 1000
+for label, stmt in [
+    ("map + lambda", "list(map(lambda h: h - 24, hours))"),
+    ("comprehension", "[h - 24 for h in hours]"),
+    ("map + str", "list(map(str, hours))"),
+    ("comprehension", "[str(h) for h in hours]"),
+]:
+    seconds = timeit.timeit(stmt, setup=setup, number=runs)
+    print(f"{label:&lt;14}{seconds:.2f} s")</code></pre>
+<pre class="out">map + lambda  0.91 s
+comprehension 0.30 s
+map + str     0.76 s
+comprehension 0.80 s</pre>
+        <p>Those numbers come from one machine and one run; yours will differ. With a <code>lambda</code>,
+        <code>map</code> is about three times slower, because every item costs a Python function call that the
+        comprehension does inline. With a builtin such as <code>str</code> the two are level. So a team writes the
+        comprehension by default, keeps <code>map</code> for a builtin applied to a stream, and uses
+        <code>reduce</code> when the answer is one value that no builtin such as <code>sum</code> or <code>max</code>
+        already gives.<sup class="cite"><a href="#src-34">34</a></sup></p>
+        <h3>Recursion: a function that calls itself</h3>
+        <p>A recursive function solves a problem by calling itself on a smaller piece of it. It needs a base case, an
+        input small enough to answer without another call, and a recursive case that shrinks the input towards the
+        base. The desk's hours sometimes arrive as a list holding lists of sub-task hours, and nested data like that is
+        where recursion fits.</p>
+<pre><code>import sys
+
+
+def total_hours(items):
+    """Sum hours from a list that may hold lists of sub-task hours."""
+    if not items:
+        return 0
+    first, rest = items[0], items[1:]
+    if isinstance(first, list):
+        return total_hours(first) + total_hours(rest)
+    return first + total_hours(rest)
+
+
+print(total_hours([1.5, [2.0, 0.5], 23.0]))
+
+
+def count_down(n):
+    if n == 0:
+        return 0
+    return 1 + count_down(n - 1)
+
+
+print(sys.getrecursionlimit())
+print(count_down(500))
+try:
+    count_down(5000)
+except RecursionError as err:
+    print("RecursionError:", err)</code></pre>
+<pre class="out">27.0
+1000
+500
+RecursionError: maximum recursion depth exceeded</pre>
+        <p>Each call waits for the next one to return, so every unfinished call keeps a frame on the call stack, and
+        the stack is deepest just before the base case answers. Python caps that depth: <code>sys.getrecursionlimit()</code>
+        returns the cap, 1000 under the course Python, and going past it raises
+        <code>RecursionError</code>.<sup class="cite"><a href="#src-36">36</a></sup><sup class="cite"><a href="#src-37">37</a></sup>
+        <code>count_down(500)</code> fits under it; <code>count_down(5000)</code> does not, and the error carries the
+        message shown.</p>
+        <p>The limit decides between a loop and recursion. Anything you can walk from start to end, counting down or
+        summing a flat list, is a loop's job, with no stack to run out. Recursion fits data that nests to a modest
+        depth, such as a nested list or a folder tree. In an interview, name the base case first, then the smaller
+        call, then the limit.</p>
         <div class="recap"><div class="k">Takeaways</div><ul>
           <li>The desk is split into modules by reason to change.</li>
           <li>Catch the specific exception you expect, never a bare except.</li>
@@ -494,6 +655,10 @@ print(load_tickets("missing.json"))</code></pre>
           <p>For a missing file I catch FileNotFoundError specifically and decide whether starting empty is right. A
           malformed file raises a JSON decode error, and I surface that with a clear message rather than hide it. Each
           case gets its own test with a temporary folder.</p>
+          <p>When several classes share state and must each offer the same method, I write an abstract base class with
+          the shared init and the abstract method, and each subclass fills in its own version. Building the base, or a
+          subclass that forgot the method, raises a TypeError at construction, so a missing method shows up before
+          the first call.</p>
         </div>
       </section>
 
@@ -722,6 +887,7 @@ assert breached([3.0, 5.0], 4) == [False, True], "the comparison uses the limit 
         <details class="check"><summary>Why does a module that only defines functions put its demo code under <code>if __name__ == "__main__":</code>, and why catch <code>FileNotFoundError</code> instead of using a bare <code>except</code>?</summary><p>The guarded block runs only when the file is the program, so other modules and tests can import it without side effects. A specific exception class catches only the case you planned for; a bare <code>except</code> would also hide real bugs.</p></details>
         <details class="check"><summary><code>hours = [1.5, 54.75, 23.0]</code>. Give two ways to subtract 24 from every value without NumPy, and say what <code>np.array(hours) - 24</code> adds.</summary><p>A <code>for</code> loop that appends to a new list, or the comprehension <code>[h - 24 for h in hours]</code>. The array holds one dtype, <code>float64</code> here, and does the subtraction on every element in one expression with no Python loop.</p></details>
         <details class="check"><summary>pylint reports R1705 in <code>storage.py</code> and W0621 nine times in <code>test_desk.py</code>. Which do you fix, which do you leave, and why?</summary><p>Fix R1705 by deleting the unnecessary <code>else:</code> after a <code>return</code> and de-indenting its body, which leaves behaviour unchanged. Leave W0621 and name it, because pytest passes fixtures by giving a test parameter the fixture's name, which is exactly what the message complains about.</p></details>
+        <details class="check"><summary>A colleague rewrites <code>[h - 24 for h in hours]</code> as <code>list(map(lambda h: h - 24, hours))</code> for speed. What do you say?</summary><p>Measure it with <code>timeit</code> first. With a lambda, <code>map</code> pays a Python function call per item and ran about three times slower than the comprehension on one machine; with a builtin such as <code>str</code> the two are level. Both <code>map</code> and <code>filter</code> return lazy iterators, which is why the <code>list()</code> is there. The comprehension reads better, so it stays, and <code>reduce</code> is kept for folding items to one value.</p></details>
       </section>
 
       <section class="reading-sources" aria-label="Sources and deeper dive">
@@ -757,6 +923,13 @@ assert breached([3.0, 5.0], 4) == [False, True], "the comparison uses the limit 
           <li id="src-28"><a href="https://numpy.org/doc/stable/user/quickstart.html" target="_blank" rel="noopener">NumPy: Quickstart</a> — arrays, dtypes and whole-array arithmetic.</li>
           <li id="src-29"><a href="https://pandas.pydata.org/docs/user_guide/dsintro.html" target="_blank" rel="noopener">pandas: Intro to data structures</a> — the DataFrame as a labelled table.</li>
           <li id="src-30"><a href="https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/no-else-return.html" target="_blank" rel="noopener">pylint: no-else-return / R1705</a> — the message, where it fires and the fix.</li>
+          <li id="src-31"><a href="https://docs.python.org/3/library/abc.html" target="_blank" rel="noopener">Python: abc — Abstract Base Classes</a> — <code>ABC</code>, <code>@abstractmethod</code>, and why a class with an abstract method cannot be instantiated.</li>
+          <li id="src-32"><a href="https://docs.python.org/3/library/functions.html#map" target="_blank" rel="noopener">Python: Built-in Functions, map</a> — an iterator that applies a function to every item.</li>
+          <li id="src-33"><a href="https://docs.python.org/3/library/functions.html#filter" target="_blank" rel="noopener">Python: Built-in Functions, filter</a> — an iterator of the items a function is true for, and its generator-expression equivalent.</li>
+          <li id="src-34"><a href="https://docs.python.org/3/library/functools.html#functools.reduce" target="_blank" rel="noopener">Python: functools.reduce</a> — folding an iterable to one value, left to right, with an optional initial value.</li>
+          <li id="src-35"><a href="https://docs.python.org/3/library/timeit.html" target="_blank" rel="noopener">Python: timeit</a> — timing small bits of code a given number of times.</li>
+          <li id="src-36"><a href="https://docs.python.org/3/library/sys.html#sys.getrecursionlimit" target="_blank" rel="noopener">Python: sys.getrecursionlimit</a> — the maximum depth of the interpreter stack.</li>
+          <li id="src-37"><a href="https://docs.python.org/3/library/exceptions.html#RecursionError" target="_blank" rel="noopener">Python: RecursionError</a> — raised when the maximum recursion depth is exceeded.</li>
         </ul>
       </section>
 
