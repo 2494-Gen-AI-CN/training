@@ -12,7 +12,6 @@
 | Preferred Describe the scrum process.                                                                                                                                                  |
 | Preferred Participate in at least one scrum ceremony (e.g. sprint planning, daily stand-up, sprint review, retrospective) and demonstrate understanding of their purpose and outcomes. |
 | Preferred Develop a user story by breaking down its components (e.g. role, feature, benefit) and create tasks to complete it.                                                          |
-| Preferred Interact with at least one Agile tool (e.g. Jira, Trello, Asana) and demonstrate proficiency in using it to track user stories and show progress with artifacts.             |
 | Stretch Describe story pointing and burndown charts.                                                                                                                                   |
 | Stretch Demonstrate knowledge of velocity.                                                                                                                                             |
 
@@ -30,24 +29,18 @@
 | Required            | Create a branch on an existing repository, commit changes to it, and push it to the remote repository.                                               |
 | Required            | Create a pull or merge request through a git-based cloud service provider to merge two branches together while resolving any conflicts.              |
 | Required            | Using a command line interface, switch between branches of a repository.                                                                             |
-| Required            | Describe the practical applications of branch policies.                                                                                              |
 | Required            | Describe common git workflow patterns and branching strategies (e.g. git flow) used by teams on collaborative projects, and their benefits.          |
 | Required            | Explain why merge conflicts happen, and resolve them while merging two branches using a command line interface.                                      |
 | Required            | Describe the purpose of rebase, fast-forward, and squash options when merging.                                                                       |
 | Preferred           | Utilize a .gitignore file to prevent build files from being committed to a repo.                                                                     |
 | Preferred           | Utilize a command line interface to initialize a new local git repository.                                                                           |
 | Preferred           | Use git stash to save code changes without committing and git stash pop to restore those changes.                                                    |
-| Preferred           | Create an issue for review on a git-based cloud service provider's web interface.                                                                    |
 | Preferred           | Using git diff, inspect a file for changes across branches prior to creating a merge request.                                                        |
 | Preferred           | Using a command line interface, navigate a repository's commit history to branch from a previous commit.                                             |
 | Preferred           | Complete a rebase, fast-forward, and/or squash merge.                                                                                                |
-| Preferred           | Add branch protection policies to a repository using a git-based cloud service provider's web interface.                                             |
 | Stretch             | Utilize CLI flags to combine the add and commit steps.                                                                                               |
 | Stretch             | Utilize a command line interface to view the current state of a local repository.                                                                    |
 | Stretch             | Utilize a command line interface to view a log of recent commits.                                                                                    |
-| Stretch             | After forking a repository, create a merge request from the forked repository to the original repository through a git-based cloud service provider. |
-| Stretch             | Using a git-based cloud service provider, create branch policies to only allow commits from authorized users.                                        |
-| Stretch             | Create issues and link them to pull requests on a git-based cloud service provider.                                                                  |
 
 ## Python
 
@@ -93,10 +86,7 @@
 | Preferred Able to utilize and describe different file handling modes                                                                                    |
 | Preferred Understands the difference between 'is' and '==' in Python                                                                                    |
 | Stretch Can use generator expressions.                                                                                                                  |
-| Stretch Can build a Web API with Flask, Tornado, Django or a similar python package                                                                     |
 | Stretch Able to use and elaborate on Namespaces in Python                                                                                               |
-| Stretch Can optimize Python code using built-in profiling tools like cProfile or timeit                                                                 |
-| Stretch Can handle HTTP requests with Flask                                                                                                             |
 | Stretch Can use Python's zip(), enumerate(), and map() effectively                                                                                      |
 | Stretch Able to write and explain basic recursive functions                                                                                             |
 | Stretch Builds a file-driven program that reads, processes, and writes structured data                                                                  |
