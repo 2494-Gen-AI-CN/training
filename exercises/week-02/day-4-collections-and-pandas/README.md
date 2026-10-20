@@ -1,7 +1,7 @@
 # Exercise - Collections and pandas
 
 Week 2 · Day 4 · `w02d4` · Thu 2026-10-22 · ~60–90 min
-Notes: [weeks/week-02/day-4-collections-and-pandas.html](https://2494-gen-ai-cn.github.io/training/weeks/week-02/day-4-collections-and-pandas.html) · Demos: [demos/week-02/day-4-collections-and-pandas](https://github.com/2494-Gen-AI-CN/demos/tree/main/week-02/day-4-collections-and-pandas)
+Notes: [weeks/week-02/day-4-collections-and-pandas.html](https://2494-gen-ai-cn.github.io/training/weeks/week-02/day-4-collections-and-pandas.html) · Demos: [demos/ticket-desk](https://github.com/2494-Gen-AI-CN/demos/tree/main/ticket-desk)
 
 ## Task
 

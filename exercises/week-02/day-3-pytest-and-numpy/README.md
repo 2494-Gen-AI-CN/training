@@ -1,7 +1,7 @@
 # Exercise — Resolution hours with NumPy, checked by pytest
 
 Week 2 · Day 3 · `w02d3` · Wed 2026-10-21 · ~60–90 min
-Notes: [weeks/week-02/day-3-pytest-and-numpy.html](https://2494-gen-ai-cn.github.io/training/weeks/week-02/day-3-pytest-and-numpy.html) · Demos: [demos/week-02/day-3-pytest-and-numpy](https://github.com/2494-Gen-AI-CN/demos/tree/main/week-02/day-3-pytest-and-numpy)
+Notes: [weeks/week-02/day-3-pytest-and-numpy.html](https://2494-gen-ai-cn.github.io/training/weeks/week-02/day-3-pytest-and-numpy.html) · Demos: [demos/ticket-desk](https://github.com/2494-Gen-AI-CN/demos/tree/main/ticket-desk)
 
 ## Task
 

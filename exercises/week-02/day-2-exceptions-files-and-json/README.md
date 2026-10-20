@@ -1,9 +1,9 @@
 # Exercise: Ticket store
 
 Week 2 · Day 2 · `w02d2` · ~60–90 min
-Notes: [weeks/week-02/day-2-exceptions-files-and-json.html](https://2494-gen-ai-cn.github.io/training/weeks/week-02/day-2-exceptions-files-and-json.html) · Demos: [demos/week-02/day-2-exceptions-files-and-json](https://github.com/2494-Gen-AI-CN/demos/tree/main/week-02/day-2-exceptions-files-and-json)
+Notes: [weeks/week-02/day-2-exceptions-files-and-json.html](https://2494-gen-ai-cn.github.io/training/weeks/week-02/day-2-exceptions-files-and-json.html) · Demos: [demos/ticket-desk](https://github.com/2494-Gen-AI-CN/demos/tree/main/ticket-desk)
 
-Both links resolve from the training repo, not from the copy in your own repository. The demos folder is added there after the class, so `git pull` the training repo if a link does not open yet.
+Both links resolve from the training repo, not from the copy in your own repository. The demo code is the `ticket-desk/` folder of the demo repository; it grows after every class, so reload the page if it looks behind.
 
 ## Task
 

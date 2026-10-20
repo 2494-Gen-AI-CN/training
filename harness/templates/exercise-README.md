@@ -1,7 +1,7 @@
 # Exercise — {{title}}
 
 Week {{week}} · Day {{day}} · `{{id}}` · ~60–90 min
-Notes: [weeks/{{rel}}.html](https://2494-gen-ai-cn.github.io/training/weeks/{{rel}}.html) · Demos: [demos/{{rel}}](https://github.com/2494-Gen-AI-CN/demos/tree/main/{{rel}})
+Notes: [weeks/{{rel}}.html](https://2494-gen-ai-cn.github.io/training/weeks/{{rel}}.html) · Demos: [2494-Gen-AI-CN/demos](https://github.com/2494-Gen-AI-CN/demos)
 
 ## Task
 

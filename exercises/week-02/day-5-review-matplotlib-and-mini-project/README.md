@@ -1,7 +1,7 @@
 # Exercise - Review, Matplotlib and mini-project
 
 Week 2 · Day 5 · `w02d5` · ~60–90 min · marked against a rubric (no automated tests)
-Notes: [weeks/week-02/day-5-review-matplotlib-and-mini-project.html](https://2494-gen-ai-cn.github.io/training/weeks/week-02/day-5-review-matplotlib-and-mini-project.html) · Demos: [demos/week-02/day-5-review-matplotlib-and-mini-project](https://github.com/2494-Gen-AI-CN/demos/tree/main/week-02/day-5-review-matplotlib-and-mini-project)
+Notes: [weeks/week-02/day-5-review-matplotlib-and-mini-project.html](https://2494-gen-ai-cn.github.io/training/weeks/week-02/day-5-review-matplotlib-and-mini-project.html) · Demos: [demos/ticket-desk](https://github.com/2494-Gen-AI-CN/demos/tree/main/ticket-desk)
 
 ## Task
 
