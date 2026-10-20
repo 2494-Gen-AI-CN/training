@@ -72,6 +72,19 @@
       ]
     }
   },
+  "exitCriteria": {
+    "_comment": "D-0063: Revature's per-group exit criteria (Required / Preferred / Stretch rows), the mock-interview and exam bar when a group ends. Source of truth is the markdown drop zone sourceDir (one file per group, lowercase qc-N-<slug>.md; a group whose file is absent is 'not published yet'); harness/exit_criteria.py parses it at runtime, nothing is hand-maintained here. Ids are <group>.<section slug>.<tier letter><2-digit row within tier within section>, so a published group's file is append-only: never delete or reorder a row once its page is live. fromWeek: the first week whose plan must carry a complete '## Exit criteria map' (plan_check) and whose day authors and critics are bound by the rows; earlier weeks got a read-only backfill map and harness/plans/exit-audit-qc1.md.",
+    "fromWeek": 3,
+    "sourceDir": "Curricula/Exit-Criteria",
+    "groups": [
+      { "id": "qc1", "label": "Python, Git & Agile", "weeks": [1, 2], "source": "qc-1-git-agile-python.md" },
+      { "id": "qc2", "label": "SQL", "weeks": [3], "source": "qc-2-sql.md" },
+      { "id": "qc3", "label": "Data fundamentals & Gen AI fundamentals", "weeks": [4, 5], "source": "qc-3-data-and-gen-ai-fundamentals.md" },
+      { "id": "qc4", "label": "AI/ML fundamentals, TensorFlow & vector databases", "weeks": [6, 7, 8], "source": "qc-4-ai-ml-tensorflow-vector-dbs.md" },
+      { "id": "qc5", "label": "LangChain, LangGraph & agentic AI", "weeks": [9, 10], "source": "qc-5-langchain-langgraph-agentic-ai.md" },
+      { "id": "qc6", "label": "AWS SageMaker & MLOps", "weeks": [11], "source": "qc-6-sagemaker-mlops.md" }
+    ]
+  },
   "weeks": [
     {
       "week": 1,
