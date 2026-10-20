@@ -62,7 +62,8 @@ class WorkflowWiringTests(unittest.TestCase):
         author = FANOUT[FANOUT.index("You are the NOTES-PAGE author"):FANOUT.index("NOTES CRITIC")]
         for needle in ("notes_check.py", "Say it in an interview", "Check yourself", "deliveryPhrases", "Notes depth", "WRITE INCREMENTALLY",
                        "ONE Write of the whole shell", "Fill ONE step per Edit", "sup class=\"cite\"", "Sources checked", "stepMap", "...tier('notes', pass)",
-                       "READABILITY (D-0060", 'class="recap"', 'pre class="out"', "--style"):   # D-0060
+                       "READABILITY (D-0060", 'class="recap"', 'pre class="out"', "--style",   # D-0060
+                       "exitCtx(d)", "exitStepMap", "Exit criteria"):   # D-0063
             self.assertIn(needle, author)
         self.assertNotIn("#survey", author)   # D-0061: no survey section on any page
         self.assertNotIn("deepens what the trainer types live", author)

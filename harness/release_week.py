@@ -300,6 +300,9 @@ def release(week_no: int, today: dt.date, root: Path = ROOT, check: bool = False
     if root.resolve() == ROOT.resolve():
         append_run(rec)
         out.append("manual run record added to harness/runs.jsonl")
+        import build_exit_pages  # D-0063: authored -> live changes which days the exit-criteria pages link
+        build_exit_pages.build(quiet=True)
+        out.append("exit-criteria pages rebuilt")
         import build_tracker
         build_tracker.build(quiet=True)
         out.append("tracker rebuilt")

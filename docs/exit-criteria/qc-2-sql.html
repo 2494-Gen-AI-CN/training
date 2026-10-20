@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SQL exit criteria | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../assets/css/style.css?v=20261017">
+<script src="../assets/js/theme.js?v=20261017"></script>
+<style>
+  .ec-main { padding-top: 0; }
+  .ec-page { max-width: 980px; margin: 0 auto; padding-top: 30px; padding-bottom: 50px; }
+  .ec-page .lede { max-width: none; margin: 0 0 10px; }
+  .ec-page .lede h1 { font-size: 40px; line-height: 1.1; margin: 0 0 10px; letter-spacing: -.5px; }
+  .ec-page .lede .meta { display: flex; gap: 14px 18px; flex-wrap: wrap; align-items: center; color: var(--ink-soft); font-size: 15px; }
+  .ec-page .lede .meta b { color: var(--ink); }
+  .ec-page .lede p { font-size: 18px; line-height: 1.6; color: var(--ink-soft); margin: 14px 0 0; }
+  .ec-page .step { opacity: 1; min-height: 0; justify-content: flex-start; padding: 30px 0 10px; border-left: 0; margin-left: 0; padding-left: 0; }
+  .ec-page [id] { scroll-margin-top: 72px; }
+  .ec-page .step h2 { font-size: 28px; line-height: 1.15; margin: 6px 0 12px; }
+  .ec-page .step h3 { font-size: 19px; line-height: 1.3; margin: 22px 0 6px; scroll-margin-top: 80px; }
+  .ec-page .step h3 a { color: inherit; text-decoration: none; border-bottom: 1px solid var(--accent-line); }
+  .ec-page .step h3 a:hover { color: var(--accent); }
+  .ec-page .step ul { margin: 0 0 14px; padding-left: 22px; font-size: 16px; line-height: 1.55; }
+  .ec-page .step li { margin: 0 0 5px; }
+  .ec-page .step p { font-size: 16px; line-height: 1.6; color: var(--ink-soft); margin: 0 0 12px; }
+  .ec-page .step code, .ec-page .step li a { font-family: var(--mono); font-size: .9em; }
+  .ec-page .step li a { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; text-decoration: none; color: var(--accent-ink); }
+  .ec-page .step li a:hover { text-decoration: underline; }
+  .ec-legend { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 16px 0 0; font-size: 14px; color: var(--ink-soft); }
+  .ec-tier { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: 2px 8px; border-radius: 20px; border: 1px solid var(--line); white-space: nowrap; vertical-align: middle; }
+  .ec-tier.req { color: var(--good-ink); border-color: var(--good-line); background: var(--good-soft); }
+  .ec-tier.pref { color: var(--info); border-color: var(--info-line); background: var(--info-soft); }
+  .ec-tier.str { color: var(--warn-ink); border-color: var(--warn-line); background: var(--warn-soft); }
+  .ec-table { width: 100%; border-collapse: collapse; font-size: 15.5px; line-height: 1.5; margin: 0 0 18px; }
+  .ec-table th, .ec-table td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; vertical-align: top; }
+  .ec-table th { background: var(--surface-2); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); }
+  .ec-table td:first-child { text-align: center; width: 44px; }
+  .ec-table input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
+  .ec-table tr { scroll-margin-top: 80px; }
+  .ec-table tr:target td { background: var(--accent-soft); }
+  .ec-table tr.ec-done td { color: var(--dim); }
+  .ec-table tr.ec-done td:nth-child(4) { text-decoration: line-through; }
+  .ec-table td code { font-family: var(--mono); font-size: .85em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; white-space: nowrap; }
+  .ec-table td a { color: var(--accent); white-space: nowrap; }
+  .ec-soon { color: var(--dim); white-space: nowrap; }
+  .ec-page .ritual { cursor: pointer; font: inherit; font-size: 12px; font-weight: 600; background: var(--surface); color: var(--ink-soft); }
+  .ec-page button.ritual:hover { color: var(--accent); border-color: var(--accent); }
+  .ec-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin: 24px 0 0; }
+  .ec-card { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+  .ec-card h2 { font-size: 22px; line-height: 1.2; margin: 0; }
+  .ec-card .ec-counts { color: var(--ink-soft); font-size: 14px; margin: 0; }
+  .ec-card .fr-btn { margin-top: auto; align-self: flex-start; }
+  .ec-card .ritual { align-self: flex-start; margin-top: auto; }
+  .ec-intro p { font-size: 17px; line-height: 1.65; color: var(--ink-soft); margin: 0 0 12px; }
+  @media (max-width: 700px) { .ec-page .lede h1 { font-size: 30px; } .ec-table { font-size: 14px; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises" target="_blank" rel="noopener">Exercises</a>
+    <a class="topnav" href="index.html">Exit criteria</a>
+  </nav>
+  <div class="topbar-right"></div>
+</div>
+
+<main class="lesson2 ec-main" id="reading-main">
+  <article class="reading-col ec-page">
+    <div class="lede">
+      <h1>SQL exit criteria</h1>
+      <div class="meta">
+        <span>Group <b>qc2</b></span>
+        <span>Week 3</span>
+        <span><b>45</b> criteria</span>
+        <span id="ec-count">0 of 45 ticked</span>
+        <button type="button" id="ec-reset" class="ritual">Clear my ticks</button>
+      </div>
+      <p>Tick a row once you can do or explain it without notes. Ticks are saved in this browser only. Each row links to
+      the day whose notes teach it; a day that is not open yet is named but not linked.</p>
+      <div class="ec-legend">
+        <span class="ec-tier req">Required</span> <span>expected of everyone</span>
+        <span class="ec-tier pref">Preferred</span> <span>expected of a strong learner</span>
+        <span class="ec-tier str">Stretch</span> <span>beyond the course</span>
+      </div>
+    </div>
+
+    <section class="step" id="by-day">
+      <div class="tag">By day</div>
+      <h2>Where each criterion is taught</h2>
+      <h3 id="w03d1">Week 3 · Day 1 — SQL &amp; RDBMS introduction</h3>
+      <p>No criteria mapped to this day yet.</p>
+      <h3 id="w03d2">Week 3 · Day 2 — SQL sublanguages</h3>
+      <p>No criteria mapped to this day yet.</p>
+      <h3 id="w03d3">Week 3 · Day 3 — Keys, constraints &amp; normalization</h3>
+      <p>No criteria mapped to this day yet.</p>
+      <h3 id="w03d4">Week 3 · Day 4 — Joins, subqueries &amp; transactions</h3>
+      <p>No criteria mapped to this day yet.</p>
+      <h3 id="w03d5">Week 3 · Day 5 — Advanced SQL: triggers, views, procedures &amp; indexes</h3>
+      <p>No criteria mapped to this day yet.</p>
+    </section>
+
+    <section class="step" id="sql">
+      <div class="tag">Section</div>
+      <h2>SQL</h2>
+      <table class="ec-table">
+        <thead><tr><th>Done</th><th>ID</th><th>Tier</th><th>Criterion</th><th>Covered on</th></tr></thead>
+        <tbody>
+          <tr id="qc2.sql.R01"><td><input type="checkbox" data-ec="qc2.sql.R01" aria-label="Done: qc2.sql.R01"></td><td><code>qc2.sql.R01</code></td><td><span class="ec-tier req">Required</span></td><td>Articulate the reasons for using a Relational Database Model to represent data.</td><td>—</td></tr>
+          <tr id="qc2.sql.R02"><td><input type="checkbox" data-ec="qc2.sql.R02" aria-label="Done: qc2.sql.R02"></td><td><code>qc2.sql.R02</code></td><td><span class="ec-tier req">Required</span></td><td>Explain the usage of the sublanguages in SQL</td><td>—</td></tr>
+          <tr id="qc2.sql.R03"><td><input type="checkbox" data-ec="qc2.sql.R03" aria-label="Done: qc2.sql.R03"></td><td><code>qc2.sql.R03</code></td><td><span class="ec-tier req">Required</span></td><td>Understand the role of a primary key in a data-set.</td><td>—</td></tr>
+          <tr id="qc2.sql.R04"><td><input type="checkbox" data-ec="qc2.sql.R04" aria-label="Done: qc2.sql.R04"></td><td><code>qc2.sql.R04</code></td><td><span class="ec-tier req">Required</span></td><td>Construct SQL statements using DDL (CREATE, DROP, ALTER, TRUNCATE) keywords to create, alter, drop, and truncate tables</td><td>—</td></tr>
+          <tr id="qc2.sql.R05"><td><input type="checkbox" data-ec="qc2.sql.R05" aria-label="Done: qc2.sql.R05"></td><td><code>qc2.sql.R05</code></td><td><span class="ec-tier req">Required</span></td><td>Describe and utilize constraints in table creation. (Unique, Not Null, Primary Key, Foreign Key, Auto Incrementing, Default, Check)</td><td>—</td></tr>
+          <tr id="qc2.sql.R06"><td><input type="checkbox" data-ec="qc2.sql.R06" aria-label="Done: qc2.sql.R06"></td><td><code>qc2.sql.R06</code></td><td><span class="ec-tier req">Required</span></td><td>Construct SQL statements using DML (INSERT, UPDATE, DELETE) keywords to manipulate pre-existing data within tables</td><td>—</td></tr>
+          <tr id="qc2.sql.R07"><td><input type="checkbox" data-ec="qc2.sql.R07" aria-label="Done: qc2.sql.R07"></td><td><code>qc2.sql.R07</code></td><td><span class="ec-tier req">Required</span></td><td>Describe the difference between DROP, DELETE, and TRUNCATE functionality</td><td>—</td></tr>
+          <tr id="qc2.sql.R08"><td><input type="checkbox" data-ec="qc2.sql.R08" aria-label="Done: qc2.sql.R08"></td><td><code>qc2.sql.R08</code></td><td><span class="ec-tier req">Required</span></td><td>Understand the role of a foreign key in a data-set.</td><td>—</td></tr>
+          <tr id="qc2.sql.R09"><td><input type="checkbox" data-ec="qc2.sql.R09" aria-label="Done: qc2.sql.R09"></td><td><code>qc2.sql.R09</code></td><td><span class="ec-tier req">Required</span></td><td>Create a valid schema for a given data-set</td><td>—</td></tr>
+          <tr id="qc2.sql.R10"><td><input type="checkbox" data-ec="qc2.sql.R10" aria-label="Done: qc2.sql.R10"></td><td><code>qc2.sql.R10</code></td><td><span class="ec-tier req">Required</span></td><td>Describe the purpose of transactions in a database and when they are used.</td><td>—</td></tr>
+          <tr id="qc2.sql.R11"><td><input type="checkbox" data-ec="qc2.sql.R11" aria-label="Done: qc2.sql.R11"></td><td><code>qc2.sql.R11</code></td><td><span class="ec-tier req">Required</span></td><td>Understand database consistency and utilize transactions to ensure data consistency in a set of SQL commands.</td><td>—</td></tr>
+          <tr id="qc2.sql.R12"><td><input type="checkbox" data-ec="qc2.sql.R12" aria-label="Done: qc2.sql.R12"></td><td><code>qc2.sql.R12</code></td><td><span class="ec-tier req">Required</span></td><td>Be able to create a User Defined Function</td><td>—</td></tr>
+          <tr id="qc2.sql.R13"><td><input type="checkbox" data-ec="qc2.sql.R13" aria-label="Done: qc2.sql.R13"></td><td><code>qc2.sql.R13</code></td><td><span class="ec-tier req">Required</span></td><td>Be able to create and call a Stored Procedure</td><td>—</td></tr>
+          <tr id="qc2.sql.R14"><td><input type="checkbox" data-ec="qc2.sql.R14" aria-label="Done: qc2.sql.R14"></td><td><code>qc2.sql.R14</code></td><td><span class="ec-tier req">Required</span></td><td>Create and use views to store the results of a SQL query</td><td>—</td></tr>
+          <tr id="qc2.sql.R15"><td><input type="checkbox" data-ec="qc2.sql.R15" aria-label="Done: qc2.sql.R15"></td><td><code>qc2.sql.R15</code></td><td><span class="ec-tier req">Required</span></td><td>Normalize a database schema from unnormalized form (0NF) to Third Normal Form (3NF), providing step-by-step justification.</td><td>—</td></tr>
+          <tr id="qc2.sql.R16"><td><input type="checkbox" data-ec="qc2.sql.R16" aria-label="Done: qc2.sql.R16"></td><td><code>qc2.sql.R16</code></td><td><span class="ec-tier req">Required</span></td><td>Describe referential integrity</td><td>—</td></tr>
+          <tr id="qc2.sql.R17"><td><input type="checkbox" data-ec="qc2.sql.R17" aria-label="Done: qc2.sql.R17"></td><td><code>qc2.sql.R17</code></td><td><span class="ec-tier req">Required</span></td><td>Explain the ACID properties (Atomicity, Consistency, Isolation, Durability) and their importance in transaction management.</td><td>—</td></tr>
+          <tr id="qc2.sql.R18"><td><input type="checkbox" data-ec="qc2.sql.R18" aria-label="Done: qc2.sql.R18"></td><td><code>qc2.sql.R18</code></td><td><span class="ec-tier req">Required</span></td><td>Understand the difference between aggregate and scalar functions</td><td>—</td></tr>
+          <tr id="qc2.sql.R19"><td><input type="checkbox" data-ec="qc2.sql.R19" aria-label="Done: qc2.sql.R19"></td><td><code>qc2.sql.R19</code></td><td><span class="ec-tier req">Required</span></td><td>Utilize the GROUP BY clause.</td><td>—</td></tr>
+          <tr id="qc2.sql.R20"><td><input type="checkbox" data-ec="qc2.sql.R20" aria-label="Done: qc2.sql.R20"></td><td><code>qc2.sql.R20</code></td><td><span class="ec-tier req">Required</span></td><td>Demonstrate the ability to filter records using the WHERE clause and operators</td><td>—</td></tr>
+          <tr id="qc2.sql.R21"><td><input type="checkbox" data-ec="qc2.sql.R21" aria-label="Done: qc2.sql.R21"></td><td><code>qc2.sql.R21</code></td><td><span class="ec-tier req">Required</span></td><td>Understand basic types of joins and demonstrate usage in select statements (inner, left/right outer, full outer, equi)</td><td>—</td></tr>
+          <tr id="qc2.sql.P01"><td><input type="checkbox" data-ec="qc2.sql.P01" aria-label="Done: qc2.sql.P01"></td><td><code>qc2.sql.P01</code></td><td><span class="ec-tier pref">Preferred</span></td><td>Demonstrate how to identify valid candidate keys for a primary key of an entity</td><td>—</td></tr>
+          <tr id="qc2.sql.P02"><td><input type="checkbox" data-ec="qc2.sql.P02" aria-label="Done: qc2.sql.P02"></td><td><code>qc2.sql.P02</code></td><td><span class="ec-tier pref">Preferred</span></td><td>Read and understand ERD (Entity Relationship Diagram)</td><td>—</td></tr>
+          <tr id="qc2.sql.P03"><td><input type="checkbox" data-ec="qc2.sql.P03" aria-label="Done: qc2.sql.P03"></td><td><code>qc2.sql.P03</code></td><td><span class="ec-tier pref">Preferred</span></td><td>Explain the concept of multiplicity in database relationships.</td><td>—</td></tr>
+          <tr id="qc2.sql.P04"><td><input type="checkbox" data-ec="qc2.sql.P04" aria-label="Done: qc2.sql.P04"></td><td><code>qc2.sql.P04</code></td><td><span class="ec-tier pref">Preferred</span></td><td>Accurately describe database schemas, including tables, fields, and the relationships between them.</td><td>—</td></tr>
+          <tr id="qc2.sql.P05"><td><input type="checkbox" data-ec="qc2.sql.P05" aria-label="Done: qc2.sql.P05"></td><td><code>qc2.sql.P05</code></td><td><span class="ec-tier pref">Preferred</span></td><td>Identify and implement common data types such as varchar, decimal, integer, and char.</td><td>—</td></tr>
+          <tr id="qc2.sql.P06"><td><input type="checkbox" data-ec="qc2.sql.P06" aria-label="Done: qc2.sql.P06"></td><td><code>qc2.sql.P06</code></td><td><span class="ec-tier pref">Preferred</span></td><td>Translate real-world problem descriptions into ER diagrams and implement them as a working relational schema.</td><td>—</td></tr>
+          <tr id="qc2.sql.P07"><td><input type="checkbox" data-ec="qc2.sql.P07" aria-label="Done: qc2.sql.P07"></td><td><code>qc2.sql.P07</code></td><td><span class="ec-tier pref">Preferred</span></td><td>Identify and compare different isolation levels (Read Uncommitted, Read Committed, Repeatable Read, Serializable) and their trade-offs.</td><td>—</td></tr>
+          <tr id="qc2.sql.P08"><td><input type="checkbox" data-ec="qc2.sql.P08" aria-label="Done: qc2.sql.P08"></td><td><code>qc2.sql.P08</code></td><td><span class="ec-tier pref">Preferred</span></td><td>Explain the benefits and potential drawbacks of database normalization, including impacts on performance and data integrity.</td><td>—</td></tr>
+          <tr id="qc2.sql.P09"><td><input type="checkbox" data-ec="qc2.sql.P09" aria-label="Done: qc2.sql.P09"></td><td><code>qc2.sql.P09</code></td><td><span class="ec-tier pref">Preferred</span></td><td>Utilize cascades to define what happens to related tables during DML operations</td><td>—</td></tr>
+          <tr id="qc2.sql.P10"><td><input type="checkbox" data-ec="qc2.sql.P10" aria-label="Done: qc2.sql.P10"></td><td><code>qc2.sql.P10</code></td><td><span class="ec-tier pref">Preferred</span></td><td>Configure triggers to execute the corresponding stored procedures when certain events occur</td><td>—</td></tr>
+          <tr id="qc2.sql.P11"><td><input type="checkbox" data-ec="qc2.sql.P11" aria-label="Done: qc2.sql.P11"></td><td><code>qc2.sql.P11</code></td><td><span class="ec-tier pref">Preferred</span></td><td>Describe database indexing and its benefits</td><td>—</td></tr>
+          <tr id="qc2.sql.P12"><td><input type="checkbox" data-ec="qc2.sql.P12" aria-label="Done: qc2.sql.P12"></td><td><code>qc2.sql.P12</code></td><td><span class="ec-tier pref">Preferred</span></td><td>Describe triggers and their use in automating tasks.</td><td>—</td></tr>
+          <tr id="qc2.sql.P13"><td><input type="checkbox" data-ec="qc2.sql.P13" aria-label="Done: qc2.sql.P13"></td><td><code>qc2.sql.P13</code></td><td><span class="ec-tier pref">Preferred</span></td><td>Utilize the HAVING clause to filter aggregated query results</td><td>—</td></tr>
+          <tr id="qc2.sql.P14"><td><input type="checkbox" data-ec="qc2.sql.P14" aria-label="Done: qc2.sql.P14"></td><td><code>qc2.sql.P14</code></td><td><span class="ec-tier pref">Preferred</span></td><td>Understand when to use subqueries versus joins in SQL logic</td><td>—</td></tr>
+          <tr id="qc2.sql.P15"><td><input type="checkbox" data-ec="qc2.sql.P15" aria-label="Done: qc2.sql.P15"></td><td><code>qc2.sql.P15</code></td><td><span class="ec-tier pref">Preferred</span></td><td>Identify and use commonly used aggregate functions (e.g., COUNT(), SUM(), AVG(), MIN(), MAX()) to summarize data in queries.</td><td>—</td></tr>
+          <tr id="qc2.sql.P16"><td><input type="checkbox" data-ec="qc2.sql.P16" aria-label="Done: qc2.sql.P16"></td><td><code>qc2.sql.P16</code></td><td><span class="ec-tier pref">Preferred</span></td><td>Utilize column aliases to enhance readability and clarity of SQL queries.</td><td>—</td></tr>
+          <tr id="qc2.sql.S01"><td><input type="checkbox" data-ec="qc2.sql.S01" aria-label="Done: qc2.sql.S01"></td><td><code>qc2.sql.S01</code></td><td><span class="ec-tier str">Stretch</span></td><td>Explain how to modify a table structure after creation using ALTER TABLE with examples (e.g., adding a column, modifying a data type).</td><td>—</td></tr>
+          <tr id="qc2.sql.S02"><td><input type="checkbox" data-ec="qc2.sql.S02" aria-label="Done: qc2.sql.S02"></td><td><code>qc2.sql.S02</code></td><td><span class="ec-tier str">Stretch</span></td><td>Recognize and explain less common key types beyond primary and foreign keys, such as candidate keys or composite keys.</td><td>—</td></tr>
+          <tr id="qc2.sql.S03"><td><input type="checkbox" data-ec="qc2.sql.S03" aria-label="Done: qc2.sql.S03"></td><td><code>qc2.sql.S03</code></td><td><span class="ec-tier str">Stretch</span></td><td>Identify and implement advanced data types beyond the basics, such as BIGINT for handling very large integers</td><td>—</td></tr>
+          <tr id="qc2.sql.S04"><td><input type="checkbox" data-ec="qc2.sql.S04" aria-label="Done: qc2.sql.S04"></td><td><code>qc2.sql.S04</code></td><td><span class="ec-tier str">Stretch</span></td><td>Capable of implementing bridge tables to handle many-to-many relationships between entities.</td><td>—</td></tr>
+          <tr id="qc2.sql.S05"><td><input type="checkbox" data-ec="qc2.sql.S05" aria-label="Done: qc2.sql.S05"></td><td><code>qc2.sql.S05</code></td><td><span class="ec-tier str">Stretch</span></td><td>Understand and know how to utilize Window Functions</td><td>—</td></tr>
+          <tr id="qc2.sql.S06"><td><input type="checkbox" data-ec="qc2.sql.S06" aria-label="Done: qc2.sql.S06"></td><td><code>qc2.sql.S06</code></td><td><span class="ec-tier str">Stretch</span></td><td>Utilize Common Table Expressions (CTEs)</td><td>—</td></tr>
+          <tr id="qc2.sql.S07"><td><input type="checkbox" data-ec="qc2.sql.S07" aria-label="Done: qc2.sql.S07"></td><td><code>qc2.sql.S07</code></td><td><span class="ec-tier str">Stretch</span></td><td>Utilize subquery structure to execute a select statement.</td><td>—</td></tr>
+          <tr id="qc2.sql.S08"><td><input type="checkbox" data-ec="qc2.sql.S08" aria-label="Done: qc2.sql.S08"></td><td><code>qc2.sql.S08</code></td><td><span class="ec-tier str">Stretch</span></td><td>Utilize set operations between multiple select statements</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </article>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training</footer>
+<script>
+(function () {
+  var KEY = "tc_exit_qc2";
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+  var boxes = Array.prototype.slice.call(document.querySelectorAll("input[data-ec]"));
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  function paint() {
+    var n = 0;
+    boxes.forEach(function (b) { var on = !!state[b.getAttribute("data-ec")]; b.checked = on; var tr = b.closest("tr"); if (tr) tr.classList.toggle("ec-done", on); if (on) n++; });
+    var c = document.getElementById("ec-count"); if (c) c.textContent = n + " of " + boxes.length + " ticked";
+  }
+  boxes.forEach(function (b) { b.addEventListener("change", function () { var id = b.getAttribute("data-ec"); if (b.checked) state[id] = 1; else delete state[id]; save(); paint(); }); });
+  var r = document.getElementById("ec-reset"); if (r) r.addEventListener("click", function () { state = {}; save(); paint(); });
+  paint();
+})();
+</script>
+</body>
+</html>

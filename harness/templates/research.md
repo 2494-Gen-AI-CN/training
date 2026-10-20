@@ -17,7 +17,7 @@ version-stamps:
 ## Notes depth (D-0040; one block per curriculum subtopic, sized for a 4500–7000-word study page; every claim-bearing line carries [title](official url))
 
 ### <subtopic, spelled exactly as the curriculum lists it>
-- Interview questions: <junior-level question 1>; <question 2>; <the follow-up one level beyond>
+- Interview questions: <junior-level question 1>; <question 2>; <the follow-up one level beyond>   <!-- D-0063, from exitCriteria.fromWeek (week 3): a question that serves an exit criterion the prompt maps to this day ends with its id in parentheses, e.g. "(qc2.sql.R07)"; never an id the prompt does not list -->
 - Adjacent concept: <what the interviewer asks next> — <one sentence on why it belongs with this subtopic; never a later day's subtopic>
 - Trade-off or limit: <claim> — [<title>](<url>)
 - Recognise on sight: <what it looks like in someone else's code: a one- or two-line snippet or a pattern name>

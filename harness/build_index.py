@@ -184,12 +184,24 @@ def main(argv: list[str]) -> int:
             print("docs/index.html is stale — run: python harness/build_index.py", file=sys.stderr)
             return 1
         print("docs/index.html is in sync")
+        # The exit-criteria pages (D-0063) link live days only, so they go stale with the same curriculum edits.
+        import build_exit_pages  # late import: it imports this module
+        problems = build_exit_pages.check()
+        for p in problems:
+            print(f"{p} — run: python harness/build_exit_pages.py", file=sys.stderr)
+        if problems:
+            return 1
+        print("docs/exit-criteria in sync")
         return 0
     if new_html != html:
         INDEX.write_text(new_html, encoding="utf-8", newline="\n")
         print("docs/index.html updated")
     else:
         print("docs/index.html already up to date")
+    # The exit-criteria pages (D-0063) link live days only: rebuilt wherever the index is.
+    import build_exit_pages  # late import: it imports this module
+    if build_exit_pages.build(quiet=True):
+        print("docs/exit-criteria updated")
     # The work tracker reads the same curriculum (D-0035): whoever rebuilds the index rebuilds it too.
     import build_tracker  # late import: build_tracker imports this module
     if build_tracker.build(quiet=True):

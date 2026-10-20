@@ -293,8 +293,12 @@ def audit(week_no: int, cur: dict | None = None) -> dict:
     group_ids = list(group["byId"]) if group else []
     rows = _plan_rows(PLANS / f"week-{week_no:02d}.md")
     plan_exists = rows is not None
-    mapped, deferred = _split_rows(rows or [])
-    in_plan = {r["id"] for r in mapped} | {r["id"] for r in deferred}
+    mapped, week_rows = _split_rows(rows or [])
+    # A `week NN` Day is a forward deferral when NN is later than this week and a taught-earlier pointer when earlier
+    # (plan_check validates the latter against that week's plan).
+    deferred = [d for d in week_rows if d["week"] > week_no]
+    taught_earlier = [d for d in week_rows if d["week"] < week_no]
+    in_plan = {r["id"] for r in mapped} | {r["id"] for r in week_rows}
     missing = [i for i in group_ids if i not in in_plan]
     unknown = sorted(i for i in in_plan if i not in group["byId"]) if group else sorted(in_plan)
     anywhere: set[str] = set()
@@ -304,7 +308,7 @@ def audit(week_no: int, cur: dict | None = None) -> dict:
             m2, _ = _split_rows(wrows)
             anywhere.update(r["id"] for r in m2)
     return {"week": week_no, "group": gid, "active": active, "planExists": plan_exists, "mapped": mapped, "deferred": deferred,
-            "missing": missing, "unknown": unknown,
+            "taughtEarlier": taught_earlier, "missing": missing, "unknown": unknown,
             "groupUnion": {"mappedAnywhere": [i for i in group_ids if i in anywhere],
                            "missingEverywhere": [i for i in group_ids if i not in anywhere]}}
 
@@ -360,7 +364,7 @@ def _cmd_audit(week: str) -> int:
     a = audit(week_no)
     state = "active" if a["active"] else "inactive"
     print(f"week {week_no}: group {a['group'] or '-'} ({state}); plan {'found' if a['planExists'] else 'absent'}")
-    print(f"mapped {len(a['mapped'])}, deferred {len(a['deferred'])}, missing {len(a['missing'])}, unknown {len(a['unknown'])}")
+    print(f"mapped {len(a['mapped'])}, deferred {len(a['deferred'])}, taught earlier {len(a['taughtEarlier'])}, missing {len(a['missing'])}, unknown {len(a['unknown'])}")
     if a["missing"]:
         print("missing: " + ", ".join(a["missing"]))
     if a["unknown"]:

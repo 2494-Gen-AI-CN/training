@@ -84,7 +84,8 @@ class PlanFileTests(unittest.TestCase):
         for s in plan_check.SECTIONS:
             self.assertIn(s, text)
         for cols in (plan_check.BLOCK_COLS, plan_check.CONVENTION_COLS, plan_check.LADDER_COLS, plan_check.COVERAGE_COLS, plan_check.STANDALONE_COLS,
-                     plan_check.STOP_COLS, plan_check.SCAFFOLD_COLS, plan_check.NEVER_COLS, plan_check.SPOILER_COLS, plan_check.DEVIATION_COLS):
+                     plan_check.STOP_COLS, plan_check.SCAFFOLD_COLS, plan_check.NEVER_COLS, plan_check.SPOILER_COLS, plan_check.DEVIATION_COLS,
+                     plan_check.EXIT_COLS):
             self.assertIn("| " + " | ".join(cols) + " |", text)
 
     def test_conventions_table_is_checked(self):

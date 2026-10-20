@@ -343,6 +343,9 @@ def apply(p: dict) -> list[str]:
     if new_html != html:
         bi.INDEX.write_text(new_html, encoding="utf-8", newline="\n")
         out.append("docs/index.html updated")
+    import build_exit_pages  # D-0063: the exit-criteria pages read the same curriculum and plans
+    if build_exit_pages.build(quiet=True):
+        out.append("docs/exit-criteria updated")
     # (7) manual run record
     import log_run  # late import: it pulls in build_tracker
     states = ", ".join(f"{b['name']} {b['state']}" for b in blocks) or "no blocks"

@@ -27,6 +27,14 @@ Checks (stdlib only):
               Demo = a walkthrough of that day | facilitation | notes, Notes step a positive integer
   authored/live days - once trainer/week-WW/demos/ exists, the walkthroughs on disk equal the plan's for every
               authored or live day (name, Time, thread, Starts from, commit message) (D-0052)
+  exitmap   - from curriculum exitCriteria.fromWeek (D-0063) the LAST section "## Exit criteria map" carries every
+              criterion of the week's exit-criteria group exactly once (ID, Tier and Criterion as the source file
+              has them), in one of three Day forms: a day id of this week (Where = a walkthrough of that day |
+              facilitation | notes-only; Notes step a positive integer, required on Required rows), "week NN" of
+              a LATER week of the group (deferred; Where and Notes step "—"; never on the group's last week), or
+              "week NN" of an EARLIER week of the group (taught earlier; Where and Notes step "—"; that week's
+              plan must map the id to one of its days). Earlier weeks may omit the section; when present it is
+              validated without the completeness rule
 
 Usage:
     python harness/plan_check.py harness/plans/week-02.md
@@ -42,12 +50,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import build_index as bi  # noqa: E402
 import demo_check  # noqa: E402
+import exit_criteria  # noqa: E402
 
 ROOT = bi.ROOT
 METRICS = ROOT / "harness" / "metrics.json"
 SECTIONS = ["## Weekly Epic", "## Assumes from the previous week", "## Threads", "## Conventions", "## Standalone demos", "## Demo ladder",
             "## Per-day shape", "## Stop points", "## Squeeze priorities", "## Hard-stop rule", "## Scaffold bundle",
             "## Run prerequisites", "## Anti-spoiler ledger", "## Real-world framing and deliberate deviations", "## Coverage map"]
+SECTIONS.append("## Exit criteria map")   # D-0063: always the last section
 BLOCK_COLS = ["Block", "Day", "Slot", "Walkthrough", "Starts from", "Adds", "End state", "Commit message"]
 CONVENTION_COLS = ["Convention", "Kind", "Applies from", "Rule", "Why"]
 # D-0057: the fixed vocabulary of the Kind column. tally = how typed lines are counted; lint = linter rules and what
@@ -63,6 +73,9 @@ NEVER_COLS = ["Never pre-provide", "Walkthrough"]
 COVERAGE_COLS = ["Subtopic", "Day", "Demo", "Notes step"]
 SPOILER_COLS = ["Day", "Defers", "To", "Why"]
 DEVIATION_COLS = ["Deviation", "Workplace reality", "Pedagogical reason"]
+EXIT_COLS = ["ID", "Tier", "Criterion", "Day", "Where", "Notes step"]
+EXIT_WHERE = ("facilitation", "notes-only")
+DEFER_RE = re.compile(r"^week (\d{1,2})$")
 WALK_RE = re.compile(r"^(\d{2})-([a-z0-9]+(?:-[a-z0-9]+)*)$")
 SLOTS = ("AM", "PM")
 DAY_HEAD_RE = re.compile(r"^### (w\d{2}d\d) — ", re.M)
@@ -162,6 +175,7 @@ def load_plan(path: Path) -> dict:
     spoilers = [{k: r[k] for k in SPOILER_COLS} for r in (_table_with(_section(text, "## Anti-spoiler ledger"), SPOILER_COLS) or [])]
     framing_body = _section(text, "## Real-world framing and deliberate deviations")
     deviations = [{k: r[k] for k in DEVIATION_COLS} for r in (_table_with(framing_body, DEVIATION_COLS) or [])]
+    exit_map = [{k: r[k] for k in EXIT_COLS} for r in (_table_with(_section(text, "## Exit criteria map"), EXIT_COLS) or [])]
     stops = [{k: r[k] for k in STOP_COLS} for r in (_table_with(_section(text, "## Stop points"), STOP_COLS) or [])]
     squeeze_body = _section(text, "## Squeeze priorities")
     scaffold_body = _section(text, "## Scaffold bundle")
@@ -172,7 +186,7 @@ def load_plan(path: Path) -> dict:
         end = dh[i + 1].start() if i + 1 < len(dh) else len(shape_body)
         day_shape[h.group(1)] = shape_body[h.start():end].strip()
     return {"path": str(path), "week": week, "weekDir": wk["dir"], "threads": threads, "conventions": conventions, "standalone": standalone,
-            "ladder": ladder, "coverage": coverage, "spoilers": spoilers, "deviations": deviations, "dayShape": day_shape,
+            "ladder": ladder, "coverage": coverage, "spoilers": spoilers, "deviations": deviations, "exitMap": exit_map, "dayShape": day_shape,
             "epic": _section(text, "## Weekly Epic").strip(),
             "assumes": _bullets(_section(text, "## Assumes from the previous week")),
             "stopPoints": stops,
@@ -220,6 +234,7 @@ def day_rows(plan: dict, day_id: str) -> dict:
         "spoilerRows": [r for r in plan["spoilers"] if r["Day"] == day_id or r["To"] == day_id],
         "cutFirst": plan["squeeze"]["cutFirst"],
         "neverCut": plan["squeeze"]["neverCut"],
+        "exitRows": [r for r in plan["exitMap"] if r["Day"] == day_id],
     }
 
 
@@ -254,11 +269,15 @@ def check_plan(path: Path, metrics: dict | None = None, root: Path = ROOT) -> li
     wk = next(w for w in cur["weeks"] if w["week"] == plan["week"])
     teaching = bi.teaching_days(wk)
     ids = [d["id"] for d in teaching]
-    # headings in order
+    # headings in order; the exit map (D-0063) is required from exitCriteria.fromWeek only
+    reg = exit_criteria.registry(cur)
+    exit_active = plan["week"] >= reg["fromWeek"]
     pos = -1
     for s in SECTIONS:
         m = re.search(rf"^{re.escape(s)}\s*$", text, re.M)
         if not m:
+            if s == "## Exit criteria map" and not exit_active:
+                continue
             p.append(f"{name}: missing section '{s}'")
         elif m.start() < pos:
             p.append(f"{name}: section '{s}' out of template order")
@@ -465,6 +484,8 @@ def check_plan(path: Path, metrics: dict | None = None, root: Path = ROOT) -> li
             p.append(f"{name}: coverage map lacks subtopic '{st}' of {key[0]} (COVERAGE DEFECT)")
         elif n > 1:
             p.append(f"{name}: coverage map lists '{st}' of {key[0]} {n} times")
+    # exit criteria map (D-0063)
+    p.extend(_check_exit_map(plan, name, ids, {did: set(ws) for did, ws in order_by_day.items()}, cur, root))
     # ledgers
     if not plan["spoilers"]:
         p.append(f"{name}: Anti-spoiler ledger table missing or empty (columns {SPOILER_COLS})")
@@ -499,6 +520,101 @@ def check_plan(path: Path, metrics: dict | None = None, root: Path = ROOT) -> li
             msg = next((b["Commit message"] for t in plan["threads"] for b in t["blocks"] if b["Walkthrough"] == w), "")
             if tid != "standalone" and msg != f["commit"]:
                 p.append(f"{name}: authored/live day {did} {w}: plan commit message '{msg}' but the walkthrough commits '{f['commit']}'")
+    return p
+
+
+def _check_exit_map(plan: dict, name: str, ids: list[str], walkthroughs_by_day: dict[str, set[str]], cur: dict, root: Path = ROOT) -> list[str]:
+    """Problems with the plan's '## Exit criteria map' (D-0063). `ids` = the week's teaching day ids;
+    `walkthroughs_by_day` = {day id: the walkthrough names of that day in the ladder}.
+
+    Three Day forms per row: a day id of this week (in-week: Where a walkthrough of that day | facilitation |
+    notes-only, Notes step a positive int, "—" allowed only below fromWeek or on a non-Required row); "week NN" with
+    NN a later week of the group (deferred: Where and Notes step "—"; refused on the group's last week); "week NN"
+    with NN an earlier week of the group (taught earlier: Where and Notes step "—"; that week's plan under
+    root/harness/plans must map the id in-week). Active: every id of the group appears exactly once in any form."""
+    p: list[str] = []
+    reg = exit_criteria.registry(cur)
+    week = plan["week"]
+    active = week >= reg["fromWeek"]
+    rows = plan["exitMap"]
+    group = exit_criteria.group_for_week(week, cur)
+    if group is None or not group["exists"]:
+        if active:
+            if group is None:
+                p.append(f"{name}: exit map: week {week} is in no exitCriteria group of curriculum.json, yet fromWeek is {reg['fromWeek']}")
+            else:
+                p.append(f"{name}: exit map: the source of {group['id']} is not published; expected {group['sourceFile']}")
+        return p
+    if not active and not rows:
+        return p
+    gid = group["id"]
+    by_id = group["byId"]
+    seen: set[str] = set()
+    earlier: dict[int, set[str] | None] = {}   # week -> ids that week's plan maps in-week (None: no usable plan)
+
+    def taught_in(w: int) -> set[str] | None:
+        if w not in earlier:
+            f = root / "harness" / "plans" / f"week-{w:02d}.md"
+            wk = next((x for x in cur["weeks"] if x["week"] == w), None)
+            try:
+                o = load_plan(f) if f.is_file() and wk is not None else None
+            except ValueError:
+                o = None
+            if o is None:
+                earlier[w] = None
+            else:
+                w_ids = {d["id"] for d in bi.teaching_days(wk)}
+                earlier[w] = {r["ID"] for r in o["exitMap"] if r["Day"] in w_ids}
+        return earlier[w]
+
+    for r in rows:
+        cid = r["ID"]
+        tag = f"exit map row '{cid or '?'}'"
+        src = by_id.get(cid)
+        if src is None:
+            p.append(f"{name}: {tag}: '{cid}' is not a criterion of {gid} (run: python harness/exit_criteria.py show {gid})")
+            continue
+        if cid in seen:
+            p.append(f"{name}: {tag}: listed twice")
+        seen.add(cid)
+        if r["Tier"] != src["tier"]:
+            p.append(f"{name}: {tag}: Tier is '{src['tier']}' in the source, got '{r['Tier']}'")
+        if exit_criteria.normalise(r["Criterion"]).lower() != src["text"].lower():
+            p.append(f"{name}: {tag}: Criterion text differs from the source; copy it from exit_criteria.py show {gid}")
+        day, where, step = r["Day"], r["Where"], r["Notes step"]
+        dm = DEFER_RE.match(day)
+        if day in ids:
+            allowed = walkthroughs_by_day.get(day, set()) | set(EXIT_WHERE)
+            if where not in allowed:
+                p.append(f"{name}: {tag}: Where '{where}' is not a walkthrough of {day} in the ladder, nor {' / '.join(EXIT_WHERE)}")
+            dash_ok = step == "—" and (not active or src["tier"] != "Required")
+            if not (step.isdigit() and int(step) >= 1) and not dash_ok:
+                p.append(f"{name}: {tag}: Notes step must be a positive integer{' (a Required row)' if src['tier'] == 'Required' and active else ' or —'}, got '{step}'")
+        elif dm:
+            target = int(dm.group(1))
+            if where != "—" or step != "—":
+                p.append(f"{name}: {tag}: a 'week NN' row (deferred or taught earlier) has Where and Notes step '—', got '{where}' / '{step}'")
+            if target == week:
+                p.append(f"{name}: {tag}: 'week {target:02d}' is this week; use a day id of week {week:02d}")
+            elif target > week:
+                if week == group["lastWeek"]:
+                    p.append(f"{name}: {tag}: deferred to week {target:02d}, but week {week:02d} is the last week of {gid}; the group's last week may defer nothing")
+                elif target not in group["weeks"]:
+                    p.append(f"{name}: {tag}: deferred to 'week {target:02d}', not a later week of {gid} (weeks {group['weeks']})")
+            elif target not in group["weeks"]:
+                p.append(f"{name}: {tag}: 'week {target:02d}' is not an earlier week of {gid} (weeks {group['weeks']})")
+            else:
+                taught = taught_in(target)
+                if taught is None:
+                    p.append(f"{name}: {tag}: taught earlier in week {target:02d}, but harness/plans/week-{target:02d}.md is missing or is not a plan")
+                elif cid not in taught:
+                    p.append(f"{name}: {tag}: taught earlier in week {target:02d}, but that plan does not map it to a day of week {target:02d}")
+        else:
+            p.append(f"{name}: {tag}: Day must be a day id of week {week:02d}, 'week NN' of a later week of {gid} (deferred) or 'week NN' of an earlier week of {gid} (taught earlier), got '{day}'")
+    if active:
+        for cid, c in by_id.items():
+            if cid not in seen:
+                p.append(f"{name}: exit map lacks {cid} ({c['tier']}: {c['text'][:60]}) (EXIT DEFECT)")
     return p
 
 

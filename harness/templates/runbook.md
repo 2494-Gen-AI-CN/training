@@ -27,6 +27,14 @@ The walkthroughs (what the trainer performs, step by step, one per demo block) l
 By the end of today trainees can:
 - ...
 
+<!-- D-0063, from exitCriteria.fromWeek (week 3): the section ENDS with this table, copied from the prompt's EXIT CRITERIA rows, Required rows first; omit it when the prompt carries no rows.
+Exit criteria mapped to today
+
+| ID | Tier | Criterion | Where |
+|---|---|---|---|
+| qc2.sql.R07 | Required | <criterion text as the source lists it> | 01-<slug> (or facilitation / notes-only) |
+-->
+
 ## Setup check (10 min)
 
 - Python {{python}} present: `python --version`

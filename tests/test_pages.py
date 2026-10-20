@@ -12,6 +12,7 @@ from helpers import DOCS, FORBIDDEN_RE, HARNESS, PAGE_SCRIPT_ORDER, ROOT, Parsed
 
 sys.path.insert(0, str(HARNESS))
 import build_index  # noqa: E402
+import exit_criteria  # noqa: E402
 import notes_check  # noqa: E402
 
 EXEMPLAR = HARNESS / "templates" / "day.exemplar.html"
@@ -49,6 +50,24 @@ def _structure_checks(tc: unittest.TestCase, page: ParsedPage, day_id: str | Non
     demos_links = [a for a in r.find_all("a", "topnav") if a.text().strip() == "Demos"]
     tc.assertEqual(1, len(demos_links))
     tc.assertEqual(DEMO_REPO_URL, demos_links[0].attrs.get("href"), "the topnav Demos link points at the public demo repo")
+    # D-0063: one topnav link to the exit-criteria index; from exitCriteria.fromWeek the lede's meta links the day's group page
+    exit_links = [a for a in r.find_all("a", "topnav") if a.text().strip() == "Exit criteria"]
+    tc.assertEqual(1, len(exit_links), "exactly one topnav Exit criteria link")
+    tc.assertTrue(exit_links[0].attrs.get("href", "").endswith("exit-criteria/index.html"), exit_links[0].attrs.get("href"))
+    if day_id:
+        week_no = int(day_id[1:3])
+        if week_no >= exit_criteria.registry()["fromWeek"]:
+            group = exit_criteria.group_for_week(week_no)
+            tc.assertIsNotNone(group, f"week {week_no} belongs to no exit-criteria group")
+            stem = Path(group["source"]).stem
+            spans = r.find("div", "lede").find("div", "meta").find_all("span", "exit")
+            tc.assertEqual(1, len(spans), "the lede meta carries one span.exit (D-0063)")
+            link = spans[0].find("a")
+            tc.assertIsNotNone(link)
+            tc.assertEqual(f"../../exit-criteria/{stem}.html#{day_id}", link.attrs.get("href"))
+            target = DOCS / "exit-criteria" / f"{stem}.html"
+            tc.assertTrue(target.is_file(), f"{target} missing: is {group['id']} published?")
+            tc.assertIn(f'id="{day_id}"', target.read_text(encoding="utf-8"))
     tc.assertIsNotNone(r.find("button", "activity-card", data_modal="quiz-modal"))
     tc.assertIsNotNone(r.find("a", "snav-next"))
     tc.assertIsNotNone(r.find("div", id="quiz-modal"))

@@ -176,3 +176,22 @@ what a professional team would build instead of what the demos build.
 | Subtopic | Day | Demo | Notes step |
 |---|---|---|---|
 | Math module | w02d1 | 01-desk-modules | 1 |
+
+## Exit criteria map
+
+<!-- D-0063. Every criterion of this week's exit-criteria group (args exitGroup; `python harness/exit_criteria.py show <group>`
+     prints the ids and the exact text) EXACTLY ONCE, in one of three Day forms:
+       w03d2     mapped to a day of this week: Where = the walkthrough of that day that exercises it, or facilitation, or
+                 notes-only; Notes step = the page step that teaches it, 1-based, required on every Required row
+       week 04   a LATER week of the group = deferred (Where and Notes step —); the last week of a group may defer nothing
+       week 02   an EARLIER week of the group = taught earlier (Where and Notes step —); that week's plan maps it in-week,
+                 so nothing is re-mapped twice
+     The Coverage map's Demo column uses `notes`; this table's Where column uses `notes-only`; do not cross them.
+     Required rows first within each section. -->
+
+| ID | Tier | Criterion | Day | Where | Notes step |
+|---|---|---|---|---|---|
+| qc2.sql.R01 | Required | Articulate the reasons for using a Relational Database Model to represent data. | w03d1 | 01-desk-schema | 2 |
+| qc2.sql.S05 | Stretch | Understand and know how to utilize Window Functions | w03d4 | notes-only | 6 |
+| qc3.data.P03 | Preferred | (a row the next week of the group carries) | week 05 | — | — |
+| qc3.data.R02 | Required | (a row the previous week of the group mapped in-week) | week 04 | — | — |

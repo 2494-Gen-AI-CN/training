@@ -18,7 +18,7 @@ Release next week.
 
 1. `python harness/release_week.py <week+1> --today <date> --check`. It never writes. Read every reason it prints.
 2. Fix what it names, then run it again until it is clean.
-3. `python harness/release_week.py <week+1> --today <date>`. Add the printed Log line to `STATUS.md`.
+3. `python harness/release_week.py <week+1> --today <date>`. Add the printed Log line to `STATUS.md`. The release also rebuilds `docs/exit-criteria/` (the "Covered on" links to the week's pages appear when its days go live, D-0063).
 4. Push the week's prep branch so the trainer can rehearse from it and the close can diff against it: `git -C demo-repo push -u origin prep/week-WW`.
 
 What refuses it, and the fix:
@@ -34,7 +34,7 @@ What refuses it, and the fix:
 
 1. `python harness/drift_check.py` (add `--strict` to make dead links hard). Exit 1 means fix first.
 2. `python harness/build_tracker.py --check`
-3. `python harness/build_index.py --check`
+3. `python harness/build_index.py --check` (covers `docs/exit-criteria/` too, D-0063; `python harness/build_exit_pages.py` rebuilds those pages when a week plan's exit map or a day's status changed)
 4. `python harness/log_run.py tests`
 
 ## What hidden means

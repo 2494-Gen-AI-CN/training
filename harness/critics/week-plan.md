@@ -27,4 +27,8 @@ You are judging `harness/plans/week-WW.md` (template `harness/templates/week-pla
 
 12. The plan reads as instructions to the trainer and the authors: present tense, concrete names (files, functions, commands, commit messages), no filler, no "not X but Y" or stock AI words (D-0029 applies to the Epic and framing paragraphs). Dates come from the args, never invented.
 
+## Exit criteria (D-0063)
+
+13. Exit criteria map (D-0063): plan_check's mechanical part (every criterion of the group once, ids and text from the source, Day in this week or "week NN" of a later week of the group (deferred) or of an earlier week of the group (taught earlier: that week's plan maps it in-week; nothing is re-mapped twice), Where a walkthrough of that day / facilitation / notes-only, a Notes step on every Required row, no deferral on the group's last week) is item 1; judge the mapping: a Required row whose objective is fluency (construct, create, utilize, resolve) maps to a walkthrough, not notes-only; a row deferred without a later week of the group that can carry it fails; the rows mapped to a day fit that day's per-day shape and coverage rows; nothing is mapped to a day earlier than the curriculum subtopic it needs. Weeks before exitCriteria.fromWeek may carry no map.
+
 Return a one-sentence summary plus critiques as concrete fixes (section + row + what to change).

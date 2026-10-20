@@ -33,6 +33,7 @@ Usage:
                                                      # (refused while a proposed task has no answer)
     python harness/args_for.py --restructure         # D-0060: notes-restructure.js, the readability pass over every
     python harness/args_for.py 1 2 --restructure     # authored or live page, one week's, or named days of one week
+    exitGroup / exitRows (D-0063): the week's exit-criteria group and the plan's rows per day (day args) and per block (--demos)
 """
 from __future__ import annotations
 
@@ -45,6 +46,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import build_index as bi  # noqa: E402
 import demo_check  # noqa: E402
+import exit_criteria  # noqa: E402
 import plan_check  # noqa: E402
 import practice_tasks as pt  # noqa: E402
 
@@ -109,6 +111,7 @@ def _common(cur: dict, week: dict, ew: dict, today: str | None, metrics: dict, c
         "week": week_no, "weekDir": week["dir"], "theme": week["theme"], "phase": week["phase"], "project": week["project"],
         "weekStart": ew["start"].isoformat(), "weekEnd": ew["end"].isoformat(),
         "weekNotes": week.get("notes", ""),
+        "exitGroup": exit_criteria.week_args(cur, week_no),
         "metrics": metrics,
         "llm": config["llm"]["byWeek"].get(str(week_no), config["llm"]["default"]),
         "models": config.get("models", {}),
@@ -213,7 +216,8 @@ def demos_args(cur: dict, week: dict, today: str | None, metrics: dict, config: 
                        "dayNotes": d.get("notes", ""), "status": d.get("status", "planned"),
                        "researchBrief": _fwd(brief) if brief.is_file() else None,
                        "spoilerRows": [r for r in plan["spoilers"] if r["Day"] == b["day"] or r["To"] == b["day"]],
-                       "coverageRows": [r for r in plan["coverage"] if r["Day"] == b["day"]]})
+                       "coverageRows": [r for r in plan["coverage"] if r["Day"] == b["day"]],
+                       "exitRows": [r for r in plan["exitMap"] if r["Where"] == b["name"]]})
     if missing:
         return None, ["BLOCKED: every block's day needs a research brief (research-first); run the day workflow's research for:"] + ["  " + x for x in missing]
     if not blocks:
@@ -437,7 +441,7 @@ def main(argv: list[str]) -> int:
                 nxt.get("status") == "live"
                 or (nxt.get("status") == "authored" and not release_wire and d.get("status") != "live")):
             nxt = None
-        rows = plan_check.day_rows(plan, d["id"]) if plan else {"weekPlanRows": [], "blockRows": [], "conventions": [], "ladderRows": [], "dayShape": "", "spoilerRows": [], "cutFirst": [], "neverCut": []}
+        rows = plan_check.day_rows(plan, d["id"]) if plan else {"weekPlanRows": [], "blockRows": [], "conventions": [], "ladderRows": [], "dayShape": "", "spoilerRows": [], "cutFirst": [], "neverCut": [], "exitRows": []}
         rel = f"{week['dir']}/{d['slug']}"
         day_args = {
             **_day_base(cur, week, d, s),

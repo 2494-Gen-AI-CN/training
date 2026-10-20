@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Exit criteria | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../assets/css/style.css?v=20261017">
+<script src="../assets/js/theme.js?v=20261017"></script>
+<style>
+  .ec-main { padding-top: 0; }
+  .ec-page { max-width: 980px; margin: 0 auto; padding-top: 30px; padding-bottom: 50px; }
+  .ec-page .lede { max-width: none; margin: 0 0 10px; }
+  .ec-page .lede h1 { font-size: 40px; line-height: 1.1; margin: 0 0 10px; letter-spacing: -.5px; }
+  .ec-page .lede .meta { display: flex; gap: 14px 18px; flex-wrap: wrap; align-items: center; color: var(--ink-soft); font-size: 15px; }
+  .ec-page .lede .meta b { color: var(--ink); }
+  .ec-page .lede p { font-size: 18px; line-height: 1.6; color: var(--ink-soft); margin: 14px 0 0; }
+  .ec-page .step { opacity: 1; min-height: 0; justify-content: flex-start; padding: 30px 0 10px; border-left: 0; margin-left: 0; padding-left: 0; }
+  .ec-page [id] { scroll-margin-top: 72px; }
+  .ec-page .step h2 { font-size: 28px; line-height: 1.15; margin: 6px 0 12px; }
+  .ec-page .step h3 { font-size: 19px; line-height: 1.3; margin: 22px 0 6px; scroll-margin-top: 80px; }
+  .ec-page .step h3 a { color: inherit; text-decoration: none; border-bottom: 1px solid var(--accent-line); }
+  .ec-page .step h3 a:hover { color: var(--accent); }
+  .ec-page .step ul { margin: 0 0 14px; padding-left: 22px; font-size: 16px; line-height: 1.55; }
+  .ec-page .step li { margin: 0 0 5px; }
+  .ec-page .step p { font-size: 16px; line-height: 1.6; color: var(--ink-soft); margin: 0 0 12px; }
+  .ec-page .step code, .ec-page .step li a { font-family: var(--mono); font-size: .9em; }
+  .ec-page .step li a { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; text-decoration: none; color: var(--accent-ink); }
+  .ec-page .step li a:hover { text-decoration: underline; }
+  .ec-legend { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 16px 0 0; font-size: 14px; color: var(--ink-soft); }
+  .ec-tier { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: 2px 8px; border-radius: 20px; border: 1px solid var(--line); white-space: nowrap; vertical-align: middle; }
+  .ec-tier.req { color: var(--good-ink); border-color: var(--good-line); background: var(--good-soft); }
+  .ec-tier.pref { color: var(--info); border-color: var(--info-line); background: var(--info-soft); }
+  .ec-tier.str { color: var(--warn-ink); border-color: var(--warn-line); background: var(--warn-soft); }
+  .ec-table { width: 100%; border-collapse: collapse; font-size: 15.5px; line-height: 1.5; margin: 0 0 18px; }
+  .ec-table th, .ec-table td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; vertical-align: top; }
+  .ec-table th { background: var(--surface-2); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); }
+  .ec-table td:first-child { text-align: center; width: 44px; }
+  .ec-table input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
+  .ec-table tr { scroll-margin-top: 80px; }
+  .ec-table tr:target td { background: var(--accent-soft); }
+  .ec-table tr.ec-done td { color: var(--dim); }
+  .ec-table tr.ec-done td:nth-child(4) { text-decoration: line-through; }
+  .ec-table td code { font-family: var(--mono); font-size: .85em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; white-space: nowrap; }
+  .ec-table td a { color: var(--accent); white-space: nowrap; }
+  .ec-soon { color: var(--dim); white-space: nowrap; }
+  .ec-page .ritual { cursor: pointer; font: inherit; font-size: 12px; font-weight: 600; background: var(--surface); color: var(--ink-soft); }
+  .ec-page button.ritual:hover { color: var(--accent); border-color: var(--accent); }
+  .ec-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin: 24px 0 0; }
+  .ec-card { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+  .ec-card h2 { font-size: 22px; line-height: 1.2; margin: 0; }
+  .ec-card .ec-counts { color: var(--ink-soft); font-size: 14px; margin: 0; }
+  .ec-card .fr-btn { margin-top: auto; align-self: flex-start; }
+  .ec-card .ritual { align-self: flex-start; margin-top: auto; }
+  .ec-intro p { font-size: 17px; line-height: 1.65; color: var(--ink-soft); margin: 0 0 12px; }
+  @media (max-width: 700px) { .ec-page .lede h1 { font-size: 30px; } .ec-table { font-size: 14px; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises" target="_blank" rel="noopener">Exercises</a>
+    <a class="topnav" href="index.html">Exit criteria</a>
+  </nav>
+  <div class="topbar-right"></div>
+</div>
+
+<main class="lesson2 ec-main" id="reading-main">
+  <article class="reading-col ec-page">
+    <div class="lede">
+      <h1>Exit criteria</h1>
+      <p>Revature publishes, for each technology group of the course, the list of things a learner should be able to do
+      or explain when the group ends. Each page below is that list for one group, with a tick box per row and a link to
+      the day of notes where it is taught.</p>
+    </div>
+
+    <section class="step ec-intro" id="tiers">
+      <div class="tag">How to read the tiers</div>
+      <h2>Required, Preferred, Stretch</h2>
+      <p><b>Required</b> rows are expected of everyone at the group's exit. <b>Preferred</b> rows are what a strong
+      learner can also do. <b>Stretch</b> rows go beyond the course: good to know, never assumed.</p>
+      <p>The mock interview and the exam at the end of each group draw from these rows, so use the checklist as a
+      revision list: open a row's day of notes, work through it, then tick the row. Ticks are saved in this browser only
+      (nothing is sent anywhere), so they are yours to clear and redo.</p>
+    </section>
+
+    <section class="step" id="groups">
+      <div class="tag">Groups</div>
+      <h2>One checklist per group</h2>
+      <div class="ec-cards">
+      <div class="callout ec-card">
+        <div class="k">qc1 · weeks 1–2</div>
+        <h2>Python, Git &amp; Agile</h2>
+        <p class="ec-counts">42 required · 28 preferred · 17 stretch</p>
+        <a class="fr-btn" href="qc-1-git-agile-python.html">Open the checklist</a>
+      </div>
+      <div class="callout ec-card">
+        <div class="k">qc2 · week 3</div>
+        <h2>SQL</h2>
+        <p class="ec-counts">21 required · 16 preferred · 8 stretch</p>
+        <a class="fr-btn" href="qc-2-sql.html">Open the checklist</a>
+      </div>
+      <div class="callout ec-card">
+        <div class="k">qc3 · weeks 4–5</div>
+        <h2>Data fundamentals &amp; Gen AI fundamentals</h2>
+        <span class="ritual">Not published yet</span>
+      </div>
+      <div class="callout ec-card">
+        <div class="k">qc4 · weeks 6–8</div>
+        <h2>AI/ML fundamentals, TensorFlow &amp; vector databases</h2>
+        <span class="ritual">Not published yet</span>
+      </div>
+      <div class="callout ec-card">
+        <div class="k">qc5 · weeks 9–10</div>
+        <h2>LangChain, LangGraph &amp; agentic AI</h2>
+        <span class="ritual">Not published yet</span>
+      </div>
+      <div class="callout ec-card">
+        <div class="k">qc6 · week 11</div>
+        <h2>AWS SageMaker &amp; MLOps</h2>
+        <span class="ritual">Not published yet</span>
+      </div>
+      </div>
+    </section>
+  </article>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training</footer>
+</body>
+</html>

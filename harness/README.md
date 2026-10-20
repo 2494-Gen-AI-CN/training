@@ -11,7 +11,9 @@ harness/
   args_for.py          prints the Workflow args for <week> <day...> (day = weekday slot; holiday slots refused; BLOCKED until the
                        week's plan exists, escape --no-plan; --notes-only / --runbook-only re-author one artifact), with <week> --plan
                        the args for the week-plan workflow (D-0034), with <week> --demos the week's walkthrough blocks for demo-series.js (D-0055)
-  plan_check.py        parses + checks one week plan (block chain, conventions table, ladder, series sections, coverage map, authored days as-is); args_for and tests call it
+  plan_check.py        parses + checks one week plan (block chain, conventions table, ladder, series sections, coverage map, exit criteria map from week 3, authored days as-is); args_for and tests call it
+  exit_criteria.py     parses Curricula/Exit-Criteria/qc-N-*.md against curriculum.json exitCriteria (D-0063): show <group|week>, json, check, audit <week>; args_for and plan_check import it
+  build_exit_pages.py  exit_criteria + the plans' exit maps -> docs/exit-criteria/ (index + one learner page per published group; --check in tests and in build_index.py --check); build_index, release_week and close_day call it
   demo_check.py        FORMAT check for one walkthrough or a week's folder (D-0055): title, the five header fields, Time = sum of step
                        minutes within metrics.demos, cheat-sheet rows = steps, cwd lines, closing sections, the last step's commit,
                        typed-line cap; "What we did NOT cover" bullets take one format (D-0039). The answer key is the demo repo commit.
@@ -63,7 +65,7 @@ Workflow({ scriptPath: "harness/workflows/week-plan.js", args: { ...json... } })
 python harness/plan_check.py harness/plans/week-01.md       # the critic ran it; run it again before committing
 ```
 
-The plan's `## Threads` table makes most demo blocks rungs of one growing codebase (D-0033, D-0055): each row is one walkthrough (an AM or PM slot) and says which day and slot, what it starts from, what it adds and the ONE commit that ends it on the demo repo's prep branch. `args_for.py <week> --demos` passes the blocks into `demo-series.js`; `args_for.py <week> <day>` passes that day's coverage rows, block rows, ladder rows and day shape into `day-fanout.js`, where the runbook points at the blocks and the critics check the day teaches exactly those rows. A day cannot be authored without its plan; `--no-plan` is the logged escape for a gate bug.
+The plan's `## Threads` table makes most demo blocks rungs of one growing codebase (D-0033, D-0055): each row is one walkthrough (an AM or PM slot) and says which day and slot, what it starts from, what it adds and the ONE commit that ends it on the demo repo's prep branch. `args_for.py <week> --demos` passes the blocks into `demo-series.js`; `args_for.py <week> <day>` passes that day's coverage rows, block rows, ladder rows and day shape into `day-fanout.js`, where the runbook points at the blocks and the critics check the day teaches exactly those rows. A day cannot be authored without its plan; `--no-plan` is the logged escape for a gate bug. From week 3 the plan ends with `## Exit criteria map` (D-0063): every Revature exit criterion of the week's group (`python harness/exit_criteria.py show <week>` prints the ids and text) mapped once to a day of the week (walkthrough | facilitation | notes-only, plus the page step) or to an earlier or later week of the group; the rows reach the day authors as `exitRows` and the learner pages as the "Covered on" links.
 
 ## Per-week demo series (after the plan and the research briefs, D-0055)
 
@@ -128,7 +130,7 @@ A week authored before its Monday lands as `authored`: written, tested, but not 
 python harness/release_week.py 2 --today 2026-10-16 --check   # reads the reasons; never writes
 python harness/release_week.py 2 --today 2026-10-16           # authored -> live, index and tracker rebuilt
 ```
-Before every push: `python harness/drift_check.py`. The checklist for all three moments is `docs/process/delivery-close.md`.
+Before every push: `python harness/drift_check.py`, then `python harness/build_index.py --check` (it also checks `docs/exit-criteria/`; `python harness/build_exit_pages.py` rebuilds the pages after a plan's exit map or a day's status changes). The checklist for all three moments is `docs/process/delivery-close.md`.
 
 When the run finishes, complete its record with what the script cannot see, then look at the tracker:
 ```
