@@ -236,7 +236,8 @@
             "Write and create files",
             "Delete files",
             "JSON"
-          ]
+          ],
+          "taught": "2026-10-20"
         },
         {
           "day": 3,
