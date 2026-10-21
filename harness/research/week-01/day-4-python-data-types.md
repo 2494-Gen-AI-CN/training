@@ -67,7 +67,7 @@ version-stamps:
 ### Lists
 - Interview questions: What is the difference between `append`, `extend` and `insert`?; What does `b = a` do for a list, and how do you get an independent copy?; What is the difference between `a.sort()` and `sorted(a)`?
 - Adjacent concept: shallow versus deep copy — `list.copy()` copies the outer list only, so nested lists are still shared, which is why `copy.deepcopy` exists.
-- Trade-off or limit: `list.pop(0)` and `list.insert(0, x)` shift every element and cost O(n), so a list is a poor queue for large data; `collections.deque` handles both ends in O(1) — [Tutorial: Using Lists as Queues](https://docs.python.org/3/tutorial/datastructures.html#using-lists-as-queues), [Python Wiki: Time Complexity](https://wiki.python.org/moin/TimeComplexity) (supplement)
+- Trade-off or limit: `list.pop(0)` and `list.insert(0, x)` shift every element and cost O(n), so a list is a poor queue for large data; `collections.deque` handles both ends in O(1) — [Tutorial: Using Lists as Queues](https://docs.python.org/3/tutorial/datastructures.html#using-lists-as-queues), [Python docs: Time complexity of operations on built-in types](https://docs.python.org/3/builtins/time-complexity.html) (supplement)
 - Recognise on sight: `queue = queue.sort()` (a bug that leaves `None`), or `rows = [[0] * 3] * 3` (three aliases of one row).
 - Claims:
   - `list.append`, `extend`, `insert`, `remove`, `pop`, `sort` and `reverse` mutate the list in place; the ones that change order or size return `None` (except `pop`, which returns the removed item) — [More on Lists](https://docs.python.org/3/tutorial/datastructures.html#more-on-lists)
@@ -210,7 +210,7 @@ version-stamps:
 - PEP 238 Changing the Division Operator — https://peps.python.org/pep-0238/
 - PEP 498 Literal String Interpolation — https://peps.python.org/pep-0498/
 - PEP 515 Underscores in Numeric Literals — https://peps.python.org/pep-0515/
-- Python Wiki: Time Complexity — https://wiki.python.org/moin/TimeComplexity
+- Python docs: Time complexity of operations on built-in types — https://docs.python.org/3/builtins/time-complexity.html
 
 ## Glossary terms (3–8; one-sentence plain-language definitions; aka = alternate surface forms)
 
