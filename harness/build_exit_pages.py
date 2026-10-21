@@ -22,45 +22,23 @@ Usage:
 """
 from __future__ import annotations
 
-import html
-import json
-import re
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import build_index as bi  # noqa: E402
 import exit_criteria as ec  # noqa: E402
+import site_pages  # noqa: E402
+from site_pages import esc, load_config, version  # noqa: E402
 
 ROOT = bi.ROOT
 OUT = ROOT / "docs" / "exit-criteria"
 PLANS = ROOT / "harness" / "plans"
 TIER_CLASS = {"Required": "req", "Preferred": "pref", "Stretch": "str"}
-_V_RE = re.compile(r'style\.css\?v=([^"]+)')
-_VJS_RE = re.compile(r'theme\.js\?v=([^"]+)')
-
-
-def load_config() -> dict:
-    return json.loads((ROOT / "harness" / "config.json").read_text(encoding="utf-8"))
-
-
-def esc(s) -> str:
-    return html.escape(str(s), quote=True)
+REBUILD_CMD = "python harness/build_exit_pages.py"
 
 
 # ---------------------------------------------------------------- data
-def version() -> str:
-    """The `?v=` value docs/index.html uses for style.css (bump-css.sh rewrites every page the same way)."""
-    m = _V_RE.search(bi.INDEX.read_text(encoding="utf-8"))
-    return m.group(1) if m else "1"
-
-
-def js_version() -> str:
-    """The `?v=` value docs/index.html uses for theme.js (bump-css.sh without --all leaves it alone)."""
-    m = _VJS_RE.search(bi.INDEX.read_text(encoding="utf-8"))
-    return m.group(1) if m else version()
-
-
 def _week(cur: dict, week_no: int) -> dict | None:
     return next((w for w in cur["weeks"] if w["week"] == week_no), None)
 
@@ -169,44 +147,8 @@ CSS = """
 
 
 def _shell(title: str, body: str, cfg: dict, v: str) -> str:
-    site = cfg.get("siteTitle", "")
-    brand = cfg.get("brand", {}) or {}
-    repo = (cfg.get("repoUrl") or "").rstrip("/")
-    demo = ((cfg.get("demoRepo") or {}).get("url") or "").rstrip("/")
-    return f"""<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{esc(title)} | {esc(site)}</title>
-<link rel="stylesheet" href="../assets/css/style.css?v={esc(v)}">
-<script src="../assets/js/theme.js?v={esc(js_version())}"></script>
-<style>{CSS}</style>
-</head>
-<body>
-<a class="skip-link" href="#reading-main">Skip to content</a>
-
-<div class="topbar">
-  <div class="topbar-left">
-    <span class="brand"><a href="../index.html"><b>{esc(brand.get('bold', ''))}</b>·{esc(brand.get('rest', ''))}</a></span>
-    <a class="topnav" href="../index.html">Home</a>
-  </div>
-  <nav class="topbar-center">
-    <a class="topnav" href="{esc(demo)}" target="_blank" rel="noopener">Demos</a>
-    <a class="topnav" href="{esc(repo)}/tree/main/exercises" target="_blank" rel="noopener">Exercises</a>
-    <a class="topnav" href="index.html">Exit criteria</a>
-  </nav>
-  <div class="topbar-right"></div>
-</div>
-
-<main class="lesson2 ec-main" id="reading-main">
-  <article class="reading-col ec-page">
-{body}
-  </article>
-</main>
-
-<footer class="foot">{esc(site)} Developer Training</footer>
-"""
+    """The shared site chrome (site_pages.shell) with this section's CSS and classes; no </body></html>."""
+    return site_pages.shell(title, body, cfg, v, active="exit", extra_css=CSS, main_class="ec-main", article_class="ec-page")
 
 
 def tier_pill(tier: str) -> str:
@@ -369,43 +311,12 @@ def expected(cur: dict | None = None, root: Path = ROOT) -> dict[Path, str]:
 
 def check(root: Path = ROOT) -> list[str]:
     """Stale or unexpected pages under docs/exit-criteria/, one per line."""
-    problems = []
-    want = expected(root=root)
-    for path, text in want.items():
-        rel = path.relative_to(root).as_posix()
-        if not path.is_file():
-            problems.append(f"{rel} is missing")
-        elif path.read_text(encoding="utf-8") != text:
-            problems.append(f"{rel} is stale")
-    out_dir = root / "docs" / "exit-criteria"
-    if out_dir.is_dir():
-        for p in sorted(out_dir.glob("*.html")):
-            if p not in want:
-                problems.append(f"{p.relative_to(root).as_posix()} is not a generated page (delete it)")
-    return problems
+    return site_pages.check_dir(expected(root=root), root / "docs" / "exit-criteria", root, REBUILD_CMD)
 
 
 def build(quiet: bool = False, root: Path = ROOT) -> bool:
     """Write the pages; True when anything changed."""
-    changed = False
-    want = expected(root=root)
-    out_dir = root / "docs" / "exit-criteria"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    for path, text in want.items():
-        if path.is_file() and path.read_text(encoding="utf-8") == text:
-            continue
-        with open(path, "w", encoding="utf-8", newline="\n") as fh:
-            fh.write(text)
-        changed = True
-        if not quiet:
-            print(f"wrote {path.relative_to(root).as_posix()}")
-    for p in sorted(out_dir.glob("*.html")):
-        if p not in want:
-            p.unlink()
-            changed = True
-            if not quiet:
-                print(f"removed {p.relative_to(root).as_posix()}")
-    return changed
+    return site_pages.build_dir(expected(root=root), root / "docs" / "exit-criteria", root, quiet)
 
 
 def main(argv: list[str]) -> int:
@@ -417,7 +328,7 @@ def main(argv: list[str]) -> int:
     if "--check" in argv:
         problems = check()
         for p in problems:
-            print(f"{p} — run: python harness/build_exit_pages.py", file=sys.stderr)
+            print(f"{p} — run: {REBUILD_CMD}", file=sys.stderr)
         if problems:
             return 1
         print("docs/exit-criteria in sync")

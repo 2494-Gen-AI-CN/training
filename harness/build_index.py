@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the CAL/PHASES/PROJECTS/WEEKS block in docs/index.html from harness/curriculum.json.
+"""Generate the CAL/PHASES/PROJECTS/SPRINTS/WEEKS block in docs/index.html from harness/curriculum.json.
 
 The site stays zero-build: this script rewrites ONLY the region between
 <!-- WEEKS:BEGIN --> and <!-- WEEKS:END --> in docs/index.html and the result is
@@ -119,8 +119,28 @@ def _js(value) -> str:
     return json.dumps(value, ensure_ascii=False)
 
 
+def _project_marks(cur: dict) -> dict:
+    """Calendar marks from the projects drop zone (D-0065); never blocks the index.
+
+    A broken spec is skipped with a stderr warning (strict=False); the hard failure
+    lives in --check, the tests and drift_check. A checkout without the generator
+    renders no marks, so args_for.py and close_day.py keep working.
+    """
+    empty = {"due": {}, "cp": {}, "sprints": []}
+    try:
+        import build_projects  # late import: it imports this module
+    except ModuleNotFoundError as err:
+        if err.name != "build_projects":  # a broken import inside the generator is a bug, not an absent module
+            raise
+        return empty
+    specs = build_projects.load_specs(cur=cur, strict=False)
+    marks = build_projects.calendar_marks(specs, cur)
+    return {"due": marks.get("due") or {}, "cp": marks.get("cp") or {}, "sprints": marks.get("sprints") or []}
+
+
 def render(cur: dict | None = None) -> str:
     cur = cur or load_curriculum()
+    marks = _project_marks(cur)
     repo = json.loads((ROOT / "harness" / "config.json").read_text(encoding="utf-8"))
     repo_url = repo.get("repoUrl", "").rstrip("/")
     branch = repo.get("repoBranch", "main")
@@ -135,6 +155,8 @@ def render(cur: dict | None = None) -> str:
     lines[-1] = lines[-1].rstrip(",")
     lines.append("};")
     lines.append("window.PROJECTS = " + _js(cur["projects"]) + ";")
+    # D-0065: one span bar per visible sprint (ISO start/end); [] when none.
+    lines.append("window.SPRINTS = " + _js(marks["sprints"]) + ";")
     lines.append("window.WEEKS = [")
     for w in cur["weeks"]:
         ew = expand_week(cur, w)
@@ -156,6 +178,12 @@ def render(cur: dict | None = None) -> str:
                     entry["review"] = True
                 if is_feedback(w, d):
                     entry["feedback"] = True
+                # D-0065: flag pills for a sprint due day / an official checkpoint, only when present.
+                iso = s["date"].isoformat()
+                if marks["due"].get(iso):
+                    entry["due"] = marks["due"][iso]
+                if marks["cp"].get(iso):
+                    entry["cp"] = marks["cp"][iso]
             lines.append(f"    {_js(entry)},")
         lines[-1] = lines[-1].rstrip(",")
         lines.append("  ]},")
@@ -192,6 +220,14 @@ def main(argv: list[str]) -> int:
         if problems:
             return 1
         print("docs/exit-criteria in sync")
+        # The projects pages (D-0065): spec grammar, dates and the generated pages.
+        import build_projects  # late import: it imports this module
+        problems = build_projects.check()
+        for p in problems:
+            print(f"{p} — run: python harness/build_projects.py", file=sys.stderr)
+        if problems:
+            return 1
+        print("docs/projects in sync")
         return 0
     if new_html != html:
         INDEX.write_text(new_html, encoding="utf-8", newline="\n")
@@ -202,6 +238,15 @@ def main(argv: list[str]) -> int:
     import build_exit_pages  # late import: it imports this module
     if build_exit_pages.build(quiet=True):
         print("docs/exit-criteria updated")
+    # The projects pages (D-0065) share the site ?v= and nav: rebuilt wherever the index is.
+    # A broken spec or a missing `markdown` package is a warning here (the tracker still rebuilds); --check,
+    # the tests and drift_check.py are where it fails hard.
+    import build_projects  # late import: it imports this module
+    try:
+        if build_projects.build(quiet=True):
+            print("docs/projects updated")
+    except (build_projects.SpecError, ModuleNotFoundError) as err:
+        print(f"docs/projects NOT rebuilt: {err} (run: python harness/build_projects.py --validate)", file=sys.stderr)
     # The work tracker reads the same curriculum (D-0035): whoever rebuilds the index rebuilds it too.
     import build_tracker  # late import: build_tracker imports this module
     if build_tracker.build(quiet=True):

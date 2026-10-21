@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import subprocess
 import sys
@@ -198,7 +199,16 @@ class GitRepoPresenceTests(unittest.TestCase):
 
 
 class CliTests(unittest.TestCase):
-    FLAGS = ("--no-git", "--no-notes", "--no-tracker")
+    FLAGS = ("--no-git", "--no-notes", "--no-tracker", "--no-projects")
+
+    @unittest.skipUnless(importlib.util.find_spec("build_projects"), "landed by lane B")
+    def test_broken_projects_frontmatter_is_hard(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = make_root(Path(t))
+            write(root / "projects" / "sprints" / "x.md", "---\nthis is: [not closed\n")
+            res = cli("--root", str(root), "--no-git", "--no-notes", "--no-tracker")
+            self.assertEqual(1, res.returncode, res.stdout + res.stderr)
+            self.assertIn("HARD projects", res.stdout)
 
     def test_clean_tree_exits_0(self):
         with tempfile.TemporaryDirectory() as t:
@@ -246,7 +256,7 @@ class CliTests(unittest.TestCase):
 
 class RealRepoSmokeTests(unittest.TestCase):
     def test_decisions_and_curriculum_consistent(self):
-        res = cli("--no-git", "--no-notes", "--no-markers", "--no-tracker")
+        res = cli("--no-git", "--no-notes", "--no-markers", "--no-tracker", "--no-projects")
         self.assertEqual(0, res.returncode, res.stdout + res.stderr)
 
 

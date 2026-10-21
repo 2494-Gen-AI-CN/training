@@ -22,6 +22,11 @@
   .cal-cell.today { box-shadow:0 0 0 2px var(--accent); }
   .cal-cell.today .cd { color:var(--accent); }
   .cal-cell.today .cd:after { content:" · today"; }
+  /* Projects (D-0065): flag pills on sprint due / checkpoint days, one span bar per sprint under its week */
+  .sprint-row { grid-column: 2 / -1; display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-top:-4px; }
+  .sprint-bar { display:block; height:16px; line-height:16px; font-size:10.5px; padding:0 8px; border-radius:8px; background:var(--accent-soft); color:var(--accent-ink); border:1px solid var(--accent-line); text-decoration:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .cal-cell .mk.flag { text-decoration:none; color:inherit; }
+  @media (max-width:1000px){ .sprint-row { grid-column:1 / -1; grid-template-columns:1fr; margin-top:0; } .sprint-row .sprint-bar { grid-column:1 / -1 !important; } }
 </style>
 </head>
 <body>
@@ -34,6 +39,7 @@
     <a class="topnav" id="nav-demos" href="#" target="_blank" rel="noopener">Demos</a>
     <a class="topnav" id="nav-exercises" href="#" target="_blank" rel="noopener">Exercises</a>
     <a class="topnav" href="exit-criteria/index.html">Exit criteria</a>
+    <a class="topnav" href="projects/index.html">Projects</a>
   </nav>
   <div class="topbar-right"></div>
 </div>
@@ -46,6 +52,7 @@
       <div class="cal-foot">
         <span>★ Review / project checkpoint</span>
         <span>📝 Weekly feedback form (last day of each week)</span>
+        <span>🏁 Sprint due / project checkpoint</span>
       </div>
     </div>
     <aside class="cal-rail">
@@ -53,6 +60,7 @@
         <span class="fr-label">🔗 Resources</span>
         <a class="fr-btn" id="rail-repo" href="#" target="_blank" rel="noopener">📦 Course repository</a>
         <a class="fr-btn" href="exit-criteria/index.html">🎯 Exit criteria</a>
+        <a class="fr-btn" href="projects/index.html">🏁 Projects</a>
         <a class="fr-btn" id="rail-feedback" href="#" target="_blank" rel="noopener">📝 Weekly feedback form</a>
         <a class="fr-btn" id="rail-revpro" href="#" target="_blank" rel="noopener">🎓 RevPro</a>
         <a class="fr-btn" id="rail-revops" href="#" target="_blank" rel="noopener">⏱️ RevOps - Timesheets</a>
@@ -75,6 +83,7 @@ window.PHASES = {
   "llm": { label:"LLM applications & MLOps", c:"#e03131" }
 };
 window.PROJECTS = {"P0": {"label": "Project 0", "weeks": [1, 5]}, "P1": {"label": "Project 1", "weeks": [6, 8]}, "P2": {"label": "Project 2", "weeks": [9, 11]}};
+window.SPRINTS = [{"slug": "data-analysis-mini-sprint", "title": "Data analysis and visualisation mini-sprint", "start": "2026-10-21", "end": "2026-10-26"}];
 window.WEEKS = [
   { w:1, phase:"py", project:"P0", title:"Agile for developers, Git & Python fundamentals", start:"2026-10-12", end:"2026-10-16", days:[
     {"kind": "holiday", "date": "2026-10-12", "label": "Thanksgiving (Canada)"},
@@ -91,7 +100,7 @@ window.WEEKS = [
     {"t": "Review, Matplotlib & mini-project", "s": "data visualisation · Matplotlib · Python review · mini-project", "id": "w02d5", "date": "2026-10-23", "href": "weeks/week-02/day-5-review-matplotlib-and-mini-project.html", "ex": "https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-02/day-5-review-matplotlib-and-mini-project", "feedback": true}
   ]},
   { w:3, phase:"data", project:"P0", title:"SQL with MySQL", start:"2026-10-26", end:"2026-10-30", days:[
-    {"t": "SQL & RDBMS introduction", "s": "MySQL · schema · tables · data types · ERD · data modeling", "id": "w03d1", "date": "2026-10-26"},
+    {"t": "SQL & RDBMS introduction", "s": "MySQL · schema · tables · data types · ERD · data modeling", "id": "w03d1", "date": "2026-10-26", "due": [{"slug": "data-analysis-mini-sprint", "title": "Data analysis and visualisation mini-sprint"}]},
     {"t": "SQL sublanguages", "s": "DDL · DML · DQL · DCL · TCL · interview prep pt 2", "id": "w03d2", "date": "2026-10-27"},
     {"t": "Keys, constraints & normalization", "s": "primary/composite/foreign/unique keys · referential integrity · normalization · CRUD", "id": "w03d3", "date": "2026-10-28"},
     {"t": "Joins, subqueries & transactions", "s": "clauses · scalar/aggregate functions · joins · ACID · isolation levels", "id": "w03d4", "date": "2026-10-29"},
@@ -180,6 +189,11 @@ window.SITE = {
   const parts = iso => { const [y, m, d] = iso.split("-").map(Number); return { y, m, d }; };
   const dowOf = iso => { const p = parts(iso); return DOW[(new Date(Date.UTC(p.y, p.m - 1, p.d)).getUTCDay() + 6) % 7] || ""; };
   const fmtDay = iso => { const p = parts(iso); return `${dowOf(iso)} ${MON[p.m - 1]} ${p.d}`; };
+  // Whole days from ISO a to ISO b, in UTC like dowOf (no timezone shift).
+  const utc = iso => { const p = parts(iso); return Date.UTC(p.y, p.m - 1, p.d); };
+  const daysBetween = (a, b) => Math.round((utc(b) - utc(a)) / 86400000);
+  const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+  const attr = s => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const fmtRange = (a, b) => { const p = parts(a), q = parts(b); return p.m === q.m ? `${MON[p.m - 1]} ${p.d}–${q.d}` : `${MON[p.m - 1]} ${p.d} – ${MON[q.m - 1]} ${q.d}`; };
   // "Today" in the cohort's timezone, as ISO, so the highlight is right wherever the page is opened.
   let today = "";
@@ -216,7 +230,10 @@ window.SITE = {
       }
       const live = !!day.href;
       const title = live ? `<a class="ct-link" href="${day.href}">${day.t}</a>` : day.t;
-      const marks = (day.review ? '<span class="mk star">★</span>' : '') + (day.feedback ? '<span class="mk">📝</span>' : '');
+      let marks = (day.review ? '<span class="mk star">★</span>' : '') + (day.feedback ? '<span class="mk">📝</span>' : '');
+      // D-0065: 🏁 per sprint due on this day and per official project checkpoint
+      (day.due || []).forEach(x => { marks += `<a class="mk flag" href="projects/${x.slug}.html" title="Sprint due: ${attr(x.title)}">🏁</a>`; });
+      (day.cp || []).forEach(x => { marks += `<a class="mk flag" href="projects/${x.slug}.html" title="Checkpoint: ${attr(x.label)} — ${attr(x.title)}">🏁</a>`; });
       let chips = "";
       if (live) {
         chips += `<a class="chip" href="${day.href}">Notes</a>`;
@@ -235,6 +252,18 @@ window.SITE = {
         `</div>`;
       cal.appendChild(el);
     });
+    // D-0065: one span bar per sprint that overlaps this week, clamped to its Mon..Fri columns
+    if (week.start && week.end) {
+      (window.SPRINTS || []).forEach(s => {
+        if (!s.start || !s.end || s.end < week.start || s.start > week.end) return;
+        const a = clamp(daysBetween(week.start, s.start) + 1, 1, 5);
+        const b = clamp(daysBetween(week.start, s.end) + 1, 1, 5);
+        const row = document.createElement("div");
+        row.className = "sprint-row";
+        row.innerHTML = `<a class="sprint-bar" href="projects/${s.slug}.html" style="grid-column:${a} / ${b + 1}" title="Sprint: ${attr(s.title)}">🏁 ${attr(s.title)}</a>`;
+        cal.appendChild(row);
+      });
+    }
   });
 })();
 </script>

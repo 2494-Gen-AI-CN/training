@@ -17,12 +17,14 @@ Checks (each a function taking the repo root, so tests can point it at a tempora
   curriculum HARD  a taught day without trainer/<rel>/delivery.json or a `## Delivery record` in its
                    runbook, a taught day whose status is not live
   tracker    HARD  tracker.html missing or stale (real repo with trainer/ only)
+  projects   HARD  build_projects.check() problems (spec grammar, stale or unexpected pages) for projects/ (skipped
+                   when projects/ is absent; SOFT if build_projects.py cannot be imported)
   notes      HARD  notes_check.py --all-authored --json findings: every authored or live page is swept
                    (D-0052); dead links are SOFT unless --strict (real repo only)
 
 Usage:
     python harness/drift_check.py [--root DIR] [--strict] [--no-git] [--no-links] [--no-notes]
-                                  [--no-markers] [--no-tracker] [--json]
+                                  [--no-markers] [--no-tracker] [--no-projects] [--json]
 
 Prints one line per finding (`HARD <check>: <detail>` / `SOFT <check>: <detail>`) and a summary line,
 or with --json one JSON object. Exit code 1 iff any HARD finding, else 0.
@@ -44,7 +46,7 @@ ROW_RE = re.compile(r"^\| (D-\d{4}) \| ([^|]*?) \| ([^|]*?) \|")
 FILE_RE = re.compile(r"^(D-\d{4})-[a-z0-9]+(?:-[a-z0-9]+)*\.md$")
 
 EXCLUDED_DIRS = {"decisions", "Reference-Example", "demo-repo", ".git", "__pycache__", "node_modules"}
-MD_SCAN_DIRS = ("docs", "harness", "trainer")
+MD_SCAN_DIRS = ("docs", "harness", "trainer", "projects")
 HARD_MARKERS = [("TBD", re.compile(r"\bTBD\b")), ("OWED", re.compile(r"\bOWED\b"))]
 SOFT_MARKERS = [("pending", re.compile(r"\bpending\b", re.I)), ("blocked until", re.compile(r"blocked until", re.I))]
 
@@ -271,6 +273,23 @@ def check_tracker(root: Path) -> list[dict]:
     return []
 
 
+# ---------------------------------------------------------------- 5b. projects
+def check_projects(root: Path) -> list[dict]:
+    if not (root / "projects").is_dir():
+        return []
+    if str(HERE) not in sys.path:
+        sys.path.insert(0, str(HERE))
+    try:
+        import build_projects  # noqa: E402
+    except ImportError:
+        return [finding(SOFT, "projects", "harness/build_projects.py is missing or cannot be imported: projects not checked")]
+    try:
+        lines = build_projects.check(root)  # check() = validate() + stale/unexpected pages
+    except ModuleNotFoundError as err:  # the page renderer needs the `markdown` package (requirements-dev.txt)
+        return [finding(SOFT, "projects", f"{err}: projects pages not checked (py -m pip install -r requirements-dev.txt)")]
+    return [finding(HARD, "projects", f"{line} (run: python harness/build_projects.py)") for line in lines]
+
+
 # ---------------------------------------------------------------- 6. notes (real repo only)
 def parse_notes_output(stdout: str, strict: bool) -> list[dict]:
     """Findings from notes_check.py --json: one JSON object whose pages[].findings lists each finding's text."""
@@ -305,13 +324,15 @@ def check_notes(root: Path, links: bool = True, strict: bool = False) -> list[di
 
 # ---------------------------------------------------------------- driver
 def run(root: Path, real: bool, strict: bool = False, git: bool = True, links: bool = True, notes: bool = True,
-        markers: bool = True, tracker: bool = True) -> list[dict]:
+        markers: bool = True, tracker: bool = True, projects: bool = True) -> list[dict]:
     out = check_decisions(root)
     if markers:
         out += check_markers(root)
     if git:
         out += check_git(root)
     out += check_curriculum(root)
+    if projects:
+        out += check_projects(root)
     if real and tracker:
         out += check_tracker(root)
     if real and notes:
@@ -337,14 +358,15 @@ def main(argv: list[str]) -> int:
             return 2
         root, real = Path(args[i + 1]).resolve(), False
         del args[i:i + 2]
-    known = {"--strict", "--no-git", "--no-links", "--no-notes", "--no-markers", "--no-tracker", "--json"}
+    known = {"--strict", "--no-git", "--no-links", "--no-notes", "--no-markers", "--no-tracker", "--no-projects", "--json"}
     unknown = [a for a in args if a not in known]
     if unknown:
         print(f"unknown arguments: {' '.join(unknown)}", file=sys.stderr)
         return 2
     flags = set(args)
     found = run(root, real, strict="--strict" in flags, git="--no-git" not in flags, links="--no-links" not in flags,
-                notes="--no-notes" not in flags, markers="--no-markers" not in flags, tracker="--no-tracker" not in flags)
+                notes="--no-notes" not in flags, markers="--no-markers" not in flags, tracker="--no-tracker" not in flags,
+                projects="--no-projects" not in flags)
     hard = sum(1 for f in found if f["level"] == HARD)
     soft = len(found) - hard
     if "--json" in flags:

@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project 0: the ticket desk | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../assets/css/style.css?v=20261017">
+<script src="../assets/js/theme.js?v=20261017"></script>
+<style>
+  .pj-main { padding-top: 0; }
+  .pj-page { max-width: 980px; margin: 0 auto; padding-top: 30px; padding-bottom: 50px; }
+  .pj-page .lede { max-width: none; margin: 0 0 10px; }
+  .pj-page .lede h1 { font-size: 40px; line-height: 1.1; margin: 0 0 10px; letter-spacing: -.5px; }
+  .pj-page .lede .meta { display: flex; gap: 14px 18px; flex-wrap: wrap; align-items: center; color: var(--ink-soft); font-size: 15px; }
+  .pj-page .lede .meta b { color: var(--ink); }
+  .pj-page .lede p { font-size: 18px; line-height: 1.6; color: var(--ink-soft); margin: 14px 0 0; }
+  .pj-page .step { opacity: 1; min-height: 0; justify-content: flex-start; padding: 30px 0 10px; border-left: 0; margin-left: 0; padding-left: 0; }
+  .pj-page [id] { scroll-margin-top: 72px; }
+  .pj-page .step h2 { font-size: 28px; line-height: 1.15; margin: 6px 0 12px; }
+  .pj-page .step h3 { font-size: 19px; line-height: 1.3; margin: 22px 0 6px; }
+  .pj-page .step ul, .pj-page .step ol { margin: 0 0 14px; padding-left: 22px; font-size: 16px; line-height: 1.55; }
+  .pj-page .step li { margin: 0 0 5px; }
+  .pj-page .step p { font-size: 16px; line-height: 1.6; color: var(--ink-soft); margin: 0 0 12px; }
+  .pj-page .step code, .pj-facts code { font-family: var(--mono); font-size: .9em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+  .pj-page .step pre { background: var(--code-bg); padding: 12px 14px; border-radius: 8px; overflow-x: auto; font-size: 14px; }
+  .pj-page .step pre code { background: none; padding: 0; }
+  .pj-page .step table { width: 100%; border-collapse: collapse; font-size: 15.5px; line-height: 1.5; margin: 0 0 18px; }
+  .pj-page .step th, .pj-page .step td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; vertical-align: top; }
+  .pj-page .step thead th { background: var(--surface-2); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); }
+  .pj-facts th { width: 150px; background: var(--surface-2); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); }
+  .pj-status { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: 2px 8px; border-radius: 20px; border: 1px solid var(--line); white-space: nowrap; vertical-align: middle; }
+  .pj-status.open, .pj-status.published { color: var(--good-ink); border-color: var(--good-line); background: var(--good-soft); }
+  .pj-status.draft { color: var(--warn-ink); border-color: var(--warn-line); background: var(--warn-soft); }
+  .pj-status.closed { color: var(--dim); }
+  .pj-draft { border-left: 3px solid var(--warn-line); padding-left: 12px; }
+  .pj-checkpoints li { font-weight: 600; color: var(--ink); }
+  .pj-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin: 24px 0 0; }
+  .pj-card, .pj-slot { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+  .pj-card h2, .pj-slot h2 { font-size: 22px; line-height: 1.2; margin: 0; }
+  .pj-card .pj-when { color: var(--ink-soft); font-size: 14px; margin: 0; }
+  .pj-card .pj-status { align-self: flex-start; }
+  .pj-card .fr-btn { margin-top: auto; align-self: flex-start; }
+  .pj-card.pj-closed { opacity: .7; }
+  .pj-slot { opacity: .75; }
+  .pj-slot .ritual { align-self: flex-start; }
+  .pj-intro p, .pj-empty { font-size: 17px; line-height: 1.65; color: var(--ink-soft); margin: 0 0 12px; }
+  @media (max-width: 700px) { .pj-page .lede h1 { font-size: 30px; } .pj-facts th { width: auto; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises" target="_blank" rel="noopener">Exercises</a>
+    <a class="topnav" href="../exit-criteria/index.html">Exit criteria</a>
+    <a class="topnav" href="index.html">Projects</a>
+  </nav>
+  <div class="topbar-right"></div>
+</div>
+
+<main class="lesson2 pj-main" id="reading-main">
+  <article class="reading-col pj-page">
+    <div class="lede">
+      <h1>Project 0: the ticket desk</h1>
+      <div class="meta"><span><b>Project 0</b></span><span>Weeks 1–5</span><span class="pj-status draft">Draft</span></div>
+      <p class="pj-draft">Draft: this spec is still being written and can change before it is published.</p>
+      <div class="pj-intro">
+<p>Project 0 is the support-ticket desk you build up over the first five weeks: one small codebase that gains a piece with each new topic, from plain Python classes to files, tests, data analysis, a database and a language model.</p>
+      </div>
+    </div>
+
+    <section class="step" id="at-a-glance">
+      <h2>At a glance</h2>
+      <table class="pj-facts">
+        <tbody>
+          <tr><th scope="row">Project</th><td>Project 0 (P0)</td></tr>
+          <tr><th scope="row">Weeks</th><td>Weeks 1–5</td></tr>
+          <tr><th scope="row">Hand-in</th><td><code>projects/P0/</code> in your learner repository</td></tr>
+          <tr><th scope="row">Status</th><td>Draft</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="step" id="goal">
+      <h2>Goal</h2>
+<p>Build a working support-ticket desk for a small software team in your own learner repository, and show that you can carry one codebase from plain Python all the way to a feature that calls a language model, keeping it runnable and tested at every step.</p>
+    </section>
+
+    <section class="step" id="scope">
+      <h2>Scope</h2>
+<p>In scope: tickets with a title, priority, status and history; customers who file tickets and agents who triage them; a service-level target (SLA) in hours for each priority; and the storage, tests, statistics and charts the desk needs.</p>
+<p>Out of scope: a web front end, user accounts and passwords, and deployment to a server. The desk runs from the command line or a notebook.</p>
+    </section>
+
+    <section class="step" id="requirements">
+      <h2>Requirements</h2>
+<ul>
+<li>R-01 Model a ticket as a Python class with a title, priority, status and a history of changes, and let an agent move a ticket from open to in progress to resolved with every change recorded in its history.</li>
+<li>R-02 Save the desk to a JSON file and load it back, handling a missing or malformed file with a clear message instead of a crash.</li>
+<li>R-03 Flag every ticket that has broken its SLA (open longer than the target hours for its priority), with pytest tests for the SLA rule, the status changes of R-01 and the file handling of R-02.</li>
+<li>R-04 Report resolution hours with NumPy (mean, median and worst case per priority), load the tickets into a pandas DataFrame that answers at least three questions about the desk, and save one Matplotlib chart as an image file.</li>
+<li>R-05 Keep tickets, customers and agents in SQL tables, and add one feature that sends a ticket to a language model (a triage suggestion, a summary or a draft reply), reading the API key from the environment and never committing it.</li>
+</ul>
+    </section>
+
+    <section class="step" id="deliverable">
+      <h2>Deliverable</h2>
+<p>A folder <code>projects/P0/</code> in your learner repository holding the code, the tests, the saved chart and a README that explains how to install, run and test the desk and which file covers each requirement.</p>
+    </section>
+
+    <section class="step" id="checkpoints">
+      <h2>Checkpoints</h2>
+      <ul class="pj-checkpoints">
+        <li>Week 5 · Day 5 — Fri Nov 13, 2026 — Showcase</li>
+      </ul>
+<p>The showcase is the one checkpoint: the desk is complete and you present it. Each topic adds the piece the next requirement needs, so keep the desk working as you go instead of building it all in the last week.</p>
+    </section>
+
+    <section class="step" id="rubric">
+      <h2>Rubric</h2>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>What a complete project shows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Working code</td>
+<td>The desk runs from a fresh clone by following the README.</td>
+</tr>
+<tr>
+<td>Requirements</td>
+<td>R-01 to R-05 are each met and easy to find.</td>
+</tr>
+<tr>
+<td>Tests</td>
+<td><code>pytest</code> passes and covers the SLA rule and the file errors.</td>
+</tr>
+<tr>
+<td>Code quality</td>
+<td>Small functions, clear names, no secrets in the repository.</td>
+</tr>
+<tr>
+<td>Presentation</td>
+<td>A clear walk-through, with questions answered from the code.</td>
+</tr>
+</tbody>
+</table>
+    </section>
+
+    <section class="step" id="presentation">
+      <h2>Presentation</h2>
+<p>About ten minutes each at the showcase: run the desk live, walk through the code of one requirement, show the chart and the language model feature, then take questions.</p>
+    </section>
+  </article>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training</footer>
+</body>
+</html>

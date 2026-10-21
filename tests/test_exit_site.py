@@ -13,6 +13,7 @@ sys.path.insert(0, str(HARNESS))
 import build_exit_pages  # noqa: E402
 import build_index  # noqa: E402
 import exit_criteria  # noqa: E402
+import site_pages  # noqa: E402
 
 OUT = DOCS / "exit-criteria"
 ISO_RE = re.compile(r"20\d\d-\d\d-\d\d")
@@ -20,6 +21,11 @@ ISO_RE = re.compile(r"20\d\d-\d\d-\d\d")
 
 def _groups() -> list[dict]:
     return exit_criteria.load_groups(curriculum())
+
+
+def _sibling_section_indexes() -> set[str]:
+    """The topnav hrefs the shared shell emits for the OTHER generated sections (site_pages.SECTIONS)."""
+    return {f"../{d}/index.html" for key, _label, d in site_pages.SECTIONS if key != "exit"}
 
 
 def _index_version() -> str:
@@ -43,6 +49,9 @@ def _common_checks(tc: unittest.TestCase, page: ParsedPage):
     nav = [a for a in r.find_all("a", "topnav") if a.text().strip() == "Exit criteria"]
     tc.assertEqual(1, len(nav))
     tc.assertEqual("index.html", nav[0].attrs.get("href"))
+    nav = [a for a in r.find_all("a", "topnav") if a.text().strip() == "Projects"]
+    tc.assertEqual(1, len(nav), "the shared shell (site_pages.SECTIONS) links the Projects section once")
+    tc.assertEqual("../projects/index.html", nav[0].attrs.get("href"))
     tc.assertIsNone(FORBIDDEN_RE.search(page.raw), FORBIDDEN_RE.search(page.raw))
     tc.assertNotRegex(page.raw, r"<html[^>]*\bdata-view")
     tc.assertNotRegex(page.raw, r"<html[^>]*\bdata-theme")
@@ -55,6 +64,8 @@ def _common_checks(tc: unittest.TestCase, page: ParsedPage):
             continue
         tc.assertFalse(href.startswith("//"), href)
         target = (page.path.parent / href.split("?")[0].split("#")[0]).resolve()
+        if href in _sibling_section_indexes() and not target.parent.is_dir():
+            continue  # another generated section's index: optional only while that section has no pages at all
         tc.assertTrue(target.is_file(), f"broken relative link {href}")
     for href in page.hrefs():
         if href.startswith("http"):
