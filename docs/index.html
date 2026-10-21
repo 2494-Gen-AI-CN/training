@@ -22,11 +22,12 @@
   .cal-cell.today { box-shadow:0 0 0 2px var(--accent); }
   .cal-cell.today .cd { color:var(--accent); }
   .cal-cell.today .cd:after { content:" · today"; }
-  /* Projects (D-0065): flag pills on sprint due / checkpoint days, one span bar per sprint under its week */
-  .sprint-row { grid-column: 2 / -1; display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-top:-4px; }
+  /* Projects (D-0065): flag pills on sprint due / checkpoint days, one span bar per sprint above its week's days */
+  .sprint-row { grid-column: 2 / -1; display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:-4px; }
+  .cal-week.has-sprints { grid-row: span var(--sr, 2); }
   .sprint-bar { display:block; height:16px; line-height:16px; font-size:10.5px; padding:0 8px; border-radius:8px; background:var(--accent-soft); color:var(--accent-ink); border:1px solid var(--accent-line); text-decoration:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .cal-cell .mk.flag { text-decoration:none; color:inherit; }
-  @media (max-width:1000px){ .sprint-row { grid-column:1 / -1; grid-template-columns:1fr; margin-top:0; } .sprint-row .sprint-bar { grid-column:1 / -1 !important; } }
+  @media (max-width:1000px){ .sprint-row { grid-column:1 / -1; grid-template-columns:1fr; margin-bottom:0; } .sprint-row .sprint-bar { grid-column:1 / -1 !important; } .cal-week.has-sprints { grid-row:auto; } }
 </style>
 </head>
 <body>
@@ -217,7 +218,23 @@ window.SITE = {
     wc.className = "cal-week"; wc.style.setProperty("--pc", ph.c);
     const range = (week.start && week.end) ? `<div class="wd">${fmtRange(week.start, week.end)}</div>` : "";
     wc.innerHTML = `<div class="ww">Week ${week.w}</div>${range}<div class="wt">${week.title}</div><div class="wp">${ph.label}</div><div class="proj-band">${proj}</div>`;
+    // D-0065: one span bar per sprint that overlaps this week, clamped to its Mon..Fri columns, drawn ABOVE the days;
+    // the week header spans the bar rows and the day row so it stays beside the days.
+    const bars = [];
+    if (week.start && week.end) {
+      (window.SPRINTS || []).forEach(s => {
+        if (!s.start || !s.end || s.end < week.start || s.start > week.end) return;
+        const a = clamp(daysBetween(week.start, s.start) + 1, 1, 5);
+        const b = clamp(daysBetween(week.start, s.end) + 1, 1, 5);
+        const row = document.createElement("div");
+        row.className = "sprint-row";
+        row.innerHTML = `<a class="sprint-bar" href="projects/${s.slug}.html" style="grid-column:${a} / ${b + 1}" title="Sprint: ${attr(s.title)}">🏁 ${attr(s.title)}</a>`;
+        bars.push(row);
+      });
+    }
+    if (bars.length) { wc.classList.add("has-sprints"); wc.style.setProperty("--sr", bars.length + 1); }
     cal.appendChild(wc);
+    bars.forEach(row => cal.appendChild(row));
     week.days.forEach(day => {
       const dateLine = day.date ? `<div class="cd">${fmtDay(day.date)}</div>` : "";
       const isToday = !!day.date && day.date === today;
@@ -252,18 +269,6 @@ window.SITE = {
         `</div>`;
       cal.appendChild(el);
     });
-    // D-0065: one span bar per sprint that overlaps this week, clamped to its Mon..Fri columns
-    if (week.start && week.end) {
-      (window.SPRINTS || []).forEach(s => {
-        if (!s.start || !s.end || s.end < week.start || s.start > week.end) return;
-        const a = clamp(daysBetween(week.start, s.start) + 1, 1, 5);
-        const b = clamp(daysBetween(week.start, s.end) + 1, 1, 5);
-        const row = document.createElement("div");
-        row.className = "sprint-row";
-        row.innerHTML = `<a class="sprint-bar" href="projects/${s.slug}.html" style="grid-column:${a} / ${b + 1}" title="Sprint: ${attr(s.title)}">🏁 ${attr(s.title)}</a>`;
-        cal.appendChild(row);
-      });
-    }
   });
 })();
 </script>
