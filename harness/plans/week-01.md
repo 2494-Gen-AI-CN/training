@@ -259,3 +259,60 @@ A support desk at a small software company works like this: a customer files a t
 | Iterators | w01d5 | 07-ticket-and-desk-classes | 8 |
 | Scope | w01d5 | 07-ticket-and-desk-classes | 9 |
 | Classes and objects | w01d5 | 07-ticket-and-desk-classes | 6 |
+
+## Exit criteria map
+
+| ID | Tier | Criterion | Day | Where | Notes step |
+|---|---|---|---|---|---|
+| qc1.agile.R01 | Required | Describe the difference between iterative and linear SDLC techniques. | w01d2 | facilitation | 2 |
+| qc1.agile.R02 | Required | Explain the benefits of using the Agile process. | w01d2 | facilitation | 2 |
+| qc1.agile.R03 | Required | Describe the scrum ceremonies. | w01d2 | facilitation | 3 |
+| qc1.agile.R04 | Required | Describe the phases of SDLC. | w01d2 | facilitation | 2 |
+| qc1.agile.R05 | Required | Participate in developing a sprint backlog | w01d2 | notes-only | 3 |
+| qc1.agile.P01 | Preferred | Describe the scrum process. | w01d2 | facilitation | 3 |
+| qc1.agile.P02 | Preferred | Participate in at least one scrum ceremony (e.g. sprint planning, daily stand-up, sprint review, retrospective) and demonstrate understanding of their purpose and outcomes. | w01d2 | notes-only | 3 |
+| qc1.agile.P03 | Preferred | Develop a user story by breaking down its components (e.g. role, feature, benefit) and create tasks to complete it. | w01d2 | notes-only | 4 |
+| qc1.agile.S01 | Stretch | Describe story pointing and burndown charts. | w01d2 | facilitation | 4 |
+| qc1.agile.S02 | Stretch | Demonstrate knowledge of velocity. | w01d2 | facilitation | 4 |
+| qc1.git.R01 | Required | Describe the purpose of git. | w01d2 | facilitation | 5 |
+| qc1.git.R02 | Required | Describe the difference between git and a git-based cloud service provider. | w01d2 | notes-only | 5 |
+| qc1.git.R03 | Required | Clone an existing repository. | w01d2 | 01-tooling-and-git | 5 |
+| qc1.git.R04 | Required | Utilize a command line interface to add and commit to a local repository. | w01d2 | 01-tooling-and-git | 5 |
+| qc1.git.R05 | Required | Utilize a command line interface to push to and pull from a remote repository. | w01d2 | 01-tooling-and-git | 7 |
+| qc1.git.R06 | Required | Describe a simple git workflow to publish local changes to a remote repository. | w01d2 | 01-tooling-and-git | 7 |
+| qc1.git.R07 | Required | Describe the function of branching in a git repository, and how it differs from forking a repository. | w01d2 | 01-tooling-and-git | 6 |
+| qc1.git.R08 | Required | Create a branch on an existing repository, commit changes to it, and push it to the remote repository. | w01d2 | 01-tooling-and-git | 6 |
+| qc1.git.R09 | Required | Create a pull or merge request through a git-based cloud service provider to merge two branches together while resolving any conflicts. | w01d2 | notes-only | 6 |
+| qc1.git.R10 | Required | Using a command line interface, switch between branches of a repository. | w01d2 | 01-tooling-and-git | 6 |
+| qc1.git.R11 | Required | Describe common git workflow patterns and branching strategies (e.g. git flow) used by teams on collaborative projects, and their benefits. | w01d2 | notes-only | 8 |
+| qc1.git.R12 | Required | Explain why merge conflicts happen, and resolve them while merging two branches using a command line interface. | w01d2 | 01-tooling-and-git | 6 |
+| qc1.git.R13 | Required | Describe the purpose of rebase, fast-forward, and squash options when merging. | w01d2 | 01-tooling-and-git | 6 |
+| qc1.git.P01 | Preferred | Utilize a .gitignore file to prevent build files from being committed to a repo. | w01d2 | 01-tooling-and-git | 5 |
+| qc1.git.P02 | Preferred | Utilize a command line interface to initialize a new local git repository. | w01d2 | 01-tooling-and-git | 5 |
+| qc1.git.P03 | Preferred | Use git stash to save code changes without committing and git stash pop to restore those changes. | w01d2 | notes-only | 6 |
+| qc1.git.P04 | Preferred | Using git diff, inspect a file for changes across branches prior to creating a merge request. | w01d2 | notes-only | 5 |
+| qc1.git.P05 | Preferred | Using a command line interface, navigate a repository's commit history to branch from a previous commit. | w01d2 | notes-only | 6 |
+| qc1.git.P06 | Preferred | Complete a rebase, fast-forward, and/or squash merge. | w01d2 | 01-tooling-and-git | 6 |
+| qc1.git.S01 | Stretch | Utilize CLI flags to combine the add and commit steps. | w01d2 | notes-only | 5 |
+| qc1.git.S02 | Stretch | Utilize a command line interface to view the current state of a local repository. | w01d2 | 01-tooling-and-git | 5 |
+| qc1.git.S03 | Stretch | Utilize a command line interface to view a log of recent commits. | w01d2 | 01-tooling-and-git | 8 |
+| qc1.python.R01 | Required | Executes and describes basic programming constructs | w01d3 | 02-ticket-record-and-rules | 1 |
+| qc1.python.R03 | Required | Understands control flow, variable scopes, functions/methods and parameters | w01d5 | 06-desk-control-flow-and-functions | 3 |
+| qc1.python.R04 | Required | Uses appropriate data types and can elaborate on all basic Python datatypes | w01d4 | 04-ticket-text-and-queue | 3 |
+| qc1.python.R05 | Required | Explain the advantages and benefits of using the Python Language | w01d2 | facilitation | 1 |
+| qc1.python.R06 | Required | Understands how and when to apply different conditional logic based on problem set requirements | w01d5 | 06-desk-control-flow-and-functions | 1 |
+| qc1.python.R07 | Required | Explain, elaborate, and incorporate the 4 OOP principles: abstraction, encapsulation, polymorphism, inheritance | w01d5 | 07-ticket-and-desk-classes | 6 |
+| qc1.python.R08 | Required | Knows the difference between method overloading and method overriding | w01d5 | 07-ticket-and-desk-classes | 7 |
+| qc1.python.R09 | Required | Create and invoke constructors to instantiate objects | w01d5 | 07-ticket-and-desk-classes | 6 |
+| qc1.python.R10 | Required | Explain the difference between classes and objects | w01d5 | 07-ticket-and-desk-classes | 6 |
+| qc1.python.R12 | Required | Override methods within a child class that extends a parent class | w01d5 | 07-ticket-and-desk-classes | 7 |
+| qc1.python.R13 | Required | Explain encapsulation with the naming convention-based approach, similar to access modifiers | w01d5 | 07-ticket-and-desk-classes | 6 |
+| qc1.python.R15 | Required | Can explain and implement multiple inheritance in Python | w01d5 | notes-only | 7 |
+| qc1.python.R23 | Required | Demonstrates understanding of scope and namespaces | w01d5 | 07-ticket-and-desk-classes | 9 |
+| qc1.python.P04 | Preferred | Can explain Python's "Call by Object Reference" or "Call by assignment" system | w01d3 | notes-only | 3 |
+| qc1.python.P08 | Preferred | Can explain what garbage collection is in Python and identify when objects become eligible for collection | w01d2 | notes-only | 1 |
+| qc1.python.P11 | Preferred | Explains interpreter vs. compiler differences | w01d2 | 01-tooling-and-git | 1 |
+| qc1.python.P14 | Preferred | Good understanding of functional programming (lambdas, higher-order functions, functions as variables, pure vs. impure functions) | w01d5 | 06-desk-control-flow-and-functions | 4 |
+| qc1.python.P16 | Preferred | Understands the difference between 'is' and '==' in Python | w01d3 | 02-ticket-record-and-rules | 3 |
+| qc1.python.S02 | Stretch | Able to use and elaborate on Namespaces in Python | w01d4 | 05-ticket-dict-and-clock | 7 |
+| qc1.python.S03 | Stretch | Can use Python's zip(), enumerate(), and map() effectively | w01d5 | notes-only | 2 |

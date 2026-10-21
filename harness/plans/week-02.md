@@ -284,3 +284,33 @@ A support desk at a small software company runs on a codebase several people cha
 | Overview of data visualization | w02d5 | facilitation | 1 |
 | Matplotlib | w02d5 | 09-status-charts | 2 |
 | Python review | w02d5 | facilitation | 4 |
+
+## Exit criteria map
+
+| ID | Tier | Criterion | Day | Where | Notes step |
+|---|---|---|---|---|---|
+| qc1.python.R02 | Required | Utilizes basic troubleshooting skills | w02d2 | 03-errors-and-files | 1 |
+| qc1.python.R11 | Required | Define an abstract class that is extended by multiple classes that share similar state | w02d5 | notes-only | 4 |
+| qc1.python.R14 | Required | Exhibits understanding of unit testing and how to test Python applications with either pytest or another module | w02d3 | 05-desk-tests | 3 |
+| qc1.python.R16 | Required | Understands and applies decorators for logging and timing | w02d3 | 05-desk-tests | 4 |
+| qc1.python.R17 | Required | Can use map, filter, and reduce to build functional-style data transformations and compare their performance to equivalent list comprehensions | w02d5 | notes-only | 4 |
+| qc1.python.R18 | Required | Can parse and serialize data using the json module, including loading from and writing to files | w02d2 | 04-desk-json | 6 |
+| qc1.python.R19 | Required | Demonstrate strong debugging capabilities by reading a stack trace and use IDE debugging tools | w02d2 | 03-errors-and-files | 1 |
+| qc1.python.R20 | Required | Know how and when to handle exceptions | w02d2 | 03-errors-and-files | 2 |
+| qc1.python.R21 | Required | Understands pip and how to install packages with pip | w02d1 | 02-pip-and-module-split | 4 |
+| qc1.python.R22 | Required | Knows how to read from and write to files | w02d2 | 03-errors-and-files | 3 |
+| qc1.python.P01 | Preferred | Can implement and use context managers via 'with' and custom classes | w02d2 | 03-errors-and-files | 3 |
+| qc1.python.P02 | Preferred | Able to test edge cases and use mocking libraries in unit tests | w02d3 | 05-desk-tests | 2 |
+| qc1.python.P03 | Preferred | Able to use logging module and describe the different logging levels | w02d1 | 01-desk-modules | 2 |
+| qc1.python.P05 | Preferred | Can use collections from the collections module such as Counter or deque. | w02d4 | 07-collections | 1 |
+| qc1.python.P06 | Preferred | Can utilize the re module to format text with regular expressions | w02d1 | 01-desk-modules | 3 |
+| qc1.python.P07 | Preferred | Can demonstrate basic familiarity with NumPy, including creating simple arrays and performing basic element-wise operations | w02d3 | 06-hours-numpy | 5 |
+| qc1.python.P09 | Preferred | Can load data into a Pandas DataFrame and perform simple inspections such as viewing rows, checking column names, and summarizing data | w02d4 | 08-ticket-frame | 5 |
+| qc1.python.P10 | Preferred | Can create, activate, and deactivate a virtual environment with the necessary packages | w02d1 | 02-pip-and-module-split | 4 |
+| qc1.python.P12 | Preferred | Knows Python modules (math, logging, json, re, pylint) | w02d1 | 01-desk-modules | 1 |
+| qc1.python.P13 | Preferred | Understands the uses of list comprehensions | w02d5 | facilitation | 5 |
+| qc1.python.P15 | Preferred | Able to utilize and describe different file handling modes | w02d2 | 03-errors-and-files | 4 |
+| qc1.python.S01 | Stretch | Can use generator expressions. | w02d4 | notes-only | 1 |
+| qc1.python.S04 | Stretch | Able to write and explain basic recursive functions | w02d5 | notes-only | 4 |
+| qc1.python.S05 | Stretch | Builds a file-driven program that reads, processes, and writes structured data | w02d2 | 04-desk-json | 6 |
+| qc1.python.S06 | Stretch | Refactors a procedural script into modular structured code | w02d1 | 02-pip-and-module-split | 6 |

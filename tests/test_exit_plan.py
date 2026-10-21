@@ -89,7 +89,8 @@ class ArgsTests(unittest.TestCase):
 class PlanCheckTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.text = WEEK2.read_text(encoding="utf-8")
+        # The committed plan carries the backfilled map (D-0064); the fixtures start from the plan without it.
+        cls.text = WEEK2.read_text(encoding="utf-8").split(HEADING)[0].rstrip() + "\n"
         cls.plan = plan_check.load_plan(WEEK2)
         cls.group = exit_criteria.load_group("qc1")
         assert cls.group and cls.group["exists"], "qc1 source must be published"
@@ -131,7 +132,7 @@ class PlanCheckTests(unittest.TestCase):
         return "".join(out)
 
     def test_section_may_be_absent_before_from_week(self):
-        self.assertFalse(plan_check.load_plan(WEEK2)["exitMap"], "the committed week-02 plan carries no exit map")
+        self.assertEqual([], [x for x in plan_check.check_plan(WEEK2) if "exit map" in x], "the committed week-02 map validates")
         self.assertEqual([], self.exit_problems(self.text))
 
     def test_section_required_from_from_week(self):
@@ -271,7 +272,7 @@ class PlanCheckTests(unittest.TestCase):
         plans = root / "harness" / "plans"
         plans.mkdir(parents=True)
         if week1_rows is not None:
-            w1 = (PLANS / "week-01.md").read_text(encoding="utf-8").rstrip()
+            w1 = (PLANS / "week-01.md").read_text(encoding="utf-8").split(HEADING)[0].rstrip()
             if week1_rows:
                 w1 += "\n\n" + HEADING + "\n\n" + TABLE_HEAD + week1_rows
             (plans / "week-01.md").write_text(w1 + "\n", encoding="utf-8")
