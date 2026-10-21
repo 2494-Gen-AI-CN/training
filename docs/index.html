@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>2494 · Gen-AI Python Developer Training</title>
-<link rel="stylesheet" href="assets/css/style.css?v=20261017">
+<link rel="stylesheet" href="assets/css/style.css?v=20261021">
 <script src="assets/js/theme.js?v=20261017"></script>
 <style>
   .cell-chips { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
@@ -23,7 +23,7 @@
   .cal-cell.today .cd { color:var(--accent); }
   .cal-cell.today .cd:after { content:" · today"; }
   /* Projects (D-0065): flag pills on sprint due / checkpoint days, one span bar per sprint above its week's days */
-  .sprint-row { grid-column: 2 / -1; display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:-4px; }
+  .sprint-row { grid-column: 2 / -1; display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; margin-bottom:-4px; }
   .cal-week.has-sprints { grid-row: span var(--sr, 2); }
   .sprint-bar { display:block; height:16px; line-height:16px; font-size:10.5px; padding:0 8px; border-radius:8px; background:var(--accent-soft); color:var(--accent-ink); border:1px solid var(--accent-line); text-decoration:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .cal-cell .mk.flag { text-decoration:none; color:inherit; }
