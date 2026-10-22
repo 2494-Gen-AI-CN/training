@@ -75,7 +75,7 @@ Prerequisite: the desk-mysql container from D-0059 is up on this machine (docker
       LIKE 'transaction_isolation'.
    i. GRANT / REVOKE / SHOW GRANTS on a scratch user, then DROP USER.
 3. Commit harness/sqlfake/recorded/*.txt and record.py. These files are the spec for S1; nothing else is.
-Exit: every item a–i has a recorded file; MySQL version line ("Server version: 9.7.2 MySQL Community Server")
+Exit: every item a–i has a recorded file; MySQL version line ("Server version: 9.7.x MySQL Community Server", the patch the mysql:9.7 tag resolved to on the day)
 captured at the top of the first file; STATUS.md O-23 notes the commit.
 ```
 
