@@ -77,12 +77,59 @@
     "fromWeek": 3,
     "sourceDir": "Curricula/Exit-Criteria",
     "groups": [
-      { "id": "qc1", "label": "Python, Git & Agile", "weeks": [1, 2], "source": "qc-1-git-agile-python.md" },
-      { "id": "qc2", "label": "SQL", "weeks": [3], "source": "qc-2-sql.md" },
-      { "id": "qc3", "label": "Data fundamentals & Gen AI fundamentals", "weeks": [4, 5], "source": "qc-3-data-and-gen-ai-fundamentals.md" },
-      { "id": "qc4", "label": "AI/ML fundamentals, TensorFlow & vector databases", "weeks": [6, 7, 8], "source": "qc-4-ai-ml-tensorflow-vector-dbs.md" },
-      { "id": "qc5", "label": "LangChain, LangGraph & agentic AI", "weeks": [9, 10], "source": "qc-5-langchain-langgraph-agentic-ai.md" },
-      { "id": "qc6", "label": "AWS SageMaker & MLOps", "weeks": [11], "source": "qc-6-sagemaker-mlops.md" }
+      {
+        "id": "qc1",
+        "label": "Python, Git & Agile",
+        "weeks": [
+          1,
+          2
+        ],
+        "source": "qc-1-git-agile-python.md"
+      },
+      {
+        "id": "qc2",
+        "label": "SQL",
+        "weeks": [
+          3
+        ],
+        "source": "qc-2-sql.md"
+      },
+      {
+        "id": "qc3",
+        "label": "Data fundamentals & Gen AI fundamentals",
+        "weeks": [
+          4,
+          5
+        ],
+        "source": "qc-3-data-and-gen-ai-fundamentals.md"
+      },
+      {
+        "id": "qc4",
+        "label": "AI/ML fundamentals, TensorFlow & vector databases",
+        "weeks": [
+          6,
+          7,
+          8
+        ],
+        "source": "qc-4-ai-ml-tensorflow-vector-dbs.md"
+      },
+      {
+        "id": "qc5",
+        "label": "LangChain, LangGraph & agentic AI",
+        "weeks": [
+          9,
+          10
+        ],
+        "source": "qc-5-langchain-langgraph-agentic-ai.md"
+      },
+      {
+        "id": "qc6",
+        "label": "AWS SageMaker & MLOps",
+        "weeks": [
+          11
+        ],
+        "source": "qc-6-sagemaker-mlops.md"
+      }
     ]
   },
   "weeks": [
@@ -269,7 +316,8 @@
             "Numpy",
             "Interview mindset - 1st part"
           ],
-          "notes": "DAY SHAPE (D-0054): two headlines, testing and NumPy. The morning teaches testing on the desk's own rules (overview, unit testing, pytest); the afternoon teaches NumPy as a library of its own, against W1D4's lists: an array of ticket resolution hours where a list was, with the vectorised arithmetic, dtype and shape differences shown and then tested with pytest. NumPy gets at least two notes steps and at least one demo rung of its own; it is never a mention inside the testing steps. Interview mindset part 1 is a facilitation block, not a demo."
+          "notes": "DAY SHAPE (D-0054): two headlines, testing and NumPy. The morning teaches testing on the desk's own rules (overview, unit testing, pytest); the afternoon teaches NumPy as a library of its own, against W1D4's lists: an array of ticket resolution hours where a list was, with the vectorised arithmetic, dtype and shape differences shown and then tested with pytest. NumPy gets at least two notes steps and at least one demo rung of its own; it is never a mention inside the testing steps. Interview mindset part 1 is a facilitation block, not a demo.",
+          "taught": "2026-10-21"
         },
         {
           "day": 4,
@@ -288,7 +336,8 @@
             "Collections module",
             "Pandas"
           ],
-          "notes": "DAY SHAPE (D-0054): two headlines, the collections module and pandas. The morning teaches Counter, namedtuple and OrderedDict on the ticket records; the afternoon teaches pandas as a library of its own, against the morning's Counter and namedtuple and Tuesday's JSON files: a DataFrame of tickets loaded from the desk's JSON file, grouped and counted where Counter was, columns where namedtuple fields were. pandas gets at least two notes steps and at least one demo rung of its own; it is never a mention inside the collections steps."
+          "notes": "DAY SHAPE (D-0054): two headlines, the collections module and pandas. The morning teaches Counter, namedtuple and OrderedDict on the ticket records; the afternoon teaches pandas as a library of its own, against the morning's Counter and namedtuple and Tuesday's JSON files: a DataFrame of tickets loaded from the desk's JSON file, grouped and counted where Counter was, columns where namedtuple fields were. pandas gets at least two notes steps and at least one demo rung of its own; it is never a mention inside the collections steps.",
+          "taught": "2026-10-22"
         },
         {
           "day": 5,
