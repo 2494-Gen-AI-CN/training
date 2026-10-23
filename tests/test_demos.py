@@ -32,10 +32,12 @@ class DemoScriptTests(unittest.TestCase):
                     self.assertIsNone(SECRET_RE.search(p.read_text(encoding="utf-8")), f"secret-looking string in {p.name}")
 
     def test_blocks_chain_in_order(self):
-        """Every non-cold block starts from the walkthrough right before it in the folder (one thread per week so far)."""
+        """Every non-cold block starts from an earlier walkthrough: one of this week's folder before it, or any block of
+        an earlier week (a week's first block starts from the previous week's last one, D-0034)."""
         if not TRAINER.exists():
             self.skipTest("trainer/ private repo not cloned here")
-        for w in authored_weeks():
+        earlier: list[str] = []
+        for w in sorted(authored_weeks(), key=lambda w: w["dir"]):
             ddir = week_demos(w["dir"])
             if not ddir.is_dir():
                 continue
@@ -45,7 +47,9 @@ class DemoScriptTests(unittest.TestCase):
                 with self.subTest(file=f"{w['dir']}/{f.name}"):
                     self.assertIsNotNone(facts["thread"], "Thread line malformed")
                     if facts["startsFrom"] != "cold":
-                        self.assertIn(facts["startsFrom"], names[:i], f"starts from {facts['startsFrom']}, which is not an earlier walkthrough of the week")
+                        self.assertIn(facts["startsFrom"], earlier + names[:i],
+                                      f"starts from {facts['startsFrom']}, which is not an earlier walkthrough of this or an earlier week")
+            earlier += names
 
 
 class DemoCheckSelfTests(unittest.TestCase):

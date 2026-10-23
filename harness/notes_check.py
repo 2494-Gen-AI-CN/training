@@ -531,6 +531,8 @@ def check_url(href: str, timeout: int = 10) -> str | None:
     about the page. A plain 404 still comes through as dead. Checked 2026-10-23."""
     agents = ("Mozilla/5.0 link-check", "curl/8.11.1")
     last = None
+    if _HOST_403.get(_root(href)):
+        return None  # the host already proved it blocks this client: no request tells us anything
     for ua in agents:
         hdrs = {"User-Agent": ua}
         try:
@@ -539,6 +541,8 @@ def check_url(href: str, timeout: int = 10) -> str | None:
         except urllib.error.HTTPError as e:
             if e.code not in (403, 405):
                 return f"HTTP {e.code}"
+            if e.code == 403 and _host_blocks(href, timeout):
+                return None
         except Exception as e:  # noqa: BLE001 - any network failure is a dead link for this purpose
             return e.__class__.__name__
         try:
@@ -554,10 +558,15 @@ def check_url(href: str, timeout: int = 10) -> str | None:
 _HOST_403: dict[str, bool] = {}
 
 
-def _host_blocks(href: str, timeout: int) -> bool:
-    """True when the host's root page answers 403 as well (a WAF blocking this client, not a missing page)."""
+def _root(href: str) -> str:
     parts = urllib.parse.urlsplit(href)
-    root = f"{parts.scheme}://{parts.netloc}/"
+    return f"{parts.scheme}://{parts.netloc}/"
+
+
+def _host_blocks(href: str, timeout: int) -> bool:
+    """True when the host's root page answers 403 as well (a WAF blocking this client, not a missing page).
+    Cached per host for the process, so a blocked host costs one probe and then nothing."""
+    root = _root(href)
     if root not in _HOST_403:
         try:
             with urllib.request.urlopen(urllib.request.Request(root, headers={"User-Agent": "curl/8.11.1"}), timeout=timeout) as r:
