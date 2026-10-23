@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w03d5">
+<title>W3·D5 — Advanced SQL: triggers, views, procedures &amp; indexes | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261023">
+<script src="../../assets/js/theme.js?v=20261023"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises" target="_blank" rel="noopener">Exercises</a>
+    <a class="topnav" href="../../exit-criteria/index.html">Exit criteria</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>Advanced SQL: triggers, views, procedures &amp; indexes on the ticket desk</h1>
+        <div class="meta">
+          <span><b>Week 3</b> · Day 5</span>
+          <span>Fri Oct 30, 2026</span>
+          <span>SQL with MySQL</span>
+          <span><b>~34 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span class="verified">Sources checked 2026-10-23 · python 3.15 · mysql 9.7 · mysql-connector-python 26.7.0 · pytest 9.0</span>
+          <span class="exit"><a href="../../exit-criteria/qc-2-sql.html#w03d5">Exit criteria</a></span>
+        </div>
+        <p class="summary">This page assumes Thursday's joins, the board and agent-load report queries, and the
+        transaction that assigns a ticket on the desk's seven tables. It teaches the objects that let a MySQL database do
+        work of its own: a trigger that writes ticket history, views over the board, stored procedures and a trigger that
+        calls one, a user-defined function, and an index read through EXPLAIN. A last step reviews the whole week, from
+        the Docker container to the routines. Afterwards you can create and call each of them, say when to choose which,
+        and explain what an index buys and what it costs.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="0">
+        <div class="tag">Trigger</div>
+        <h2>Triggers: SQL that runs when a row changes</h2>
+        <p>So far every change to the desk came from a statement someone sent. A trigger lets the database add a step
+        of its own.</p>
+        <h3>What a trigger is and what it automates</h3>
+        <p>A trigger is a named object stored with one table. The server runs it automatically when an INSERT, UPDATE or
+        DELETE happens on that table, either BEFORE or AFTER the row changes.<sup class="cite"><a href="#src-1">1</a></sup>
+        Each trigger is bound to exactly one table, one event and one timing, and <code>FOR EACH ROW</code> means its body
+        runs once for every row the statement touches.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <p>The MySQL manual's examples cover three common jobs for a trigger:<sup class="cite"><a href="#src-2">2</a></sup></p>
+        <ul>
+          <li>writing an audit or history row each time a record changes;</li>
+          <li>keeping a derived value in step with the rows it comes from;</li>
+          <li>checking a rule and refusing a bad row before it is written.</li>
+        </ul>
+        <p>The desk wants the first job. Its <code>ticket_events</code> table has existed since Wednesday and stayed empty,
+        because nothing wrote to it on its own. A trigger on <code>tickets</code> can write one event whenever a ticket's
+        status or agent changes, whichever program made the change.</p>
+        <h3>Writing one: DELIMITER, BEGIN and END</h3>
+        <p>A trigger with several statements wraps its body in <code>BEGIN ... END</code>, and each statement inside ends
+        with a semicolon. The mysql client normally sends a statement to the server as soon as it reads a semicolon.
+        <code>DELIMITER //</code> changes that end marker for a moment, so the whole CREATE travels as one statement and
+        stops at <code>END //</code>.<sup class="cite"><a href="#src-3">3</a></sup></p>
+<pre><code>DELIMITER //
+CREATE TRIGGER tickets_status_change
+AFTER UPDATE ON tickets
+FOR EACH ROW
+BEGIN
+  IF OLD.status &lt;&gt; NEW.status OR NOT (OLD.agent_id &lt;=&gt; NEW.agent_id) THEN
+    INSERT INTO ticket_events (ticket_id, kind, note)
+    VALUES (NEW.ticket_id, NEW.status, CONCAT('was ', OLD.status, ', agent ', COALESCE(NEW.agent_id, 'none')));
+  END IF;
+END //
+DELIMITER ;</code></pre>
+        <p>The client answers <code>Query OK, 0 rows affected</code> and the trigger waits for its first UPDATE. Without
+        the two DELIMITER lines, the first semicolon inside the body ends the statement early and the client reports a syntax error. The last line sets the marker
+        back to the semicolon.</p>
+<pre><code>UPDATE tickets SET status = 'closed', closed_at = '2026-10-19 14:00:00' WHERE ticket_id = 5;
+SELECT event_id, ticket_id, kind, note FROM ticket_events;</code></pre>
+<pre class="out">Query OK, 1 row affected
+Rows matched: 1  Changed: 1  Warnings: 0
+
++----------+-----------+--------+-----------------------+
+| event_id | ticket_id | kind   | note                  |
++----------+-----------+--------+-----------------------+
+|        1 |         5 | closed | was assigned, agent 2 |
++----------+-----------+--------+-----------------------+
+1 row in set</pre>
+        <p>Nobody typed an INSERT into <code>ticket_events</code>. The UPDATE moved ticket 5 from assigned to closed, so
+        the trigger wrote the row itself, taking the old status and the current agent from the two versions of the
+        row.</p>
+        <h3>OLD, NEW and the NULL-safe comparison</h3>
+        <p>Inside a row trigger, <code>OLD.col</code> is a column's value before the change and <code>NEW.col</code> is its
+        value after. An INSERT has no OLD row and a DELETE has no NEW row, so each name exists only where it makes
+        sense.<sup class="cite"><a href="#src-2">2</a></sup></p>
+        <p>The test on <code>agent_id</code> needs care, because that column is NULL on four of the six tickets. A plain
+        <code>&lt;&gt;</code> yields NULL when either side is NULL, and IF treats NULL as false, so a ticket's first agent
+        would never count as a change. The NULL-safe equals <code>&lt;=&gt;</code> always answers 1 or 0, and
+        <code>NOT (OLD.agent_id &lt;=&gt; NEW.agent_id)</code> is the NULL-safe way to detect a change.<sup class="cite"><a href="#src-4">4</a></sup></p>
+<pre><code>SELECT NULL = NULL, NULL &lt;=&gt; NULL, NULL &lt;&gt; 1, NOT (NULL &lt;=&gt; 1);</code></pre>
+<pre class="out">+-------------+---------------+-----------+------------------+
+| NULL = NULL | NULL &lt;=&gt; NULL | NULL &lt;&gt; 1 | NOT (NULL &lt;=&gt; 1) |
++-------------+---------------+-----------+------------------+
+|        NULL |             1 |      NULL |                1 |
++-------------+---------------+-----------+------------------+
+1 row in set</pre>
+        <div class="ix-predict" data-q="With the trigger in place, UPDATE tickets SET title = 'Add a dark mode' WHERE ticket_id = 6; runs. How many rows does ticket_events gain?" data-a="None. The row changed, so the trigger body ran, but its IF found the same status and the same agent on both sides and skipped the INSERT. FOR EACH ROW means the body runs for each row, not that it always writes."></div>
+        <h3>BEFORE or AFTER</h3>
+        <p>The timing decides what a trigger may do with the row.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <table>
+          <thead><tr><th>Timing</th><th>Can it change the incoming row?</th><th>Typical job</th></tr></thead>
+          <tbody>
+            <tr><td>BEFORE</td><td>Yes, with <code>SET NEW.col = ...</code>, because the row is not written yet</td><td>tidy a value, or check a rule and refuse the row</td></tr>
+            <tr><td>AFTER</td><td>No, the row is already written</td><td>write an audit or history row about the final row</td></tr>
+          </tbody>
+        </table>
+        <p>A BEFORE trigger that tidies titles shows the difference. This one is an illustration, and the desk does not
+        keep it.<sup class="cite"><a href="#src-2">2</a></sup></p>
+<pre><code>DELIMITER //
+CREATE TRIGGER tickets_tidy_title
+BEFORE INSERT ON tickets
+FOR EACH ROW
+BEGIN
+  SET NEW.title = TRIM(NEW.title);
+END //
+DELIMITER ;
+INSERT INTO tickets (ticket_id, title, priority, customer_id, opened_at)
+VALUES (7, '   Reset link expired  ', 'normal', 4, '2026-10-19 13:00:00');
+SELECT ticket_id, CONCAT('[', title, ']') AS title, status FROM tickets WHERE ticket_id = 7;</code></pre>
+<pre class="out">Query OK, 0 rows affected
+
+Query OK, 1 row affected
+
++-----------+----------------------+--------+
+| ticket_id | title                | status |
++-----------+----------------------+--------+
+|         7 | [Reset link expired] | open   |
++-----------+----------------------+--------+
+1 row in set</pre>
+        <p>The spaces never reach the table, because the trigger rewrote <code>NEW.title</code> before the row was stored.
+        An AFTER trigger could not do that, which is why audit rows, which describe what was written, go in an AFTER
+        trigger.</p>
+        <h3>The cost of logic nobody sees</h3>
+        <p>A trigger runs on every matching change, out of sight of the code that made it. A developer reading the Python
+        that closes a ticket sees one UPDATE and nothing about a history row, so a surprise in
+        <code>ticket_events</code> sends them searching. Each trigger also adds work to every write on its
+        table.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <p>Two facts limit the surprise. A trigger fires inside the transaction of the statement that caused it,
+        so a ROLLBACK undoes the trigger's writes along with the change.<sup class="cite"><a href="#src-2">2</a></sup>
+        And MySQL fires triggers only for changes made by SQL statements, so a row removed by an <code>ON DELETE
+        CASCADE</code> foreign key fires no DELETE trigger.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <p><code>SHOW TRIGGERS</code> lists a database's triggers and <code>DROP TRIGGER</code> removes one by
+        name.<sup class="cite"><a href="#src-5">5</a></sup> In someone else's schema a trigger shows as <code>CREATE
+        TRIGGER</code>, a timing, an event, <code>ON</code> a table and <code>FOR EACH ROW</code>.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A trigger runs by itself on one table's insert, update or delete, before or after the change.</li>
+          <li>OLD is the row before, NEW the row after, and the NULL-safe equals compares nullable columns.</li>
+          <li>BEFORE can rewrite the incoming row; AFTER suits audit and history rows.</li>
+          <li>A rollback undoes a trigger's writes together with the statement that fired it.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A trigger is SQL the database runs by itself when a row in one table is inserted, updated or deleted. I'd use
+          one for something that has to happen whatever program makes the change, like writing an audit row every time a
+          ticket's status changes. Inside it, OLD is the row before the change and NEW is the row after.</p>
+          <p>The catch is visibility. The application shows an UPDATE and nothing else, so whoever debugs the history table
+          has to know the trigger exists. I keep triggers short, give them names that say what they do, and keep them in
+          the same SQL files as the schema.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">Views</div>
+        <h2>Views: a saved query with a name</h2>
+        <p>Thursday's board query joins four tables and runs to nine lines. A view gives that query a name, so the
+        desk, a report and a teammate all read the same board without retyping it. The examples from here on start
+        from a rebuild of the desk's database, so ticket 5 is assigned again, ticket 7 is gone and neither trigger above
+        exists.</p>
+        <h3>A stored SELECT, read like a table</h3>
+        <p>A view is a stored SELECT with a name. It holds no rows of its own: each time something reads it, the server
+        runs its query against the tables underneath.<sup class="cite"><a href="#src-6">6</a></sup> In a FROM clause a
+        view is used exactly like a table.<sup class="cite"><a href="#src-6">6</a></sup></p>
+<pre><code>CREATE VIEW open_board AS
+SELECT t.ticket_id, CONCAT('TD-', t.ticket_id) AS ref, t.title, t.priority, t.status,
+       c.name AS customer, a.name AS agent,
+       DATE_ADD(t.opened_at, INTERVAL p.sla_hours HOUR) AS deadline
+FROM tickets AS t
+JOIN customers AS c ON c.customer_id = t.customer_id
+JOIN priorities AS p ON p.priority = t.priority
+LEFT JOIN agents AS a ON a.agent_id = t.agent_id
+WHERE t.status &lt;&gt; 'closed'
+ORDER BY t.ticket_id;
+SELECT * FROM open_board;</code></pre>
+<pre class="out">Query OK, 0 rows affected
+
++-----------+------+------------------------+----------+----------+------------+-------+---------------------+
+| ticket_id | ref  | title                  | priority | status   | customer   | agent | deadline            |
++-----------+------+------------------------+----------+----------+------------+-------+---------------------+
+|         4 | TD-4 | Checkout button frozen | high     | assigned | Mei Chen   | Priya | 2026-10-19 12:00:00 |
+|         5 | TD-5 | Export is missing rows | normal   | assigned | Ravi Patel | Marco | 2026-10-19 12:00:00 |
+|         6 | TD-6 | Add dark mode          | low      | open     | Mei Chen   | NULL  | 2026-10-22 12:00:00 |
++-----------+------+------------------------+----------+----------+------------+-------+---------------------+
+3 rows in set</pre>
+        <p>The body is Thursday's board query with one line added, the WHERE that drops closed tickets. The view's
+        columns take their names from the SELECT's names and aliases, which is why the query says <code>AS ref</code>,
+        <code>AS customer</code> and <code>AS agent</code>.<sup class="cite"><a href="#src-6">6</a></sup> Callers depend on
+        those names, so the aliases are part of the view's contract.</p>
+        <p>A view also re-runs its query on every read. It saves typing and keeps one definition of the
+        board; it saves no computation, and reading the view a thousand times runs the four-table join a thousand
+        times.<sup class="cite"><a href="#src-6">6</a></sup></p>
+        <h3>Reading a view from Python</h3>
+        <p>Python reads a view with an ordinary SELECT through <code>cursor.execute</code>. A cursor made with
+        <code>conn.cursor(dictionary=True)</code> returns each row as a dict keyed by the view's column names, so the code
+        says <code>row["ref"]</code> instead of remembering a position.<sup class="cite"><a href="#src-7">7</a></sup></p>
+<pre><code>from db import connect
+
+conn = connect()
+cursor = conn.cursor(dictionary=True)
+cursor.execute("SELECT * FROM open_board")
+rows = cursor.fetchall()
+cursor.close()
+conn.commit()
+for row in rows:
+    print(row["ref"], row["customer"], row["agent"], row["deadline"])
+conn.close()</code></pre>
+<pre class="out">TD-4 Mei Chen Priya 2026-10-19 12:00:00
+TD-5 Ravi Patel Marco 2026-10-19 12:00:00
+TD-6 Mei Chen None 2026-10-22 12:00:00</pre>
+        <p>The missing agent arrives as Python's <code>None</code>, and the deadline as a <code>datetime</code> that prints
+        in the same format the client shows. The <code>conn.commit()</code> after the read ends its transaction, as every
+        desk function has done since Wednesday. Nothing in the Python names a join: if the board's definition changes, the
+        view changes and this code does not.</p>
+        <h3>Updating through a view</h3>
+        <p>Some views accept INSERT, UPDATE and DELETE and pass them to the table underneath. A view that uses aggregates,
+        GROUP BY, DISTINCT or UNION is not updatable, because one of its rows does not map back to one row of a table; a
+        plain view over one table generally is.<sup class="cite"><a href="#src-8">8</a></sup></p>
+        <table>
+          <thead><tr><th>View</th><th>Built from</th><th>Updatable?</th></tr></thead>
+          <tbody>
+            <tr><td>a list of agent ids and names</td><td>one table, plain columns</td><td>generally yes</td></tr>
+            <tr><td><code>agent_load</code></td><td>a join with COUNT and GROUP BY</td><td>no</td></tr>
+          </tbody>
+        </table>
+<pre><code>CREATE VIEW agent_load AS
+SELECT a.name AS agent, COUNT(t.ticket_id) AS open_tickets
+FROM agents AS a
+LEFT JOIN tickets AS t ON t.agent_id = a.agent_id AND t.status &lt;&gt; 'closed'
+GROUP BY a.agent_id, a.name
+ORDER BY a.agent_id;
+SELECT * FROM agent_load;
+UPDATE agent_load SET open_tickets = 0 WHERE agent = 'Sam';</code></pre>
+<pre class="out">Query OK, 0 rows affected
+
++-------+--------------+
+| agent | open_tickets |
++-------+--------------+
+| Priya |            1 |
+| Marco |            1 |
+| Sam   |            0 |
+| Lee   |            0 |
++-------+--------------+
+4 rows in set
+
+ERROR 1288 (HY000): The target table agent_load of the UPDATE is not updatable</pre>
+        <p>Sam's zero is a count, and no row of any table holds it, so there is nothing for the UPDATE to change. When a
+        view is no longer wanted, <code>DROP VIEW agent_load;</code> removes the definition and no
+        data.<sup class="cite"><a href="#src-9">9</a></sup></p>
+        <h3>Views as a security boundary</h3>
+        <p>Teams also create views to control what an account can see. A view can expose chosen columns and chosen rows,
+        and a GRANT can name a single view, so an account may read the view while holding no privilege on the tables
+        beneath it.<sup class="cite"><a href="#src-10">10</a></sup> A reporting login could read <code>open_board</code>
+        and never see a customer's email or monthly fee.</p>
+        <p>In someone else's schema a view reads as <code>CREATE VIEW</code>, a name, <code>AS</code> and a SELECT.
+        Everywhere else it looks like a table, so the name is often the only clue. The desk's names help here: tables are
+        plural nouns such as <code>tickets</code>, while each view is named for the report it gives, such as
+        <code>open_board</code>.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A view is a named SELECT that holds no rows and runs its query on every read.</li>
+          <li>Aliases in the SELECT become the view's column names, which callers read by name.</li>
+          <li>A view with an aggregate, GROUP BY, DISTINCT or UNION cannot be updated through.</li>
+          <li>A grant on a view alone shows an account chosen columns and rows.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A view is a saved SELECT with a name. I create it with CREATE VIEW, the name, AS and the query, say an open
+          board that joins tickets, customers, priorities and agents, and then I read it with SELECT star FROM the view
+          as if it were a table. From Python it's an ordinary SELECT.</p>
+          <p>It doesn't store any data. The query runs every time it's read, so a view keeps one definition of the board
+          in one place but saves no work. A view with GROUP BY or an aggregate can't be updated through, and I can grant
+          an account a single view to hide the columns it shouldn't see.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">What is a stored procedure</div>
+        <h2>Stored procedures: a unit of work kept in the database</h2>
+        <p>A view names a read. A stored procedure names a piece of work: one or more statements kept in the database and
+        run on demand.</p>
+        <h3>Defining and calling a procedure</h3>
+        <p><code>CREATE PROCEDURE</code> defines routine code with a list of parameters, and <code>CALL</code> runs
+        it.<sup class="cite"><a href="#src-11">11</a></sup> A procedure may change rows, return result sets to the client
+        or set OUT parameters.<sup class="cite"><a href="#src-12">12</a></sup> Its body sits between BEGIN and END, so it
+        needs the same DELIMITER lines as a trigger. The examples below run in order, starting from a rebuild with
+        <code>tickets_status_change</code> created again, so <code>ticket_events</code> starts empty.</p>
+<pre><code>DELIMITER //
+CREATE PROCEDURE close_ticket(IN p_ticket_id INT, IN p_closed_at DATETIME)
+BEGIN
+  UPDATE tickets
+  SET status = 'closed', closed_at = p_closed_at
+  WHERE ticket_id = p_ticket_id;
+END //
+DELIMITER ;
+CALL close_ticket(4, '2026-10-19 15:00:00');
+SELECT event_id, ticket_id, kind, note FROM ticket_events;</code></pre>
+<pre class="out">Query OK, 0 rows affected
+
+Query OK, 1 row affected
+
++----------+-----------+--------+-----------------------+
+| event_id | ticket_id | kind   | note                  |
++----------+-----------+--------+-----------------------+
+|        1 |         4 | closed | was assigned, agent 1 |
++----------+-----------+--------+-----------------------+
+1 row in set</pre>
+        <p>The <code>p_</code> prefix keeps parameters apart from columns, so <code>closed_at = p_closed_at</code> plainly
+        sets the column from the parameter. The event row came from the trigger, because the procedure's UPDATE changed a
+        status like any other statement.</p>
+        <p>A procedure can also hand rows back. A SELECT in the body sends its result to whoever called:</p>
+<pre><code>DELIMITER //
+CREATE PROCEDURE tickets_for_customer(IN p_email VARCHAR(255))
+BEGIN
+  SELECT t.ticket_id, t.title, t.status
+  FROM tickets AS t
+  JOIN customers AS c ON c.customer_id = t.customer_id
+  WHERE c.email = p_email
+  ORDER BY t.ticket_id;
+END //
+DELIMITER ;
+CALL tickets_for_customer('dana@example.com');</code></pre>
+<pre class="out">Query OK, 0 rows affected
+
++-----------+------------------------+--------+
+| ticket_id | title                  | status |
++-----------+------------------------+--------+
+|         1 | Login page returns 500 | closed |
+|         3 | Typo on pricing page   | closed |
++-----------+------------------------+--------+
+2 rows in set
+
+Query OK, 0 rows affected</pre>
+        <h3>IN, OUT and INOUT parameters</h3>
+        <p>Each parameter has a mode that says which way its value travels.<sup class="cite"><a href="#src-11">11</a></sup></p>
+        <table>
+          <thead><tr><th>Mode</th><th>Value travels</th><th>Desk example</th></tr></thead>
+          <tbody>
+            <tr><td>IN</td><td>from the caller into the procedure</td><td>the ticket id passed to <code>close_ticket</code></td></tr>
+            <tr><td>OUT</td><td>from the procedure back to the caller</td><td>a count of open tickets</td></tr>
+            <tr><td>INOUT</td><td>in, then back out changed</td><td>a running total the procedure adds to</td></tr>
+          </tbody>
+        </table>
+<pre><code>DELIMITER //
+CREATE PROCEDURE count_open(OUT p_total INT)
+BEGIN
+  SELECT COUNT(*) INTO p_total
+  FROM tickets
+  WHERE status &lt;&gt; 'closed';
+END //
+DELIMITER ;
+CALL count_open(@n);
+SELECT @n;</code></pre>
+<pre class="out">Query OK, 0 rows affected
+
+Query OK, 1 row affected
+
++------+
+| @n   |
++------+
+|    2 |
++------+
+1 row in set</pre>
+        <p>The caller passes a variable, <code>@n</code>, for the procedure to fill, then reads it: 2, because ticket 4
+        is now closed and only tickets 5 and 6 are still open. Inside BEGIN and END a
+        procedure can also DECLARE local variables and branch or loop with IF and WHILE, so a body can hold real
+        logic.<sup class="cite"><a href="#src-13">13</a></sup></p>
+        <h3>A trigger that calls a procedure</h3>
+        <p>A trigger body may CALL a procedure, so logic shared by several triggers or callers is written
+        once.<sup class="cite"><a href="#src-2">2</a></sup> The desk moves its history INSERT into a small procedure,
+        <code>log_event</code>, and the trigger's INSERT becomes a CALL. In the routines file the procedure comes first,
+        because the trigger names it. The old trigger goes first with <code>DROP TRIGGER</code>, so the new one can take
+        its name.<sup class="cite"><a href="#src-5">5</a></sup></p>
+<pre><code>DROP TRIGGER tickets_status_change;
+DELIMITER //
+CREATE PROCEDURE log_event(IN p_ticket_id INT, IN p_kind VARCHAR(20), IN p_note VARCHAR(255))
+BEGIN
+  INSERT INTO ticket_events (ticket_id, kind, note)
+  VALUES (p_ticket_id, p_kind, p_note);
+END //
+CREATE TRIGGER tickets_status_change
+AFTER UPDATE ON tickets
+FOR EACH ROW
+BEGIN
+  IF OLD.status &lt;&gt; NEW.status OR NOT (OLD.agent_id &lt;=&gt; NEW.agent_id) THEN
+    CALL log_event(NEW.ticket_id, NEW.status, CONCAT('was ', OLD.status, ', agent ', COALESCE(NEW.agent_id, 'none')));
+  END IF;
+END //
+DELIMITER ;
+UPDATE tickets SET agent_id = 3 WHERE ticket_id = 6;
+SELECT event_id, ticket_id, kind, note FROM ticket_events WHERE ticket_id = 6;</code></pre>
+<pre class="out">Query OK, 0 rows affected
+
+Query OK, 0 rows affected
+
+Query OK, 0 rows affected
+
+Query OK, 1 row affected
+Rows matched: 1  Changed: 1  Warnings: 0
+
++----------+-----------+------+-------------------+
+| event_id | ticket_id | kind | note              |
++----------+-----------+------+-------------------+
+|        2 |         6 | open | was open, agent 3 |
++----------+-----------+------+-------------------+
+1 row in set</pre>
+        <p>Ticket 6 kept its status and gained its first agent, and the NULL-safe test caught the change. The event is
+        number 2 because ticket 4's closure already wrote number 1. One restriction
+        shapes which procedures a trigger may call: a procedure that returns a result set to the client cannot be called
+        from a trigger.<sup class="cite"><a href="#src-14">14</a></sup> <code>log_event</code> only inserts, so it
+        qualifies, and <code>tickets_for_customer</code> never would.</p>
+        <h3>Calling a procedure from Python</h3>
+        <p>Connector/Python's <code>cursor.callproc(name, args)</code> calls a stored procedure, with the arguments as a
+        tuple in the order the procedure declares them.<sup class="cite"><a href="#src-7">7</a></sup></p>
+<pre><code>from db import connect
+
+conn = connect()
+cursor = conn.cursor()
+cursor.callproc("close_ticket", (5, "2026-10-19 16:00:00"))
+conn.commit()
+cursor.execute("SELECT kind, note FROM ticket_events WHERE ticket_id = %s", (5,))
+print(cursor.fetchall())
+conn.commit()
+cursor.close()
+conn.close()</code></pre>
+<pre class="out">[('closed', 'was assigned, agent 2')]</pre>
+        <p>The Python sent one CALL; the database ran the UPDATE, the trigger and the INSERT behind it. The desk calls
+        procedures that return no rows this way, and runs a result-set procedure such as
+        <code>tickets_for_customer</code> at the <code>mysql&gt;</code> prompt.</p>
+        <h3>EXECUTE, definer rights and the trade-off</h3>
+        <p><code>GRANT EXECUTE</code> on a database lets an account CALL its procedures and use its
+        functions.<sup class="cite"><a href="#src-10">10</a></sup> The desk's own account gets it with one
+        statement:</p>
+<pre><code>GRANT EXECUTE ON ticket_desk.* TO 'desk_app'@'%';</code></pre>
+        <p>The server answers <code>Query OK, 0 rows affected</code>, and from then on <code>desk_app</code> may CALL
+        every procedure and use every function in <code>ticket_desk</code>.</p>
+        <p>A routine runs with the privileges of its DEFINER by default (<code>SQL SECURITY DEFINER</code>), so an
+        account holding only EXECUTE can still change the tables the routine touches; with <code>SQL SECURITY
+        INVOKER</code> the caller would need those privileges itself.<sup class="cite"><a href="#src-11">11</a></sup>
+        To see what that buys, take an illustration account named <code>report_app</code>, which the desk does not
+        have, holding only SELECT and EXECUTE on <code>ticket_desk</code>. It tries both ways:</p>
+<pre><code>UPDATE tickets SET status = 'closed' WHERE ticket_id = 6;
+CALL close_ticket(6, '2026-10-19 17:00:00');
+SELECT ticket_id, status, closed_at FROM tickets WHERE ticket_id = 6;</code></pre>
+<pre class="out">ERROR 1142 (42000): UPDATE command denied to user 'report_app'@'localhost' for table 'tickets'
+
+Query OK, 1 row affected
+
++-----------+--------+---------------------+
+| ticket_id | status | closed_at           |
++-----------+--------+---------------------+
+|         6 | closed | 2026-10-19 17:00:00 |
++-----------+--------+---------------------+
+1 row in set</pre>
+        <p>The account may close a ticket only the way the procedure closes it, which is the security case for procedures. They also save round trips: one CALL replaces several statements sent from the application.
+        The cost is that logic in procedures lives apart from the application code, so it is versioned separately and is
+        harder to test and review.<sup class="cite"><a href="#src-15">15</a></sup> You recognise one in a schema file by
+        <code>CREATE PROCEDURE</code> with <code>IN</code> parameters between DELIMITER lines, and in code by
+        <code>CALL</code> or <code>callproc</code>.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A stored procedure is named SQL kept in the database and run with CALL.</li>
+          <li>IN parameters carry values in; OUT parameters hand values back through a variable.</li>
+          <li>A trigger can CALL a procedure, as long as that procedure returns no result set.</li>
+          <li>With definer rights, a grant of EXECUTE can replace direct table privileges.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A stored procedure is a named block of SQL kept in the database. I create it with CREATE PROCEDURE, give it
+          parameters such as an IN ticket id, write the body between BEGIN and END after changing the client's
+          delimiter, and run it with CALL and the arguments. From Python I call it with callproc.</p>
+          <p>A trigger can call one too. On a ticket desk, the AFTER UPDATE trigger on tickets calls a log_event
+          procedure, so the history insert is written once and every status change goes through it. And since a
+          procedure runs with its definer's rights by default, an app can be granted EXECUTE instead of UPDATE on the
+          table.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="3">
+        <div class="tag">What is a user defined function</div>
+        <h2>User-defined functions: one value, used inside a query</h2>
+        <p>A procedure is run on its own. A function is the other kind of stored routine, the kind a query can use in the
+        middle of a SELECT. The examples below start from a fresh rebuild of the desk's database, so tickets 4, 5 and 6
+        have no closing time again.</p>
+        <h3>Creating and calling a function</h3>
+        <p>A user-defined function, which MySQL calls a stored function, returns one value and is used inside an
+        expression such as a SELECT list or a WHERE.<sup class="cite"><a href="#src-11">11</a></sup> It has only IN
+        parameters, and its body must RETURN exactly one value of the type named after
+        <code>RETURNS</code>.<sup class="cite"><a href="#src-11">11</a></sup></p>
+<pre><code>CREATE FUNCTION hours_open(p_opened DATETIME, p_closed DATETIME)
+RETURNS DECIMAL(8,2)
+DETERMINISTIC
+RETURN ROUND(TIMESTAMPDIFF(MINUTE, p_opened, p_closed) / 60, 2);
+SELECT ticket_id, hours_open(opened_at, closed_at) AS hours FROM tickets;</code></pre>
+<pre class="out">Query OK, 0 rows affected
+
++-----------+-------+
+| ticket_id | hours |
++-----------+-------+
+|         1 |  3.00 |
+|         2 | 30.00 |
+|         3 | 10.00 |
+|         4 |  NULL |
+|         5 |  NULL |
+|         6 |  NULL |
++-----------+-------+
+6 rows in set</pre>
+        <p>The body is a single RETURN statement, so there is no BEGIN and END and no DELIMITER change; the semicolon
+        ends the whole CREATE.<sup class="cite"><a href="#src-3">3</a></sup> The three unclosed tickets show NULL because
+        TIMESTAMPDIFF returns NULL when either time is NULL, and these tickets have no
+        <code>closed_at</code>.<sup class="cite"><a href="#src-16">16</a></sup></p>
+        <h3>Why the function says DETERMINISTIC</h3>
+        <p>With binary logging on, creating a function that is not declared DETERMINISTIC, NO SQL or READS SQL DATA fails
+        with error 1418.<sup class="cite"><a href="#src-17">17</a></sup> The desk's server has binary logging on, so the
+        same function without the word is refused:</p>
+<pre><code>CREATE FUNCTION hours_open(p_opened DATETIME, p_closed DATETIME)
+RETURNS DECIMAL(8,2)
+RETURN ROUND(TIMESTAMPDIFF(MINUTE, p_opened, p_closed) / 60, 2);</code></pre>
+<pre class="out">ERROR 1418 (HY000): This function has none of DETERMINISTIC, NO SQL, or READS SQL DATA in its declaration and binary logging is enabled (you *might* want to use the less safe log_bin_trust_function_creators variable)</pre>
+        <p>DETERMINISTIC promises that the same inputs always give the same output. A body that reads
+        <code>NOW()</code> is strictly not deterministic, because the answer changes with the clock, so
+        <code>hours_open</code> takes both times as parameters and leaves the caller to supply the
+        time.<sup class="cite"><a href="#src-11">11</a></sup></p>
+        <div class="ix-predict" data-q="A teammate writes a function age_hours(p_opened DATETIME) that returns TIMESTAMPDIFF(MINUTE, p_opened, NOW()) / 60 and marks it DETERMINISTIC so the CREATE succeeds. What is wrong with it?" data-a="The word is a promise the body breaks. Called twice with the same opened time an hour apart, it returns two different answers, because NOW() moved. Pass the second time in as a parameter, as hours_open does, and the promise holds."></div>
+        <h3>Function or procedure</h3>
+        <p>The two routines share CREATE syntax and differ in almost everything else.<sup class="cite"><a href="#src-11">11</a></sup></p>
+        <table>
+          <thead><tr><th></th><th>Function</th><th>Procedure</th></tr></thead>
+          <tbody>
+            <tr><td>Gives back</td><td>exactly one value, with RETURN</td><td>result sets, OUT parameters, or nothing</td></tr>
+            <tr><td>Used</td><td>inside an expression, in SELECT or WHERE</td><td>on its own, with CALL</td></tr>
+            <tr><td>Parameters</td><td>IN only</td><td>IN, OUT and INOUT</td></tr>
+          </tbody>
+        </table>
+        <p>A function also cannot run COMMIT or ROLLBACK or return a result set.<sup class="cite"><a href="#src-14">14</a></sup>
+        As a rule, when the answer is a value you want in a column or a condition, write a function, and when
+        the job is a change or a list of rows, write a procedure.</p>
+        <h3>Built-in functions, and the cost per row</h3>
+        <p>Thursday's built-in functions, such as CONCAT, ROUND and DATE_ADD, are the model a UDF extends: a name,
+        parentheses, arguments and one value back. <code>hours_open</code> is itself built from two built-ins,
+        TIMESTAMPDIFF and ROUND, and once created it is called exactly like them.</p>
+        <p>A function called in a WHERE or a SELECT runs once for every row the query reads, which
+        is slow on a big table.<sup class="cite"><a href="#src-11">11</a></sup></p>
+<pre><code>SELECT ticket_id, title FROM tickets WHERE hours_open(opened_at, closed_at) &gt; 20;</code></pre>
+<pre class="out">+-----------+----------------------+
+| ticket_id | title                |
++-----------+----------------------+
+|         2 | Invoice PDF is blank |
++-----------+----------------------+
+1 row in set</pre>
+        <p>To answer, the server called <code>hours_open</code> six times, once per ticket. A function wrapped around a
+        column also hides that column from an index, which the next step shows in a query plan. You recognise a UDF in a
+        schema by <code>CREATE FUNCTION</code>, <code>RETURNS</code> and a type, and in a query by a name that is not
+        MySQL's own.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A user-defined function takes IN parameters and returns exactly one value of a declared type.</li>
+          <li>It is used inside a query, wherever a built-in function could go.</li>
+          <li>With binary logging on, a function must declare DETERMINISTIC or MySQL refuses it.</li>
+          <li>A function in a WHERE runs once per row the query reads.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A user-defined function is a routine in the database that takes inputs and returns one value, so I can use
+          it in a query the way I'd use a built-in. I create it with CREATE FUNCTION, the parameters, RETURNS and a type,
+          DETERMINISTIC, and a RETURN expression, like an hours-open function over two datetimes, and then I call it in a
+          SELECT on the opened and closed columns.</p>
+          <p>DETERMINISTIC says the same inputs always give the same output, and with binary logging on MySQL refuses a
+          function without it, error 1418. Against a procedure: a function returns exactly one value and lives inside an
+          expression, while a procedure runs on its own with CALL and can return rows or OUT values.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">Indexes</div>
+        <h2>Indexes: finding rows without reading them all</h2>
+        <p>Every query on this page has read all six tickets to find the few it wanted. On six rows nobody notices; on
+        six million, an agent waiting for the board does.</p>
+        <h3>What an index is</h3>
+        <p>An index is a separate sorted structure on one or more columns that lets the server find matching rows
+        without reading the whole table. In InnoDB that structure is a B-tree.<sup class="cite"><a href="#src-18">18</a></sup>
+        A B-tree is a sorted tree the server walks from the top to the right entry in a few steps, much as you find a word
+        in a printed dictionary without reading every page.</p>
+        <p>A secondary index in InnoDB, meaning any index other than the primary key, is a B-tree whose entries point to
+        the primary key.<sup class="cite"><a href="#src-19">19</a></sup> A lookup on a status index finds the ids of the
+        open tickets, then fetches those rows by id. Some indexes exist before anyone asks: InnoDB indexes the primary key
+        automatically, and a foreign-key column gets an index if none exists.<sup class="cite"><a href="#src-20">20</a></sup></p>
+<pre><code>SHOW INDEX FROM tickets;</code></pre>
+        <p>The result is fifteen columns wide; the two that matter here are <code>Key_name</code> and
+        <code>Column_name</code>.<sup class="cite"><a href="#src-21">21</a></sup> It lists four indexes: PRIMARY on
+        <code>ticket_id</code>, and one each named <code>priority</code>, <code>customer_id</code> and
+        <code>agent_id</code> for the three foreign keys, every one with <code>Index_type</code> BTREE. Nothing indexes
+        <code>status</code> yet, and <code>DROP INDEX</code> with a name and <code>ON tickets</code> removes one later.</p>
+        <h3>Reading EXPLAIN before and after</h3>
+        <p>EXPLAIN shows the plan for a statement. In MySQL 9.7 the default output format is a tree, and its lines name a
+        table scan or an index lookup.<sup class="cite"><a href="#src-22">22</a></sup></p>
+<pre><code>EXPLAIN SELECT * FROM tickets WHERE status = 'open';
+CREATE INDEX idx_tickets_status ON tickets (status);
+EXPLAIN SELECT * FROM tickets WHERE status = 'open';</code></pre>
+<pre class="out">+--------------------------------------------------------------------------------------------------------------+
+| EXPLAIN                                                                                                      |
++--------------------------------------------------------------------------------------------------------------+
+| -> Filter: (tickets.`status` = 'open')  (cost=0.85 rows=1)
+    -> Table scan on tickets  (cost=0.85 rows=6)
+ |
++--------------------------------------------------------------------------------------------------------------+
+1 row in set
+
+Query OK, 0 rows affected
+Records: 0  Duplicates: 0  Warnings: 0
+
++--------------------------------------------------------------------------------------------+
+| EXPLAIN                                                                                    |
++--------------------------------------------------------------------------------------------+
+| -> Index lookup on tickets using idx_tickets_status (status = 'open')  (cost=0.35 rows=1)
+ |
++--------------------------------------------------------------------------------------------+
+1 row in set</pre>
+        <p>Each arrow is one operation, and the more indented line runs first. Before the index, <code>Table scan on
+        tickets</code> means every row is read and a Filter then keeps the matches. After it, <code>Index lookup on
+        tickets using idx_tickets_status</code> means the server went straight to the open entries in the
+        index.<sup class="cite"><a href="#src-23">23</a></sup></p>
+        <p>The cost and rows figures are the optimizer's estimates, and the times the client prints are no guide on six
+        rows. On a table this small the optimizer may even choose a scan for some queries, so judge an index by reading
+        the plan, not by timing a tiny table.<sup class="cite"><a href="#src-23">23</a></sup></p>
+        <h3>What an index costs</h3>
+        <p>Every index speeds some reads and slows every change.<sup class="cite"><a href="#src-24">24</a></sup></p>
+        <ul>
+          <li>Disk space: the index is a second sorted copy of its columns, kept beside the table.</li>
+          <li>Slower writes: each INSERT, UPDATE and DELETE must update every index on the table as well as the row.</li>
+          <li>Little gain on a column with few distinct values: a three-value status can still match a large share of the
+          table.</li>
+        </ul>
+        <p>The last point means <code>idx_tickets_status</code> earns its place only while open tickets are a small part
+        of a large history of closed ones.<sup class="cite"><a href="#src-24">24</a></sup> An index also helps only a query
+        that compares the indexed column itself:</p>
+        <div class="ix-spot" data-snippet="EXPLAIN SELECT * FROM tickets WHERE UPPER(status) = 'OPEN';&#10;-> Filter: (upper(tickets.`status`) = 'OPEN')&#10;    -> Table scan on tickets" data-q="idx_tickets_status exists. Why does this plan still read every row?" data-a="The WHERE wraps the column in a function. The index is sorted by status, not by UPPER(status), so the server cannot look the value up and must compute UPPER for every row. Compare the column directly, WHERE status = 'open', and the plan returns to an index lookup."></div>
+        <h3>Composite indexes and the leftmost prefix</h3>
+        <p>An index can cover several columns, such as an index on <code>(customer_id, status)</code>. Its entries are
+        sorted by the first column, then by the second within each value of the first, so the server can use it only for
+        a leftmost prefix of its columns.<sup class="cite"><a href="#src-18">18</a></sup></p>
+        <table>
+          <thead><tr><th>WHERE clause</th><th>Uses an index on (customer_id, status)?</th></tr></thead>
+          <tbody>
+            <tr><td><code>customer_id = 3 AND status = 'open'</code></td><td>yes, both columns</td></tr>
+            <tr><td><code>customer_id = 3</code></td><td>yes, the leftmost column</td></tr>
+            <tr><td><code>status = 'open'</code></td><td>no, status alone is not a leftmost prefix</td></tr>
+          </tbody>
+        </table>
+        <p>Column order is therefore a design choice: the column most queries filter on goes first. In someone else's
+        schema you recognise an index by <code>CREATE INDEX</code>, a name that often starts <code>idx_</code>, and
+        <code>ON</code> a table with its columns in parentheses; in a plan, by <code>using</code> and that name.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>An index is a sorted B-tree beside the table that finds rows without a full scan.</li>
+          <li>EXPLAIN shows a table scan before the index and an index lookup after it.</li>
+          <li>Each index costs disk space and extra work on every write.</li>
+          <li>A composite index serves only queries that filter on its leftmost columns.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>An index is a separate sorted structure on one or more columns, a B-tree in InnoDB, so the database can find
+          matching rows without reading the whole table. The benefit is fast lookups for queries that filter on those
+          columns. The cost is disk space and extra work on every insert, update and delete, because the index has to
+          stay sorted.</p>
+          <p>To check a query uses one, I run EXPLAIN. A table scan means every row is read; an index lookup that names
+          the index means it's used. If it isn't, I check whether the column is wrapped in a function, and for a
+          composite index, whether the query filters on its leftmost column.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
+        <div class="tag">Review</div>
+        <h2>Review: the week's desk in one database</h2>
+        <p>The desk started the week as a JSON file and ends it as a database that rebuilds from a few SQL files. This
+        step walks the week once, then covers the choices an interviewer asks about.</p>
+        <h3>The week in seven tables</h3>
+        <p>The database holds seven tables, from priorities, customers and agents to tickets, their tags and their
+        events. Each day added a layer:</p>
+        <ul>
+          <li>Monday: MySQL in a Docker container, started once from an image with a named volume that keeps the data,
+          and the tickets, customers and agents modelled as an ERD before any CREATE TABLE.</li>
+          <li>Tuesday: the sublanguages, with DDL defining tables, DML changing rows, DQL reading them, DCL granting
+          privileges and TCL ending transactions.</li>
+          <li>Wednesday: primary, foreign, composite and unique keys, NOT NULL, CHECK and DEFAULT, a schema rebuilt to
+          third normal form, and Python reaching the database through a connector.</li>
+          <li>Thursday: clauses, built-in functions, joins and subqueries, then transactions, with a ticket assignment
+          that commits or rolls back whole.</li>
+          <li>Friday: a trigger that writes history through a procedure, two views, a function and an index.</li>
+        </ul>
+        <h3>Choosing the tool</h3>
+        <p>Friday's five objects answer different questions, and the interview question "when do you pick which?" comes
+        up often.</p>
+        <table>
+          <thead><tr><th>Tool</th><th>Pick it for</th><th>On the desk</th></tr></thead>
+          <tbody>
+            <tr><td>Trigger</td><td>a side effect that must happen on every change, whoever makes it</td><td>an event row on each status or agent change</td></tr>
+            <tr><td>View</td><td>a read that many callers share</td><td>the open board and the agent load</td></tr>
+            <tr><td>Procedure</td><td>a unit of work with a fixed shape, granted instead of the tables</td><td>closing a ticket</td></tr>
+            <tr><td>Function</td><td>a computed value inside a query</td><td>the hours a ticket was open</td></tr>
+            <tr><td>Index</td><td>read speed on a column queries filter on</td><td>the ticket status</td></tr>
+          </tbody>
+        </table>
+        <p>One trade-off runs through the first three rows. Every automatic mechanism moves behaviour out of the
+        application, which trades visibility for consistency: the rule holds for every writer, and fewer people see
+        it.<sup class="cite"><a href="#src-15">15</a></sup></p>
+        <h3>Rules that hold for every writer</h3>
+        <p>Some of the week's guarantees live in the database or the connector, whichever program does the work:</p>
+        <ul>
+          <li>Foreign keys and CHECK constraints enforce rules inside the database, regardless of which program
+          writes.<sup class="cite"><a href="#src-25">25</a></sup></li>
+          <li>ACID transactions, meaning atomicity, consistency, isolation and durability, are how InnoDB keeps
+          multi-statement changes safe.<sup class="cite"><a href="#src-26">26</a></sup></li>
+          <li>Placeholders, <code>%s</code> with a tuple, keep values out of the SQL text and prevent
+          injection.<sup class="cite"><a href="#src-7">7</a></sup></li>
+        </ul>
+<pre><code>from db import connect
+
+conn = connect()
+cursor = conn.cursor()
+cursor.execute("SELECT title FROM tickets WHERE ticket_id = %s", (4,))
+print(cursor.fetchone())
+cursor.close()
+conn.commit()
+conn.close()</code></pre>
+<pre class="out">('Checkout button frozen',)</pre>
+        <p>The 4 travels to the server apart from the statement, so a value holding a quote or a semicolon can never
+        become part of the SQL. An f-string that pasted the value into the text would allow exactly that.</p>
+        <h3>Rebuild, then test</h3>
+        <p>The desk's <code>sql/</code> folder holds the structure, the rows, the account, the reports and the routines,
+        each in its own file. The database can be rebuilt from these files alone, run in order.</p>
+<pre><code>cat sql/schema.sql sql/seed.sql sql/routines.sql | docker exec -i desk-mysql mysql -uroot -pdesk</code></pre>
+<pre class="out">mysql: [Warning] Using a password on the command line interface can be insecure.</pre>
+        <p>The warning is the only output. The schema file drops and recreates the database, the seed fills parents
+        before children, and the routines file adds the trigger, procedures, views, function and index, so every run
+        starts from the same six tickets.</p>
+        <p>The tests rely on that. Their database fixture skips when the password variable is missing and rolls back
+        whatever the test changed:</p>
+<pre><code>@pytest.fixture
+def conn():
+    """Yield a database connection and roll back what the test changed."""
+    if "DESK_DB_PASSWORD" not in os.environ:
+        pytest.skip("no database")
+    connection = connect()
+    yield connection
+    connection.rollback()
+    connection.close()</code></pre>
+        <p>Calling <code>pytest.skip</code> inside a fixture skips every test that uses it, which keeps the suite green on
+        a laptop where the database cannot be reached.<sup class="cite"><a href="#src-27">27</a></sup> The lines after
+        <code>yield</code> run when the test finishes, the yield-then-clean-up shape pytest documents for
+        fixtures.<sup class="cite"><a href="#src-28">28</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Triggers, views, procedures, functions and indexes each answer a different design question.</li>
+          <li>Keys, constraints and transactions hold for every program that writes to the database.</li>
+          <li>Placeholders keep values out of the SQL text, which prevents injection.</li>
+          <li>A database rebuilt from files in order gives every run and every test the same rows.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>For a small ticket system I'd start from an ERD of customers, agents and tickets, add lookup tables like
+          priorities, normalise to third normal form, and enforce the rules with primary and foreign keys and CHECK
+          constraints. The application connects as its own limited account, sends every value as a placeholder, and runs
+          multi-step changes like an assignment in a transaction.</p>
+          <p>Then I add database objects where they earn their place: a trigger that writes a history row on every status
+          change, a view for the board, a procedure the app may EXECUTE to close a ticket, and an index on the column the
+          board filters on. On a slow query, the first thing I check is EXPLAIN, to see whether it scans the table.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="6">
+        <div class="tag">Check yourself</div>
+        <h2>Check yourself</h2>
+        <p>Answer each question out loud, as you would to an interviewer, before you open it.</p>
+        <details class="check"><summary>A ticket gets its first agent and keeps the status <code>open</code>. Why would a trigger testing <code>OLD.agent_id &lt;&gt; NEW.agent_id</code> miss the change, and what catches it?</summary><p>The old agent is NULL, and <code>NULL &lt;&gt; 3</code> yields NULL, which IF treats as false. The NULL-safe equals always answers 1 or 0, so <code>NOT (OLD.agent_id &lt;=&gt; NEW.agent_id)</code> reports the change.</p></details>
+        <details class="check"><summary>Which trigger timing would you use to trim a title before it is stored, and which to write an audit row? Why?</summary><p>BEFORE for the trim, because only a BEFORE trigger can change the incoming row with <code>SET NEW.title</code>. AFTER for the audit row, because it describes the row that was actually written.</p></details>
+        <details class="check"><summary>Does a view store the rows of its query? What follows when a page reads it a thousand times?</summary><p>No. A view is a named SELECT that holds no rows and runs its query on every read, so a thousand reads run the join a thousand times. It saves typing and keeps one definition, not computation.</p></details>
+        <details class="check"><summary>Why does <code>UPDATE agent_load SET open_tickets = 0</code> fail with ERROR 1288?</summary><p><code>agent_load</code> uses COUNT and GROUP BY, so each of its rows is a summary that maps back to no single table row. A view with an aggregate, GROUP BY, DISTINCT or UNION is not updatable.</p></details>
+        <details class="check"><summary>How do you create and call a stored procedure that closes a ticket, and how does Python call it?</summary><p>Change the client's delimiter, then write <code>CREATE PROCEDURE close_ticket(IN p_ticket_id INT, IN p_closed_at DATETIME)</code> with the UPDATE between BEGIN and <code>END //</code>, and set the delimiter back. Run it with <code>CALL close_ticket(4, '2026-10-19 15:00:00');</code>. From Python, <code>cursor.callproc("close_ticket", (ticket_id, at))</code> followed by a commit.</p></details>
+        <details class="check"><summary>The desk's trigger calls <code>log_event</code>. Could it call <code>tickets_for_customer</code> instead? Why?</summary><p>No. <code>tickets_for_customer</code> ends with a SELECT that returns a result set to the client, and a procedure that returns a result set cannot be called from a trigger. <code>log_event</code> only inserts a row, so it can.</p></details>
+        <details class="check"><summary>How do you create a function that returns how many hours a ticket was open, and why must it say DETERMINISTIC?</summary><p><code>CREATE FUNCTION hours_open(p_opened DATETIME, p_closed DATETIME) RETURNS DECIMAL(8,2) DETERMINISTIC</code> followed by a RETURN of the rounded TIMESTAMPDIFF, then use it in a SELECT. With binary logging on, MySQL refuses a function that declares none of DETERMINISTIC, NO SQL or READS SQL DATA, error 1418. The body takes both times as parameters, so the promise is true.</p></details>
+        <details class="check"><summary>An index on <code>status</code> exists, yet EXPLAIN for <code>WHERE UPPER(status) = 'OPEN'</code> shows a table scan. Why, and what does every index cost?</summary><p>The index is sorted by <code>status</code>, not by <code>UPPER(status)</code>, so the server must compute the function for every row. Every index also costs disk space and extra work on each INSERT, UPDATE and DELETE.</p></details>
+        <details class="check"><summary>A table has an index on <code>(customer_id, status)</code>. Which can use it: a filter on <code>customer_id</code> alone, or one on <code>status</code> alone?</summary><p>Only the filter on <code>customer_id</code>, because the server uses a composite index for a leftmost prefix of its columns. A filter on <code>status</code> alone skips the first column, so it needs an index of its own.</p></details>
+        <details class="check"><summary>A teammate asks whether "hours open" belongs in a view, a procedure or a function. What do you answer?</summary><p>A function, because it is one computed value used inside a query, per ticket. A view suits a shared read such as the board, and a procedure suits a unit of work such as closing a ticket.</p></details>
+      </section>
+
+      <section class="reading-sources" aria-label="Sources and deeper dive">
+        <h2>Sources &amp; deeper dive</h2>
+        <ul>
+          <li id="src-1"><a href="https://dev.mysql.com/doc/refman/9.7/en/create-trigger.html" target="_blank" rel="noopener">MySQL 9.7: CREATE TRIGGER statement</a> — events, timings, FOR EACH ROW, and why cascaded foreign-key actions fire no trigger.</li>
+          <li id="src-2"><a href="https://dev.mysql.com/doc/refman/9.7/en/trigger-syntax.html" target="_blank" rel="noopener">MySQL 9.7: Trigger syntax and examples</a> — OLD and NEW, triggers that call procedures, and triggers inside a transaction.</li>
+          <li id="src-3"><a href="https://dev.mysql.com/doc/refman/9.7/en/stored-programs-defining.html" target="_blank" rel="noopener">MySQL 9.7: Defining stored programs</a> — BEGIN ... END bodies and the DELIMITER command.</li>
+          <li id="src-4"><a href="https://dev.mysql.com/doc/refman/9.7/en/comparison-operators.html" target="_blank" rel="noopener">MySQL 9.7: Comparison operators</a> — the NULL-safe equals and what plain comparisons return for NULL.</li>
+          <li id="src-5"><a href="https://dev.mysql.com/doc/refman/9.7/en/drop-trigger.html" target="_blank" rel="noopener">MySQL 9.7: DROP TRIGGER statement</a> — removing a trigger by name.</li>
+          <li id="src-6"><a href="https://dev.mysql.com/doc/refman/9.7/en/create-view.html" target="_blank" rel="noopener">MySQL 9.7: CREATE VIEW statement</a> — a view as a stored query, and where its column names come from.</li>
+          <li id="src-7"><a href="https://dev.mysql.com/doc/connector-python/en/" target="_blank" rel="noopener">MySQL Connector/Python Developer Guide</a> — dictionary cursors, <code>callproc</code> and placeholders.</li>
+          <li id="src-8"><a href="https://dev.mysql.com/doc/refman/9.7/en/view-updatability.html" target="_blank" rel="noopener">MySQL 9.7: Updatable and insertable views</a> — which views accept INSERT, UPDATE and DELETE.</li>
+          <li id="src-9"><a href="https://dev.mysql.com/doc/refman/9.7/en/drop-view.html" target="_blank" rel="noopener">MySQL 9.7: DROP VIEW statement</a> — removing a view's definition.</li>
+          <li id="src-10"><a href="https://dev.mysql.com/doc/refman/9.7/en/grant.html" target="_blank" rel="noopener">MySQL 9.7: GRANT statement</a> — privileges on a database, a table or a view, and EXECUTE for routines.</li>
+          <li id="src-11"><a href="https://dev.mysql.com/doc/refman/9.7/en/create-procedure.html" target="_blank" rel="noopener">MySQL 9.7: CREATE PROCEDURE and CREATE FUNCTION statements</a> — parameter modes, RETURNS, DETERMINISTIC and SQL SECURITY.</li>
+          <li id="src-12"><a href="https://dev.mysql.com/doc/refman/9.7/en/call.html" target="_blank" rel="noopener">MySQL 9.7: CALL statement</a> — running a procedure, its result sets and OUT parameters.</li>
+          <li id="src-13"><a href="https://dev.mysql.com/doc/refman/9.7/en/sql-compound-statements.html" target="_blank" rel="noopener">MySQL 9.7: Compound statements</a> — DECLARE, IF and WHILE inside BEGIN ... END.</li>
+          <li id="src-14"><a href="https://dev.mysql.com/doc/refman/9.7/en/stored-program-restrictions.html" target="_blank" rel="noopener">MySQL 9.7: Restrictions on stored programs</a> — what triggers and functions may not do.</li>
+          <li id="src-15"><a href="https://dev.mysql.com/doc/refman/9.7/en/stored-objects.html" target="_blank" rel="noopener">MySQL 9.7: Stored objects</a> — triggers, views, procedures and functions as one family of database objects.</li>
+          <li id="src-16"><a href="https://dev.mysql.com/doc/refman/9.7/en/date-and-time-functions.html" target="_blank" rel="noopener">MySQL 9.7: Date and time functions</a> — TIMESTAMPDIFF and its NULL behaviour.</li>
+          <li id="src-17"><a href="https://dev.mysql.com/doc/refman/9.7/en/stored-programs-logging.html" target="_blank" rel="noopener">MySQL 9.7: Stored program binary logging</a> — why a function must declare DETERMINISTIC, and error 1418.</li>
+          <li id="src-18"><a href="https://dev.mysql.com/doc/refman/9.7/en/mysql-indexes.html" target="_blank" rel="noopener">MySQL 9.7: How MySQL uses indexes</a> — B-trees, lookups and multiple-column indexes.</li>
+          <li id="src-19"><a href="https://dev.mysql.com/doc/refman/9.7/en/innodb-index-types.html" target="_blank" rel="noopener">MySQL 9.7: Clustered and secondary indexes</a> — how a secondary index points to the primary key.</li>
+          <li id="src-20"><a href="https://dev.mysql.com/doc/refman/9.7/en/create-table-foreign-keys.html" target="_blank" rel="noopener">MySQL 9.7: Foreign key constraints</a> — the index InnoDB creates for a foreign-key column.</li>
+          <li id="src-21"><a href="https://dev.mysql.com/doc/refman/9.7/en/show-index.html" target="_blank" rel="noopener">MySQL 9.7: SHOW INDEX statement</a> — the columns SHOW INDEX prints.</li>
+          <li id="src-22"><a href="https://dev.mysql.com/doc/refman/9.7/en/explain.html" target="_blank" rel="noopener">MySQL 9.7: EXPLAIN statement</a> — plans and the default tree format.</li>
+          <li id="src-23"><a href="https://dev.mysql.com/doc/refman/9.7/en/explain-output.html" target="_blank" rel="noopener">MySQL 9.7: EXPLAIN output format</a> — reading table scans, index lookups and the estimates.</li>
+          <li id="src-24"><a href="https://dev.mysql.com/doc/refman/9.7/en/optimization-indexes.html" target="_blank" rel="noopener">MySQL 9.7: Optimization and indexes</a> — what an index costs on writes and disk.</li>
+          <li id="src-25"><a href="https://dev.mysql.com/doc/refman/9.7/en/create-table.html" target="_blank" rel="noopener">MySQL 9.7: CREATE TABLE statement</a> — keys and CHECK constraints the database enforces.</li>
+          <li id="src-26"><a href="https://dev.mysql.com/doc/refman/9.7/en/mysql-acid.html" target="_blank" rel="noopener">MySQL 9.7: InnoDB and the ACID model</a> — atomicity, consistency, isolation and durability in InnoDB.</li>
+          <li id="src-27"><a href="https://docs.pytest.org/en/stable/how-to/skipping.html" target="_blank" rel="noopener">pytest: skipping tests</a> — <code>pytest.skip</code> and what happens when a fixture calls it.</li>
+          <li id="src-28"><a href="https://docs.pytest.org/en/stable/how-to/fixtures.html" target="_blank" rel="noopener">pytest: how to use fixtures</a> — the yield-then-clean-up fixture shape.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · after you have read the page</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 3 Day 5</footer>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 5 — goals &amp; exercise</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Create a view that stores a query over joined tables, and read it like a table at the prompt and from Python as dicts</li>
+      <li>Create a stored procedure with IN or OUT parameters, call it with CALL and with callproc, and have a trigger call it</li>
+      <li>Create a user-defined function declared DETERMINISTIC and use it inside a SELECT</li>
+    </ul>
+    <div class="ma-k">Today's exercise</div>
+    <ul class="deliv-list check">
+      <li><a href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-03/day-5-views-procedures-and-indexes" target="_blank" rel="noopener">exercises/week-03/day-5-views-procedures-and-indexes</a> — a pytest-checked exercise on a <code>library</code> database in your own container: a trigger that logs each returned loan, a view of overdue loans, a procedure that closes a loan, a <code>late_fee</code> function declared DETERMINISTIC, an index on the loans' due date, and Python that reads the view.</li>
+    </ul>
+    <p class="goals-foot">Week 4 starts from your desk's <code>main</code> branch on GitHub with the whole week merged and pushed. Finish the check before you close the page.</p>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Back to program →", href: "../../index.html" };
+window.DIAGRAM = {
+  title: "Day 5 · routines and an index on the desk's tables",
+  width: 500, height: 520,
+  nodes: [
+    { id:"tickets", step:0, x:24, y:14, w:200, h:56, label:"tickets\n  status · agent_id\n  UPDATE ... WHERE", detail:"Six seeded tickets. Any UPDATE that changes a status or an agent is what the trigger watches." },
+    { id:"trigger", step:0, x:276, y:14, w:200, h:56, label:"TRIGGER\n  AFTER UPDATE · FOR EACH ROW\n  OLD vs NEW", detail:"tickets_status_change compares OLD and NEW, using the NULL-safe equals for agent_id, and writes one event per change." },
+    { id:"views", step:1, x:24, y:100, w:200, h:56, label:"VIEWS\n  open_board · agent_load\n  a named SELECT", detail:"No rows of their own: each read runs the join. agent_load has COUNT and GROUP BY, so it cannot be updated through." },
+    { id:"python", step:1, x:276, y:100, w:200, h:56, label:"Python\n  cursor(dictionary=True)\n  row['ref']", detail:"An ordinary SELECT on the view; each row comes back as a dict keyed by the view's column names." },
+    { id:"proc", step:2, x:24, y:186, w:200, h:56, label:"PROCEDURES\n  close_ticket · log_event\n  CALL · callproc", detail:"IN and OUT parameters, run with CALL or cursor.callproc. Definer rights let an EXECUTE grant replace table privileges." },
+    { id:"events", step:2, x:276, y:186, w:200, h:56, label:"ticket_events\n  one row per change\n  written by log_event", detail:"The trigger calls log_event, which inserts the row. A result-set procedure could not be called from a trigger." },
+    { id:"func", step:3, x:24, y:272, w:200, h:56, label:"FUNCTION\n  hours_open(...)\n  RETURNS · DETERMINISTIC", detail:"One value, used inside a SELECT or WHERE, run once per row. Without DETERMINISTIC, binary logging gives ERROR 1418." },
+    { id:"index", step:4, x:276, y:272, w:200, h:56, label:"INDEX\n  idx_tickets_status\n  scan → lookup", detail:"A B-tree on status. EXPLAIN shows Table scan on tickets before it and Index lookup using idx_tickets_status after it." },
+    { id:"review", step:5, x:24, y:364, w:452, h:72, label:"REVIEW · one database rebuilt from files\n  container · sublanguages · keys and 3NF · joins · transactions · routines\n  placeholders · rollback fixtures", detail:"Trigger for side effects, view for a shared read, procedure for a unit of work, function for a value, index for read speed." },
+    { id:"check", step:6, x:24, y:470, w:452, h:40, label:"CHECK YOURSELF\n  answer out loud, then open" }
+  ],
+  edges: [
+    { id:"e1", step:0, from:"tickets", to:"trigger", label:"AFTER UPDATE" },
+    { id:"e2", step:1, from:"views", to:"tickets", label:"SELECT ... JOIN" },
+    { id:"e3", step:1, from:"python", to:"views", label:"SELECT *" },
+    { id:"e4", step:2, from:"trigger", to:"events", label:"CALL log_event" },
+    { id:"e5", step:2, from:"proc", to:"tickets", label:"close_ticket" },
+    { id:"e6", step:3, from:"func", to:"tickets", label:"once per row" },
+    { id:"e7", step:4, from:"index", to:"tickets", label:"lookup on status" },
+    { id:"e8", step:5, from:"func", to:"review", dir:"-" },
+    { id:"e9", step:5, from:"index", to:"review", dir:"-" },
+    { id:"e10", step:6, from:"review", to:"check", dir:"-" }
+  ],
+  captions: [
+    "A trigger on tickets: after each UPDATE it compares OLD with NEW and writes a history row when the status or agent changed. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "Views give Thursday's board and agent-load queries a name; they store no rows, and Python reads them as dicts.",
+    "Procedures hold units of work: close_ticket is called with CALL or callproc, and the trigger now calls log_event to write history.",
+    "A user-defined function returns one value inside a query; hours_open declares DETERMINISTIC and runs once per row.",
+    "An index is a B-tree beside the table: EXPLAIN turns a table scan into an index lookup, at a cost on every write.",
+    "The week in one database: rebuilt from files in order, with keys and transactions enforcing the rules and each routine suited to its job.",
+    "You can now create and call a trigger, a view, a procedure and a function, and explain what an index buys and costs."
+  ]
+};
+window.QUIZ = {
+  id: "w03-d5",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "EXPLAIN for SELECT * FROM tickets WHERE status = 'open' prints \"Table scan on tickets\". What does that tell you?",
+      options: ["The query used idx_tickets_status", "The server reads every row of tickets and then filters", "The table has no primary key", "The query failed and was retried"], answer: 1,
+      explain: "A table scan reads every row. After CREATE INDEX idx_tickets_status the same EXPLAIN prints \"Index lookup on tickets using idx_tickets_status\"." },
+    { type: "scq", stem: "Which statement runs the stored procedure close_ticket at the mysql> prompt?",
+      options: ["SELECT close_ticket(4, '2026-10-19 15:00:00');", "CALL close_ticket(4, '2026-10-19 15:00:00');", "EXECUTE close_ticket(4, '2026-10-19 15:00:00');", "RUN PROCEDURE close_ticket;"], answer: 1,
+      explain: "CALL runs a procedure. A function, which returns one value, is the routine you use inside a SELECT; from Python a procedure is called with cursor.callproc." },
+    { type: "tf", stem: "A view stores a copy of its query's rows and refreshes the copy when the tables change.", answer: false,
+      explain: "A view holds no rows of its own. It is a named SELECT that runs its query every time it is read, so it saves typing, not computation." },
+    { type: "mcq", stem: "Which of these make a MySQL view impossible to update through? Select all that apply.",
+      options: ["GROUP BY", "An aggregate such as COUNT", "DISTINCT", "A WHERE clause on one table's columns"], answer: [0, 1, 2],
+      explain: "Aggregates, GROUP BY, DISTINCT and UNION break the link from a view row to one table row. A plain one-table view with a WHERE is generally updatable." },
+    { type: "match", stem: "Match each object to the job it suits on the ticket desk.",
+      pairs: [
+        { l: "trigger", r: "write an event row whenever a ticket's status or agent changes" },
+        { l: "view", r: "give the open board's join a name every caller reads" },
+        { l: "stored procedure", r: "close a ticket as one unit of work, run with CALL" },
+        { l: "user-defined function", r: "compute the hours a ticket was open inside a SELECT" },
+        { l: "index", r: "find open tickets without reading every row" }
+      ],
+      explain: "Trigger for an automatic side effect, view for a shared read, procedure for a unit of work, function for a value inside a query, index for read speed." },
+    { type: "open", stem: "In two or three sentences: why does the desk's trigger test NOT (OLD.agent_id <=> NEW.agent_id) instead of OLD.agent_id <> NEW.agent_id?",
+      hint: "Four of the six tickets have no agent.",
+      model: "agent_id is NULL on unassigned tickets, and a plain <> yields NULL when either side is NULL, which IF treats as false, so a ticket's first agent would never be logged. The NULL-safe equals <=> always returns 1 or 0, so NOT (OLD.agent_id <=> NEW.agent_id) is true exactly when the agent changed, including from no agent to one." }
+  ]
+};
+</script>
+
+<script src="../../assets/js/diagram.js?v=20261023"></script>
+<script src="../../assets/js/scrolly.js?v=20261023"></script>
+<script src="../../assets/js/modals.js?v=20261023"></script>
+<script src="../../assets/js/quiz.js?v=20261023"></script>
+<script src="../../assets/js/widgets.js?v=20261023"></script>
+<script src="../../assets/js/glossary.js?v=20261023"></script>
+</body>
+</html>

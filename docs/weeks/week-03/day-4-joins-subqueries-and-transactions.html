@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w03d4">
+<title>W3·D4 — Joins, subqueries &amp; transactions | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261023">
+<script src="../../assets/js/theme.js?v=20261023"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises" target="_blank" rel="noopener">Exercises</a>
+    <a class="topnav" href="../../exit-criteria/index.html">Exit criteria</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>Joins, subqueries &amp; transactions: reading the desk across tables and changing it safely</h1>
+        <div class="meta">
+          <span><b>Week 3</b> · Day 4</span>
+          <span>Thu Oct 29, 2026</span>
+          <span>SQL with MySQL</span>
+          <span><b>~43 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span class="verified">Sources checked 2026-10-23 · python 3.15 · mysql 9.7 · mysql-connector-python 26.7.0</span>
+          <span class="exit"><a href="../../exit-criteria/qc-2-sql.html#w03d4">Exit criteria</a></span>
+        </div>
+        <p class="summary">This page assumes Wednesday's constrained schema with its seeded rows, and the desk's Python code
+        reading MySQL through mysql-connector-python. It starts with the clauses, functions and aliases that shape a
+        query on one table, then subqueries, then every join MySQL offers, including a full outer join built from UNION.
+        The second half is about changing data safely: transactions and the ACID properties, commit, rollback and the
+        four isolation levels, and the CRUD statements and AUTO_INCREMENT ids the desk's Python code relies on.
+        Afterwards you can filter, group and join the desk's tables, say when a subquery fits better than a join, and
+        talk an interviewer through ACID and isolation levels.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="0">
+        <div class="tag">Clauses</div>
+        <h2>Clauses: filtering, sorting and grouping rows</h2>
+        <p>Every query on this page runs against the desk's seeded tables as Wednesday left them: six tickets, four
+        customers, four agents and three priorities. Each result shown is what the mysql client prints for those rows,
+        with the timing line left off.</p>
+        <h3>The clauses of a SELECT, written and evaluated</h3>
+        <p>A SELECT statement is made of clauses, each a keyword followed by its part of the question. You write them in
+        one fixed order: SELECT, FROM, JOIN, WHERE, GROUP BY, HAVING, ORDER BY, LIMIT.<sup class="cite"><a href="#src-1">1</a></sup>
+        The server does not evaluate them in that order. It logically starts with FROM and WHERE and reaches SELECT near
+        the end.<sup class="cite"><a href="#src-1">1</a></sup> The table lists the clauses in the order the server
+        works through them.</p>
+        <table>
+          <thead><tr><th>Clause</th><th>What it does to the rows</th></tr></thead>
+          <tbody>
+            <tr><td>FROM and JOIN</td><td>name the tables the rows come from</td></tr>
+            <tr><td>WHERE</td><td>keeps the rows that pass a condition</td></tr>
+            <tr><td>GROUP BY</td><td>puts rows with equal values into one group</td></tr>
+            <tr><td>HAVING</td><td>keeps the groups that pass a condition</td></tr>
+            <tr><td>SELECT</td><td>picks and computes the output columns</td></tr>
+            <tr><td>ORDER BY</td><td>sorts the result</td></tr>
+            <tr><td>LIMIT</td><td>keeps only the first rows of the sorted result</td></tr>
+          </tbody>
+        </table>
+        <p>The gap between writing order and evaluation order explains two rules that trip people up. An aggregate such
+        as <code>COUNT(*)</code> cannot appear in WHERE, and a column alias made in SELECT cannot be used in WHERE,
+        because WHERE runs before either exists.<sup class="cite"><a href="#src-2">2</a></sup></p>
+        <h3>WHERE with comparison and logical operators</h3>
+        <p>WHERE keeps the rows for which its condition is true and drops the rest. Equality is <code>=</code> and
+        inequality is <code>&lt;&gt;</code>. The ordering operators are <code>&lt;</code>, <code>&lt;=</code>,
+        <code>&gt;</code> and <code>&gt;=</code>.<sup class="cite"><a href="#src-3">3</a></sup> AND joins two
+        conditions that must both hold, and OR joins two of which either may hold.</p>
+<pre><code class="language-sql">SELECT ticket_id, title, status
+FROM tickets
+WHERE priority = 'high' AND status &lt;&gt; 'closed';</code></pre>
+<pre class="out">+-----------+------------------------+----------+
+| ticket_id | title                  | status   |
++-----------+------------------------+----------+
+|         4 | Checkout button frozen | assigned |
++-----------+------------------------+----------+</pre>
+        <p>Two tickets are high priority, and ticket 1 is closed, so only ticket 4 survives both tests. String values sit
+        in single quotes. When a condition mixes AND with OR, add parentheses so the reader does not have to remember
+        which one binds first.</p>
+        <h3>Sets, ranges, patterns and NULL</h3>
+        <p>Four more operators cover the questions plain comparison cannot ask neatly.</p>
+        <ul>
+          <li><code>IN (...)</code> matches any value in a list, such as <code>status IN ('open', 'assigned')</code>.<sup class="cite"><a href="#src-3">3</a></sup></li>
+          <li><code>BETWEEN a AND b</code> matches a range and includes both of its end values.<sup class="cite"><a href="#src-3">3</a></sup></li>
+          <li><code>LIKE</code> matches a pattern, where <code>%</code> stands for any run of characters and <code>_</code> for exactly one.<sup class="cite"><a href="#src-4">4</a></sup></li>
+          <li><code>IS NULL</code> and <code>IS NOT NULL</code> test for a missing value.<sup class="cite"><a href="#src-5">5</a></sup></li>
+        </ul>
+<pre><code class="language-sql">SELECT ticket_id, opened_at
+FROM tickets
+WHERE opened_at BETWEEN '2026-10-18 00:00:00' AND '2026-10-18 23:59:59';</code></pre>
+<pre class="out">+-----------+---------------------+
+| ticket_id | opened_at           |
++-----------+---------------------+
+|         1 | 2026-10-18 08:00:00 |
+|         3 | 2026-10-18 18:00:00 |
+|         5 | 2026-10-18 12:00:00 |
++-----------+---------------------+</pre>
+        <p>Because BETWEEN includes its ends, the upper bound is the last second of the day; ending it at midnight of the
+        19th would also catch a ticket opened exactly then. Missing values need their own test, and the wrong one fails
+        without an error.</p>
+<pre><code class="language-sql">SELECT ticket_id FROM tickets WHERE agent_id = NULL;
+SELECT ticket_id FROM tickets WHERE agent_id IS NULL;</code></pre>
+<pre class="out">Empty set
++-----------+
+| ticket_id |
++-----------+
+|         1 |
+|         2 |
+|         3 |
+|         6 |
++-----------+</pre>
+        <p>The first query raises no error and returns nothing, because <code>col = NULL</code> is never true, not even
+        on a row whose agent is missing.<sup class="cite"><a href="#src-5">5</a></sup> In code review,
+        <code>= NULL</code> in a WHERE clause is a bug on sight.</p>
+        <h3>ORDER BY and LIMIT</h3>
+        <p>ORDER BY sorts the result by one or more columns, and DESC after a column reverses it. LIMIT keeps the first
+        rows of what is left, so the two together answer "the three newest tickets".</p>
+<pre><code class="language-sql">SELECT ticket_id, title, opened_at
+FROM tickets
+ORDER BY opened_at DESC
+LIMIT 3;</code></pre>
+<pre class="out">+-----------+------------------------+---------------------+
+| ticket_id | title                  | opened_at           |
++-----------+------------------------+---------------------+
+|         6 | Add dark mode          | 2026-10-19 12:00:00 |
+|         4 | Checkout button frozen | 2026-10-19 08:00:00 |
+|         3 | Typo on pricing page   | 2026-10-18 18:00:00 |
++-----------+------------------------+---------------------+</pre>
+        <p>LIMIT without ORDER BY returns an unspecified set of
+        rows,<sup class="cite"><a href="#src-1">1</a></sup> so a query that happens to return the right three today
+        can return different ones after the table changes. Treat a bare LIMIT in someone else's code as a question to
+        ask.</p>
+        <h3>GROUP BY and HAVING</h3>
+        <p>GROUP BY puts the rows with equal values in the listed columns into one group, and the query returns one row
+        per group.<sup class="cite"><a href="#src-6">6</a></sup> HAVING then filters those groups. WHERE filters
+        rows before grouping and HAVING filters groups after aggregation, so <code>COUNT(*)</code> is legal in HAVING
+        and illegal in WHERE.<sup class="cite"><a href="#src-1">1</a></sup></p>
+<pre><code class="language-sql">SELECT status, COUNT(*) AS tickets
+FROM tickets
+GROUP BY status
+HAVING COUNT(*) &gt; 1
+ORDER BY status;</code></pre>
+<pre class="out">+----------+---------+
+| status   | tickets |
++----------+---------+
+| assigned |       2 |
+| closed   |       3 |
++----------+---------+</pre>
+        <p>The one open ticket forms a group of one, and HAVING drops it. Moving the condition into WHERE fails before
+        any row is read.</p>
+<pre><code class="language-sql">SELECT status, COUNT(*) AS tickets
+FROM tickets
+WHERE COUNT(*) &gt; 1
+GROUP BY status;</code></pre>
+<pre class="out">ERROR 1111 (HY000): Invalid use of group function</pre>
+        <p>One more rule comes with grouping. Under the default ONLY_FULL_GROUP_BY SQL mode, a selected column that is
+        neither grouped nor aggregated is rejected with an error.<sup class="cite"><a href="#src-6">6</a></sup>
+        Adding <code>title</code> to the SELECT list above is rejected, because a group of three closed tickets has
+        three titles and the server will not pick one for you.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Clauses are written SELECT first, but the server evaluates FROM and WHERE first.</li>
+          <li>Test missing values with IS NULL, because a comparison with NULL is never true.</li>
+          <li>WHERE filters rows before grouping; HAVING filters groups after the aggregates are computed.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I filter rows with WHERE, using comparison operators such as equals, not-equals and greater-than, and I
+          combine conditions with AND and OR. For a list, a range, a pattern or a missing value I reach for IN, BETWEEN,
+          LIKE and IS NULL, and I never write equals NULL, because it is never true.</p>
+          <p>WHERE filters individual rows before grouping, and HAVING filters groups after the aggregates are
+          computed, so a condition on a count or a sum goes in HAVING. GROUP BY returns one row per distinct value, and
+          every column I select has to be grouped or aggregated, or MySQL rejects the query.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">Functions</div>
+        <h2>Scalar functions, aggregate functions and aliases</h2>
+        <h3>Scalar functions: one value per row</h3>
+        <p>A scalar function takes values from one row and returns one value for that row. Most fall into string, date
+        and numeric families, plus a few that deal with NULL. These are the ones a ticket desk uses most.</p>
+        <table>
+          <thead><tr><th>Function</th><th>Family</th><th>What it returns for one row</th></tr></thead>
+          <tbody>
+            <tr><td><code>CONCAT(a, b, ...)</code></td><td>string</td><td>its arguments joined into one string<sup class="cite"><a href="#src-7">7</a></sup></td></tr>
+            <tr><td><code>UPPER(s)</code></td><td>string</td><td>the string in capitals<sup class="cite"><a href="#src-7">7</a></sup></td></tr>
+            <tr><td><code>DATE_ADD(d, INTERVAL n unit)</code></td><td>date</td><td>the date moved on by the interval<sup class="cite"><a href="#src-8">8</a></sup></td></tr>
+            <tr><td><code>NOW()</code></td><td>date</td><td>the current date and time<sup class="cite"><a href="#src-8">8</a></sup></td></tr>
+            <tr><td><code>ROUND(x, d)</code></td><td>numeric</td><td>the number rounded, one row at a time<sup class="cite"><a href="#src-9">9</a></sup></td></tr>
+            <tr><td><code>COALESCE(a, b, ...)</code></td><td>NULL handling</td><td>the first argument that is not NULL<sup class="cite"><a href="#src-3">3</a></sup></td></tr>
+          </tbody>
+        </table>
+<pre><code class="language-sql">SELECT CONCAT('TD-', ticket_id) AS ref,
+       UPPER(priority) AS level,
+       DATE_ADD(opened_at, INTERVAL 4 HOUR) AS four_hours_later,
+       COALESCE(agent_id, 0) AS agent
+FROM tickets
+WHERE ticket_id &lt;= 3;</code></pre>
+<pre class="out">+------+--------+---------------------+-------+
+| ref  | level  | four_hours_later    | agent |
++------+--------+---------------------+-------+
+| TD-1 | HIGH   | 2026-10-18 12:00:00 |     0 |
+| TD-2 | NORMAL | 2026-10-17 16:00:00 |     0 |
+| TD-3 | NORMAL | 2026-10-18 22:00:00 |     0 |
++------+--------+---------------------+-------+</pre>
+        <p>Three rows went in and three came out, which is how you recognise scalar functions on sight. Because each one
+        needs only the row in front of it, a scalar function also works in WHERE and ORDER BY.</p>
+        <p>Two details are easy to miss. <code>CONCAT('TD-', ticket_id)</code> turned a number into a string without being
+        asked, and that implicit conversion means sorting by <code>ref</code> sorts text, so <code>TD-10</code> would
+        come before <code>TD-2</code>. And CONCAT returns NULL if any argument is
+        NULL,<sup class="cite"><a href="#src-7">7</a></sup> so one missing value blanks the whole result.</p>
+<pre><code class="language-sql">SELECT CONCAT('closed ', closed_at) AS label
+FROM tickets
+WHERE ticket_id IN (1, 6);</code></pre>
+<pre class="out">+----------------------------+
+| label                      |
++----------------------------+
+| closed 2026-10-18 11:00:00 |
+| NULL                       |
++----------------------------+</pre>
+        <p>Ticket 6 is still open, so its <code>closed_at</code> is NULL and the label vanishes. Wrapping the column as
+        <code>COALESCE(closed_at, 'not yet')</code> supplies a fallback.<sup class="cite"><a href="#src-3">3</a></sup></p>
+        <h3>Aggregate functions: one value per group</h3>
+        <p>An aggregate function collapses many rows into one value per group, or one value for the whole table when
+        there is no GROUP BY.<sup class="cite"><a href="#src-10">10</a></sup> The five you meet everywhere are COUNT,
+        SUM, AVG, MIN and MAX, and they differ in how they treat NULL and an empty input.</p>
+        <table>
+          <thead><tr><th>Function</th><th>What it returns</th><th>NULLs</th><th>Over zero rows</th></tr></thead>
+          <tbody>
+            <tr><td><code>COUNT(*)</code></td><td>rows<sup class="cite"><a href="#src-10">10</a></sup></td><td>counted</td><td>0</td></tr>
+            <tr><td><code>COUNT(col)</code></td><td>non-NULL values<sup class="cite"><a href="#src-10">10</a></sup></td><td>skipped</td><td>0</td></tr>
+            <tr><td><code>COUNT(DISTINCT col)</code></td><td>unique non-NULL values<sup class="cite"><a href="#src-10">10</a></sup></td><td>skipped</td><td>0</td></tr>
+            <tr><td><code>SUM</code> / <code>AVG</code></td><td>total / mean<sup class="cite"><a href="#src-10">10</a></sup></td><td>ignored</td><td>NULL</td></tr>
+            <tr><td><code>MIN</code> / <code>MAX</code></td><td>smallest / largest<sup class="cite"><a href="#src-10">10</a></sup></td><td>ignored</td><td>NULL</td></tr>
+          </tbody>
+        </table>
+<pre><code class="language-sql">SELECT COUNT(*) AS tickets,
+       COUNT(agent_id) AS assigned,
+       COUNT(DISTINCT customer_id) AS customers,
+       MIN(opened_at) AS first_opened,
+       MAX(opened_at) AS last_opened
+FROM tickets;</code></pre>
+<pre class="out">+---------+----------+-----------+---------------------+---------------------+
+| tickets | assigned | customers | first_opened        | last_opened         |
++---------+----------+-----------+---------------------+---------------------+
+|       6 |        2 |         3 | 2026-10-17 12:00:00 | 2026-10-19 12:00:00 |
++---------+----------+-----------+---------------------+---------------------+</pre>
+        <p>Six rows became one: six tickets, two with an agent, and three distinct customers among them.</p>
+<pre><code class="language-sql">SELECT COUNT(*) AS customers, SUM(monthly_fee) AS revenue
+FROM customers
+WHERE country = 'FR';</code></pre>
+<pre class="out">+-----------+---------+
+| customers | revenue |
++-----------+---------+
+|         0 |    NULL |
++-----------+---------+</pre>
+        <p>No customer is in France, and the revenue is NULL rather than 0. Code that adds that value to something else
+        should wrap it in COALESCE. Mixing an aggregate with a plain column and no GROUP BY, as in
+        <code>SELECT COUNT(*), title FROM tickets</code>, is an error under
+        ONLY_FULL_GROUP_BY.<sup class="cite"><a href="#src-6">6</a></sup></p>
+        <h3>Column and table aliases</h3>
+        <p>A column alias is <code>AS name</code> after an expression. It becomes the column name of the result, so it is
+        the header in client output and the key a program reads.<sup class="cite"><a href="#src-1">1</a></sup> A
+        table alias such as <code>tickets AS t</code> gives a table a short name for one statement, and once a table is
+        aliased, its columns are written with the alias.<sup class="cite"><a href="#src-1">1</a></sup> The word AS
+        is optional for both, but writing it makes the intent clear.<sup class="cite"><a href="#src-1">1</a></sup></p>
+<pre><code class="language-sql">SELECT CONCAT('TD-', ticket_id) AS ref
+FROM tickets
+WHERE ref = 'TD-4';</code></pre>
+<pre class="out">ERROR 1054 (42S22): Unknown column 'ref' in 'where clause'</pre>
+        <p>The alias does not exist yet when WHERE runs. The same alias works in ORDER BY, GROUP BY and HAVING, which
+        run after SELECT has named it.<sup class="cite"><a href="#src-2">2</a></sup> An alias with a space in it
+        needs backticks or quotes,<sup class="cite"><a href="#src-11">11</a></sup> so snake_case names such as
+        <code>open_tickets</code> avoid the problem. A SQL alias lasts for one statement and has nothing to do with how
+        Python names objects.</p>
+        <h3>Window functions: aggregates that keep every row</h3>
+        <p>GROUP BY collapses each group to one row. A window function computes over a set of related rows and still
+        returns every row, and MySQL supports them from 8.0 with an <code>OVER (...)</code>
+        clause.<sup class="cite"><a href="#src-12">12</a></sup> Inside OVER, PARTITION BY says which rows belong
+        together and ORDER BY sets their order.</p>
+<pre><code class="language-sql">SELECT ticket_id, customer_id, opened_at,
+       ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY opened_at) AS nth
+FROM tickets
+ORDER BY customer_id, nth;</code></pre>
+<pre class="out">+-----------+-------------+---------------------+-----+
+| ticket_id | customer_id | opened_at           | nth |
++-----------+-------------+---------------------+-----+
+|         1 |           1 | 2026-10-18 08:00:00 |   1 |
+|         3 |           1 | 2026-10-18 18:00:00 |   2 |
+|         2 |           2 | 2026-10-17 12:00:00 |   1 |
+|         5 |           2 | 2026-10-18 12:00:00 |   2 |
+|         4 |           3 | 2026-10-19 08:00:00 |   1 |
+|         6 |           3 | 2026-10-19 12:00:00 |   2 |
++-----------+-------------+---------------------+-----+</pre>
+        <p>All six tickets are still there, each numbered within its customer. A GROUP BY on <code>customer_id</code>
+        would have returned three rows and no ticket ids. Window functions are the usual next question after GROUP BY in
+        an interview, and an OVER clause is how you spot one.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A scalar function returns one value per row; an aggregate returns one value per group.</li>
+          <li>COUNT(*) counts rows, COUNT(column) skips NULLs, and the other aggregates ignore NULL too.</li>
+          <li>A column alias names a result column and works after SELECT, never in WHERE.</li>
+          <li>A window function computes over related rows without collapsing them.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A scalar function returns one value for each row, like CONCAT, UPPER or DATE_ADD, so it can go in SELECT,
+          WHERE or ORDER BY. An aggregate function such as COUNT, SUM, AVG, MIN or MAX collapses a set of rows into one
+          value per group, so it goes in SELECT or HAVING and never in WHERE.</p>
+          <p>COUNT star counts rows and COUNT of a column skips NULLs. I give computed columns an alias with AS so the
+          result has a readable name, and I alias tables so a join stays short and unambiguous.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">Subqueries</div>
+        <h2>Subqueries and common table expressions</h2>
+        <h3>What a subquery is</h3>
+        <p>A subquery is a SELECT written inside another statement, in parentheses, whose result the outer statement
+        uses. It comes in three shapes, named by where it sits and what it returns.<sup class="cite"><a href="#src-13">13</a></sup></p>
+        <ul>
+          <li>A scalar subquery returns one value, so it can stand where a single value would.</li>
+          <li>A subquery after IN or EXISTS in WHERE supplies a list of values or a yes-or-no test.</li>
+          <li>A subquery in FROM is a derived table, a temporary result the outer query reads like a table.</li>
+        </ul>
+<pre><code class="language-sql">SELECT ticket_id, title
+FROM tickets
+WHERE customer_id = (SELECT customer_id FROM customers WHERE email = 'dana@example.com');</code></pre>
+<pre class="out">+-----------+------------------------+
+| ticket_id | title                  |
++-----------+------------------------+
+|         1 | Login page returns 500 |
+|         3 | Typo on pricing page   |
++-----------+------------------------+</pre>
+        <p>The inner query finds Dana's id, 1, from her email, and the outer query uses it as if you had typed it. The
+        email is UNIQUE, so the inner query can never return two rows. A scalar subquery that does return more than one
+        row raises ERROR 1242.<sup class="cite"><a href="#src-14">14</a></sup></p>
+<pre><code class="language-sql">SELECT ticket_id, title
+FROM tickets
+WHERE customer_id = (SELECT customer_id FROM customers WHERE country = 'CA');</code></pre>
+<pre class="out">ERROR 1242 (21000): Subquery returns more than 1 row</pre>
+        <p>Two customers are in Canada, and <code>=</code> cannot compare against two values. When the inner query can
+        return several rows, the operator should be IN.</p>
+        <h3>IN, NOT IN and EXISTS</h3>
+        <p>IN with a subquery tests membership in whatever list the subquery returns. NOT IN asks the opposite, which
+        finds the customers who have never opened a ticket.</p>
+<pre><code class="language-sql">SELECT name
+FROM customers
+WHERE customer_id NOT IN (SELECT customer_id FROM tickets);</code></pre>
+<pre class="out">+-------------+
+| name        |
++-------------+
+| Omar Haddad |
++-------------+</pre>
+        <p>The same pattern on agents goes wrong. Sam and Lee hold no tickets, yet asking for agents whose id is not in
+        the tickets' <code>agent_id</code> column returns nothing. NOT IN returns no rows when the subquery's list
+        contains a NULL,<sup class="cite"><a href="#src-15">15</a></sup> and four tickets have a NULL agent.</p>
+<pre><code class="language-sql">SELECT name
+FROM agents
+WHERE agent_id NOT IN (SELECT agent_id FROM tickets);</code></pre>
+<pre class="out">Empty set</pre>
+        <p>NOT EXISTS does not have that problem.<sup class="cite"><a href="#src-15">15</a></sup> It asks, for each
+        agent, whether any ticket row matches, and its subquery is correlated: it refers to a column of the outer query,
+        so it is logically re-evaluated for every outer row.<sup class="cite"><a href="#src-16">16</a></sup></p>
+<pre><code class="language-sql">SELECT a.name
+FROM agents AS a
+WHERE NOT EXISTS (SELECT 1 FROM tickets AS t WHERE t.agent_id = a.agent_id);</code></pre>
+<pre class="out">+------+
+| name |
++------+
+| Sam  |
+| Lee  |
++------+</pre>
+        <p>You recognise a correlated subquery by an inner WHERE that names the outer alias, here
+        <code>a.agent_id</code>. The <code>SELECT 1</code> is a convention: EXISTS only cares whether a row comes back,
+        so what it selects does not matter.</p>
+        <h3>Derived tables and WITH</h3>
+        <p>A subquery in FROM is a derived table, and it must have an alias.<sup class="cite"><a href="#src-17">17</a></sup>
+        Leave the alias off and MySQL refuses the query. Derived
+        tables let you aggregate an aggregate, such as the average number of tickets per customer.</p>
+<pre><code class="language-sql">SELECT AVG(per_customer.tickets) AS average_tickets
+FROM (SELECT customer_id, COUNT(*) AS tickets FROM tickets GROUP BY customer_id) AS per_customer;</code></pre>
+<pre class="out">+-----------------+
+| average_tickets |
++-----------------+
+|          2.0000 |
++-----------------+</pre>
+        <p>Nesting gets hard to read after one level. A WITH clause defines a common table expression, a named
+        subquery written at the top, and MySQL supports it from 8.0.<sup class="cite"><a href="#src-18">18</a></sup>
+        The main query then reads from the name as if it were a table.</p>
+<pre><code class="language-sql">WITH open_work AS (
+  SELECT customer_id, COUNT(*) AS open_tickets
+  FROM tickets
+  WHERE status &lt;&gt; 'closed'
+  GROUP BY customer_id
+)
+SELECT name
+FROM customers
+WHERE customer_id IN (SELECT customer_id FROM open_work WHERE open_tickets &gt; 1);</code></pre>
+<pre class="out">+----------+
+| name     |
++----------+
+| Mei Chen |
++----------+</pre>
+        <p>Mei has tickets 4 and 6 still open, the only customer with more than one. The query reads top to bottom:
+        first the open work per customer, then who has more than one. A query that opens with WITH is a CTE on sight.</p>
+        <h3>Subquery or join?</h3>
+        <p>Many subqueries can be rewritten as the joins of the next two sections, and the choice is mostly about what
+        the result needs.</p>
+        <ul>
+          <li>Use a subquery when you need a value or a membership test from another table but none of its columns in
+          the output, as in "tickets of the customer with this email".</li>
+          <li>Use a join when the output needs columns from both tables, as in "each ticket with its customer's name".</li>
+          <li>For "rows with no match", NOT EXISTS and the LEFT JOIN anti-join of the outer-joins section are
+          equivalent; NOT IN is safe only when the inner column can never be NULL.</li>
+        </ul>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A subquery is a SELECT inside another statement: a value, a list or a derived table.</li>
+          <li>NOT IN returns nothing when the list holds a NULL; NOT EXISTS does not.</li>
+          <li>A WITH clause names a subquery so the main query reads top to bottom.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A subquery is a SELECT inside another statement. It can return a single value to compare against, a list
+          for IN, a test for EXISTS, or a whole derived table in FROM. A correlated subquery refers to the outer row, so
+          logically it runs once per outer row.</p>
+          <p>I use a subquery when I only need a value or a membership test from another table, and a join when the
+          result needs columns from both. When a query has several steps I write them as WITH clauses, because named
+          steps read top to bottom, and I prefer NOT EXISTS to NOT IN when the inner column can be NULL.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="3">
+        <div class="tag">Joins</div>
+        <h2>Joins: cross, equi, theta and inner</h2>
+        <h3>What a join is</h3>
+        <p>Wednesday's schema stores each fact once. A ticket holds a <code>customer_id</code>, not the customer's name,
+        so a question such as "which customer raised each ticket" needs two tables at once. A join combines a row of one
+        table with a row of another wherever a condition pairs them, and the result has the columns of both.</p>
+        <p>The condition goes in ON, and it usually follows a foreign key back to the primary key it references.
+        <code>USING (customer_id)</code> is shorthand when both tables share the column
+        name.<sup class="cite"><a href="#src-19">19</a></sup> Several joins chain one after another in FROM, each with
+        its own ON.<sup class="cite"><a href="#src-19">19</a></sup> In someone else's code a join looks like
+        <code>FROM tickets AS t JOIN customers AS c ON c.customer_id = t.customer_id</code>.</p>
+        <h3>Cross join and the Cartesian product</h3>
+        <p>The simplest join has no condition. CROSS JOIN pairs every row of one table with every row of the other,
+        which set theory calls the Cartesian product.<sup class="cite"><a href="#src-19">19</a></sup> Four agents and
+        three priorities give twelve pairs, an on-call rota that lists every agent against every priority.</p>
+<pre><code class="language-sql">SELECT a.name AS agent, p.priority
+FROM agents AS a
+CROSS JOIN priorities AS p
+WHERE a.agent_id &lt;= 2
+ORDER BY a.agent_id, p.sla_hours;</code></pre>
+<pre class="out">+-------+----------+
+| agent | priority |
++-------+----------+
+| Priya | high     |
+| Priya | normal   |
+| Priya | low      |
+| Marco | high     |
+| Marco | normal   |
+| Marco | low      |
++-------+----------+</pre>
+        <p>The WHERE keeps two agents so the output stays short; without it the rota has all twelve rows. A comma
+        between tables, as in the older <code>FROM agents, priorities</code>, is also a cross join, with lower
+        precedence than the JOIN keywords.<sup class="cite"><a href="#src-19">19</a></sup></p>
+        <p>The cost is that output grows multiplicatively, so a cross join of two large tables is a performance
+        hazard.<sup class="cite"><a href="#src-19">19</a></sup> It also explains the most common join bug. In MySQL,
+        JOIN, INNER JOIN and CROSS JOIN are syntactic equivalents, and an inner join with no match condition behaves as
+        a cross join.<sup class="cite"><a href="#src-19">19</a></sup>
+        <code>FROM tickets AS t JOIN customers AS c</code> with the ON forgotten returns 24 rows, six tickets times four
+        customers, and every ticket appears to belong to everyone.</p>
+        <h3>Equi and theta joins</h3>
+        <p>An equi join's condition uses only <code>=</code>; a theta join uses any comparison
+        operator.<sup class="cite"><a href="#src-19">19</a></sup> The ON clause may hold any condition that is valid in
+        a WHERE clause.<sup class="cite"><a href="#src-19">19</a></sup> Joining each ticket to its priority is an equi
+        join, and a scalar function on the joined row turns the SLA into a deadline.</p>
+<pre><code class="language-sql">SELECT t.ticket_id, t.priority, p.sla_hours,
+       DATE_ADD(t.opened_at, INTERVAL p.sla_hours HOUR) AS deadline
+FROM tickets AS t
+JOIN priorities AS p ON p.priority = t.priority
+ORDER BY t.ticket_id;</code></pre>
+<pre class="out">+-----------+----------+-----------+---------------------+
+| ticket_id | priority | sla_hours | deadline            |
++-----------+----------+-----------+---------------------+
+|         1 | high     |         4 | 2026-10-18 12:00:00 |
+|         2 | normal   |        24 | 2026-10-18 12:00:00 |
+|         3 | normal   |        24 | 2026-10-19 18:00:00 |
+|         4 | high     |         4 | 2026-10-19 12:00:00 |
+|         5 | normal   |        24 | 2026-10-19 12:00:00 |
+|         6 | low      |        72 | 2026-10-22 12:00:00 |
++-----------+----------+-----------+---------------------+</pre>
+        <p>Adding a comparison to the ON makes it a theta join. This one keeps only the tickets closed after their
+        deadline, the breached ones.</p>
+<pre><code class="language-sql">SELECT t.ticket_id, t.title, t.closed_at
+FROM tickets AS t
+JOIN priorities AS p ON p.priority = t.priority
+  AND t.closed_at &gt; DATE_ADD(t.opened_at, INTERVAL p.sla_hours HOUR);</code></pre>
+<pre class="out">+-----------+----------------------+---------------------+
+| ticket_id | title                | closed_at           |
++-----------+----------------------+---------------------+
+|         2 | Invoice PDF is blank | 2026-10-18 18:00:00 |
++-----------+----------------------+---------------------+</pre>
+        <p>Ticket 2 had 24 hours and took 30. The open tickets have a NULL <code>closed_at</code>, so the comparison is
+        never true for them. A join on comparison alone is slower: with no equality condition, the hash join has nothing
+        to build its lookup on, so every pair of rows is compared and the condition is applied as a
+        filter.<sup class="cite"><a href="#src-20">20</a></sup></p>
+        <p>A self-join joins a table to itself, and it needs two aliases so each copy has a name. Pairing each ticket
+        with a later ticket from the same customer combines an equality with a <code>&gt;</code>.</p>
+<pre><code class="language-sql">SELECT a.ticket_id AS earlier, b.ticket_id AS later
+FROM tickets AS a
+JOIN tickets AS b ON b.customer_id = a.customer_id AND b.opened_at &gt; a.opened_at
+ORDER BY a.ticket_id;</code></pre>
+<pre class="out">+---------+-------+
+| earlier | later |
++---------+-------+
+|       1 |     3 |
+|       2 |     5 |
+|       4 |     6 |
++---------+-------+</pre>
+        <p>NATURAL JOIN is a different thing from an equi join. It matches on every column the two tables share by
+        name, so it silently changes if someone adds a same-named column, and an explicit ON is
+        safer.<sup class="cite"><a href="#src-19">19</a></sup></p>
+        <h3>Inner join</h3>
+        <p>INNER JOIN returns only the rows where the ON condition is true, and the word INNER is
+        optional.<sup class="cite"><a href="#src-19">19</a></sup> For an inner join, a condition placed in ON or in
+        WHERE gives the same result.<sup class="cite"><a href="#src-19">19</a></sup> Joining three tables and
+        filtering the joined rows looks like this.</p>
+<pre><code class="language-sql">SELECT CONCAT('TD-', t.ticket_id) AS ref, t.title, c.name AS customer, p.sla_hours
+FROM tickets AS t
+INNER JOIN customers AS c ON c.customer_id = t.customer_id
+INNER JOIN priorities AS p ON p.priority = t.priority
+WHERE t.status &lt;&gt; 'closed'
+ORDER BY t.ticket_id;</code></pre>
+<pre class="out">+------+------------------------+------------+-----------+
+| ref  | title                  | customer   | sla_hours |
++------+------------------------+------------+-----------+
+| TD-4 | Checkout button frozen | Mei Chen   |         4 |
+| TD-5 | Export is missing rows | Ravi Patel |        24 |
+| TD-6 | Add dark mode          | Mei Chen   |        72 |
++------+------------------------+------------+-----------+</pre>
+        <p>Every ticket has a customer and a priority, so nothing went missing here. The limit is that an inner
+        join silently drops unmatched rows, so a report can under-count.<sup class="cite"><a href="#src-19">19</a></sup>
+        Inner-joining these tickets to <code>agents</code> would keep only tickets 4 and 5, because the rest have no
+        agent. Table order does not change an inner join's rows.<sup class="cite"><a href="#src-19">19</a></sup></p>
+        <p>Both tables here have a <code>customer_id</code>. Selecting it without a prefix gives ERROR 1052, "Column
+        'customer_id' in field list is ambiguous",<sup class="cite"><a href="#src-19">19</a></sup> which is why joined
+        queries prefix every column with its table alias.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A join pairs rows of two tables wherever its ON condition holds, usually along a foreign key.</li>
+          <li>A cross join returns every combination; a forgotten ON does the same by accident.</li>
+          <li>An equi join compares with equals only; a theta join uses any comparison.</li>
+          <li>An inner join keeps only matched rows, so unmatched rows drop out without warning.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A join combines rows from two tables into one result row wherever a condition pairs them, usually a foreign
+          key matching the primary key it points to. Relational schemas store each fact once, so a ticket holds a
+          customer id and a join brings the customer's name back.</p>
+          <p>An inner join returns only the pairs where the condition is true, so rows with no match disappear. An equi
+          join's condition uses only equals, a theta join's uses any comparison, and a cross join has no condition and
+          returns every combination of rows.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">Outer joins</div>
+        <h2>Left, right and full outer joins, and UNION</h2>
+        <h3>Left and right joins</h3>
+        <p>An inner join drops what does not match. An outer join keeps it. LEFT JOIN keeps every row of the left table
+        and fills the right table's columns with NULL when nothing matches, and RIGHT JOIN is the mirror
+        image.<sup class="cite"><a href="#src-19">19</a></sup> LEFT JOIN is shorthand for LEFT OUTER JOIN; the word
+        OUTER is optional.<sup class="cite"><a href="#src-19">19</a></sup></p>
+<pre><code class="language-sql">SELECT a.name AS agent, t.ticket_id
+FROM agents AS a
+LEFT JOIN tickets AS t ON t.agent_id = a.agent_id
+ORDER BY a.agent_id;</code></pre>
+<pre class="out">+-------+-----------+
+| agent | ticket_id |
++-------+-----------+
+| Priya |         4 |
+| Marco |         5 |
+| Sam   |      NULL |
+| Lee   |      NULL |
++-------+-----------+</pre>
+        <p>All four agents appear, and Sam and Lee carry NULL where a ticket would be. Writing the same join as
+        <code>FROM agents AS a RIGHT JOIN tickets AS t</code> keeps every ticket instead: six rows, with a NULL agent on
+        tickets 1, 2, 3 and 6. At the parser stage MySQL rewrites a RIGHT JOIN as the equivalent LEFT JOIN with the
+        tables swapped,<sup class="cite"><a href="#src-21">21</a></sup> so most teams write only LEFT JOIN and put the
+        table they must keep first.</p>
+        <p>Those NULLs reach a program too. The connector converts each returned value to a Python
+        object,<sup class="cite"><a href="#src-22">22</a></sup> and a database driver hands SQL NULL to Python as
+        None,<sup class="cite"><a href="#src-23">23</a></sup> so an unassigned ticket read through a LEFT JOIN on
+        <code>agents</code> arrives with None as its agent's name. That is how the desk's Python code reads agent names
+        once its two-query lookup becomes one join.</p>
+        <h3>Finding the rows with no match</h3>
+        <p>A LEFT JOIN followed by <code>WHERE right_table.key IS NULL</code> keeps only the left rows that found no
+        partner. This anti-join pattern is the join form of NOT EXISTS.</p>
+<pre><code class="language-sql">SELECT c.name
+FROM customers AS c
+LEFT JOIN tickets AS t ON t.customer_id = c.customer_id
+WHERE t.ticket_id IS NULL;</code></pre>
+<pre class="out">+-------------+
+| name        |
++-------------+
+| Omar Haddad |
++-------------+</pre>
+        <p>A WHERE condition on the right table's columns also removes the NULL rows and
+        turns the LEFT JOIN back into an inner join, so that condition belongs in ON.<sup class="cite"><a href="#src-21">21</a></sup></p>
+        <div class="ix-spot" data-snippet="SELECT a.name AS agent, t.ticket_id&#10;FROM agents AS a&#10;LEFT JOIN tickets AS t ON t.agent_id = a.agent_id&#10;WHERE t.status &lt;&gt; 'closed';" data-q="The query should list all four agents with their open tickets. It returns only Priya and Marco. Why, and where does the condition go?" data-a="Sam and Lee have no ticket, so t.status is NULL on their rows, the comparison is not true and WHERE drops them. Move the test into the join: ON t.agent_id = a.agent_id AND t.status &lt;&gt; 'closed'."></div>
+<pre><code class="language-sql">SELECT a.name AS agent, COUNT(t.ticket_id) AS open_tickets
+FROM agents AS a
+LEFT JOIN tickets AS t ON t.agent_id = a.agent_id AND t.status &lt;&gt; 'closed'
+GROUP BY a.agent_id, a.name
+ORDER BY a.agent_id;</code></pre>
+<pre class="out">+-------+--------------+
+| agent | open_tickets |
++-------+--------------+
+| Priya |            1 |
+| Marco |            1 |
+| Sam   |            0 |
+| Lee   |            0 |
++-------+--------------+</pre>
+        <p>This is an agent-load report. <code>COUNT(t.ticket_id)</code> skips the NULL on Sam's and Lee's rows and
+        gives 0, where <code>COUNT(*)</code> would have counted their one unmatched row and said 1.</p>
+        <h3>Full outer join through UNION</h3>
+        <p>A full outer join keeps the unmatched rows of both sides. MySQL has no FULL OUTER JOIN keyword, and refuses
+        a query that uses one. The standard emulation is a LEFT JOIN combined by UNION with a RIGHT
+        JOIN.<sup class="cite"><a href="#src-24">24</a></sup></p>
+<pre><code class="language-sql">SELECT a.name AS agent, t.ticket_id
+FROM agents AS a
+LEFT JOIN tickets AS t ON t.agent_id = a.agent_id
+UNION
+SELECT a.name AS agent, t.ticket_id
+FROM agents AS a
+RIGHT JOIN tickets AS t ON t.agent_id = a.agent_id
+ORDER BY ticket_id, agent;</code></pre>
+<pre class="out">+-------+-----------+
+| agent | ticket_id |
++-------+-----------+
+| Lee   |      NULL |
+| Sam   |      NULL |
+| NULL  |         1 |
+| NULL  |         2 |
+| NULL  |         3 |
+| Priya |         4 |
+| Marco |         5 |
+| NULL  |         6 |
++-------+-----------+</pre>
+        <p>Agents without tickets and tickets without agents both appear. Priya with 4 and Marco with 5 came out of both
+        halves, and UNION kept each once. The ORDER BY at the end applies to the whole combined
+        result,<sup class="cite"><a href="#src-24">24</a></sup> and the result's column names come from the first
+        SELECT.<sup class="cite"><a href="#src-24">24</a></sup></p>
+        <h3>Set operations: UNION, INTERSECT and EXCEPT</h3>
+        <p>UNION is one of a family of set operations that combine whole result sets by column position. Each SELECT
+        needs the same number of columns.<sup class="cite"><a href="#src-24">24</a></sup> INTERSECT and EXCEPT are
+        available from MySQL 8.0.31.<sup class="cite"><a href="#src-25">25</a></sup></p>
+        <table>
+          <thead><tr><th>Operation</th><th>Returns</th><th>On the desk's customer ids</th></tr></thead>
+          <tbody>
+            <tr><td>UNION</td><td>rows from either side, duplicates removed<sup class="cite"><a href="#src-24">24</a></sup></td><td><code>customers</code> with <code>tickets</code>: 4 rows</td></tr>
+            <tr><td>UNION ALL</td><td>every row of both sides, duplicates kept<sup class="cite"><a href="#src-24">24</a></sup></td><td>the same pair: 10 rows</td></tr>
+            <tr><td>INTERSECT</td><td>rows present on both sides<sup class="cite"><a href="#src-25">25</a></sup></td><td>Canadian customers who have a ticket: 2 rows (ids 1, 2)</td></tr>
+            <tr><td>EXCEPT</td><td>the set difference, from 8.0.31<sup class="cite"><a href="#src-25">25</a></sup></td><td>customers with no ticket: 1 row (id 4)</td></tr>
+          </tbody>
+        </table>
+<pre><code class="language-sql">SELECT customer_id FROM customers
+EXCEPT
+SELECT customer_id FROM tickets;</code></pre>
+<pre class="out">+-------------+
+| customer_id |
++-------------+
+|           4 |
++-------------+</pre>
+        <p>Removing duplicates costs more than keeping them, so use UNION ALL when
+        duplicates are impossible or wanted.<sup class="cite"><a href="#src-24">24</a></sup> An ORDER BY at the end
+        of a set operation sorts the whole combined result.<sup class="cite"><a href="#src-24">24</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>LEFT JOIN keeps every left row and fills unmatched right columns with NULL.</li>
+          <li>A WHERE test on the right table turns a LEFT JOIN back into an inner join.</li>
+          <li>MySQL emulates a full outer join as a LEFT JOIN UNION a RIGHT JOIN.</li>
+          <li>UNION removes duplicates; UNION ALL keeps them and costs less.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A left join keeps every row of the left table and fills the right side with NULLs when nothing matches; a
+          right join is the mirror image. To find rows with no match I left join and check the right key IS NULL, and I
+          keep conditions on the right table in the ON clause so the join doesn't turn back into an inner join.</p>
+          <p>A full outer join keeps unmatched rows from both sides. MySQL doesn't have the keyword, so I write a left
+          join and a right join and combine them with UNION, which keeps the matched rows once. UNION ALL keeps
+          duplicates and is cheaper when I know there are none.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
+        <div class="tag">Transactions</div>
+        <h2>Transactions and the ACID properties</h2>
+        <h3>What a transaction is</h3>
+        <p>A transaction groups statements so that all of them take effect or none
+        do.<sup class="cite"><a href="#src-26">26</a></sup> Tuesday met START TRANSACTION, COMMIT and ROLLBACK as
+        the TCL statements. This section covers why they exist.</p>
+        <p>Assigning a ticket is two writes. The ticket's <code>agent_id</code> and <code>status</code> change, and a row
+        in <code>ticket_events</code> records the assignment. If the update succeeds and the insert fails, the desk shows
+        an assignment with no history, and nobody can say when it happened or who did it. Inside one transaction, the
+        two writes succeed together or are undone together.</p>
+<pre><code class="language-sql">START TRANSACTION;
+UPDATE tickets
+SET agent_id = 3, status = 'assigned'
+WHERE ticket_id = 6;
+INSERT INTO ticket_events (ticket_id, kind, note)
+VALUES (6, 'assigned', 'agent 3');
+ROLLBACK;
+SELECT t.ticket_id, t.status, t.agent_id,
+       (SELECT COUNT(*) FROM ticket_events) AS events
+FROM tickets AS t
+WHERE t.ticket_id = 6;</code></pre>
+        <p>The client answers each statement before the SELECT with a <code>Query OK</code> line. The SELECT then shows
+        that both writes were undone:</p>
+<pre class="out">+-----------+--------+----------+--------+
+| ticket_id | status | agent_id | events |
++-----------+--------+----------+--------+
+|         6 | open   |     NULL |      0 |
++-----------+--------+----------+--------+</pre>
+        <p>With COMMIT in place of ROLLBACK, the same SELECT shows <code>assigned</code>, agent 3 and one event. Use a
+        transaction whenever one business action needs more than one write, or reads a value and then writes based on
+        it. Application code calls this pattern a unit of work: one action, one transaction.</p>
+        <p>Three more facts apply.</p>
+        <ul>
+          <li>Only transactional engines such as InnoDB roll back; MyISAM does not.<sup class="cite"><a href="#src-26">26</a></sup></li>
+          <li>A transaction left open when the connection closes is rolled back, so a dropped connection loses the
+          uncommitted work.<sup class="cite"><a href="#src-27">27</a></sup></li>
+          <li>Long transactions hold locks and snapshots, so keep them short.<sup class="cite"><a href="#src-28">28</a></sup></li>
+        </ul>
+        <h3>The four ACID properties</h3>
+        <p>InnoDB, the storage engine behind the desk's tables, supports transactions with the ACID properties:
+        atomicity, consistency, isolation and durability.<sup class="cite"><a href="#src-29">29</a></sup> Each one is a
+        separate promise, and interviewers ask for all four.</p>
+        <table>
+          <thead><tr><th>Property</th><th>What it guarantees</th><th>In the ticket assignment</th></tr></thead>
+          <tbody>
+            <tr><td>Atomicity</td><td>all the statements commit, or none do<sup class="cite"><a href="#src-29">29</a></sup></td><td>the update and the event row land together or not at all</td></tr>
+            <tr><td>Consistency</td><td>a committed transaction leaves the data satisfying the schema's constraints<sup class="cite"><a href="#src-29">29</a></sup></td><td>an event can never point at a ticket that does not exist</td></tr>
+            <tr><td>Isolation</td><td>concurrent transactions do not see each other's half-finished work, to a degree set by the isolation level<sup class="cite"><a href="#src-29">29</a></sup></td><td>another agent's screen never shows the update without its event</td></tr>
+            <tr><td>Durability</td><td>a committed change survives a crash, through the redo log and doublewrite buffer<sup class="cite"><a href="#src-29">29</a></sup></td><td>the assignment is still there after the server restarts</td></tr>
+          </tbody>
+        </table>
+        <p>Consistency is the property the constraints serve: Wednesday's keys and CHECKs define what "valid" means, and
+        a statement that would break one is refused before it can be committed. Durability is the one the redo log serves.</p>
+        <p>Durability has a price. It costs a disk flush per commit, and the setting
+        <code>innodb_flush_log_at_trx_commit</code> can relax it at the risk of losing the most recent
+        commits.<sup class="cite"><a href="#src-30">30</a></sup> Some distributed data stores relax these guarantees
+        on purpose, a style called BASE, and accept that their copies of the data agree only eventually.</p>
+        <h3>Transaction properties: autocommit, implicit commits and the undo log</h3>
+        <p>A few properties decide where a transaction starts and ends, and they explain most unexpected behavior.</p>
+        <ul>
+          <li>Autocommit is on by default in the mysql client, so each statement is its own transaction until START
+          TRANSACTION begins a multi-statement one.<sup class="cite"><a href="#src-27">27</a></sup></li>
+          <li>START TRANSACTION turns autocommit off until the next COMMIT or ROLLBACK.<sup class="cite"><a href="#src-26">26</a></sup></li>
+          <li>Connector/Python leaves autocommit off by default, so a write from Python needs
+          <code>conn.commit()</code>.<sup class="cite"><a href="#src-31">31</a></sup></li>
+          <li>InnoDB keeps the old version of each row a transaction changes in the undo log, so a rollback can restore
+          it and other transactions can still read it.<sup class="cite"><a href="#src-32">32</a></sup></li>
+        </ul>
+        <p>DDL statements such as CREATE TABLE and DROP TABLE cause an implicit commit and cannot be rolled
+        back.<sup class="cite"><a href="#src-33">33</a></sup> Mixing DDL into a transaction therefore breaks its
+        atomicity, as this run on the throwaway <code>scratch_notes</code> table shows.</p>
+<pre><code class="language-sql">START TRANSACTION;
+INSERT INTO ticket_events (ticket_id, kind, note) VALUES (5, 'note', 'kept?');
+CREATE TABLE scratch_notes (note_id INT PRIMARY KEY);
+ROLLBACK;
+SELECT ticket_id, note FROM ticket_events;</code></pre>
+        <p>The ROLLBACK reports success, yet the event row survives:</p>
+<pre class="out">+-----------+-------+
+| ticket_id | note  |
++-----------+-------+
+|         5 | kept? |
++-----------+-------+</pre>
+        <p>The CREATE TABLE committed the INSERT before it ran, so the ROLLBACK had nothing left to undo. Drop
+        <code>scratch_notes</code> and rebuild afterwards. In a script, <code>SET autocommit = 0;</code> near the top, or
+        <code>conn.autocommit = False</code> in Python, is how you recognise code that manages its own transactions.
+        Savepoints from Tuesday add partial rollback inside one transaction.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A transaction makes several statements take effect together or not at all.</li>
+          <li>ACID means atomicity, consistency, isolation and durability, each a separate promise.</li>
+          <li>The client autocommits each statement; Connector/Python does not, so writes need a commit.</li>
+          <li>DDL commits implicitly, so it cannot be rolled back.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A transaction is a group of statements the database treats as one unit: either all of them take effect or
+          none do. I use one whenever a single business action needs more than one write, like assigning a ticket, which
+          updates the ticket and inserts an event row. If either fails, both roll back.</p>
+          <p>Atomicity means all or nothing. Consistency means a committed transaction leaves the data satisfying the
+          schema's constraints. Isolation means concurrent transactions don't see each other's half-finished work, to a
+          degree the isolation level sets. Durability means a commit survives a crash, which InnoDB gets from its redo
+          log.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="6">
+        <div class="tag">Isolation</div>
+        <h2>Commit, rollback and isolation levels</h2>
+        <h3>COMMIT and ROLLBACK from Python</h3>
+        <p>In Connector/Python the transaction statements are methods on the connection.
+        <code>start_transaction()</code> begins a transaction, accepts an <code>isolation_level</code> argument, and
+        raises <code>ProgrammingError</code> when a transaction is already in
+        progress.<sup class="cite"><a href="#src-34">34</a></sup> <code>commit()</code> makes the work
+        permanent,<sup class="cite"><a href="#src-31">31</a></sup> and on an error you call
+        <code>conn.rollback()</code> before the exception leaves the function.<sup class="cite"><a href="#src-35">35</a></sup>
+        The desk's assignment, written that way:</p>
+<pre><code>import logging
+
+import mysql.connector
+
+log = logging.getLogger(__name__)
+
+
+def assign_ticket(conn, ticket_id, agent_id):
+    """Give a ticket to an agent in one transaction, rolling back on any error."""
+    cursor = conn.cursor()
+    try:
+        conn.start_transaction()
+        cursor.execute(
+            """UPDATE tickets
+            SET agent_id = %s, status = 'assigned'
+            WHERE ticket_id = %s AND status &lt;&gt; 'closed'""",
+            (agent_id, ticket_id),
+        )
+        if cursor.rowcount == 0:
+            raise ValueError(f"ticket {ticket_id} was not assigned")
+        cursor.execute(
+            """INSERT INTO ticket_events (ticket_id, kind, note)
+            VALUES (%s, 'assigned', %s)""",
+            (ticket_id, f"agent {agent_id}"),
+        )
+        event_id = cursor.lastrowid
+        conn.commit()
+    except (mysql.connector.Error, ValueError):
+        conn.rollback()
+        log.error("assignment of ticket %s rolled back", ticket_id)
+        raise
+    finally:
+        cursor.close()
+    return event_id</code></pre>
+        <p>Defining the function prints nothing. The shape to recognise in anyone's code is
+        <code>try</code>, the writes, <code>commit()</code>, then <code>except</code> with <code>rollback()</code> and
+        <code>raise</code>. Calling it with the desk's <code>connect()</code> helper from Wednesday shows both paths.</p>
+<pre><code>from db import connect
+
+conn = connect()
+print(assign_ticket(conn, 6, 1))
+try:
+    assign_ticket(conn, 6, 99)
+except mysql.connector.IntegrityError as err:
+    print(err.errno)
+cursor = conn.cursor()
+cursor.execute("SELECT status, agent_id FROM tickets WHERE ticket_id = 6")
+print(cursor.fetchone())
+conn.commit()</code></pre>
+<pre class="out">1
+assignment of ticket 6 rolled back
+1452
+('assigned', 1)</pre>
+        <p>The first call committed and returned event id 1. The second failed at the UPDATE, because agent 99 does not
+        exist and the foreign key refused it with error 1452. The rollback undid that transaction, and the read shows
+        ticket 6 still with agent 1. The closing <code>commit()</code> matters: with autocommit off the read opened a
+        transaction, and the next <code>start_transaction()</code> on that connection would raise "Transaction already in
+        progress".<sup class="cite"><a href="#src-34">34</a></sup></p>
+        <h3>The four isolation levels</h3>
+        <p>Isolation decides what one transaction can see of another's work. InnoDB's default level is REPEATABLE READ,
+        and the other three are READ UNCOMMITTED, READ COMMITTED and SERIALIZABLE.<sup class="cite"><a href="#src-36">36</a></sup></p>
+        <table>
+          <thead><tr><th>Level</th><th>What a plain read sees</th><th>Anomaly it allows</th></tr></thead>
+          <tbody>
+            <tr><td>READ UNCOMMITTED</td><td>other transactions' changes before they commit<sup class="cite"><a href="#src-36">36</a></sup></td><td>dirty reads</td></tr>
+            <tr><td>READ COMMITTED</td><td>committed data only, but each read can see a newer commit<sup class="cite"><a href="#src-36">36</a></sup></td><td>non-repeatable reads</td></tr>
+            <tr><td>REPEATABLE READ (default)</td><td>the snapshot taken at its first read, so repeated reads agree<sup class="cite"><a href="#src-37">37</a></sup></td><td>neither of those two</td></tr>
+            <tr><td>SERIALIZABLE</td><td>the same, but plain reads take shared locks when autocommit is off<sup class="cite"><a href="#src-36">36</a></sup></td><td>none of those two; reads take shared locks, so other transactions block more</td></tr>
+          </tbody>
+        </table>
+        <p>A dirty read is reading a change that another transaction may still undo. A non-repeatable read is reading
+        the same row twice in one transaction and getting two answers. <code>SET TRANSACTION ISOLATION LEVEL</code>
+        changes the level for the next transaction or for the session.<sup class="cite"><a href="#src-38">38</a></sup>
+        The trade-off runs one way: stricter isolation reduces anomalies but increases blocking and
+        deadlocks.<sup class="cite"><a href="#src-36">36</a></sup></p>
+        <h3>A snapshot and a fresh read, side by side</h3>
+        <p>Two connections make the difference visible. Connection <code>b</code> reads ticket 3's title while
+        connection <code>a</code> changes it.</p>
+<pre><code>a = connect()
+b = connect()
+ca = a.cursor()
+cb = b.cursor()
+title = "SELECT title FROM tickets WHERE ticket_id = 3"
+
+cb.execute(title)
+print(cb.fetchone())
+ca.execute("UPDATE tickets SET title = %s WHERE ticket_id = 3", ("Typo on the pricing page",))
+cb.execute(title)
+print(cb.fetchone())
+a.commit()
+cb.execute(title)
+print(cb.fetchone())
+b.commit()
+cb.execute(title)
+print(cb.fetchone())
+b.commit()
+
+b.start_transaction(isolation_level="READ COMMITTED")
+cb.execute(title)
+print(cb.fetchone())
+ca.execute("UPDATE tickets SET title = %s WHERE ticket_id = 3", ("Typo on pricing",))
+a.commit()
+cb.execute(title)
+print(cb.fetchone())
+b.commit()</code></pre>
+<pre class="out">('Typo on pricing page',)
+('Typo on pricing page',)
+('Typo on pricing page',)
+('Typo on the pricing page',)
+('Typo on the pricing page',)
+('Typo on pricing',)</pre>
+        <p>Under REPEATABLE READ, <code>b</code> kept its snapshot even after <code>a</code> committed, and saw the new
+        title only once it committed and its next read began a new transaction. Under READ COMMITTED, the same
+        transaction saw <code>a</code>'s commit on its very next read. Under the default level the committed change does not appear at once, which people often get
+        backwards.</p>
+        <p>Both commits leave ticket 3 with a new title, so run the rebuild before the next example. Run it
+        from the <code>ticket-desk</code> folder, where <code>schema.sql</code> and <code>seed.sql</code> sit in
+        <code>sql/</code>.</p>
+<pre><code class="language-bash">cat sql/schema.sql sql/seed.sql | docker exec -i desk-mysql mysql -uroot -pdesk</code></pre>
+<pre class="out">mysql: [Warning] Using a password on the command line interface can be insecure.</pre>
+        <h3>Locks, deadlocks and retries</h3>
+        <p>InnoDB implements the levels with row locks and consistent-read snapshots, so long transactions hold
+        locks and snapshots longer.<sup class="cite"><a href="#src-36">36</a></sup><sup class="cite"><a href="#src-28">28</a></sup> Two transactions
+        that each hold a lock the other is waiting for form a deadlock. Deadlocks are the cost of locking, they grow
+        with stricter isolation,<sup class="cite"><a href="#src-36">36</a></sup> and the usual fix is to retry the
+        transaction that failed.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>In Python, commit at the end of the writes and roll back in the except block.</li>
+          <li>A read with autocommit off opens a transaction, so commit before starting another.</li>
+          <li>MySQL's default, REPEATABLE READ, reads from a snapshot taken at the first read.</li>
+          <li>Stricter isolation means fewer anomalies, more blocking and more deadlocks.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>COMMIT makes every change in the current transaction permanent and visible to others, and ROLLBACK undoes
+          all of them. In Python I start the transaction, run the writes and commit at the end; in the except block I
+          roll back and re-raise, so a failure halfway never leaves half a change behind.</p>
+          <p>There are four isolation levels. READ UNCOMMITTED allows dirty reads, READ COMMITTED sees only committed
+          data but a repeated read can change, REPEATABLE READ, MySQL's default, reads from a snapshot so repeated reads
+          agree, and SERIALIZABLE also locks what it reads. Stricter levels mean fewer anomalies but more waiting.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="7">
+        <div class="tag">Python</div>
+        <h2>CRUD from Python, and sequences</h2>
+        <h3>CRUD: four letters, four statements</h3>
+        <p>CRUD stands for create, read, update and delete. It is an industry name, not a MySQL keyword, and its four
+        letters map to INSERT, SELECT, UPDATE and DELETE, the four statements the manual lists under Data Manipulation
+        Statements.<sup class="cite"><a href="#src-39">39</a></sup> Job descriptions say "CRUD app" to mean an
+        application whose main work is those four operations on its tables.</p>
+        <table>
+          <thead><tr><th>Letter</th><th>Statement</th><th>On the desk</th></tr></thead>
+          <tbody>
+            <tr><td>Create</td><td>INSERT</td><td>a customer reports a new ticket</td></tr>
+            <tr><td>Read</td><td>SELECT</td><td>the board, the agent load, the breached list</td></tr>
+            <tr><td>Update</td><td>UPDATE</td><td>a ticket is assigned or closed</td></tr>
+            <tr><td>Delete</td><td>DELETE</td><td>a test ticket is removed</td></tr>
+          </tbody>
+        </table>
+        <p>The two letters that change existing rows carry the classic accident. An UPDATE or DELETE without a WHERE
+        clause touches every row of the table,<sup class="cite"><a href="#src-40">40</a></sup> so a reviewer reads
+        the WHERE of every UPDATE and DELETE first.</p>
+        <h3>Placeholders, rowcount and the dictionary cursor</h3>
+        <p><code>cursor.execute(sql, params)</code> sends the values separately from the SQL
+        text.<sup class="cite"><a href="#src-41">41</a></sup> Each <code>%s</code> in the SQL is filled from the
+        tuple, and the value is never pasted into the statement. An f-string does paste it, so a title containing a
+        quote would end the string early and the rest of the title would run as SQL. That is SQL injection, and
+        placeholders are the fix. One round trip through all four letters:</p>
+<pre><code>from db import connect
+
+conn = connect()
+cursor = conn.cursor()
+cursor.execute(
+    "INSERT INTO tickets (title, priority, customer_id, opened_at) VALUES (%s, %s, %s, NOW())",
+    ("Password reset email is late", "normal", 4),
+)
+new_id = cursor.lastrowid
+conn.commit()
+print(new_id)
+
+update = "UPDATE tickets SET priority = %s WHERE ticket_id = %s"
+cursor.execute(update, ("high", new_id))
+print(cursor.rowcount)
+cursor.execute(update, ("high", new_id))
+print(cursor.rowcount)
+conn.commit()
+
+reader = conn.cursor(dictionary=True)
+reader.execute("SELECT ticket_id, title, priority FROM tickets WHERE customer_id = %s", (4,))
+print(reader.fetchall())
+conn.commit()
+
+cursor.execute("DELETE FROM tickets WHERE ticket_id = %s", (new_id,))
+print(cursor.rowcount)
+conn.commit()</code></pre>
+<pre class="out">7
+1
+0
+[{'ticket_id': 7, 'title': 'Password reset email is late', 'priority': 'high'}]
+1</pre>
+        <p>Omar's first ticket got id 7. The first UPDATE changed one row and the second changed none, because
+        <code>cursor.rowcount</code> after an UPDATE is the number of rows changed, and setting a column to its current
+        value changes nothing.<sup class="cite"><a href="#src-42">42</a></sup> That is why the assignment function
+        treats a rowcount of 0 as a ticket it could not assign. Note the one-element tuple <code>(4,)</code>: the comma
+        is what makes it a tuple.</p>
+        <p>The dictionary cursor returns each row as a dict keyed by the result's column
+        names,<sup class="cite"><a href="#src-43">43</a></sup> so an aliased column such as <code>open_tickets</code>
+        is read as <code>row["open_tickets"]</code>. That is where the column aliases of the functions section pay off
+        in Python.</p>
+        <h3>AUTO_INCREMENT as MySQL's sequence</h3>
+        <p>A sequence is a generator of increasing ids. PostgreSQL and Oracle have sequence objects, while MySQL has no
+        CREATE SEQUENCE and uses an AUTO_INCREMENT column instead. A table has at most one, and it must be a key,
+        typically the primary key.<sup class="cite"><a href="#src-44">44</a></sup> You recognise it by
+        <code>ticket_id INT AUTO_INCREMENT PRIMARY KEY</code> in a schema and <code>new_id = cursor.lastrowid</code> in
+        the code.</p>
+        <p><code>LAST_INSERT_ID()</code> returns the first AUTO_INCREMENT value generated by the current connection's
+        most recent INSERT, and another client's insert does not change it.<sup class="cite"><a href="#src-45">45</a></sup>
+        <code>cursor.lastrowid</code> exposes that value in Connector/Python.<sup class="cite"><a href="#src-46">46</a></sup>
+        Because it is per connection, two programs inserting at once each get their own id back.</p>
+        <p>The example below starts from a fresh rebuild, because the round trip above already moved the counter past 7:
+        <code>cat sql/schema.sql sql/seed.sql | docker exec -i desk-mysql mysql -uroot -pdesk</code>.</p>
+<pre><code>from db import connect
+
+conn = connect()
+cursor = conn.cursor()
+sql = "INSERT INTO tickets (title, priority, customer_id, opened_at) VALUES (%s, %s, %s, NOW())"
+
+conn.start_transaction()
+cursor.execute(sql, ("Undone", "low", 4))
+print(cursor.lastrowid)
+conn.rollback()
+
+cursor.execute(sql, ("Kept", "low", 4))
+print(cursor.lastrowid)
+conn.commit()</code></pre>
+<pre class="out">7
+8</pre>
+        <p>The rolled-back ticket is gone, yet the kept one is 8, and no ticket 7 exists. A rolled-back INSERT still
+        consumes its AUTO_INCREMENT value, so gaps are normal and ids are not a row
+        count.<sup class="cite"><a href="#src-47">47</a></sup> Wednesday's refused foreign-key insert burned an id
+        the same way. Read a new row's id from <code>cursor.lastrowid</code>, which is per connection, rather than
+        predicting it.<sup class="cite"><a href="#src-45">45</a></sup><sup class="cite"><a href="#src-46">46</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>CRUD maps to INSERT, SELECT, UPDATE and DELETE.</li>
+          <li>Pass values as placeholders with a tuple, never inside an f-string.</li>
+          <li>rowcount counts changed rows, so an update to the same value gives 0.</li>
+          <li>AUTO_INCREMENT is MySQL's sequence, and a rolled-back insert leaves a gap.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>CRUD is create, read, update and delete, which map to INSERT, SELECT, UPDATE and DELETE. From Python I pass
+          values as placeholders with a tuple, so the driver sends them separately from the SQL and a quote in the data
+          can't change the statement. After an UPDATE I check rowcount to know whether anything changed.</p>
+          <p>MySQL generates ids with an AUTO_INCREMENT primary key instead of a sequence object, and I read the new id
+          from lastrowid, which is per connection. Gaps are normal, because a rolled-back insert still uses up its id,
+          so I never treat ids as a count.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="8">
+        <div class="tag">Check yourself</div>
+        <h2>Check yourself</h2>
+        <p>Ten retrieval questions, at least one per section. Answer each out loud before you open it.</p>
+        <details class="check"><summary>A report should list only the statuses that more than one ticket holds. Why does <code>WHERE COUNT(*) &gt; 1</code> fail, and what replaces it?</summary><p>WHERE filters single rows before any grouping, so no count exists yet and MySQL raises ERROR 1111. Group with <code>GROUP BY status</code> and filter the groups with <code>HAVING COUNT(*) &gt; 1</code>.</p></details>
+        <details class="check"><summary>Why does <code>WHERE agent_id = NULL</code> return no rows even though four tickets have no agent?</summary><p>A comparison with NULL is never true, so no row passes. Missing values are tested with <code>IS NULL</code> or <code>IS NOT NULL</code>.</p></details>
+        <details class="check"><summary>What is the difference between a scalar and an aggregate function? Give one example of each from the desk.</summary><p>A scalar function returns one value per row, such as <code>CONCAT('TD-', ticket_id)</code> turning each ticket into a reference. An aggregate collapses many rows into one value per group, such as <code>COUNT(*)</code> per status.</p></details>
+        <details class="check"><summary>On the seeded desk, <code>COUNT(*)</code> over the tickets gives 6 and <code>COUNT(agent_id)</code> gives 2. Why do they differ, and what does <code>SUM</code> return over zero rows?</summary><p><code>COUNT(column)</code> skips rows where that column is NULL, and four tickets have no agent. Over zero rows COUNT returns 0, while SUM, AVG, MIN and MAX return NULL.</p></details>
+        <details class="check"><summary>A query for agents without tickets uses <code>NOT IN (SELECT agent_id FROM tickets)</code> and returns nothing. What went wrong, and what is the safe version?</summary><p>The subquery's list contains NULLs from unassigned tickets, and NOT IN returns no rows when its list holds a NULL. Use a correlated <code>NOT EXISTS</code>, or a LEFT JOIN with <code>WHERE t.ticket_id IS NULL</code>.</p></details>
+        <details class="check"><summary>A join of tickets to customers returns 24 rows instead of 6. What happened?</summary><p>The ON condition is missing, so the join behaved as a cross join and paired each of the six tickets with all four customers. Add <code>ON c.customer_id = t.customer_id</code>, an equi join along the foreign key.</p></details>
+        <details class="check"><summary>What is the difference between an inner join and a left join, and how do you write a full outer join in MySQL?</summary><p>An inner join keeps only matched pairs; a left join keeps every row of the left table and fills the right side with NULL when nothing matches. MySQL has no FULL OUTER JOIN, so you combine a LEFT JOIN and a RIGHT JOIN with UNION.</p></details>
+        <details class="check"><summary>Assigning a ticket updates the ticket and inserts an event row. Why must both run in one transaction, and which ACID property is that?</summary><p>If the update succeeded and the insert failed, the desk would show an assignment with no history. Atomicity makes both statements commit together or neither, and a ROLLBACK on any error undoes the half that ran.</p></details>
+        <details class="check"><summary>Under REPEATABLE READ, connection B reads a title, connection A changes it and commits, and B reads again without committing. Which title does B see, and what changes under READ COMMITTED?</summary><p>B still sees the old title, because REPEATABLE READ reads from the snapshot taken at its first read. Under READ COMMITTED each read can see the newest commit, so B would see the new title.</p></details>
+        <details class="check"><summary>A rolled-back INSERT took id 7 and the next INSERT got 8. Is something broken, and how should code learn a new row's id?</summary><p>Nothing is broken: a rolled-back INSERT still consumes its AUTO_INCREMENT value, so gaps are normal. Read the id from <code>cursor.lastrowid</code>, which is per connection, rather than predicting it.</p></details>
+      </section>
+
+      <section class="reading-sources" aria-label="Sources and deeper dive">
+        <h2>Sources &amp; deeper dive</h2>
+        <ul>
+          <li id="src-1"><a href="https://dev.mysql.com/doc/refman/8.4/en/select.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: SELECT Statement</a> — clause order, evaluation order, WHERE against HAVING, LIMIT and aliases.</li>
+          <li id="src-2"><a href="https://dev.mysql.com/doc/refman/8.4/en/problems-with-alias.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: Problems with Column Aliases</a> — why an alias works in ORDER BY and HAVING but not in WHERE.</li>
+          <li id="src-3"><a href="https://dev.mysql.com/doc/refman/8.4/en/comparison-operators.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: Comparison Functions and Operators</a> — the comparison operators, IN, BETWEEN and COALESCE.</li>
+          <li id="src-4"><a href="https://dev.mysql.com/doc/refman/8.4/en/string-comparison-functions.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: String Comparison Functions</a> — LIKE and its two wildcards.</li>
+          <li id="src-5"><a href="https://dev.mysql.com/doc/refman/8.4/en/working-with-null.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: Working with NULL Values</a> — why a comparison with NULL is never true.</li>
+          <li id="src-6"><a href="https://dev.mysql.com/doc/refman/8.4/en/group-by-handling.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: MySQL Handling of GROUP BY</a> — grouping and the ONLY_FULL_GROUP_BY mode.</li>
+          <li id="src-7"><a href="https://dev.mysql.com/doc/refman/8.4/en/string-functions.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: String Functions</a> — CONCAT, UPPER and how NULL arguments behave.</li>
+          <li id="src-8"><a href="https://dev.mysql.com/doc/refman/8.4/en/date-and-time-functions.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: Date and Time Functions</a> — DATE_ADD with an INTERVAL, and NOW().</li>
+          <li id="src-9"><a href="https://dev.mysql.com/doc/refman/8.4/en/numeric-functions.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: Numeric Functions</a> — ROUND and the other functions that work one row at a time.</li>
+          <li id="src-10"><a href="https://dev.mysql.com/doc/refman/8.4/en/aggregate-functions.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: Aggregate Functions</a> — COUNT, SUM, AVG, MIN, MAX, DISTINCT and NULL handling.</li>
+          <li id="src-11"><a href="https://dev.mysql.com/doc/refman/8.4/en/identifiers.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: Schema Object Names</a> — when a name needs backticks or quotes.</li>
+          <li id="src-12"><a href="https://dev.mysql.com/doc/refman/8.4/en/window-functions.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: Window Functions</a> — OVER, PARTITION BY and ROW_NUMBER.</li>
+          <li id="src-13"><a href="https://dev.mysql.com/doc/refman/8.4/en/subqueries.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: Subqueries</a> — the shapes a subquery takes and where each can sit.</li>
+          <li id="src-14"><a href="https://dev.mysql.com/doc/refman/8.4/en/scalar-subqueries.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: Subqueries as Scalar Operands</a> — single-value subqueries and ERROR 1242.</li>
+          <li id="src-15"><a href="https://dev.mysql.com/doc/refman/8.4/en/exists-and-not-exists-subqueries.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: Subqueries with EXISTS or NOT EXISTS</a> — EXISTS, and the NOT IN trap with NULL.</li>
+          <li id="src-16"><a href="https://dev.mysql.com/doc/refman/8.4/en/correlated-subqueries.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: Correlated Subqueries</a> — subqueries that refer to the outer row.</li>
+          <li id="src-17"><a href="https://dev.mysql.com/doc/refman/8.4/en/derived-tables.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: Derived Tables</a> — subqueries in FROM and their required alias.</li>
+          <li id="src-18"><a href="https://dev.mysql.com/doc/refman/8.4/en/with.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: WITH (Common Table Expressions)</a> — naming a subquery at the top of a query.</li>
+          <li id="src-19"><a href="https://dev.mysql.com/doc/refman/8.4/en/join.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: JOIN Clause</a> — ON, USING, cross, inner, outer and natural joins.</li>
+          <li id="src-20"><a href="https://dev.mysql.com/doc/refman/8.4/en/hash-joins.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: Hash Join Optimization</a> — why a join without an equality condition compares every pair.</li>
+          <li id="src-21"><a href="https://dev.mysql.com/doc/refman/8.4/en/outer-join-simplification.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: Outer Join Simplification</a> — RIGHT JOIN rewritten as LEFT JOIN, and WHERE turning an outer join inner.</li>
+          <li id="src-22"><a href="https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursor-fetchone.html" target="_blank" rel="noopener">MySQL Connector/Python: MySQLCursor.fetchone()</a> — returned values converted to Python objects.</li>
+          <li id="src-23"><a href="https://peps.python.org/pep-0249/" target="_blank" rel="noopener">PEP 249: Python Database API Specification v2.0</a> — the driver contract, including NULL as None.</li>
+          <li id="src-24"><a href="https://dev.mysql.com/doc/refman/8.4/en/union.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: UNION Clause</a> — UNION, UNION ALL, column names and the full outer join emulation.</li>
+          <li id="src-25"><a href="https://dev.mysql.com/doc/refman/8.4/en/intersect.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: INTERSECT Clause</a> — INTERSECT and EXCEPT from 8.0.31.</li>
+          <li id="src-26"><a href="https://dev.mysql.com/doc/refman/8.4/en/commit.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: START TRANSACTION, COMMIT, and ROLLBACK</a> — what a transaction is and which engines roll back.</li>
+          <li id="src-27"><a href="https://dev.mysql.com/doc/refman/8.4/en/innodb-autocommit-commit-rollback.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: autocommit, Commit, and Rollback</a> — autocommit in the client and open transactions on disconnect.</li>
+          <li id="src-28"><a href="https://dev.mysql.com/doc/refman/8.4/en/innodb-transaction-model.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: InnoDB Transaction Model</a> — why long transactions are costly.</li>
+          <li id="src-29"><a href="https://dev.mysql.com/doc/refman/8.4/en/mysql-acid.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: InnoDB and the ACID Model</a> — the four ACID properties as InnoDB provides them.</li>
+          <li id="src-30"><a href="https://dev.mysql.com/doc/refman/8.4/en/innodb-parameters.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: InnoDB Startup Options and System Variables</a> — innodb_flush_log_at_trx_commit and the price of durability.</li>
+          <li id="src-31"><a href="https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlconnection-commit.html" target="_blank" rel="noopener">MySQL Connector/Python: MySQLConnection.commit()</a> — autocommit off by default and committing from Python.</li>
+          <li id="src-32"><a href="https://dev.mysql.com/doc/refman/8.4/en/innodb-undo-logs.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: Undo Logs</a> — the old row versions behind rollback and consistent reads.</li>
+          <li id="src-33"><a href="https://dev.mysql.com/doc/refman/8.4/en/implicit-commit.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: Statements That Cause an Implicit Commit</a> — why DDL cannot be rolled back.</li>
+          <li id="src-34"><a href="https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlconnection-start-transaction.html" target="_blank" rel="noopener">MySQL Connector/Python: MySQLConnection.start_transaction()</a> — isolation_level and the transaction-in-progress error.</li>
+          <li id="src-35"><a href="https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlconnection-rollback.html" target="_blank" rel="noopener">MySQL Connector/Python: MySQLConnection.rollback()</a> — undoing the current transaction from Python.</li>
+          <li id="src-36"><a href="https://dev.mysql.com/doc/refman/8.4/en/innodb-transaction-isolation-levels.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: Transaction Isolation Levels</a> — the four levels, their anomalies and their cost.</li>
+          <li id="src-37"><a href="https://dev.mysql.com/doc/refman/8.4/en/innodb-consistent-read.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: Consistent Nonlocking Reads</a> — the snapshot REPEATABLE READ reads from.</li>
+          <li id="src-38"><a href="https://dev.mysql.com/doc/refman/8.4/en/set-transaction.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: SET TRANSACTION Statement</a> — changing the level for a transaction or a session.</li>
+          <li id="src-39"><a href="https://dev.mysql.com/doc/refman/8.4/en/sql-data-manipulation-statements.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: Data Manipulation Statements</a> — INSERT, SELECT, UPDATE and DELETE, the statements behind CRUD.</li>
+          <li id="src-40"><a href="https://dev.mysql.com/doc/refman/8.4/en/update.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: UPDATE Statement</a> — what an UPDATE without WHERE touches.</li>
+          <li id="src-41"><a href="https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursor-execute.html" target="_blank" rel="noopener">MySQL Connector/Python: MySQLCursor.execute()</a> — parameters sent separately from the SQL text.</li>
+          <li id="src-42"><a href="https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursor-rowcount.html" target="_blank" rel="noopener">MySQL Connector/Python: MySQLCursor.rowcount</a> — rows changed by the last statement.</li>
+          <li id="src-43"><a href="https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursordict.html" target="_blank" rel="noopener">MySQL Connector/Python: cursor.MySQLCursorDict Class</a> — rows as dicts keyed by column name.</li>
+          <li id="src-44"><a href="https://dev.mysql.com/doc/refman/8.4/en/example-auto-increment.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: Using AUTO_INCREMENT</a> — one AUTO_INCREMENT column per table, and it must be a key.</li>
+          <li id="src-45"><a href="https://dev.mysql.com/doc/refman/8.4/en/information-functions.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: Information Functions</a> — LAST_INSERT_ID() and why it is per connection.</li>
+          <li id="src-46"><a href="https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursor-lastrowid.html" target="_blank" rel="noopener">MySQL Connector/Python: MySQLCursor.lastrowid</a> — the generated id in Python.</li>
+          <li id="src-47"><a href="https://dev.mysql.com/doc/refman/8.4/en/innodb-auto-increment-handling.html" target="_blank" rel="noopener">MySQL 8.4 Reference Manual: AUTO_INCREMENT Handling in InnoDB</a> — why rolled-back inserts leave gaps.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · after you have read the page</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 3 Day 4</footer>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 4 — goals &amp; exercise</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Filter rows with WHERE and its operators, and summarise them with GROUP BY</li>
+      <li>Tell a scalar function from an aggregate function and use each in a query</li>
+      <li>Write inner, equi, left, right and full outer joins, and say which rows each one returns</li>
+      <li>Explain what a transaction is for, when you need one, and what each ACID property guarantees</li>
+      <li>Keep several SQL statements consistent with commit and rollback, from the client and from Python</li>
+    </ul>
+    <div class="ma-k">Today's exercise</div>
+    <ul class="deliv-list check">
+      <li><a href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-03/day-4-joins-subqueries-and-transactions" target="_blank" rel="noopener">exercises/week-03/day-4-joins-subqueries-and-transactions</a> — library report functions that each run one query (a join, a GROUP BY with HAVING, a subquery) and a lending function that runs as one transaction, checked by pytest against your own container.</li>
+    </ul>
+    <p class="goals-foot">Friday assumes your joins and your transaction code work. Finish the check to unlock the next page.</p>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Day 5 — Advanced SQL: triggers, views, procedures & indexes →", href: "day-5-views-procedures-and-indexes.html" };
+window.DIAGRAM = {
+  title: "Day 4 · from one table's rows to safe changes across tables",
+  width: 500, height: 520,
+  nodes: [
+    { id:"clauses", step:0, kind:"example", x:14, y:14, w:472, h:50, label:"CLAUSES\n  WHERE · ORDER BY · LIMIT · GROUP BY · HAVING", detail:"Written SELECT first, evaluated FROM and WHERE first. WHERE filters rows before grouping; HAVING filters groups after the aggregates. Test missing values with IS NULL." },
+    { id:"scalar", step:1, x:24, y:88, w:200, h:48, label:"Scalar functions\n  one value per row", detail:"CONCAT, UPPER, DATE_ADD, NOW, ROUND, COALESCE. CONCAT returns NULL when any argument is NULL." },
+    { id:"agg", step:1, x:276, y:88, w:200, h:48, label:"Aggregates · windows\n  one value per group", detail:"COUNT(*) counts rows, COUNT(column) skips NULLs; SUM over zero rows is NULL. A window function computes over a partition and keeps every row." },
+    { id:"subq", step:2, x:24, y:160, w:452, h:48, label:"Subqueries · WITH\n  a value · IN / NOT EXISTS · a derived table", detail:"A scalar subquery must return one row (ERROR 1242 otherwise). NOT IN returns nothing when its list holds a NULL. A derived table needs an alias; a CTE names the step." },
+    { id:"inner", step:3, x:24, y:232, w:200, h:56, label:"Inner joins\n  cross · equi · theta\n  only matched rows", detail:"A cross join returns every combination, and a forgotten ON does the same. Equi joins compare with = only; theta joins use any comparison." },
+    { id:"outer", step:4, x:276, y:232, w:200, h:56, label:"Outer joins\n  left · right\n  full = LEFT UNION RIGHT", detail:"LEFT JOIN keeps every left row with NULLs for no match. A WHERE test on the right table makes it inner again. UNION removes duplicates, UNION ALL keeps them." },
+    { id:"acid", step:5, x:24, y:312, w:200, h:56, label:"Transactions · ACID\n  all or nothing\n  update + event row", detail:"Atomicity, consistency, isolation, durability. The client autocommits each statement; Connector/Python does not. DDL commits implicitly." },
+    { id:"iso", step:6, x:276, y:312, w:200, h:56, label:"Commit · rollback\n  4 isolation levels\n  default REPEATABLE READ", detail:"Commit at the end, roll back in except and re-raise. READ UNCOMMITTED: dirty reads. READ COMMITTED: non-repeatable reads. REPEATABLE READ: one snapshot. SERIALIZABLE: shared locks on reads." },
+    { id:"crud", step:7, x:24, y:392, w:452, h:48, label:"CRUD FROM PYTHON\n  %s placeholders · rowcount · lastrowid · AUTO_INCREMENT gaps", detail:"INSERT, SELECT, UPDATE, DELETE. rowcount counts changed rows. lastrowid is per connection, and a rolled-back insert still uses up its id." },
+    { id:"check", step:8, x:24, y:466, w:452, h:40, label:"CHECK YOURSELF\n  answer out loud, then open" }
+  ],
+  edges: [
+    { id:"e1", step:1, from:"clauses", to:"scalar", label:"per row" },
+    { id:"e2", step:1, from:"clauses", to:"agg", label:"GROUP BY" },
+    { id:"e3", step:2, from:"agg", to:"subq", label:"nest a query" },
+    { id:"e4", step:3, from:"subq", to:"inner", label:"or join" },
+    { id:"e5", step:4, from:"inner", to:"outer", label:"keep unmatched" },
+    { id:"e6", step:5, from:"inner", to:"acid", label:"reads, then writes" },
+    { id:"e7", step:6, from:"acid", to:"iso", label:"what others see" },
+    { id:"e8", step:7, from:"iso", to:"crud", label:"from Python" },
+    { id:"e9", step:7, from:"acid", to:"crud", dir:"-" },
+    { id:"e10", step:8, from:"crud", to:"check", dir:"-" }
+  ],
+  captions: [
+    "Clauses: WHERE with its operators, ORDER BY with LIMIT, and GROUP BY with HAVING, evaluated in a different order from the one you write. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "Scalar functions return one value per row, aggregates one value per group, and aliases give each computed column a name.",
+    "A subquery nests one SELECT inside another, as a value, a list, a test or a derived table, and WITH names it.",
+    "A join pairs rows of two tables: cross for every combination, equi and theta by their condition, inner for matches only.",
+    "Outer joins keep the rows with no match, and UNION of a left and a right join gives MySQL its full outer join.",
+    "A transaction makes the ticket update and its event row one unit, and ACID names the four promises it keeps.",
+    "Commit and rollback end a transaction, and the isolation level decides what it sees of other transactions' work.",
+    "CRUD from Python: placeholders for every value, rowcount for what changed, lastrowid for the AUTO_INCREMENT id.",
+    "You can now filter, group and join the desk's tables and explain transactions, ACID and isolation levels in an interview."
+  ]
+};
+window.QUIZ = {
+  id: "w03-d4",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "Which clause can filter on an aggregate such as COUNT(*) > 1?",
+      options: ["WHERE", "HAVING", "FROM", "LIMIT"], answer: 1,
+      explain: "WHERE filters rows before grouping, so no aggregate exists yet there (ERROR 1111). HAVING filters the groups after the aggregates are computed." },
+    { type: "tf", stem: "NOT IN (subquery) returns no rows when the subquery's list contains a NULL.", answer: true,
+      explain: "That is why the agents query with NOT IN came back empty although Sam and Lee hold no tickets. NOT EXISTS, or a LEFT JOIN with IS NULL, does not have this problem." },
+    { type: "mcq", stem: "Sam and Lee are agents with no tickets. Which of these queries keep them in the result? Select all that apply.",
+      options: ["agents AS a LEFT JOIN tickets AS t ON t.agent_id = a.agent_id", "agents AS a INNER JOIN tickets AS t ON t.agent_id = a.agent_id", "tickets AS t RIGHT JOIN agents AS a ON a.agent_id = t.agent_id", "agents AS a LEFT JOIN tickets AS t ON t.agent_id = a.agent_id WHERE t.status <> 'closed'"], answer: [0, 2],
+      explain: "A LEFT JOIN from agents and a RIGHT JOIN towards agents both keep every agent. The inner join drops unmatched rows, and the WHERE test on the right table removes the NULL rows, turning the LEFT JOIN back into an inner join." },
+    { type: "match", stem: "Match each isolation level to what a plain read sees.",
+      pairs: [
+        { l: "READ UNCOMMITTED", r: "other transactions' changes before they commit" },
+        { l: "READ COMMITTED", r: "only committed data, but each read can see a newer commit" },
+        { l: "REPEATABLE READ", r: "the snapshot taken at the transaction's first read" },
+        { l: "SERIALIZABLE", r: "the same, with shared locks on plain reads when autocommit is off" }
+      ],
+      explain: "Dirty reads, then non-repeatable reads, then neither. REPEATABLE READ is InnoDB's default, and each stricter level trades concurrency for fewer anomalies." },
+    { type: "scq", stem: "An UPDATE sets ticket 5's agent_id and status to the values it already holds. What is cursor.rowcount afterwards?",
+      options: ["1, because one row matched the WHERE", "0, because no row was changed", "-1, because nothing was returned", "It raises an error"], answer: 1,
+      explain: "rowcount counts changed rows, and setting a column to its current value changes nothing. The assignment function treats 0 as a ticket it could not assign." },
+    { type: "open", stem: "In two or three sentences: explain the ACID properties using the ticket assignment (update the ticket, insert its event row).",
+      hint: "One promise per letter, each tied to the two writes.",
+      model: "Atomicity: the ticket update and the event row commit together or neither does. Consistency: the committed data still satisfies the constraints, so an event never points at a missing ticket. Isolation: another transaction never sees the update without its event, to a degree the isolation level sets. Durability: once committed, the assignment survives a crash through the redo log." }
+  ]
+};
+</script>
+
+<script src="../../assets/js/diagram.js?v=20261023"></script>
+<script src="../../assets/js/scrolly.js?v=20261023"></script>
+<script src="../../assets/js/modals.js?v=20261023"></script>
+<script src="../../assets/js/quiz.js?v=20261023"></script>
+<script src="../../assets/js/widgets.js?v=20261023"></script>
+<script src="../../assets/js/glossary.js?v=20261023"></script>
+</body>
+</html>

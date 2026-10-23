@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w03d2">
+<title>W3·D2 — SQL sublanguages | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261023">
+<script src="../../assets/js/theme.js?v=20261023"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises" target="_blank" rel="noopener">Exercises</a>
+    <a class="topnav" href="../../exit-criteria/index.html">Exit criteria</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>SQL sublanguages: the five kinds of statement that run the desk's tables</h1>
+        <div class="meta">
+          <span><b>Week 3</b> · Day 2</span>
+          <span>Tue Oct 27, 2026</span>
+          <span>SQL with MySQL</span>
+          <span><b>~37 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span class="verified">Sources checked 2026-10-23 · python 3.15 · mysql 9.7</span>
+          <span class="exit"><a href="../../exit-criteria/qc-2-sql.html#w03d2">Exit criteria</a></span>
+        </div>
+        <p class="summary">This page assumes Monday's <code>ticket_desk</code> database in the MySQL container, with its
+        three empty tables for customers, agents and tickets. It teaches SQL's five sublanguages on those tables: DDL to
+        shape a table, DML to fill and change its rows, DQL to read them, DCL to decide what an account may do, and TCL to
+        group changes so they can be undone. An overview sorts every statement by what it acts on, and the last step turns
+        the day into interview answers. Afterwards you can write CREATE, ALTER, TRUNCATE, DROP, INSERT, UPDATE and DELETE,
+        explain DROP against DELETE against TRUNCATE, and say what ROLLBACK can and cannot undo.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="0">
+        <div class="tag">DDL</div>
+        <h2>DDL: statements that shape tables</h2>
+        <p>Monday's page ended with three empty tables in the <code>ticket_desk</code> database: customers, agents and
+        tickets. SQL statements fall into five groups that courses and interviewers call sublanguages, and this page takes
+        them one at a time. The first group is the one that built those tables.</p>
+        <h3>What DDL covers</h3>
+        <p>DDL stands for Data Definition Language. Its statements define or change structure: a database, a table, the
+        columns of a table and their data types. MySQL's manual files CREATE TABLE, ALTER TABLE, DROP TABLE and TRUNCATE
+        TABLE together under Data Definition Statements.<sup class="cite"><a href="#src-1">1</a></sup> Each of the four
+        does one job:</p>
+        <ul>
+          <li>CREATE makes a new table, or a new database.</li>
+          <li>ALTER changes the columns of a table that already exists.</li>
+          <li>TRUNCATE empties a table and keeps the table.</li>
+          <li>DROP removes the table itself, rows and all.</li>
+        </ul>
+        <p>In someone else's repository, DDL usually lives in a schema file full of CREATE TABLE statements, or in small
+        change files whose lines start with ALTER TABLE. Either way it describes the shape of the data, and it says nothing
+        about any particular customer or ticket.</p>
+        <h3>CREATE TABLE</h3>
+        <p>CREATE TABLE names a table and lists its columns, each with a data type.<sup class="cite"><a href="#src-2">2</a></sup>
+        Adding IF NOT EXISTS makes the statement skip without an error when the table is already there, which is what lets a
+        schema file run a second time safely.<sup class="cite"><a href="#src-2">2</a></sup> A scratch table is the right
+        place to practise DDL, because no other table and no program depends on it.</p>
+<pre><code>USE ticket_desk;
+CREATE TABLE scratch_notes (
+  note_id INT,
+  body VARCHAR(50)
+);</code></pre>
+<pre class="out">Database changed
+Query OK, 0 rows affected</pre>
+        <p>"0 rows affected" is the normal answer to DDL. The statement made structure and touched no rows, so there was
+        nothing to count.</p>
+        <h3>ALTER TABLE, with examples</h3>
+        <p>ALTER TABLE changes a table after it has been created, one clause per kind of change.<sup class="cite"><a href="#src-3">3</a></sup> ADD COLUMN
+        appends the new column at the end of the table by default, and FIRST or AFTER a named column places it
+        elsewhere.<sup class="cite"><a href="#src-3">3</a></sup></p>
+<pre><code>ALTER TABLE scratch_notes ADD COLUMN author VARCHAR(50);
+DESCRIBE scratch_notes;</code></pre>
+<pre class="out">Query OK, 0 rows affected
+Records: 0  Duplicates: 0  Warnings: 0
+
++---------+-------------+------+-----+---------+-------+
+| Field   | Type        | Null | Key | Default | Extra |
++---------+-------------+------+-----+---------+-------+
+| note_id | int         | YES  |     | NULL    |       |
+| body    | varchar(50) | YES  |     | NULL    |       |
+| author  | varchar(50) | YES  |     | NULL    |       |
++---------+-------------+------+-----+---------+-------+
+3 rows in set</pre>
+        <p>The new <code>author</code> column sits last, as the default promises. ADD COLUMN and DROP COLUMN add and remove a
+        whole column. MODIFY, CHANGE and RENAME COLUMN change a column that is already there, and they differ in what they keep:<sup class="cite"><a href="#src-3">3</a></sup></p>
+        <table>
+          <thead><tr><th>Clause</th><th>Renames the column</th><th>Changes its type</th><th>Example</th></tr></thead>
+          <tbody>
+            <tr><td>ADD COLUMN</td><td>no</td><td>no</td><td><code>ALTER TABLE scratch_notes ADD COLUMN author VARCHAR(50);</code></td></tr>
+            <tr><td>DROP COLUMN</td><td>no</td><td>no</td><td><code>ALTER TABLE scratch_notes DROP COLUMN written_by;</code></td></tr>
+            <tr><td>MODIFY</td><td>no</td><td>yes</td><td><code>ALTER TABLE scratch_notes MODIFY body VARCHAR(500);</code></td></tr>
+            <tr><td>CHANGE</td><td>yes</td><td>yes</td><td><code>ALTER TABLE scratch_notes CHANGE body note_text VARCHAR(500);</code></td></tr>
+            <tr><td>RENAME COLUMN</td><td>yes</td><td>no</td><td><code>ALTER TABLE scratch_notes RENAME COLUMN author TO written_by;</code></td></tr>
+          </tbody>
+        </table>
+<pre><code>ALTER TABLE scratch_notes MODIFY body VARCHAR(500);
+ALTER TABLE scratch_notes RENAME COLUMN author TO written_by;
+ALTER TABLE scratch_notes DROP COLUMN written_by;
+DESCRIBE scratch_notes;</code></pre>
+<pre class="out">Query OK, 0 rows affected
+Records: 0  Duplicates: 0  Warnings: 0
+
+Query OK, 0 rows affected
+Records: 0  Duplicates: 0  Warnings: 0
+
+Query OK, 0 rows affected
+Records: 0  Duplicates: 0  Warnings: 0
+
++---------+--------------+------+-----+---------+-------+
+| Field   | Type         | Null | Key | Default | Extra |
++---------+--------------+------+-----+---------+-------+
+| note_id | int          | YES  |     | NULL    |       |
+| body    | varchar(500) | YES  |     | NULL    |       |
++---------+--------------+------+-----+---------+-------+
+2 rows in set</pre>
+        <p>The body column now holds up to 500 characters, and the renamed author column is gone. The limit to keep in
+        mind is narrowing: shrinking a column type can fail or truncate data that no longer fits, so a MODIFY on a
+        populated table needs a check of the existing values first.<sup class="cite"><a href="#src-3">3</a></sup></p>
+        <h3>TRUNCATE TABLE and DROP TABLE</h3>
+        <p>TRUNCATE TABLE empties a table by dropping it and creating it again, so the table survives with no
+        rows.<sup class="cite"><a href="#src-4">4</a></sup> It also resets an AUTO_INCREMENT counter to its start
+        value.<sup class="cite"><a href="#src-4">4</a></sup> AUTO_INCREMENT is a column option, taught on Wednesday, that
+        has the server number new rows by itself. Below, an INSERT (the next step's subject) gives TRUNCATE two rows to
+        remove, and <code>SELECT *</code> reads every row back.</p>
+<pre><code>INSERT INTO scratch_notes VALUES (1, 'call back'), (2, 'refund sent');
+TRUNCATE TABLE scratch_notes;
+SELECT * FROM scratch_notes;</code></pre>
+<pre class="out">Query OK, 2 rows affected
+Records: 2  Duplicates: 0  Warnings: 0
+
+Query OK, 0 rows affected
+
+Empty set</pre>
+        <p>"Empty set" shows the table still exists with nothing in it. TRUNCATE reports 0 rows affected even though two
+        rows went, because it rebuilt the table instead of removing rows one at a time. DROP TABLE goes further and
+        removes the table definition, its data and its indexes (lookup structures that speed up searches, taught on Friday).<sup class="cite"><a href="#src-5">5</a></sup></p>
+<pre><code>DROP TABLE scratch_notes;
+SHOW TABLES;
+DROP TABLE scratch_notes;
+DROP TABLE IF EXISTS scratch_notes;</code></pre>
+<pre class="out">Query OK, 0 rows affected
+
++-----------------------+
+| Tables_in_ticket_desk |
++-----------------------+
+| agents                |
+| customers             |
+| tickets               |
++-----------------------+
+3 rows in set
+
+ERROR 1051 (42S02): Unknown table 'ticket_desk.scratch_notes'
+Query OK, 0 rows affected, 1 warning</pre>
+        <p>The second DROP fails because the table is gone. DROP TABLE IF EXISTS suppresses that error for a missing table
+        and records a note instead,<sup class="cite"><a href="#src-5">5</a></sup> which is why clean-up scripts are written
+        with it.</p>
+        <h3>DDL against DML, and why DDL cannot be undone</h3>
+        <p>DDL acts on structure. DML, the next step, acts on the rows inside that structure. The split decides what can be
+        undone. In MySQL most DDL statements cause an implicit commit: the server saves its work the moment
+        the statement runs, so a ROLLBACK afterwards undoes nothing.<sup class="cite"><a href="#src-6">6</a></sup></p>
+        <p>So DROP TABLE cannot be rolled back.<sup class="cite"><a href="#src-5">5</a></sup> TRUNCATE is DDL as
+        well, so it cannot be rolled back either.<sup class="cite"><a href="#src-4">4</a></sup> Step 5 shows what ROLLBACK
+        does undo. On sight, <code>ALTER TABLE scratch_notes ADD COLUMN author VARCHAR(50);</code> and
+        <code>DROP TABLE scratch_notes;</code> are both DDL: each names a table and changes what the table is.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>CREATE, ALTER, TRUNCATE and DROP change structure, never individual rows.</li>
+          <li>ALTER TABLE adds, drops, modifies and renames columns on an existing table.</li>
+          <li>TRUNCATE empties a table and keeps it; DROP removes the table and its data.</li>
+          <li>DDL commits implicitly in MySQL, so ROLLBACK cannot undo it.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>DDL is data definition language, the statements that shape the database: CREATE, ALTER, DROP and TRUNCATE. To
+          practise I'd create a scratch table with CREATE TABLE and two typed columns, empty it with TRUNCATE TABLE, which
+          keeps the table, and then remove it with DROP TABLE, which takes the definition and the data with it.</p>
+          <p>To change a table after it exists I use ALTER TABLE. ADD COLUMN puts a new column at the end, MODIFY changes a
+          column's data type, and RENAME COLUMN or CHANGE renames one.</p>
+          <p>On a table that already has data I check the values before narrowing a type, because that can fail or cut them
+          off. A DROP TABLE can't be rolled back in MySQL because DDL commits implicitly. The drop is saved the moment it
+          runs.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">DML</div>
+        <h2>DML: adding, changing and removing rows</h2>
+        <p>DML stands for Data Manipulation Language, the group that works on rows. INSERT adds rows, UPDATE changes them
+        and DELETE removes them. The desk's three tables are still empty, so the first job is to fill them with the
+        customers, agents and tickets the week-2 JSON file held.</p>
+        <h3>INSERT with a column list</h3>
+        <p>INSERT ... VALUES adds one or more rows to a table.<sup class="cite"><a href="#src-7">7</a></sup> A multi-row
+        INSERT uses one VALUES list with each row written as a tuple in parentheses and the tuples separated by
+        commas.<sup class="cite"><a href="#src-7">7</a></sup> The column list after the table name says which column each
+        value goes to.</p>
+<pre><code>INSERT INTO agents (agent_id, name, email)
+VALUES (1, 'Priya', 'priya@desk.example'),
+       (2, 'Marco', 'marco@desk.example'),
+       (3, 'Sam', 'sam@desk.example'),
+       (4, 'Lee', 'lee@desk.example');</code></pre>
+<pre class="out">Query OK, 4 rows affected
+Records: 4  Duplicates: 0  Warnings: 0</pre>
+        <p>Strings go in single quotes. Every id is written out, because Monday's tables do not number new rows by
+        themselves. The tickets follow the same shape, with <code>NULL</code> (no quotes) for a value that is not there:
+        four of the six tickets have no agent yet.</p>
+<pre><code>INSERT INTO tickets (ticket_id, title, priority, status, customer_id, agent_id, opened_at, closed_at)
+VALUES (1, 'Login page returns 500', 'high', 'closed', 1, NULL, '2026-10-18 08:00:00', '2026-10-18 11:00:00'),
+       (2, 'Invoice PDF is blank', 'normal', 'closed', 2, NULL, '2026-10-17 12:00:00', '2026-10-18 18:00:00'),
+       (3, 'Typo on pricing page', 'normal', 'closed', 1, NULL, '2026-10-18 18:00:00', '2026-10-19 04:00:00'),
+       (4, 'Checkout button frozen', 'high', 'assigned', 3, 1, '2026-10-19 08:00:00', NULL),
+       (5, 'Export is missing rows', 'normal', 'assigned', 2, 2, '2026-10-18 12:00:00', NULL),
+       (6, 'Add dark mode', 'low', 'open', 3, NULL, '2026-10-19 12:00:00', NULL);</code></pre>
+<pre class="out">Query OK, 6 rows affected
+Records: 6  Duplicates: 0  Warnings: 0</pre>
+        <p>The scratch INSERT in step 1 left the column list out. That works only while the values line up with the
+        table's columns in order. An INSERT with an explicit column list is safer than one that relies on column order, and
+        it survives a column added later.<sup class="cite"><a href="#src-7">7</a></sup> A seed file that loads a table
+        from scratch is a list of INSERTs like these two.</p>
+        <h3>UPDATE and the WHERE that picks rows</h3>
+        <p>UPDATE changes values in rows that already exist. SET names a column and its new value, and WHERE picks the
+        rows. Here WHERE compares one column with <code>=</code>, which is all this page needs; Thursday teaches the other
+        operators. An UPDATE with no WHERE clause changes every row in the table.<sup class="cite"><a href="#src-8">8</a></sup></p>
+<pre><code>UPDATE tickets
+SET title = 'Add a dark mode'
+WHERE ticket_id = 6;</code></pre>
+<pre class="out">Query OK, 1 row affected
+Rows matched: 1  Changed: 1  Warnings: 0</pre>
+        <p>UPDATE reports two numbers, the rows its WHERE matched and the rows it really changed. Run the same statement a
+        second time and it matches one row but changes none, because the title already holds that
+        value:<sup class="cite"><a href="#src-8">8</a></sup></p>
+<pre class="out">Query OK, 0 rows affected
+Rows matched: 1  Changed: 0  Warnings: 0</pre>
+        <h3>DELETE</h3>
+        <p>DELETE removes rows and keeps the table. With WHERE it removes a chosen subset of rows; without WHERE it removes
+        every row.<sup class="cite"><a href="#src-9">9</a></sup> Nothing in Monday's tables stops two rows from sharing an
+        id yet, so a second ticket 1 loads without complaint. The SELECT with a column list, step 3's subject, shows
+        both.</p>
+<pre><code>INSERT INTO tickets (ticket_id, title, priority, status, customer_id, agent_id, opened_at, closed_at)
+VALUES (1, 'Login page returns 500', 'high', 'open', 1, NULL, '2026-10-20 09:00:00', NULL);
+SELECT ticket_id, title, status FROM tickets WHERE ticket_id = 1;</code></pre>
+<pre class="out">Query OK, 1 row affected
+
++-----------+------------------------+--------+
+| ticket_id | title                  | status |
++-----------+------------------------+--------+
+|         1 | Login page returns 500 | closed |
+|         1 | Login page returns 500 | open   |
++-----------+------------------------+--------+
+2 rows in set</pre>
+        <p>Two rows now answer to ticket 1, and any UPDATE or DELETE by that id hits both. That is the problem Wednesday's
+        primary key solves. Until then, a second condition joined with AND tells the rows apart, since a row matches only
+        when both conditions are true.</p>
+<pre><code>DELETE FROM tickets WHERE ticket_id = 1 AND status = 'open';</code></pre>
+<pre class="out">Query OK, 1 row affected</pre>
+        <h3>Rows affected: the client's receipt</h3>
+        <p>Every INSERT, UPDATE and DELETE ends with a <code>Query OK</code> line that counts rows. Reading that count is
+        the first check that a write touched the rows it was meant to:</p>
+        <ul>
+          <li>INSERT counts the rows added, and a multi-row INSERT adds a Records line.</li>
+          <li>UPDATE counts the rows changed and adds Rows matched and Changed.</li>
+          <li>DELETE counts the rows removed, so 0 means the WHERE matched nothing.</li>
+        </ul>
+<pre><code>DELETE FROM tickets WHERE ticket_id = 99;</code></pre>
+        <p>This prints <code>Query OK, 0 rows affected</code>. "Query OK" means the statement was valid, which is not the
+        same as doing what you wanted: no ticket 99 exists, so nothing went. The opposite alarm is a count far larger than
+        expected. <code>UPDATE tickets SET status = 'closed';</code> with its WHERE forgotten reports
+        <code>Rows matched: 6</code>, every ticket on the desk.<sup class="cite"><a href="#src-8">8</a></sup></p>
+        <h3>DROP against DELETE against TRUNCATE</h3>
+        <p>All three statements remove something, and interviewers ask for the difference often. The table below puts
+        them side by side.<sup class="cite"><a href="#src-5">5</a></sup><sup class="cite"><a href="#src-4">4</a></sup><sup class="cite"><a href="#src-9">9</a></sup></p>
+        <table>
+          <thead><tr><th>Statement</th><th>Sublanguage</th><th>Removes</th><th>WHERE allowed</th><th>Rolls back</th><th>AUTO_INCREMENT</th></tr></thead>
+          <tbody>
+            <tr><td>DROP TABLE</td><td>DDL</td><td>the table, its rows and its indexes</td><td>no</td><td>no</td><td>gone with the table</td></tr>
+            <tr><td>TRUNCATE TABLE</td><td>DDL</td><td>every row; the table stays</td><td>no</td><td>no</td><td>reset to its start value</td></tr>
+            <tr><td>DELETE</td><td>DML</td><td>the rows WHERE picks, or every row</td><td>yes</td><td>yes, with InnoDB</td><td>left where it was</td></tr>
+          </tbody>
+        </table>
+        <p>TRUNCATE takes no WHERE clause,<sup class="cite"><a href="#src-4">4</a></sup> and DELETE leaves the AUTO_INCREMENT
+        counter where it was.<sup class="cite"><a href="#src-9">9</a></sup> The trade-off is speed against undo. DELETE
+        removes rows one at a time, so it is slower than TRUNCATE on a large table, which is why TRUNCATE exists for
+        emptying one.<sup class="cite"><a href="#src-4">4</a></sup> TRUNCATE pays for that speed with the undo: of the
+        three, only DELETE can be rolled back.<sup class="cite"><a href="#src-4">4</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>An INSERT with a column list survives columns added later.</li>
+          <li>UPDATE and DELETE without WHERE touch every row in the table.</li>
+          <li>The rows-affected count is the first check that a write hit the right rows.</li>
+          <li>Of DROP, TRUNCATE and DELETE, only DELETE can be rolled back.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>For two rows I write INSERT INTO the table with the column list in parentheses, then VALUES with two row tuples.
+          Spelling out the columns means it still works if someone adds a column later.</p>
+          <p>To retitle ticket 6 it's UPDATE tickets SET title to the new value WHERE ticket_id is 6, and DELETE FROM tickets
+          WHERE ticket_id is the id removes one. Leave the WHERE off and they hit every row.</p>
+          <p>DROP removes the table itself, structure and data. TRUNCATE empties the table but keeps it, and resets the
+          auto-increment counter. DELETE removes the rows a WHERE picks, or all of them, and keeps the counter. DROP and
+          TRUNCATE are DDL and commit implicitly, so DELETE is the only one of the three I can roll back.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">DQL</div>
+        <h2>DQL: reading rows with SELECT</h2>
+        <p>DQL stands for Data Query Language, and it holds one statement: SELECT, which reads rows and changes nothing.
+        MySQL's manual files SELECT among its Data Manipulation Statements. The course splits it out as DQL because it reads
+        and never writes.<sup class="cite"><a href="#src-10">10</a></sup> So when an interviewer asks whether SELECT is DML
+        or DQL, both labels are in use.</p>
+        <h3>SELECT and its column list</h3>
+        <p>A SELECT names its columns in a comma-separated list after the keyword, and FROM names the table. The result
+        shows the columns in the order the list gives them.<sup class="cite"><a href="#src-11">11</a></sup> A
+        <code>*</code> in place of the list means every column, in the table's own order.</p>
+<pre><code>SELECT * FROM customers;</code></pre>
+<pre class="out">+-------------+----------------+------------------+---------+-------------+
+| customer_id | name           | email            | country | monthly_fee |
++-------------+----------------+------------------+---------+-------------+
+|           1 | Dana Whitfield | dana@example.com | CA      |       49.00 |
+|           2 | Ravi Patel     | ravi@example.com | CA      |      199.00 |
+|           3 | Mei Chen       | mei@example.com  | US      |        0.00 |
+|           4 | Omar Haddad    | omar@example.com | GB      |       49.00 |
++-------------+----------------+------------------+---------+-------------+
+4 rows in set</pre>
+<pre><code>SELECT title, priority, status FROM tickets;</code></pre>
+<pre class="out">+------------------------+----------+----------+
+| title                  | priority | status   |
++------------------------+----------+----------+
+| Login page returns 500 | high     | closed   |
+| Invoice PDF is blank   | normal   | closed   |
+| Typo on pricing page   | normal   | closed   |
+| Checkout button frozen | high     | assigned |
+| Export is missing rows | normal   | assigned |
+| Add a dark mode        | low      | open     |
++------------------------+----------+----------+
+6 rows in set</pre>
+        <p>The footer counts the rows returned, and the client right-aligns numbers and left-aligns text. Ticket 6 shows the
+        title the UPDATE in step 2 gave it. A SELECT without FROM can evaluate an expression on its
+        own:<sup class="cite"><a href="#src-11">11</a></sup> <code>SELECT VERSION();</code> returns one row holding the
+        server's version, 9.7 followed by a patch number that moves with the image tag.</p>
+        <h3>Reading one row by its id</h3>
+        <p>WHERE works in a SELECT the way it works in UPDATE and DELETE: only rows whose condition is true come back. An id
+        compared with <code>=</code> picks one ticket, and any other column can be compared the same way.</p>
+<pre><code>SELECT title FROM tickets WHERE ticket_id = 2;
+SELECT ticket_id, title FROM tickets WHERE status = 'open';</code></pre>
+<pre class="out">+----------------------+
+| title                |
++----------------------+
+| Invoice PDF is blank |
++----------------------+
+1 row in set
+
++-----------+-----------------+
+| ticket_id | title           |
++-----------+-----------------+
+|         6 | Add a dark mode |
++-----------+-----------------+
+1 row in set</pre>
+        <p>Those two lines are the shape to recognise on sight: a column list, FROM one table, and a WHERE on one column.
+        Sorting, the other comparison operators and grouping rows are Thursday's clauses. For now a habit is worth more:
+        before an UPDATE or DELETE, run a SELECT with the same WHERE and look at what it returns.</p>
+        <h3>Why application code avoids SELECT *</h3>
+        <p><code>SELECT *</code> is fine at the prompt, where a person reads the result. In application code it causes
+        trouble, because it returns every column the table has today. A later ALTER TABLE changes what the caller
+        receives.<sup class="cite"><a href="#src-11">11</a></sup> Code that reads the third value of each row gets a
+        different column after someone adds one in the middle.</p>
+        <p>Naming the columns turns the query into a contract: the code asks for these columns in this order and gets
+        exactly that, whatever else is added. It also documents what the code depends on, which helps the next person who
+        wants to change the table.</p>
+        <div class="ix-spot" data-snippet="-- the desk's nightly export reads each row by position&#10;SELECT * FROM tickets;&#10;-- last week's change:&#10;ALTER TABLE tickets ADD COLUMN channel VARCHAR(20) AFTER title;" data-q="The export prints the priority in the wrong column since last week. Why?" data-a="SELECT * returns whatever columns the table has. The ALTER put channel after title, so every column from priority on moved one place right. Naming the columns in the SELECT would have kept the export's shape."></div>
+        <h3>Column aliases with AS</h3>
+        <p>A column alias with AS renames a result column and does not change the
+        table.<sup class="cite"><a href="#src-11">11</a></sup> It is the first way a query shapes its own output for the
+        reader. The table keeps its column names; only the heading of the result changes.</p>
+<pre><code>SELECT ticket_id AS id, title AS summary FROM tickets WHERE agent_id = 1;</code></pre>
+<pre class="out">+------+------------------------+
+| id   | summary                |
++------+------------------------+
+|    4 | Checkout button frozen |
++------+------------------------+
+1 row in set</pre>
+        <p>Priya, agent 1, holds ticket 4. An alias earns its keep when the result column is computed instead of stored:
+        <code>SELECT name, monthly_fee * 12 AS yearly_fee FROM customers WHERE country = 'CA';</code> returns Dana
+        Whitfield with 588.00 and Ravi Patel with 2388.00 under a heading that says what the number means.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>SELECT reads rows and never changes them, which is why it gets its own label.</li>
+          <li>A column list picks the columns and sets their order in the result.</li>
+          <li>SELECT * in application code changes shape when the table does.</li>
+          <li>AS renames a result column without touching the table.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>SELECT is the read statement. MySQL's manual files it with DML, but it's often taught as DQL, data query
+          language, because it only reads. To pick columns I list them after SELECT, and to read one ticket I add WHERE
+          ticket_id equals its id.</p>
+          <p>I avoid SELECT star in application code because it returns whatever columns the table has today. If someone
+          adds a column with ALTER TABLE, the code gets a different result, so naming the columns keeps the query's shape
+          stable.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="3">
+        <div class="tag">DCL</div>
+        <h2>DCL: who may run what</h2>
+        <p>DCL stands for Data Control Language: GRANT and REVOKE, the statements that give an account permissions or take
+        them away. Every statement so far ran as root, the account that may do anything to any database. A person setting
+        up a schema needs that power. A program that only reads and writes tickets does not, so it gets an account of its
+        own.</p>
+        <h3>An account is a user and a host</h3>
+        <p>A MySQL account is the pair user@host, and two accounts with the same user name and different hosts are two
+        distinct accounts.<sup class="cite"><a href="#src-12">12</a></sup> The host part is part of the identity, and
+        <code>'desk_app'@'%'</code> matches a connection from any host, because <code>%</code> stands for any
+        host.<sup class="cite"><a href="#src-13">13</a></sup> The desk's account uses it because the program that will log
+        in with it runs outside the container.</p>
+        <p>Statements that name an account must name the same user and host pair. GRANT, REVOKE and SHOW GRANTS that leave
+        the host off, or name a different one, talk about a different account.<sup class="cite"><a href="#src-12">12</a></sup></p>
+        <h3>CREATE USER and GRANT</h3>
+        <p>CREATE USER ... IDENTIFIED BY makes the account and sets its password. Since MySQL 8, GRANT no longer creates
+        accounts, so the two statements come as a pair.<sup class="cite"><a href="#src-13">13</a></sup> GRANT gives
+        privileges at a level, and <code>ON ticket_desk.*</code> covers every table of one
+        database.<sup class="cite"><a href="#src-14">14</a></sup></p>
+<pre><code>CREATE USER 'desk_app'@'%' IDENTIFIED BY 'deskapp';
+GRANT SELECT, INSERT, UPDATE, DELETE ON ticket_desk.* TO 'desk_app'@'%';</code></pre>
+<pre class="out">Query OK, 0 rows affected
+
+Query OK, 0 rows affected</pre>
+        <p>Privileges can be granted at the global, database, table, column and routine
+        levels.<sup class="cite"><a href="#src-14">14</a></sup> The ON clause is where the level shows; the routine level
+        belongs to Friday's stored procedures.</p>
+        <table>
+          <thead><tr><th>Level</th><th>ON clause</th><th>Covers</th></tr></thead>
+          <tbody>
+            <tr><td>global</td><td><code>ON *.*</code></td><td>every database on the server</td></tr>
+            <tr><td>database</td><td><code>ON ticket_desk.*</code></td><td>every table in <code>ticket_desk</code></td></tr>
+            <tr><td>table</td><td><code>ON ticket_desk.tickets</code></td><td>one table</td></tr>
+            <tr><td>column</td><td><code>SELECT (title) ON ticket_desk.tickets</code></td><td>the named columns of one table</td></tr>
+          </tbody>
+        </table>
+        <p>A common slip is <code>ON ticket_desk</code> without the <code>.*</code>. Written that way the grant does not
+        match the desk's tables, so the account gets no privileges on them.</p>
+        <h3>SHOW GRANTS, a refused statement and REVOKE</h3>
+        <p>SHOW GRANTS FOR an account lists the privileges that one account
+        holds.<sup class="cite"><a href="#src-15">15</a></sup></p>
+<pre><code>SHOW GRANTS FOR 'desk_app'@'%';</code></pre>
+<pre class="out">+---------------------------------------------------------------------------+
+| Grants for desk_app@%                                                     |
++---------------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `desk_app`@`%`                                      |
+| GRANT SELECT, INSERT, UPDATE, DELETE ON `ticket_desk`.* TO `desk_app`@`%` |
++---------------------------------------------------------------------------+
+2 rows in set</pre>
+        <p>The second line is the grant. To try the
+        account, leave the root prompt with <code>exit</code> and log in again as <code>desk_app</code>. The client asks for
+        the password and opens with <code>ticket_desk</code> already selected.</p>
+<pre><code>docker exec -it desk-mysql mysql -udesk_app -p ticket_desk</code></pre>
+<pre class="out">Enter password:</pre>
+        <p>At the new prompt, one statement is inside the grant and one is not:</p>
+<pre><code>SELECT title FROM tickets WHERE ticket_id = 2;
+DROP TABLE tickets;</code></pre>
+<pre class="out">+----------------------+
+| title                |
++----------------------+
+| Invoice PDF is blank |
++----------------------+
+1 row in set
+
+ERROR 1142 (42000): DROP command denied to user 'desk_app'@'localhost' for table 'tickets'</pre>
+        <p>Privileges are checked when each statement runs, so the refused one fails with ERROR 1142 before it touches the
+        table.<sup class="cite"><a href="#src-14">14</a></sup> The message says "command denied to user" and names the
+        statement and the table.<sup class="cite"><a href="#src-16">16</a></sup> It also names the host the connection came from, here <code>localhost</code>,
+        since this client runs inside the container, and <code>'%'</code> matches that host because <code>%</code> stands for any
+        host.<sup class="cite"><a href="#src-13">13</a></sup></p>
+        <p>REVOKE removes privileges that were granted earlier.<sup class="cite"><a href="#src-17">17</a></sup> Back at the
+        root prompt:</p>
+<pre><code>REVOKE DELETE ON ticket_desk.* FROM 'desk_app'@'%';
+SHOW GRANTS FOR 'desk_app'@'%';</code></pre>
+<pre class="out">Query OK, 0 rows affected
+
++-------------------------------------------------------------------+
+| Grants for desk_app@%                                             |
++-------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `desk_app`@`%`                              |
+| GRANT SELECT, INSERT, UPDATE ON `ticket_desk`.* TO `desk_app`@`%` |
++-------------------------------------------------------------------+
+2 rows in set</pre>
+        <p>A DELETE as <code>desk_app</code> now fails with the same ERROR 1142, and the GRANT line run again restores it.
+        One limit to know: a grant on <code>ticket_desk.*</code> survives DROP DATABASE and the re-creation of the
+        tables.<sup class="cite"><a href="#src-14">14</a></sup> That is handy for a database rebuilt from files, and it also
+        means a grant nobody remembers keeps working until someone revokes it.</p>
+        <h3>Least privilege</h3>
+        <p>Least privilege means giving an account only the permissions its job needs, so a mistake or a leaked password
+        does less damage. The desk's program reads and writes tickets. It never needs to drop a table, so its account
+        cannot, and a bug or a copied password cannot either. Root stays with the person who runs the schema file.</p>
+        <p>In someone else's project, least privilege shows up as a short GRANT naming only the statements the app uses,
+        such as <code>GRANT SELECT, INSERT, UPDATE, DELETE ON ticket_desk.* TO 'desk_app'@'%';</code>. A program configured
+        to log in as root is the line a reviewer flags.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A MySQL account is a user and a host, and every statement names the same pair.</li>
+          <li>CREATE USER makes the account; GRANT gives it privileges at a level such as one database.</li>
+          <li>SHOW GRANTS lists what an account holds, and REVOKE takes a privilege back.</li>
+          <li>An app account gets only the statements it needs, so it cannot drop tables.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>GRANT gives an account permission to run certain statements on certain objects, for example SELECT, INSERT,
+          UPDATE and DELETE on every table of one database. REVOKE takes a privilege back, and SHOW GRANTS FOR the account
+          lists what it holds. If the account runs something it wasn't granted, MySQL refuses it with a command-denied
+          error.</p>
+          <p>I'd give an application its own account instead of root because of least privilege. The app only reads and
+          writes rows, so if its password leaks or the code has a bug, nobody can drop a table through it. The name
+          desk_app at percent means the user desk_app connecting from any host.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">TCL</div>
+        <h2>TCL: changes that land or vanish together</h2>
+        <p>TCL stands for Transaction Control Language: START TRANSACTION, COMMIT, ROLLBACK and SAVEPOINT. A transaction
+        groups statements so that they apply together or vanish together.<sup class="cite"><a href="#src-18">18</a></sup>
+        To commit is to make a change permanent. This step covers the statements at the prompt; the guarantees a
+        transaction makes, and how two connections see each other's work, are Thursday's subject.</p>
+        <h3>Autocommit: every statement saves itself</h3>
+        <p>MySQL's autocommit setting defaults to 1, which means on. Each statement outside START TRANSACTION commits
+        itself the moment it finishes.<sup class="cite"><a href="#src-18">18</a></sup> The <code>@@</code> prefix reads
+        one of the server's settings:</p>
+<pre><code>SELECT @@autocommit;</code></pre>
+<pre class="out">+--------------+
+| @@autocommit |
++--------------+
+|            1 |
++--------------+
+1 row in set</pre>
+        <p>Autocommit is why every INSERT, UPDATE and DELETE on this page has been permanent so far. It is also the
+        pitfall: a DELETE you did not wrap in a transaction is already saved by the time you notice the missing WHERE, and
+        a ROLLBACK typed afterwards has nothing to undo.</p>
+        <h3>START TRANSACTION, ROLLBACK and COMMIT</h3>
+        <p>START TRANSACTION turns autocommit off until the next COMMIT or
+        ROLLBACK.<sup class="cite"><a href="#src-18">18</a></sup> COMMIT saves everything since START TRANSACTION, and
+        ROLLBACK throws it away. A ROLLBACK after a DELETE restores the deleted rows, and a SELECT shows them
+        again.<sup class="cite"><a href="#src-18">18</a></sup> To see that safely, make the worst mistake on this page
+        on purpose, inside a transaction:</p>
+<pre><code>START TRANSACTION;
+DELETE FROM tickets;
+SELECT * FROM tickets;
+ROLLBACK;
+SELECT ticket_id, title FROM tickets;</code></pre>
+<pre class="out">Query OK, 0 rows affected
+
+Query OK, 6 rows affected
+
+Empty set
+
+Query OK, 0 rows affected
+
++-----------+------------------------+
+| ticket_id | title                  |
++-----------+------------------------+
+|         1 | Login page returns 500 |
+|         2 | Invoice PDF is blank   |
+|         3 | Typo on pricing page   |
+|         4 | Checkout button frozen |
+|         5 | Export is missing rows |
+|         6 | Add a dark mode        |
++-----------+------------------------+
+6 rows in set</pre>
+        <p>The DELETE emptied the table for this connection, and ROLLBACK put all six tickets back. Only tables stored by
+        InnoDB take part in a transaction. InnoDB is MySQL's default storage engine, the part of the server that keeps a
+        table's rows, and it is the one that supports transactions.<sup class="cite"><a href="#src-19">19</a></sup>
+        Monday's tables named no engine, so they are InnoDB.</p>
+        <p>Closing the client in the middle of a transaction rolls the transaction
+        back.<sup class="cite"><a href="#src-18">18</a></sup> A window closed too early never leaves work half saved,
+        but nothing is saved until COMMIT runs.</p>
+        <div class="ix-predict" data-q="You type START TRANSACTION; then UPDATE tickets SET status = 'closed' WHERE ticket_id = 6; and close the client window. Is ticket 6 closed when you log in again?" data-a="No. Closing the client mid-transaction rolls the transaction back, and the UPDATE was never committed. Ticket 6 is still open."></div>
+        <h3>SAVEPOINT</h3>
+        <p>SAVEPOINT names a point inside a transaction, and ROLLBACK TO SAVEPOINT undoes only the work done after
+        it.<sup class="cite"><a href="#src-20">20</a></sup> The transaction stays open, and the work before the savepoint
+        stays intact.<sup class="cite"><a href="#src-20">20</a></sup></p>
+<pre><code>START TRANSACTION;
+UPDATE tickets SET priority = 'normal' WHERE ticket_id = 6;
+SAVEPOINT before_title;
+UPDATE tickets SET title = 'Dark mode' WHERE ticket_id = 6;
+ROLLBACK TO SAVEPOINT before_title;
+COMMIT;
+SELECT ticket_id, title, priority FROM tickets WHERE ticket_id = 6;</code></pre>
+<pre class="out">Query OK, 0 rows affected
+
+Query OK, 1 row affected
+Rows matched: 1  Changed: 1  Warnings: 0
+
+Query OK, 0 rows affected
+
+Query OK, 1 row affected
+Rows matched: 1  Changed: 1  Warnings: 0
+
+Query OK, 0 rows affected
+
+Query OK, 0 rows affected
+
++-----------+-----------------+----------+
+| ticket_id | title           | priority |
++-----------+-----------------+----------+
+|         6 | Add a dark mode | normal   |
++-----------+-----------------+----------+
+1 row in set</pre>
+        <p>The priority change came before the savepoint, so it survived and was committed. The title change came after
+        it and was undone. A savepoint is useful in a long run of changes where one late step may need redoing without
+        throwing away the rest.</p>
+        <h3>What a ROLLBACK cannot undo</h3>
+        <p>Statements that cause an implicit commit include most DDL (CREATE, ALTER, DROP, TRUNCATE) and account statements
+        such as CREATE USER and GRANT.<sup class="cite"><a href="#src-6">6</a></sup> A DDL or account statement inside a
+        transaction therefore commits it, and a ROLLBACK after it restores
+        nothing.<sup class="cite"><a href="#src-6">6</a></sup></p>
+<pre><code>START TRANSACTION;
+DELETE FROM agents WHERE agent_id = 4;
+CREATE TABLE scratch_notes (note_id INT);
+ROLLBACK;
+SELECT agent_id, name FROM agents;</code></pre>
+<pre class="out">Query OK, 0 rows affected
+
+Query OK, 1 row affected
+
+Query OK, 0 rows affected
+
+Query OK, 0 rows affected
+
++----------+-------+
+| agent_id | name  |
++----------+-------+
+|        1 | Priya |
+|        2 | Marco |
+|        3 | Sam   |
++----------+-------+
+3 rows in set</pre>
+        <p>Lee is gone. The CREATE TABLE committed the DELETE before it ran, so the ROLLBACK found nothing to undo. Running
+        Lee's INSERT again and dropping the scratch table puts the desk back. ROLLBACK cannot undo:</p>
+        <ul>
+          <li>a statement that ran while autocommit was on;</li>
+          <li>anything before the last COMMIT;</li>
+          <li>DDL such as DROP TABLE, TRUNCATE TABLE or ALTER TABLE;</li>
+          <li>account statements such as CREATE USER and GRANT.</li>
+        </ul>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Autocommit is on by default, so a statement outside a transaction is saved at once.</li>
+          <li>START TRANSACTION holds changes until COMMIT saves them or ROLLBACK discards them.</li>
+          <li>ROLLBACK TO SAVEPOINT undoes only the work after the savepoint.</li>
+          <li>DDL and account statements commit implicitly, so ROLLBACK cannot undo them.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>COMMIT makes the changes of the current transaction permanent, and ROLLBACK throws them away. MySQL runs with
+          autocommit on, so a statement outside START TRANSACTION commits itself straight away. That's why a DELETE
+          without a WHERE is permanent unless I opened a transaction first.</p>
+          <p>A savepoint marks a point inside a transaction, and ROLLBACK TO that savepoint undoes only what came after it
+          while the transaction stays open. I can't roll back a DROP TABLE, though, because DDL commits implicitly, even
+          inside a transaction.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
+        <div class="tag">Overview</div>
+        <h2>The five sublanguages side by side</h2>
+        <p>Every statement on this page belongs to one of five groups. Interviewers ask for the groups by name, and then
+        ask where a particular statement sits or which ones ROLLBACK can undo. Both answers come from one habit: look at
+        what the statement acts on.</p>
+        <h3>Sorting statements by what they act on</h3>
+        <p>The table sorts the statements on this page by the thing each one changes or reads.<sup class="cite"><a href="#src-1">1</a></sup><sup class="cite"><a href="#src-10">10</a></sup><sup class="cite"><a href="#src-21">21</a></sup><sup class="cite"><a href="#src-22">22</a></sup></p>
+        <table>
+          <thead><tr><th>Sublanguage</th><th>Stands for</th><th>Acts on</th><th>Statements</th><th>Example from the desk</th></tr></thead>
+          <tbody>
+            <tr><td>DDL</td><td>Data Definition Language</td><td>structure</td><td>CREATE, ALTER, TRUNCATE, DROP</td><td><code>ALTER TABLE scratch_notes ADD COLUMN author VARCHAR(50);</code></td></tr>
+            <tr><td>DML</td><td>Data Manipulation Language</td><td>rows</td><td>INSERT, UPDATE, DELETE</td><td><code>UPDATE tickets SET title = 'Add a dark mode' WHERE ticket_id = 6;</code></td></tr>
+            <tr><td>DQL</td><td>Data Query Language</td><td>reads only</td><td>SELECT</td><td><code>SELECT title FROM tickets WHERE ticket_id = 2;</code></td></tr>
+            <tr><td>DCL</td><td>Data Control Language</td><td>permissions</td><td>GRANT, REVOKE</td><td><code>GRANT SELECT, INSERT, UPDATE, DELETE ON ticket_desk.* TO 'desk_app'@'%';</code></td></tr>
+            <tr><td>TCL</td><td>Transaction Control Language</td><td>transactions</td><td>START TRANSACTION, COMMIT, ROLLBACK, SAVEPOINT</td><td><code>ROLLBACK;</code></td></tr>
+          </tbody>
+        </table>
+        <p>To place a statement you have not seen before, ask these questions in order:</p>
+        <ol>
+          <li>Does it change what a table is, its columns or its existence? DDL.</li>
+          <li>Does it add, change or remove rows? DML.</li>
+          <li>Does it only read rows? DQL.</li>
+          <li>Does it change who may run what? DCL.</li>
+          <li>Does it start, end or mark a transaction? TCL.</li>
+        </ol>
+        <p>A typical exam question lists CREATE, GRANT, SELECT, INSERT and COMMIT and asks for the group of each. The
+        answers in that order are DDL, DCL, DQL, DML and TCL.</p>
+        <h3>Which statements ROLLBACK can undo</h3>
+        <p>The same table answers the undo question. ROLLBACK discards the uncommitted work of the current
+        transaction,<sup class="cite"><a href="#src-18">18</a></sup> and only InnoDB tables take part in
+        one.<sup class="cite"><a href="#src-19">19</a></sup> DDL and account statements commit implicitly, so they are never
+        uncommitted work.<sup class="cite"><a href="#src-6">6</a></sup> Group by group:</p>
+        <ul>
+          <li>DML inside an open transaction is undone by ROLLBACK.</li>
+          <li>DQL changed nothing, so there is nothing to undo.</li>
+          <li>DDL and DCL commit implicitly, and they commit the DML that came before them too.</li>
+          <li>TCL statements are the controls themselves.</li>
+        </ul>
+        <p>So the short answer is "uncommitted INSERT, UPDATE and DELETE". The longer answer adds the catch: a CREATE, DROP,
+        TRUNCATE or GRANT in the middle of a transaction ends it, and the work before it can no longer be rolled back.</p>
+        <h3>A teaching convention, and how the manual files statements</h3>
+        <p>The five-way grouping is a teaching convention. The MySQL manual files its statements by function instead of by
+        DDL and DML labels.<sup class="cite"><a href="#src-23">23</a></sup> This page's statements sit in four of its
+        chapters:<sup class="cite"><a href="#src-1">1</a></sup><sup class="cite"><a href="#src-10">10</a></sup><sup class="cite"><a href="#src-22">22</a></sup><sup class="cite"><a href="#src-21">21</a></sup></p>
+        <table>
+          <thead><tr><th>Manual chapter</th><th>Statements filed there</th></tr></thead>
+          <tbody>
+            <tr><td>Data Definition Statements</td><td>CREATE TABLE, ALTER TABLE, DROP TABLE, TRUNCATE TABLE</td></tr>
+            <tr><td>Data Manipulation Statements</td><td>INSERT, UPDATE, DELETE, SELECT</td></tr>
+            <tr><td>Transactional and Locking Statements</td><td>START TRANSACTION, COMMIT, ROLLBACK, SAVEPOINT</td></tr>
+            <tr><td>Account Management Statements</td><td>GRANT, REVOKE</td></tr>
+          </tbody>
+        </table>
+        <p>A colleague who calls SELECT DML is using the manual's filing, and is not wrong. In an interview, give the
+        five-group answer and add that MySQL's manual files SELECT with DML. The question behind the labels carries to any
+        database you meet: does this statement act on structure, rows, reads, permissions or transactions?</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>DDL shapes structure, DML changes rows, DQL reads, DCL sets permissions, TCL controls transactions.</li>
+          <li>ROLLBACK undoes uncommitted DML; DDL and DCL commit implicitly.</li>
+          <li>The five labels are a teaching convention; the MySQL manual files statements by function.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>SQL is usually split into five sublanguages. DDL defines structure with CREATE, ALTER, DROP and TRUNCATE. DML
+          changes rows with INSERT, UPDATE and DELETE. DQL is SELECT, which only reads. DCL is GRANT and REVOKE for
+          permissions, and TCL is START TRANSACTION, COMMIT, ROLLBACK and SAVEPOINT.</p>
+          <p>ROLLBACK can only undo DML that hasn't been committed yet, so inserts, updates and deletes inside an open
+          transaction. DDL and account statements like GRANT commit implicitly, so they can't be rolled back, and a SELECT
+          changed nothing, so there's nothing to undo.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="6">
+        <div class="tag">Interview prep</div>
+        <h2>Getting ready for your interview, part 2</h2>
+        <p>This second round of interview preparation turns the SQL so far into spoken answers. Three questions come up
+        again and again at junior level: the difference between DROP, DELETE and TRUNCATE, what a GRANT does, and what
+        ROLLBACK undoes. Each has a short answer that scores well and a common answer that loses marks.</p>
+        <h3>The shape of a spoken answer</h3>
+        <p>Spoken answers are scored on structure as much as on content. An interviewer listening to a ramble cannot tell
+        which part was the answer. One shape works for almost any "what is" or "what's the difference" question:</p>
+        <ol>
+          <li>a one-sentence definition of the thing;</li>
+          <li>one example statement, said in words;</li>
+          <li>one limit: when it does not apply, or what it costs.</li>
+        </ol>
+        <p>Applied to TRUNCATE it sounds like this: "TRUNCATE empties a table and keeps its structure. TRUNCATE TABLE
+        scratch_notes removes every row. It's DDL, so it commits implicitly and can't be rolled back." That takes about
+        fifteen seconds. The likely follow-up is why anyone would use it over DELETE, and the answer is speed on a large
+        table.<sup class="cite"><a href="#src-4">4</a></sup></p>
+        <p>Practise aloud with a partner. One person answers, the other scores the three parts against this page, and then
+        you swap. Saying an answer under a little pressure is a different skill from reading it silently.</p>
+        <h3>DROP, DELETE and TRUNCATE, answered aloud</h3>
+        <p>The answer that loses marks is "TRUNCATE is just a fast DELETE". It misses three things:</p>
+        <ul>
+          <li>TRUNCATE is DDL.<sup class="cite"><a href="#src-4">4</a></sup></li>
+          <li>It resets AUTO_INCREMENT.<sup class="cite"><a href="#src-4">4</a></sup></li>
+          <li>It cannot be rolled back.<sup class="cite"><a href="#src-4">4</a></sup></li>
+        </ul>
+        <p>A strong answer says what each statement removes. DROP removes structure and data, DELETE removes rows with a WHERE, and TRUNCATE
+        removes all rows and keeps the structure.<sup class="cite"><a href="#src-5">5</a></sup></p>
+        <p>Re-create the scratch table from step 1 with its two notes, then run the three statements in order. Their
+        receipts show the difference:</p>
+<pre><code>CREATE TABLE scratch_notes (note_id INT, body VARCHAR(50));
+INSERT INTO scratch_notes VALUES (1, 'call back'), (2, 'refund sent');
+DELETE FROM scratch_notes WHERE note_id = 1;
+TRUNCATE TABLE scratch_notes;
+DROP TABLE scratch_notes;</code></pre>
+<pre class="out">Query OK, 0 rows affected
+
+Query OK, 2 rows affected
+Records: 2  Duplicates: 0  Warnings: 0
+
+Query OK, 1 row affected
+
+Query OK, 0 rows affected
+
+Query OK, 0 rows affected</pre>
+        <p>The DELETE took one chosen row, because DELETE can take a WHERE and so remove a chosen
+        subset.<sup class="cite"><a href="#src-9">9</a></sup> The TRUNCATE emptied what was left with no WHERE at all, since
+        it takes none.<sup class="cite"><a href="#src-4">4</a></sup> The DROP removed the table, so a SELECT from it now
+        fails with an error instead of printing an empty set. Expect two follow-ups. Which one can you roll back? Only
+        DELETE, inside a transaction. Which is faster on a big table? TRUNCATE.</p>
+        <h3>GRANT and ROLLBACK, answered aloud</h3>
+        <p>The other two questions fit the same three-part shape. The table lays out the parts so you can check an answer
+        against it.<sup class="cite"><a href="#src-13">13</a></sup><sup class="cite"><a href="#src-6">6</a></sup><sup class="cite"><a href="#src-18">18</a></sup></p>
+        <table>
+          <thead><tr><th>Question</th><th>Definition</th><th>Example</th><th>Limit</th></tr></thead>
+          <tbody>
+            <tr><td>What does a GRANT do?</td><td>It gives an existing account privileges at a level: global, database, table or column.</td><td>Read and write on every table of the desk database for the app account.</td><td>Since MySQL 8 it no longer creates accounts, so CREATE USER comes first.</td></tr>
+            <tr><td>What does ROLLBACK undo?</td><td>It discards the uncommitted changes of the current transaction.</td><td>START TRANSACTION, delete every ticket, ROLLBACK, and the six rows are back.</td><td>It cannot undo DDL or account statements, which commit implicitly, or anything autocommit already saved.</td></tr>
+          </tbody>
+        </table>
+        <h3>Pitfalls an interviewer listens for</h3>
+        <p>Each of these slips shows up in interviews, and naming one before the interviewer does is a
+        good sign:</p>
+        <ul>
+          <li>running UPDATE or DELETE without WHERE and trusting ROLLBACK when autocommit already saved it;</li>
+          <li>expecting ROLLBACK to undo a DROP TABLE, ALTER TABLE or GRANT;</li>
+          <li>naming an account without its host part, or granting on <code>ticket_desk</code> instead of <code>ticket_desk.*</code>;</li>
+          <li>forgetting the semicolon, so the client shows its <code>-&gt;</code> continuation prompt and waits;</li>
+          <li>writing a string in double quotes or leaving a closing quote off;</li>
+          <li>trusting <code>SELECT *</code> in application code until an ALTER TABLE changes the columns.</li>
+        </ul>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A spoken answer has three parts: a definition, one example statement and one limit.</li>
+          <li>TRUNCATE is DDL, resets AUTO_INCREMENT and cannot be rolled back.</li>
+          <li>GRANT needs an account from CREATE USER; ROLLBACK cannot undo DDL or GRANT.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>DROP removes the whole table, definition and data. TRUNCATE removes every row but keeps the table and resets
+          the auto-increment counter, and it takes no WHERE. DELETE removes the rows a WHERE picks, or all of them. DROP
+          and TRUNCATE are DDL and commit implicitly, so DELETE inside a transaction is the only one I can roll back.</p>
+          <p>GRANT gives an existing account privileges on a database, a table or columns, for example read and write on
+          every desk table but nothing that changes structure. ROLLBACK undoes the uncommitted changes of my current
+          transaction. It can't undo a DROP, an ALTER or a GRANT, because those commit implicitly.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="7">
+        <div class="tag">Check yourself</div>
+        <h2>Check yourself</h2>
+        <p>Answer each question out loud, as you would in an interview, before you open it. If an answer will not come,
+        reread the step it belongs to.</p>
+        <details class="check"><summary>Write the statements that create a scratch table, empty it and remove it.</summary>
+          <p><code>CREATE TABLE scratch_notes (note_id INT, body VARCHAR(50));</code> creates it. <code>TRUNCATE TABLE
+          scratch_notes;</code> empties it and keeps the table, and <code>DROP TABLE scratch_notes;</code> removes the
+          definition and the data. All three are DDL.</p></details>
+        <details class="check"><summary>How do you add a column to an existing table, and how do you change a column's data type?</summary>
+          <p>ALTER TABLE with ADD COLUMN, as in <code>ALTER TABLE scratch_notes ADD COLUMN author VARCHAR(50);</code>, which
+          puts the column at the end unless FIRST or AFTER says otherwise. ALTER TABLE with MODIFY, as in <code>ALTER TABLE
+          scratch_notes MODIFY body VARCHAR(500);</code>, changes the type and keeps the name. Check the existing values
+          before narrowing a type, because that can fail or cut data.</p></details>
+        <details class="check"><summary>Write an UPDATE that retitles ticket 6 and a DELETE that removes ticket 3. What happens if you leave the WHERE off?</summary>
+          <p><code>UPDATE tickets SET title = 'Add a dark mode' WHERE ticket_id = 6;</code> and <code>DELETE FROM tickets
+          WHERE ticket_id = 3;</code>. Without WHERE the UPDATE changes every row and the DELETE removes every row, and with
+          autocommit on both are saved at once.</p></details>
+        <details class="check"><summary>Explain DROP against DELETE against TRUNCATE, and say which of the three can be rolled back.</summary>
+          <p>DROP removes the table itself, its definition and its data. TRUNCATE removes every row, keeps the table, takes
+          no WHERE and resets AUTO_INCREMENT. DELETE removes the rows a WHERE picks, or all of them, and keeps the counter.
+          DROP and TRUNCATE are DDL and commit implicitly, so only DELETE can be rolled back.</p></details>
+        <details class="check"><summary>Is SELECT DML or DQL, and why avoid SELECT * in application code?</summary>
+          <p>MySQL's manual files SELECT with the data manipulation statements; the course calls it DQL because it only reads.
+          SELECT * returns whatever columns the table has today, so an ALTER TABLE changes what the code receives. Naming
+          the columns keeps the result's shape fixed.</p></details>
+        <details class="check"><summary>What does 'desk_app'@'%' mean, and why does the desk's program not log in as root?</summary>
+          <p>It is the account with user desk_app connecting from any host; the host is part of the account's identity. The
+          program gets SELECT, INSERT, UPDATE and DELETE on <code>ticket_desk.*</code> and nothing else, which is least
+          privilege. A bug or a leaked password then cannot drop a table, and a DROP from that account fails with ERROR
+          1142.</p></details>
+        <details class="check"><summary>You typed DELETE FROM tickets; and forgot the WHERE. When can ROLLBACK save you?</summary>
+          <p>Only if you typed START TRANSACTION first. Then ROLLBACK restores every row. Without it, autocommit saved the
+          DELETE the moment it ran, and ROLLBACK has nothing to undo.</p></details>
+        <details class="check"><summary>Name the five sublanguages with one statement each, and say which ones ROLLBACK can undo.</summary>
+          <p>DDL (CREATE), DML (INSERT), DQL (SELECT), DCL (GRANT) and TCL (COMMIT). ROLLBACK undoes uncommitted DML inside
+          a transaction. DDL and account statements such as GRANT commit implicitly, and SELECT changes nothing.</p></details>
+      </section>
+
+      <section class="reading-sources">
+        <h2>Sources</h2>
+        <ul>
+          <li id="src-1"><a href="https://dev.mysql.com/doc/refman/9.7/en/sql-data-definition-statements.html" target="_blank" rel="noopener">MySQL 9.7 — Data Definition Statements</a> — the manual's chapter for CREATE, ALTER, DROP and TRUNCATE.</li>
+          <li id="src-2"><a href="https://dev.mysql.com/doc/refman/9.7/en/create-table.html" target="_blank" rel="noopener">MySQL 9.7 — CREATE TABLE Statement</a> — columns, data types and IF NOT EXISTS.</li>
+          <li id="src-3"><a href="https://dev.mysql.com/doc/refman/9.7/en/alter-table.html" target="_blank" rel="noopener">MySQL 9.7 — ALTER TABLE Statement</a> — ADD, DROP, MODIFY, CHANGE and RENAME COLUMN, and the risk of narrowing a type.</li>
+          <li id="src-4"><a href="https://dev.mysql.com/doc/refman/9.7/en/truncate-table.html" target="_blank" rel="noopener">MySQL 9.7 — TRUNCATE TABLE Statement</a> — why TRUNCATE is DDL, resets AUTO_INCREMENT and cannot be rolled back.</li>
+          <li id="src-5"><a href="https://dev.mysql.com/doc/refman/9.7/en/drop-table.html" target="_blank" rel="noopener">MySQL 9.7 — DROP TABLE Statement</a> — what DROP removes, and IF EXISTS.</li>
+          <li id="src-6"><a href="https://dev.mysql.com/doc/refman/9.7/en/implicit-commit.html" target="_blank" rel="noopener">MySQL 9.7 — Statements That Cause an Implicit Commit</a> — the DDL and account statements a ROLLBACK cannot reach.</li>
+          <li id="src-7"><a href="https://dev.mysql.com/doc/refman/9.7/en/insert.html" target="_blank" rel="noopener">MySQL 9.7 — INSERT Statement</a> — column lists and multi-row VALUES.</li>
+          <li id="src-8"><a href="https://dev.mysql.com/doc/refman/9.7/en/update.html" target="_blank" rel="noopener">MySQL 9.7 — UPDATE Statement</a> — WHERE, and the rows matched against rows changed.</li>
+          <li id="src-9"><a href="https://dev.mysql.com/doc/refman/9.7/en/delete.html" target="_blank" rel="noopener">MySQL 9.7 — DELETE Statement</a> — removing chosen rows or all of them, and the AUTO_INCREMENT counter.</li>
+          <li id="src-10"><a href="https://dev.mysql.com/doc/refman/9.7/en/sql-data-manipulation-statements.html" target="_blank" rel="noopener">MySQL 9.7 — Data Manipulation Statements</a> — the chapter that files SELECT with INSERT, UPDATE and DELETE.</li>
+          <li id="src-11"><a href="https://dev.mysql.com/doc/refman/9.7/en/select.html" target="_blank" rel="noopener">MySQL 9.7 — SELECT Statement</a> — column lists, SELECT without FROM, and aliases with AS.</li>
+          <li id="src-12"><a href="https://dev.mysql.com/doc/refman/9.7/en/account-names.html" target="_blank" rel="noopener">MySQL 9.7 — Specifying Account Names</a> — the user@host pair that names an account.</li>
+          <li id="src-13"><a href="https://dev.mysql.com/doc/refman/9.7/en/create-user.html" target="_blank" rel="noopener">MySQL 9.7 — CREATE USER Statement</a> — IDENTIFIED BY, and why GRANT no longer creates accounts.</li>
+          <li id="src-14"><a href="https://dev.mysql.com/doc/refman/9.7/en/grant.html" target="_blank" rel="noopener">MySQL 9.7 — GRANT Statement</a> — privilege levels and the <code>db.*</code> form.</li>
+          <li id="src-15"><a href="https://dev.mysql.com/doc/refman/9.7/en/show-grants.html" target="_blank" rel="noopener">MySQL 9.7 — SHOW GRANTS Statement</a> — listing what one account holds.</li>
+          <li id="src-16"><a href="https://dev.mysql.com/doc/refman/9.7/en/privileges-provided.html" target="_blank" rel="noopener">MySQL 9.7 — Privileges Provided by MySQL</a> — each privilege, and the command-denied error.</li>
+          <li id="src-17"><a href="https://dev.mysql.com/doc/refman/9.7/en/revoke.html" target="_blank" rel="noopener">MySQL 9.7 — REVOKE Statement</a> — taking a privilege back.</li>
+          <li id="src-18"><a href="https://dev.mysql.com/doc/refman/9.7/en/commit.html" target="_blank" rel="noopener">MySQL 9.7 — START TRANSACTION, COMMIT, and ROLLBACK Statements</a> — autocommit and the transaction statements.</li>
+          <li id="src-19"><a href="https://dev.mysql.com/doc/refman/9.7/en/innodb-storage-engine.html" target="_blank" rel="noopener">MySQL 9.7 — The InnoDB Storage Engine</a> — the default engine and the one with transactions.</li>
+          <li id="src-20"><a href="https://dev.mysql.com/doc/refman/9.7/en/savepoint.html" target="_blank" rel="noopener">MySQL 9.7 — SAVEPOINT, ROLLBACK TO SAVEPOINT, and RELEASE SAVEPOINT</a> — undoing part of a transaction.</li>
+          <li id="src-21"><a href="https://dev.mysql.com/doc/refman/9.7/en/account-management-statements.html" target="_blank" rel="noopener">MySQL 9.7 — Account Management Statements</a> — where the manual files GRANT and REVOKE.</li>
+          <li id="src-22"><a href="https://dev.mysql.com/doc/refman/9.7/en/sql-transactional-statements.html" target="_blank" rel="noopener">MySQL 9.7 — Transactional and Locking Statements</a> — where the manual files the TCL statements.</li>
+          <li id="src-23"><a href="https://dev.mysql.com/doc/refman/9.7/en/sql-statements.html" target="_blank" rel="noopener">MySQL 9.7 — SQL Statements</a> — the manual's own grouping of statements by function.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · after you have read the page</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 3 Day 2</footer>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 2 — goals &amp; exercise</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Write DDL statements (CREATE, ALTER, TRUNCATE, DROP) that create, change, empty and remove a table, including adding a column and changing a column's data type</li>
+      <li>Write INSERT, UPDATE and DELETE statements that add, change and remove rows in tables that already exist</li>
+      <li>Explain the difference between DROP, DELETE and TRUNCATE: what each removes, whether WHERE applies and which one can be rolled back</li>
+      <li>Explain what each SQL sublanguage (DDL, DML, DQL, DCL, TCL) is used for, with one statement from each</li>
+    </ul>
+    <div class="ma-k">Today's exercise</div>
+    <ul class="deliv-list check">
+      <li><a href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-03/day-2-sql-sublanguages" target="_blank" rel="noopener">exercises/week-03/day-2-sql-sublanguages</a> — SQL files on Monday's library tables: an ALTER, a seed file of INSERTs, an UPDATE and a DELETE, a reader account with SELECT only, and a transaction that ends in ROLLBACK, checked by pytest against your own container.</li>
+    </ul>
+    <p class="goals-foot">Wednesday assumes the rows you load today. Finish the check to unlock the next page.</p>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Day 3 — Keys, constraints & normalization →", href: "day-3-keys-constraints-and-normalization.html" };
+window.DIAGRAM = {
+  title: "Day 2 · five kinds of statement on one database",
+  width: 500, height: 520,
+  nodes: [
+    { id:"ddl", step:0, x:24, y:16, w:200, h:60, label:"DDL · structure\n  CREATE · ALTER\n  TRUNCATE · DROP", detail:"Shapes tables. ALTER TABLE adds, drops, modifies and renames columns. TRUNCATE empties and keeps the table; DROP removes it. DDL commits implicitly." },
+    { id:"dml", step:1, x:276, y:16, w:200, h:60, label:"DML · rows\n  INSERT · UPDATE · DELETE\n  rows affected", detail:"INSERT with a column list; UPDATE and DELETE pick rows with WHERE. Without WHERE they hit every row. Of DROP, TRUNCATE and DELETE only DELETE rolls back." },
+    { id:"dql", step:2, x:24, y:104, w:200, h:52, label:"DQL · reads\n  SELECT · column list · AS", detail:"SELECT reads and never writes. Name the columns in application code; SELECT * changes shape when the table does. AS renames a result column only." },
+    { id:"dcl", step:3, x:24, y:190, w:200, h:60, label:"DCL · permissions\n  CREATE USER · GRANT\n  SHOW GRANTS · REVOKE", detail:"'desk_app'@'%' gets SELECT, INSERT, UPDATE and DELETE on ticket_desk.* and nothing else. A DROP from it fails with ERROR 1142: least privilege." },
+    { id:"tcl", step:4, x:276, y:104, w:200, h:60, label:"TCL · transactions\n  START TRANSACTION · COMMIT\n  ROLLBACK · SAVEPOINT", detail:"Autocommit is on by default. Inside START TRANSACTION a ROLLBACK restores deleted rows; ROLLBACK TO SAVEPOINT undoes only the later work." },
+    { id:"implicit", step:4, x:276, y:190, w:200, h:52, label:"Implicit commit\n  DDL and GRANT end a transaction", detail:"CREATE, ALTER, DROP, TRUNCATE, CREATE USER and GRANT commit implicitly, so a ROLLBACK after them restores nothing." },
+    { id:"overview", step:5, x:24, y:282, w:452, h:52, label:"OVERVIEW\n  structure · rows · reads · permissions · transactions", detail:"Sort any statement by what it acts on. ROLLBACK undoes only uncommitted DML. The five labels are a teaching convention; the manual files by function." },
+    { id:"interview", step:6, x:24, y:366, w:452, h:52, label:"INTERVIEW, PART 2\n  definition · example · limit", detail:"DROP against DELETE against TRUNCATE, what a GRANT does, what ROLLBACK undoes: one definition, one example, one limit each." },
+    { id:"check", step:7, x:24, y:452, w:452, h:44, label:"CHECK YOURSELF\n  answer out loud, then open" }
+  ],
+  edges: [
+    { id:"e1", step:1, from:"ddl", to:"dml", label:"rows inside" },
+    { id:"e2", step:2, from:"dml", to:"dql", label:"read back" },
+    { id:"e3", step:3, from:"dcl", to:"dql", label:"granted to desk_app" },
+    { id:"e4", step:4, from:"tcl", to:"dml", label:"undoes DML" },
+    { id:"e5", step:4, from:"implicit", to:"tcl", label:"ends it" },
+    { id:"e6", step:5, from:"dcl", to:"overview", dir:"-" },
+    { id:"e7", step:5, from:"implicit", to:"overview", dir:"-" },
+    { id:"e8", step:6, from:"overview", to:"interview", label:"spoken answers" },
+    { id:"e9", step:7, from:"interview", to:"check", dir:"-" }
+  ],
+  captions: [
+    "DDL shapes the tables: CREATE, ALTER with its column clauses, TRUNCATE to empty and DROP to remove. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "DML works on the rows inside that structure, and the rows-affected line shows what each write touched.",
+    "DQL reads the rows back with SELECT, a column list, a WHERE on one column and aliases with AS.",
+    "DCL decides who may run what: an app account with four privileges on one database and no DROP.",
+    "TCL groups changes so ROLLBACK can undo them, except where DDL or GRANT has already committed.",
+    "The overview sorts every statement by what it acts on and shows that ROLLBACK reaches only uncommitted DML.",
+    "Interview answers take one shape: a definition, an example statement and a limit.",
+    "You can now write each kind of statement and explain DROP, DELETE, TRUNCATE, GRANT and ROLLBACK without looking."
+  ]
+};
+window.QUIZ = {
+  id: "w03-d2",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "Which statement empties a table, keeps the table, and cannot be rolled back in MySQL?",
+      options: ["DELETE FROM tickets;", "TRUNCATE TABLE tickets;", "DROP TABLE tickets;", "UPDATE tickets SET title = NULL;"], answer: 1,
+      explain: "TRUNCATE drops and recreates the table, so the table survives with no rows. It is DDL and commits implicitly, so ROLLBACK cannot undo it. DELETE can be rolled back; DROP removes the table itself." },
+    { type: "tf", stem: "Inside START TRANSACTION, a ROLLBACK after DROP TABLE scratch_notes; brings the table back.", answer: false,
+      explain: "DROP TABLE is DDL and causes an implicit commit, so it is saved the moment it runs and ROLLBACK has nothing to undo." },
+    { type: "mcq", stem: "Which of these can ROLLBACK undo when they run inside an open transaction on InnoDB tables? Select all that apply.",
+      options: ["INSERT INTO agents (agent_id, name, email) VALUES (5, 'Ana', 'ana@desk.example');", "UPDATE tickets SET priority = 'normal' WHERE ticket_id = 6;", "ALTER TABLE scratch_notes ADD COLUMN author VARCHAR(50);", "DELETE FROM tickets WHERE ticket_id = 3;", "GRANT SELECT ON ticket_desk.* TO 'desk_app'@'%';"], answer: [0, 1, 3],
+      explain: "ROLLBACK undoes uncommitted DML: INSERT, UPDATE and DELETE. ALTER TABLE is DDL and GRANT is an account statement; both commit implicitly." },
+    { type: "match", stem: "Match each statement to its sublanguage.",
+      pairs: [
+        { l: "CREATE TABLE", r: "DDL" },
+        { l: "INSERT", r: "DML" },
+        { l: "SELECT", r: "DQL" },
+        { l: "GRANT", r: "DCL" },
+        { l: "COMMIT", r: "TCL" }
+      ],
+      explain: "Sort by what the statement acts on: structure is DDL, rows are DML, reads are DQL, permissions are DCL and transactions are TCL." },
+    { type: "scq", stem: "UPDATE tickets SET title = 'Add a dark mode' WHERE ticket_id = 6; runs a second time. What does the client report?",
+      options: ["Rows matched: 1  Changed: 1", "Rows matched: 1  Changed: 0", "Rows matched: 0  Changed: 0", "An error, because the value is already there"], answer: 1,
+      explain: "UPDATE reports rows matched and rows changed. The WHERE still matches ticket 6, but its title already holds that value, so nothing changes and the line reads 0 rows affected." },
+    { type: "open", stem: "In two or three sentences: why does the desk's program log in as 'desk_app'@'%' with SELECT, INSERT, UPDATE and DELETE on ticket_desk.* instead of as root?",
+      hint: "Name the principle, what the app needs, and what a refused statement looks like.",
+      model: "Least privilege: the program only reads and writes rows, so its account gets exactly those four privileges on the desk's database. If the code has a bug or the password leaks, nobody can drop or alter a table through it; a DROP from desk_app fails with ERROR 1142, command denied. Root stays with the person who runs the schema." }
+  ]
+};
+</script>
+
+<script src="../../assets/js/diagram.js?v=20261023"></script>
+<script src="../../assets/js/scrolly.js?v=20261023"></script>
+<script src="../../assets/js/modals.js?v=20261023"></script>
+<script src="../../assets/js/quiz.js?v=20261023"></script>
+<script src="../../assets/js/widgets.js?v=20261023"></script>
+<script src="../../assets/js/glossary.js?v=20261023"></script>
+</body>
+</html>

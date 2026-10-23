@@ -33,6 +33,7 @@ import json
 import re
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from html.parser import HTMLParser
 from pathlib import Path
@@ -522,21 +523,50 @@ def style_summary(r: dict, mp: dict) -> dict:
 
 # ---------------------------------------------------------------- links (network)
 def check_url(href: str, timeout: int = 10) -> str | None:
-    """None when the URL answers with a status < 400 (HEAD, then GET on 403/405); else the reason."""
-    hdrs = {"User-Agent": "Mozilla/5.0 link-check"}
-    try:
-        with urllib.request.urlopen(urllib.request.Request(href, method="HEAD", headers=hdrs), timeout=timeout) as r:
-            return None if r.status < 400 else f"HTTP {r.status}"
-    except urllib.error.HTTPError as e:
-        if e.code not in (403, 405):
-            return f"HTTP {e.code}"
-    except Exception as e:  # noqa: BLE001 - any network failure is a dead link for this purpose
-        return e.__class__.__name__
-    try:
-        with urllib.request.urlopen(urllib.request.Request(href, headers=hdrs), timeout=timeout + 5) as r:
-            return None if r.status < 400 else f"HTTP {r.status}"
-    except Exception as e:  # noqa: BLE001
-        return f"HTTP {e.code}" if isinstance(e, urllib.error.HTTPError) else e.__class__.__name__
+    """None when the URL answers with a status < 400 (HEAD, then GET on 403/405); else the reason.
+
+    A 403 is retried once with a plain tool User-Agent, and a 403 that the host's root page answers too counts as
+    unverifiable (None), not dead: Oracle's WAF in front of dev.mysql.com answers 403 to any browser-looking string it
+    does not recognise and, after a burst of requests, to every string from the machine, so the status says nothing
+    about the page. A plain 404 still comes through as dead. Checked 2026-10-23."""
+    agents = ("Mozilla/5.0 link-check", "curl/8.11.1")
+    last = None
+    for ua in agents:
+        hdrs = {"User-Agent": ua}
+        try:
+            with urllib.request.urlopen(urllib.request.Request(href, method="HEAD", headers=hdrs), timeout=timeout) as r:
+                return None if r.status < 400 else f"HTTP {r.status}"
+        except urllib.error.HTTPError as e:
+            if e.code not in (403, 405):
+                return f"HTTP {e.code}"
+        except Exception as e:  # noqa: BLE001 - any network failure is a dead link for this purpose
+            return e.__class__.__name__
+        try:
+            with urllib.request.urlopen(urllib.request.Request(href, headers=hdrs), timeout=timeout + 5) as r:
+                return None if r.status < 400 else f"HTTP {r.status}"
+        except Exception as e:  # noqa: BLE001
+            last = f"HTTP {e.code}" if isinstance(e, urllib.error.HTTPError) else e.__class__.__name__
+            if last != "HTTP 403":
+                return last
+    return None if _host_blocks(href, timeout) else last
+
+
+_HOST_403: dict[str, bool] = {}
+
+
+def _host_blocks(href: str, timeout: int) -> bool:
+    """True when the host's root page answers 403 as well (a WAF blocking this client, not a missing page)."""
+    parts = urllib.parse.urlsplit(href)
+    root = f"{parts.scheme}://{parts.netloc}/"
+    if root not in _HOST_403:
+        try:
+            with urllib.request.urlopen(urllib.request.Request(root, headers={"User-Agent": "curl/8.11.1"}), timeout=timeout) as r:
+                _HOST_403[root] = r.status == 403
+        except urllib.error.HTTPError as e:
+            _HOST_403[root] = e.code == 403
+        except Exception:  # noqa: BLE001
+            _HOST_403[root] = False
+    return _HOST_403[root]
 
 
 def page_links(text: str) -> list[str]:

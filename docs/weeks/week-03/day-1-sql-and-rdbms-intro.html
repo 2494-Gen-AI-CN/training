@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w03d1">
+<title>W3·D1 — SQL &amp; RDBMS introduction | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261023">
+<script src="../../assets/js/theme.js?v=20261023"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises" target="_blank" rel="noopener">Exercises</a>
+    <a class="topnav" href="../../exit-criteria/index.html">Exit criteria</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>SQL &amp; RDBMS introduction: from a JSON file to tables in MySQL</h1>
+        <div class="meta">
+          <span><b>Week 3</b> · Day 1</span>
+          <span>Mon Oct 26, 2026</span>
+          <span>SQL with MySQL</span>
+          <span><b>~42 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span class="verified">Sources checked 2026-10-23 · python 3.15 · mysql 9.7</span>
+          <span class="exit"><a href="../../exit-criteria/qc-2-sql.html#w03d1">Exit criteria</a></span>
+        </div>
+        <p class="summary">This page assumes week 2's ticket desk, whose six tickets live in <code>tickets.json</code>,
+        and a laptop that passed last Friday's Docker check. It runs MySQL 9.7 in a Docker container, then explains why
+        records like the desk's belong in a relational database, what SQL is, and what a schema, a table and a data type
+        are. It ends by modelling tickets, customers and agents as an ERD and writing that model as three
+        <code>CREATE TABLE</code> statements. Afterwards you can explain an image, a container and a volume, argue for the
+        relational model, choose between <code>CHAR</code>, <code>VARCHAR</code>, <code>INT</code> and
+        <code>DECIMAL</code>, and read an ERD's crow's feet aloud.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="0">
+        <div class="tag">MySQL</div>
+        <h2>MySQL in a Docker container</h2>
+        <p>Before any SQL, the database has to run somewhere. This step installs nothing on the laptop itself: the server
+        runs inside a Docker container, and so does the program you type into.</p>
+        <h3>MySQL: a database server</h3>
+        <p>A database server is a program that keeps running, holds data on disk and answers requests from other programs.
+        MySQL is a relational database management system, or RDBMS, and its default storage engine is
+        InnoDB.<sup class="cite"><a href="#src-1">1</a></sup> The storage engine is the part that writes rows to disk and
+        reads them back. A program that wants the data never opens those files. It connects to the server and sends
+        statements, and the server can serve many such connections at once.<sup class="cite"><a href="#src-2">2</a></sup></p>
+        <p>This week's server is MySQL 9.7, the long-term-support line, pulled as the image tag <code>mysql:9.7</code>. A
+        tag like that names a release line, and the patch release inside it can change between two
+        pulls.<sup class="cite"><a href="#src-3">3</a></sup> That is why these notes write 9.7 and never a full patch
+        number: two laptops that pulled a week apart may print different last digits, and both are right.</p>
+        <h3>Images and containers</h3>
+        <p>Docker separates two things that are easy to blur. An image is the read-only package of files and settings a
+        program needs. A container is an isolated process started from an image, with its own filesystem, that runs until
+        it stops.<sup class="cite"><a href="#src-4">4</a></sup> One image can start many containers, the way one installer
+        can set up the same program on many machines.</p>
+<pre><code>docker images
+docker pull mysql:9.7
+docker images</code></pre>
+        <p>The first listing shows <code>hello-world</code>, left behind by the Docker check, among any other images
+        on the laptop. <code>docker pull</code> downloads the MySQL image without starting anything, and the second
+        listing shows <code>mysql</code> with the tag <code>9.7</code> beside it.</p>
+        <h3>The docker run line, flag by flag</h3>
+        <p>One command creates and starts the desk's database server. It is long, and the table below takes it flag by flag.</p>
+<pre><code>docker run --name desk-mysql -e MYSQL_ROOT_PASSWORD=desk -p 3306:3306 -v desk-data:/var/lib/mysql -d mysql:9.7</code></pre>
+        <p>It prints one long container id and hands the prompt straight back, because the container runs in the
+        background.<sup class="cite"><a href="#src-5">5</a></sup></p>
+        <p>Two words in the table need a line first. A port is a numbered door on a machine: a server program listens
+        at one number, and a client connects to that number to reach it. An environment variable is a named setting
+        that a program can read when it starts.</p>
+        <table>
+          <thead><tr><th>Flag</th><th>In this line</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td><code>--name</code></td><td><code>desk-mysql</code></td><td>Gives the container a name, so later commands can say <code>desk-mysql</code> instead of the id.</td></tr>
+            <tr><td><code>-e</code></td><td><code>MYSQL_ROOT_PASSWORD=desk</code></td><td>Sets an environment variable, a named setting the program reads at start; the image reads this one on first start to set the root password, and refuses to start without it.<sup class="cite"><a href="#src-3">3</a></sup></td></tr>
+            <tr><td><code>-p</code></td><td><code>3306:3306</code></td><td>Publishes a port: laptop port first, container port second.<sup class="cite"><a href="#src-5">5</a></sup></td></tr>
+            <tr><td><code>-v</code></td><td><code>desk-data:/var/lib/mysql</code></td><td>Mounts the named volume <code>desk-data</code> at the folder where MySQL keeps its files.<sup class="cite"><a href="#src-6">6</a></sup></td></tr>
+            <tr><td><code>-d</code></td><td>no value</td><td>Runs the container detached, in the background.<sup class="cite"><a href="#src-5">5</a></sup></td></tr>
+            <tr><td>last word</td><td><code>mysql:9.7</code></td><td>The image, and its tag, to start the container from.</td></tr>
+          </tbody>
+        </table>
+        <p>The line runs once per laptop. Run it a second time and Docker refuses, because the name
+        <code>desk-mysql</code> is taken. The fix is <code>docker start desk-mysql</code>. Deleting the container and its
+        volume to clear the error throws away the data you meant to keep. In Git Bash on Windows, the shell can rewrite
+        <code>/var/lib/mysql</code> into a Windows path; putting <code>MSYS_NO_PATHCONV=1</code> in front of the line stops
+        that.</p>
+        <h3>Volumes: where the data outlives the container</h3>
+        <p>A container's own files sit in a writable layer that is deleted with the container. A database that kept its
+        tables there would lose them the day someone removed and recreated the container. A Docker volume is storage that
+        Docker manages outside any one container, so data written to it outlives the
+        container.<sup class="cite"><a href="#src-6">6</a></sup> Mounting <code>desk-data</code> at
+        <code>/var/lib/mysql</code> puts every MySQL file in the volume.</p>
+<pre><code>docker volume ls</code></pre>
+<pre class="out">DRIVER    VOLUME NAME
+local     desk-data</pre>
+        <p>On a laptop with other volumes the list is longer, and <code>desk-data</code> is one line of it. <code>docker
+        ps</code> shows the running container, and its ports column reads laptop port 3306 mapped to container port
+        3306. <code>docker stop desk-mysql</code> halts the container and keeps it and its volumes, and <code>docker start
+        desk-mysql</code> brings the same container back.<sup class="cite"><a href="#src-7">7</a></sup></p>
+        <h3>Client and server: the client inside the container</h3>
+        <p>The server is one program and the client is another. The server listens on port 3306, and the
+        <code>mysql</code> command-line client connects to it, sends what you type and prints the answers. Because they
+        talk over a port, the client could run on the laptop or inside the container. The MySQL image ships the client,
+        and the official Docker instructions connect from inside the container.<sup class="cite"><a href="#src-8">8</a></sup>
+        <code>docker exec</code> runs a command inside a running container, and <code>-it</code> gives it an interactive
+        terminal.<sup class="cite"><a href="#src-9">9</a></sup></p>
+<pre><code>docker exec -it desk-mysql mysql -uroot -p</code></pre>
+        <p>The client prints <code>Enter password:</code>. A bare <code>-p</code> with no value asks for the password,
+        so it never appears in the command or the shell history.<sup class="cite"><a href="#src-10">10</a></sup> You type
+        <code>desk</code>, nothing echoes, and the <code>mysql&gt;</code> prompt appears. If Git Bash answers "the input
+        device is not a TTY", put <code>winpty</code> in front of the same line.</p>
+<pre><code>SELECT VERSION();</code></pre>
+<pre class="out">+-----------+
+| VERSION() |
++-----------+
+| 9.7.x     |
++-----------+
+1 row in set</pre>
+        <p><code>VERSION()</code> returns the server's version string, and the <code>x</code> stands for whatever patch the
+        tag held when you pulled.<sup class="cite"><a href="#src-11">11</a></sup> A name followed by parentheses that
+        hands back one value is a function; Thursday covers SQL's functions. Typing <code>exit</code> leaves the client.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>An image is a read-only package; a container is a running process started from it.</li>
+          <li>The named volume keeps the database files when the container is removed.</li>
+          <li>The client and the server are separate programs that talk over port 3306.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>MySQL is a relational database server: a program that keeps running, stores tables on disk through its
+          storage engine, InnoDB, and answers SQL from any client that connects to it, many at the same time.</p>
+          <p>An image is the read-only package, and a container is a running process started from it. A container's own
+          files go when the container is removed, so I mount a named volume at MySQL's data folder and the tables
+          survive.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">Introduction to RDBMS</div>
+        <h2>Why a relational database</h2>
+        <p>Week 2's desk keeps its six tickets in <code>tickets.json</code>. That works for one person on one laptop. This
+        step gives the reasons a team moves records like these into a relational database.</p>
+        <h3>What a JSON file cannot do for the desk</h3>
+        <p>Here is one of the six records as the file stores it.</p>
+<pre><code>{
+  "ticket_id": 4,
+  "title": "Checkout button frozen",
+  "priority": "high",
+  "status": "assigned",
+  "assignee": "Priya",
+  "opened_at": "2026-10-19T08:00:00",
+  "closed_at": null
+}</code></pre>
+        <p>To change this ticket's status, the desk loads all six records, changes one field and writes all six back.
+        The whole file is the smallest unit of change, which has these costs.</p>
+        <ul>
+          <li>Every save rewrites every record, even when one field changed.</li>
+          <li>The file holds no rules: a status of <code>"closd"</code> or a priority of <code>7</code> saves as happily
+          as a correct value.</li>
+          <li>When two programs save at nearly the same moment, the later write replaces the earlier one and a change is
+          lost.</li>
+          <li>Every question, such as "which open tickets are high priority?", means loading everything and writing a
+          loop.</li>
+        </ul>
+        <h3>Tables, rows and relations</h3>
+        <p>A relational database stores data as tables of rows and columns, and rows in different tables are related by
+        matching column values.<sup class="cite"><a href="#src-2">2</a></sup> Drawn as a table, the desk's six tickets
+        are six rows, and each JSON key becomes a column.</p>
+        <table>
+          <thead><tr><th>ticket_id</th><th>title</th><th>priority</th><th>status</th><th>assignee</th><th>opened_at</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>Login page returns 500</td><td>high</td><td>closed</td><td></td><td>2026-10-18 08:00</td></tr>
+            <tr><td>2</td><td>Invoice PDF is blank</td><td>normal</td><td>closed</td><td></td><td>2026-10-17 12:00</td></tr>
+            <tr><td>3</td><td>Typo on pricing page</td><td>normal</td><td>closed</td><td></td><td>2026-10-18 18:00</td></tr>
+            <tr><td>4</td><td>Checkout button frozen</td><td>high</td><td>assigned</td><td>Priya</td><td>2026-10-19 08:00</td></tr>
+            <tr><td>5</td><td>Export is missing rows</td><td>normal</td><td>assigned</td><td>Marco</td><td>2026-10-18 12:00</td></tr>
+            <tr><td>6</td><td>Add dark mode</td><td>low</td><td>open</td><td></td><td>2026-10-19 12:00</td></tr>
+          </tbody>
+        </table>
+        <p>Every row has the same columns, in the same order, and an empty cell is a missing value. The
+        <code>closed_at</code> column is left off here to fit the page. The relation part comes next: the name in the
+        assignee column is a fact about an agent, and it belongs in a table of its own.</p>
+        <h3>One fact in one place</h3>
+        <p>Suppose the desk also stored each agent's email inside every ticket the agent holds. When Priya's address
+        changes, every copy has to be found and edited, and one missed copy leaves two answers to "what is Priya's
+        email?". A relational design keeps that fact in one row of an <code>agents</code> table. Each ticket carries only
+        a number, such as <code>agent_id</code> 1, and the agents row with the same number holds the name and the
+        email.<sup class="cite"><a href="#src-2">2</a></sup></p>
+        <p>Changing the address is then one change to one row, and every ticket sees it at once because none of them
+        holds a copy. Wednesday's page gives this idea its formal name, normalisation, and works through its rules.</p>
+        <h3>Rules the database enforces, and many writers at once</h3>
+        <p>A table declares a type for each column, and the server checks it. In strict SQL mode, which is on by default,
+        MySQL refuses a value that does not fit a column's type instead of storing a changed
+        one.<sup class="cite"><a href="#src-12">12</a></sup> The rule lives in the database, so a script, a web app and a
+        teammate's report all meet the same check. Keys and constraints, which Wednesday adds, are further rules of the
+        same kind.</p>
+        <p>The MySQL server handles many client connections at once, so several programs can read and write the same data
+        through it.<sup class="cite"><a href="#src-2">2</a></sup> A change to one ticket is a statement about one row, so
+        two programs changing two different tickets do not overwrite each other's work. Thursday's page covers how the
+        server keeps two changes to the same row apart. And there is a query language: SQL says which rows are wanted,
+        and the server works out how to find them.<sup class="cite"><a href="#src-2">2</a></sup></p>
+        <h3>When a file or a document store fits better</h3>
+        <p>These reasons have a limit. A relational table needs its columns declared before any row goes in, so
+        changing the shape of the data is a deliberate change to the table, not a free
+        edit.<sup class="cite"><a href="#src-13">13</a></sup> A settings file, a small tool one person runs, or records
+        whose fields differ from one record to the next can stay in a file. They also suit a document store, a
+        database that keeps each record as a JSON-like document.</p>
+        <p>On sight, file storage looks like code that loads a whole list, changes one item and dumps the whole list back.
+        Database storage looks like code that sends one statement naming one row.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A JSON file is rewritten whole on every save and enforces no rules.</li>
+          <li>A relational database keeps each fact in one row and relates rows by matching values.</li>
+          <li>The server checks types and serves many writers; the price is a schema declared up front.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I'd use a relational database when the data has structure and more than one writer. Each fact is stored once,
+          in one row, and other rows point at it by a value, so an update happens in one place and nothing drifts out of
+          sync.</p>
+          <p>The database enforces rules itself. Every column has a type the server checks, and later keys and
+          constraints, so every program that writes meets the same rules. It serves many connections at once, and I get
+          SQL to ask questions instead of loading a whole file and looping over it.</p>
+          <p>The trade-off is the schema. I declare the shape up front, so changing it is a deliberate step. For a
+          settings file or records whose fields vary a lot, a plain file or a document store can be the better fit.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">What is SQL</div>
+        <h2>What SQL is</h2>
+        <p>Everything said to MySQL from here on is SQL, typed at the client's prompt or saved in a file. This step covers
+        what kind of language it is and how the client reads it.</p>
+        <h3>Structured Query Language</h3>
+        <p>SQL stands for Structured Query Language.<sup class="cite"><a href="#src-2">2</a></sup> It is the standard
+        language for describing the data in a relational database, changing it and asking questions of it. One language
+        covers all three jobs: creating a table, putting rows in it and reading rows out are all SQL statements.
+        Tuesday's page sorts the statements into families by job.</p>
+        <p>Is SQL a programming language? It is a language with one job, talking to a database. A Python program has
+        variables, loops and functions that run step by step. Most SQL you write is a single statement, sent to the
+        server, that comes back with a result or a message. Teams use both side by side, and from Wednesday the desk's
+        Python code sends SQL to the server.</p>
+        <h3>Declarative: say what, not how</h3>
+        <p>SQL is declarative: a query says which rows are wanted, and the server chooses how to find
+        them.<sup class="cite"><a href="#src-2">2</a></sup> Week 2's desk answered "which tickets are open?" with a loop
+        that walked the list, tested each ticket and collected the matches. That is procedural code, where you spell out
+        every step. In SQL the same question is one sentence that names the table, the columns and the condition, and the
+        loop is the server's business.</p>
+        <p>The gain is that the server can pick a faster route as the table grows, without the query changing. The limit
+        is that you see less of what happens, so a slow query needs the server's own tools to explain it; Friday's page
+        shows one.</p>
+        <h3>Statements at the mysql&gt; prompt</h3>
+        <p>At the <code>mysql&gt;</code> prompt you type a statement and end it with a semicolon. Two first statements
+        need no tables at all.</p>
+<pre><code>SELECT 1 + 1;
+SHOW DATABASES;</code></pre>
+<pre class="out">+-------+
+| 1 + 1 |
++-------+
+|     2 |
++-------+
+1 row in set
+
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| mysql              |
+| performance_schema |
+| sys                |
++--------------------+
+4 rows in set</pre>
+        <p>The client draws every result as a boxed table, even a single number. The four databases are the server's own
+        system databases. A statement runs when it ends with a semicolon. Without one, the client
+        changes its prompt to <code>-&gt;</code> and waits for more lines.<sup class="cite"><a href="#src-14">14</a></sup></p>
+<pre><code>SELECT VERSION()
+;</code></pre>
+        <p>After the first line the prompt reads <code>-&gt;</code>, which looks as if the client has hung. The lone
+        semicolon on the second line ends the statement, and the version table prints. Because a statement can run over
+        many lines, a long one is written with one clause or one column per line.</p>
+        <p>SQL keywords are not case sensitive, while whether table names are depends on the operating system the server
+        runs on.<sup class="cite"><a href="#src-15">15</a></sup> A line that starts with two dashes and a space is a
+        comment.<sup class="cite"><a href="#src-16">16</a></sup> Teams fix a house style so that every file reads the
+        same, and this week's style is:</p>
+        <ul>
+          <li>keywords in capitals, such as <code>SELECT</code> and <code>CREATE TABLE</code></li>
+          <li>table and column names in lower snake case, with plural table names such as <code>tickets</code></li>
+          <li>every statement ending with a semicolon</li>
+          <li>text values in single quotes</li>
+          <li>comment lines starting with <code>--</code> and a space</li>
+        </ul>
+        <h3>SQL and MySQL: a standard and its dialects</h3>
+        <p>SQL is a standard, and MySQL is one server that speaks it. MySQL follows the SQL standard, adds its own
+        extensions and differs from it in places.<sup class="cite"><a href="#src-17">17</a></sup> PostgreSQL and SQL Server
+        do the same with their own extensions, so each server speaks a dialect. Saying "I know SQL" is a claim about the
+        language; "I know MySQL" is a claim about one product.</p>
+        <p>The trade-off is portability. Plain statements such as <code>CREATE TABLE</code> with common types move between
+        servers with little change. Statements built on one server's extensions need rewriting on another, so code that
+        must run on two servers sticks to the shared core. You recognise SQL on sight by capitalised keywords and a
+        semicolon at the end, as in <code>SELECT VERSION();</code> typed at the prompt.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>SQL is Structured Query Language, the standard language of relational databases.</li>
+          <li>A declarative query names the rows wanted; the server decides how to find them.</li>
+          <li>A statement runs at its semicolon; without one the prompt waits at the arrow.</li>
+          <li>MySQL is one server with its own dialect of the SQL standard.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>SQL stands for Structured Query Language. It's the standard language for defining, changing and querying the
+          data in a relational database, and it's declarative: I say which rows I want and the server decides how to get
+          them, where in Python I'd write the loop myself.</p>
+          <p>SQL is the language standard, and MySQL is one database server that
+          implements it with its own extensions, like PostgreSQL or SQL Server do, so a query can need small changes when
+          it moves between them.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="3">
+        <div class="tag">Schema · Table structure</div>
+        <h2>Schemas and table structure</h2>
+        <p>A database needs a shape before it holds anything. This step names the parts of that shape and shows how to
+        read it back from the server.</p>
+        <h3>A schema is the shape, not the data</h3>
+        <p>A database schema is the structure of the data: which tables exist, which columns each one has, the type of
+        each column, and how the tables relate. The data is the rows that fill that structure. A blank form and a stack of
+        filled-in copies is a fair picture: the schema is the form, and every copy is a row.</p>
+        <p>Describing a schema means naming those three layers in order. For the desk it reads:</p>
+        <ul>
+          <li>customers, with the fields <code>customer_id</code>, <code>name</code>, <code>email</code>,
+          <code>country</code> and <code>monthly_fee</code></li>
+          <li><code>agents</code>, with <code>agent_id</code>, <code>name</code> and <code>email</code></li>
+          <li><code>tickets</code>, with the week-2 record keys and <code>agent_id</code> in place of the assignee's
+          name</li>
+          <li>two relationships: a ticket's <code>customer_id</code> matches one customer, and its <code>agent_id</code>
+          matches one agent</li>
+        </ul>
+        <p>The schema changes rarely and on purpose, while the rows change all day.</p>
+        <h3>In MySQL a schema is a database</h3>
+        <p>In MySQL, <code>CREATE SCHEMA</code> is a synonym for <code>CREATE DATABASE</code>, so a schema and a database
+        are the same thing.<sup class="cite"><a href="#src-18">18</a></sup> Creating one needs the CREATE privilege, which
+        the root account has.<sup class="cite"><a href="#src-18">18</a></sup> <code>USE</code> then makes it the default
+        database for the statements that follow in the session.<sup class="cite"><a href="#src-19">19</a></sup></p>
+<pre><code>CREATE DATABASE ticket_desk;
+USE ticket_desk;
+SHOW TABLES;</code></pre>
+<pre class="out">Query OK, 1 row affected
+
+Database changed
+Empty set</pre>
+        <p>The database exists and holds no tables yet. <code>SHOW DATABASES</code> now lists <code>ticket_desk</code>
+        beside the system databases such as <code>mysql</code> and
+        <code>information_schema</code>.<sup class="cite"><a href="#src-20">20</a></sup> The second of those,
+        <code>information_schema</code>, is a read-only set of views that describes the server's own databases,
+        tables and columns.<sup class="cite"><a href="#src-21">21</a></sup> Tools and tests read it
+        to check what a schema really contains.</p>
+        <p>Some other servers treat a schema as a namespace inside a database. Because MySQL treats the two words as
+        one, an interview answer should name the product before it defines the word.<sup class="cite"><a href="#src-18">18</a></sup></p>
+        <h3>Rows, columns and fields</h3>
+        <p>A table is a grid. Each column is a named attribute with one data type, such as <code>title</code> holding
+        text. Each row is one record, such as ticket 4. A field is one cell: the value of one column in one row. The words
+        overlap in practice, and MySQL's own listing of a table's columns heads them <code>Field</code>.</p>
+        <p>A column has exactly one type so that every value in it is the same kind of thing. The server can then check
+        new values, compare them and sort them without guessing. An empty cell holds <code>NULL</code>, meaning "no
+        value". A column declared with only a type accepts
+        <code>NULL</code>.<sup class="cite"><a href="#src-22">22</a></sup> Wednesday's page adds the rules that forbid it.</p>
+        <p>Every column exists in every row, even when the cell is empty. A table with dozens of columns that are mostly
+        <code>NULL</code> wastes space and usually means several kinds of thing were squeezed into one
+        table.<sup class="cite"><a href="#src-13">13</a></sup></p>
+        <h3>Reading the structure of a table</h3>
+        <p>Three statements read a schema back.</p>
+        <table>
+          <thead><tr><th>Statement</th><th>What it shows</th><th>Use it when</th></tr></thead>
+          <tbody>
+            <tr><td><code>SHOW TABLES</code></td><td>the tables in the current database<sup class="cite"><a href="#src-23">23</a></sup></td><td>you want to know which tables exist</td></tr>
+            <tr><td><code>DESCRIBE</code></td><td>each column of one table, as a shortcut for <code>SHOW COLUMNS</code><sup class="cite"><a href="#src-24">24</a></sup></td><td>you need one table's columns and their types</td></tr>
+            <tr><td><code>SHOW CREATE TABLE</code></td><td>the exact statement that would rebuild the table<sup class="cite"><a href="#src-25">25</a></sup></td><td>you want the full definition to read or copy</td></tr>
+          </tbody>
+        </table>
+        <p>Once the desk's tables exist (step 7 creates them), the agents table reads back like this:</p>
+<pre><code>DESCRIBE agents;</code></pre>
+<pre class="out">+----------+--------------+------+-----+---------+-------+
+| Field    | Type         | Null | Key | Default | Extra |
++----------+--------------+------+-----+---------+-------+
+| agent_id | int          | YES  |     | NULL    |       |
+| name     | varchar(50)  | YES  |     | NULL    |       |
+| email    | varchar(255) | YES  |     | NULL    |       |
++----------+--------------+------+-----+---------+-------+
+3 rows in set</pre>
+        <p>Each line of the box is one column of the table, and the six headings are fixed.</p>
+        <table>
+          <thead><tr><th>Heading</th><th>What it shows</th><th>For the agents table</th></tr></thead>
+          <tbody>
+            <tr><td>Field</td><td>the column's name</td><td>three names</td></tr>
+            <tr><td>Type</td><td>the data type and its size</td><td><code>int</code>, then two <code>varchar</code> sizes</td></tr>
+            <tr><td>Null</td><td>whether the column accepts <code>NULL</code></td><td><code>YES</code> everywhere, since no rule says otherwise</td></tr>
+            <tr><td>Key</td><td>whether the column is part of a key</td><td>empty until Wednesday</td></tr>
+            <tr><td>Default</td><td>the value used when a new row leaves the column out</td><td><code>NULL</code></td></tr>
+            <tr><td>Extra</td><td>anything else, such as an automatic number</td><td>empty</td></tr>
+          </tbody>
+        </table>
+        <p>On sight, this boxed listing with Field, Type, Null, Key, Default and Extra is the quickest way to learn an
+        unfamiliar table in someone else's database.<sup class="cite"><a href="#src-24">24</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A schema is the tables, their typed columns and their relationships; rows are the data.</li>
+          <li>In MySQL, CREATE SCHEMA and CREATE DATABASE do the same thing.</li>
+          <li>DESCRIBE lists a table's columns with type, nullability, key and default.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A schema is the structure of the data: the tables, the fields in each with their types, and how the tables
+          relate. In a help desk, tickets, customers and agents are tables, and each ticket carries a customer id and an
+          agent id that match rows in the other two.</p>
+          <p>In MySQL a schema and a database are the same thing; CREATE SCHEMA is a synonym. Some other servers treat a
+          schema as a namespace inside a database, so I'd say which product I mean.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">SQL data types</div>
+        <h2>SQL data types</h2>
+        <p>Every column gets exactly one data type. The type decides:</p>
+        <ul>
+          <li>which values fit in the column</li>
+          <li>how much space each value takes</li>
+          <li>how values compare and sort</li>
+        </ul>
+        <p>MySQL sorts its types into families.<sup class="cite"><a href="#src-26">26</a></sup></p>
+        <ul>
+          <li>numeric: the integer, fixed-point, floating-point and bit-value types</li>
+          <li>string: types including CHAR, VARCHAR, TEXT and BLOB</li>
+        </ul>
+        <p>Five types cover the whole desk.</p>
+        <table>
+          <thead><tr><th>Column</th><th>Type</th><th>Why this type</th></tr></thead>
+          <tbody>
+            <tr><td><code>ticket_id</code>, <code>customer_id</code>, <code>agent_id</code></td><td><code>INT</code></td><td>whole numbers that name one row</td></tr>
+            <tr><td><code>title</code>, <code>name</code>, <code>email</code></td><td><code>VARCHAR(n)</code></td><td>text whose length varies</td></tr>
+            <tr><td><code>priority</code>, <code>status</code></td><td><code>VARCHAR(10)</code></td><td>short words such as <code>high</code> or <code>assigned</code></td></tr>
+            <tr><td><code>country</code></td><td><code>CHAR(2)</code></td><td>always two letters, such as <code>CA</code></td></tr>
+            <tr><td><code>monthly_fee</code></td><td><code>DECIMAL(8,2)</code></td><td>money, which must be exact to the cent</td></tr>
+            <tr><td><code>opened_at</code>, <code>closed_at</code></td><td><code>DATETIME</code></td><td>a date and a time, with no time zone</td></tr>
+          </tbody>
+        </table>
+        <h3>Integers: INT and BIGINT</h3>
+        <p><code>INT</code> is a 4-byte integer. Signed, it runs from -2147483648 to 2147483647. <code>BIGINT</code> takes
+        8 bytes and holds far larger numbers.<sup class="cite"><a href="#src-27">27</a></sup> An id column of
+        <code>INT</code> therefore runs out a little past two billion rows. That is plenty for customers and tickets, but a
+        log that records every event on every ticket could pass it one day.</p>
+        <p>The trade-off is space against headroom: <code>BIGINT</code> doubles the storage of every value.<sup class="cite"><a href="#src-27">27</a></sup> Choose it for a table that
+        may grow past two billion rows, and <code>INT</code> elsewhere. Wednesday's event history is the desk's first
+        <code>BIGINT</code> column.</p>
+        <p>MySQL has no separate true-or-false column type. It accepts <code>BOOL</code> and <code>BOOLEAN</code> as
+        synonyms for <code>TINYINT(1)</code>, a small integer column, where 0 is read as false and 1 as
+        true.<sup class="cite"><a href="#src-28">28</a></sup> A column shown as <code>tinyint(1)</code> in
+        someone else's table is usually a flag.</p>
+        <h3>DECIMAL for money, FLOAT approximate</h3>
+        <p><code>DECIMAL(M,D)</code> stores exact fixed-point values. <code>FLOAT</code> and <code>DOUBLE</code> store
+        approximate ones.<sup class="cite"><a href="#src-29">29</a></sup> An approximate type keeps a binary fraction close
+        to the number you gave it, so a price can come back a hair off. Summed over thousands of rows, those hairs turn
+        into a total that does not match the invoice. An exact type stores 49.00 as 49.00, which is why money goes in
+        <code>DECIMAL</code>.</p>
+        <p>In <code>DECIMAL(8,2)</code>, the 8 is the total number of digits and the 2 is how many of them follow the
+        decimal point, so the largest value is 999999.99.<sup class="cite"><a href="#src-29">29</a></sup> The limit is
+        that you pick the size up front. A value that does not fit is refused under strict mode, so a column sized for
+        monthly fees cannot later hold a yearly contract worth millions.<sup class="cite"><a href="#src-12">12</a></sup></p>
+        <h3>CHAR and VARCHAR</h3>
+        <p><code>CHAR(n)</code> is fixed length: a stored value is padded with spaces to <code>n</code> characters, and the
+        trailing spaces are removed when it is read back. <code>VARCHAR(n)</code> stores only the characters given, plus a
+        short length prefix.<sup class="cite"><a href="#src-30">30</a></sup> Use <code>CHAR</code> when every value has
+        the same length, such as a two-letter country code. Use <code>VARCHAR</code> for names, titles and emails, whose
+        length varies.</p>
+        <p>The <code>n</code> counts characters, not bytes. Under the <code>utf8mb4</code> character set one character can
+        take up to four bytes.<sup class="cite"><a href="#src-30">30</a></sup> That set is MySQL's default, so a
+        <code>VARCHAR</code> column stores accented letters and emoji with no extra
+        settings.<sup class="cite"><a href="#src-31">31</a></sup> <code>VARCHAR(100)</code> means one hundred
+        characters, so "Chloé" counts as five.</p>
+        <p>Two slips are common. One is making every text column <code>VARCHAR(255)</code>, which hides what the data
+        really is. The other is reaching for <code>CHAR</code> because a value is short, when its length still
+        varies.</p>
+        <p>On sight, a good column list reads like the data it holds, as in the desk's customers table:</p>
+<pre><code>DESCRIBE customers;</code></pre>
+<pre class="out">+-------------+--------------+------+-----+---------+-------+
+| Field       | Type         | Null | Key | Default | Extra |
++-------------+--------------+------+-----+---------+-------+
+| customer_id | int          | YES  |     | NULL    |       |
+| name        | varchar(100) | YES  |     | NULL    |       |
+| email       | varchar(255) | YES  |     | NULL    |       |
+| country     | char(2)      | YES  |     | NULL    |       |
+| monthly_fee | decimal(8,2) | YES  |     | NULL    |       |
++-------------+--------------+------+-----+---------+-------+
+5 rows in set</pre>
+        <p>The server writes type names in lower case, whatever case the table was created with.</p>
+        <h3>DATETIME and TIMESTAMP</h3>
+        <p><code>DATETIME</code> holds a date and a time from <code>1000-01-01 00:00:00</code> to <code>9999-12-31
+        23:59:59</code> and has no time zone attached. <code>TIMESTAMP</code> is stored as UTC, converted on the way in
+        and out, and limited to 1970-01-01 through 2038-01-19.<sup class="cite"><a href="#src-32">32</a></sup> The
+        interviewer's follow-up is usually "which would you use?", and the answer depends on what the times mean.</p>
+        <p>The desk's times in week 2's JSON carry no zone, such as <code>2026-10-18T08:00:00</code>. <code>DATETIME</code>
+        stores them exactly as written and hands them back unchanged. A <code>TIMESTAMP</code> column would shift them by
+        the session's time zone, and it stops in 2038.<sup class="cite"><a href="#src-32">32</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>INT holds about two billion; BIGINT goes further at twice the bytes.</li>
+          <li>DECIMAL is exact, so money goes in DECIMAL and never in FLOAT.</li>
+          <li>CHAR is fixed length; VARCHAR stores what it is given; both count characters.</li>
+          <li>DATETIME keeps the time as written; TIMESTAMP converts through UTC and ends in 2038.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I use CHAR when every value is the same length, like a two-letter country code, and VARCHAR when the length
+          varies, like a name or an email. VARCHAR stores only what's there plus a small length prefix, and the number in
+          brackets counts characters, not bytes.</p>
+          <p>Money goes in DECIMAL because it's exact. FLOAT is approximate, so cents drift when you add up a lot of
+          rows. DECIMAL eight comma two holds up to 999,999.99.</p>
+          <p>INT is four bytes and tops out just over two billion. If a table could pass that, like an event log, I'd use
+          BIGINT, which is eight bytes per value.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
+        <div class="tag">Data modeling and ERD</div>
+        <h2>Data modelling and reading an ERD</h2>
+        <p>The tables do not come first. A team first models the data on paper or a whiteboard, as an entity
+        relationship diagram, or ERD, and only then writes the statements that create the tables.</p>
+        <h3>From a description to entities, attributes and relationships</h3>
+        <p>Data modelling starts from a plain description of the business. The desk's reads: "Customers file tickets.
+        Each ticket has a title, a priority and a status, and records when it was opened and closed. Agents work the
+        tickets, and a ticket is worked by at most one agent. The desk keeps each customer's name, email, country and
+        monthly fee, and each agent's name and email."</p>
+        <ol>
+          <li>Pick out the nouns that the business keeps records about: customers, tickets and agents. Each becomes an
+          entity.</li>
+          <li>For each entity, list the facts that describe it. These are its attributes, such as a ticket's title and
+          status.</li>
+          <li>Give each entity one attribute that picks out exactly one instance, such as <code>ticket_id</code>.</li>
+          <li>Read the verbs between entities ("files", "works") as relationships, and ask how many sit on each
+          side.</li>
+          <li>Translate: an entity becomes a table, an attribute becomes a column, and each instance becomes a
+          row.<sup class="cite"><a href="#src-33">33</a></sup></li>
+        </ol>
+        <p>Words that describe a value, such as "high" or "closed", are values of an attribute and not entities. Asking
+        "would the business keep a list of these?" sorts most nouns quickly.</p>
+        <h3>Reading the boxes</h3>
+        <p>Each box in an ERD is one entity. The box lists the entity's attributes, and the one that picks out a single
+        instance is marked: <code>customer_id</code> on customers, <code>agent_id</code> on agents, <code>ticket_id</code>
+        on tickets.<sup class="cite"><a href="#src-33">33</a></sup> Here the marked attribute carries a
+        <code>#</code>. Drawn in text, the desk's model looks like this:</p>
+<pre><code>+---------------+                  +---------------+
+| customers     |                  | agents        |
++---------------+                  +---------------+
+| # customer_id |                  | # agent_id    |
+|   name        |                  |   name        |
+|   email       |                  |   email       |
+|   country     |                  +---------------+
+|   monthly_fee |                          |
++---------------+                         -+-
+        |                                  |
+       -+-                                 |
+        |                                 /|\
+       /|\                                 |
++--------------------------------------------------+
+| tickets                                          |
++--------------------------------------------------+
+| # ticket_id                                      |
+|   title, priority, status                        |
+|   customer_id, agent_id, opened_at, closed_at    |
++--------------------------------------------------+</code></pre>
+        <p>Three boxes and two lines. The short crossing bar sits at the customers and agents ends, and the three-pronged
+        fork sits at the tickets end of both lines. The tickets box also carries <code>customer_id</code> and
+        <code>agent_id</code>, and those shared attributes are what the lines are drawn
+        through.<sup class="cite"><a href="#src-33">33</a></sup></p>
+        <h3>Reading the lines: one-to-many and the crow's foot</h3>
+        <p>One customer to many tickets is a one-to-many relationship. It is drawn with a single bar at the customer end
+        and a crow's foot, the three-pronged fork, at the ticket end.<sup class="cite"><a href="#src-33">33</a></sup> Read
+        the line twice, once from each box. From customers: one customer files many tickets. From tickets: each ticket
+        belongs to one customer. The fork always sits on the "many" side.</p>
+        <p>The agents line reads the same way: one agent works many tickets, and a ticket names one agent through its
+        single <code>agent_id</code> column. A ticket that nobody has picked up yet leaves that column empty, which is why
+        the description says "at most one". Wednesday's page covers the other shapes a line can take and how each is
+        built.</p>
+        <div class="ix-predict" data-q="A learner draws the customers-to-tickets line with the crow's foot touching the customers box. What does that diagram now claim?" data-a="That one ticket belongs to many customers and each customer has one ticket, the reverse of the desk. The fork marks the many side, so it belongs at tickets."></div>
+        <p>Reading the line backwards is the classic slip. Before trusting an ERD, say both sentences aloud and check
+        each against the description.</p>
+        <h3>What an ERD leaves out</h3>
+        <p>An ERD records structure and relationships. It does not record the rules the database will enforce or the
+        queries it will have to answer, so a model is checked against both before the tables are
+        built.<sup class="cite"><a href="#src-33">33</a></sup> The desk's diagram does not say that a status must be one
+        of three words, or that the busiest question is "which tickets are open?". Those come from the description and
+        from the people who will use the data.</p>
+        <p>Tools draw ERDs as well as whiteboards do. MySQL Workbench, MySQL's own desktop design tool, draws an EER diagram (an enhanced ERD, its name for the
+        same boxes and lines), generates the CREATE TABLE
+        script from it, and can reverse-engineer a diagram from an existing
+        database.<sup class="cite"><a href="#src-34">34</a></sup> On sight, an ERD in a design document is a set of named
+        boxes listing columns, such as a tickets box with <code>ticket_id</code>, <code>title</code> and
+        <code>customer_id</code>, joined by lines that end in bars and forks.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Entities become tables, attributes become columns, and instances become rows.</li>
+          <li>Each box marks the attribute that picks out one instance.</li>
+          <li>The crow's foot marks the many end of a one-to-many line.</li>
+          <li>An ERD shows structure, not the rules or the queries.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>An ERD is an entity relationship diagram. Each box is an entity with its attributes listed and its
+          identifying attribute marked, and each line is a relationship. The end with the crow's foot is the many side,
+          so a bar at customers and a fork at tickets means one customer has many tickets.</p>
+          <p>To model a description, I pick out the nouns the business keeps records about as entities, list the facts
+          about each as attributes, give each an identifying attribute, and read the verbs between them as relationships.
+          Then each entity becomes a table and each attribute a column.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="6">
+        <div class="tag">Defining schema</div>
+        <h2>Defining the schema with CREATE TABLE</h2>
+        <p>The ERD names the tables and columns, and the type table gives each column a type. This step writes both down
+        as SQL, in a file the team keeps in Git, and runs it.</p>
+        <h3>The shape of a CREATE TABLE</h3>
+        <p>A <code>CREATE TABLE</code> statement names the table, then lists column definitions inside parentheses,
+        separated by commas, and ends with a semicolon. Each column definition is a name followed by a data
+        type.<sup class="cite"><a href="#src-13">13</a></sup> The desk's whole schema fits in one short file,
+        <code>schema.sql</code>, written one column per line:</p>
+<pre><code>CREATE DATABASE IF NOT EXISTS ticket_desk;
+USE ticket_desk;
+
+CREATE TABLE IF NOT EXISTS customers (
+    customer_id INT,
+    name VARCHAR(100),
+    email VARCHAR(255),
+    country CHAR(2),
+    monthly_fee DECIMAL(8,2)
+);
+
+CREATE TABLE IF NOT EXISTS agents (
+    agent_id INT,
+    name VARCHAR(50),
+    email VARCHAR(255)
+);
+
+CREATE TABLE IF NOT EXISTS tickets (
+    ticket_id INT,
+    title VARCHAR(200),
+    priority VARCHAR(10),
+    status VARCHAR(10),
+    customer_id INT,
+    agent_id INT,
+    opened_at DATETIME,
+    closed_at DATETIME
+);</code></pre>
+        <p>Saving the file runs nothing; it prints output only when the client reads it, below. Every column traces back
+        to a box in the ERD. The tickets table holds week 2's record keys, with <code>agent_id</code> in place of the
+        assignee's name and a new <code>customer_id</code>. There are no keys and no rules yet, only names and types;
+        Wednesday's page adds the rest.</p>
+        <p>Two slips break a statement like this. Column definitions are separated by commas, so a comma after the last column is a
+        syntax error.<sup class="cite"><a href="#src-13">13</a></sup> A table named after a reserved word such as <code>order</code> or
+        <code>group</code> must be quoted with backticks every time it is used, which is why schema names avoid those
+        words.<sup class="cite"><a href="#src-35">35</a></sup></p>
+        <h3>A schema file you can run again</h3>
+        <p>Typing <code>CREATE TABLE</code> at the prompt works once and leaves no record. A <code>.sql</code> file is the
+        source of the structure: it lives in Git beside the code, a teammate reads it in a review, and any laptop can
+        rebuild the tables from it. The <code>mysql</code> client reads statements from standard input, the stream a
+        program reads typed input from, so a shell redirect can feed it a file in place of the keyboard.<sup class="cite"><a href="#src-10">10</a></sup> From
+        the folder that holds <code>sql/schema.sql</code>:</p>
+<pre><code>docker exec -i desk-mysql mysql -uroot -pdesk &lt; sql/schema.sql</code></pre>
+<pre class="out">mysql: [Warning] Using a password on the command line interface can be insecure.</pre>
+        <p>The <code>&lt;</code> sends the file's contents into the command, and the line uses <code>-i</code> alone
+        in place of <code>-it</code>.<sup class="cite"><a href="#src-9">9</a></sup></p>
+        <p>With no prompt to answer, the password
+        rides in the same argument as <code>-p</code>. That works, and the client warns because a password on the command
+        line is visible to other users of the machine.<sup class="cite"><a href="#src-36">36</a></sup> The warning is the
+        only line printed, which means every statement in the file succeeded.</p>
+        <p>Run the same line a second time and it prints the same single warning. <code>IF NOT EXISTS</code> turns
+        "this table already exists" from an error into a warning, so a file can be rerun from the
+        top.<sup class="cite"><a href="#src-13">13</a></sup> Without it, the second run would stop at the first
+        <code>CREATE</code> with an error.</p>
+        <h3>When IF NOT EXISTS hides a mistake</h3>
+        <p>The same clause has a cost. <code>IF NOT EXISTS</code> skips a <code>CREATE TABLE</code> whenever a table of
+        that name exists, even when its columns differ from the file.<sup class="cite"><a href="#src-13">13</a></sup>
+        Suppose you widen <code>title</code> to <code>VARCHAR(300)</code> in the file and rerun it. The run is quiet,
+        and <code>DESCRIBE tickets</code> still shows <code>varchar(200)</code>, because the old table was never
+        touched.</p>
+        <p>The file and the database now disagree, and nothing said so. Wednesday's version of the file avoids the trap by
+        dropping the whole database and creating it again from the top on every run.</p>
+        <h3>Checking what you built</h3>
+        <p>A file that ran without errors may still not hold what you meant, so read the result back. At the
+        <code>mysql&gt;</code> prompt, after <code>USE ticket_desk;</code>:</p>
+<pre><code>SHOW TABLES;</code></pre>
+<pre class="out">+-----------------------+
+| Tables_in_ticket_desk |
++-----------------------+
+| agents                |
+| customers             |
+| tickets               |
++-----------------------+
+3 rows in set</pre>
+<pre><code>DESCRIBE tickets;</code></pre>
+<pre class="out">+-------------+--------------+------+-----+---------+-------+
+| Field       | Type         | Null | Key | Default | Extra |
++-------------+--------------+------+-----+---------+-------+
+| ticket_id   | int          | YES  |     | NULL    |       |
+| title       | varchar(200) | YES  |     | NULL    |       |
+| priority    | varchar(10)  | YES  |     | NULL    |       |
+| status      | varchar(10)  | YES  |     | NULL    |       |
+| customer_id | int          | YES  |     | NULL    |       |
+| agent_id    | int          | YES  |     | NULL    |       |
+| opened_at   | datetime     | YES  |     | NULL    |       |
+| closed_at   | datetime     | YES  |     | NULL    |       |
++-------------+--------------+------+-----+---------+-------+
+8 rows in set</pre>
+        <p>Eight columns, the types from the file, and an empty Key column, since nothing is a key yet. The tables hold
+        no rows; Tuesday's page puts the six tickets in. <code>SHOW CREATE TABLE tickets</code> prints the full statement
+        the server would use to rebuild the table.<sup class="cite"><a href="#src-25">25</a></sup> Automated checks, such
+        as tests, read the same facts from
+        <code>information_schema</code>.<sup class="cite"><a href="#src-21">21</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>CREATE TABLE lists comma-separated column names and types in parentheses, ending with a semicolon.</li>
+          <li>A schema file in Git is the source of the structure, run through a shell redirect.</li>
+          <li>IF NOT EXISTS makes a rerun safe but never changes a table that already exists.</li>
+          <li>SHOW TABLES and DESCRIBE confirm what the server really built.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>For a table with an id, a short name, an amount of money and a created time, I'd write CREATE TABLE with
+          four columns: the id as INT, the name as VARCHAR of a sensible length, the amount as DECIMAL with two decimal
+          places, and the time as DATETIME, one column per line, ending with a semicolon.</p>
+          <p>IF NOT EXISTS lets me rerun the schema file without an error, but it skips a table that already exists even
+          if I've changed its columns in the file. So after any run I check the result with SHOW TABLES and DESCRIBE.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="7">
+        <div class="tag">Check yourself</div>
+        <h2>Check yourself</h2>
+        <p>Eight retrieval questions, at least one per section. Answer each out loud before you open it.</p>
+        <details class="check"><summary>What is the difference between a Docker image and a container, and why do the desk's tables survive when the container is removed and created again?</summary><p>An image is the read-only package of files and settings, such as <code>mysql:9.7</code>; a container is an isolated process started from it. The container's own files go with it, but the <code>-v desk-data:/var/lib/mysql</code> flag puts MySQL's data folder in a named volume, which Docker keeps outside any one container.</p></details>
+        <details class="check"><summary>The <code>docker run</code> line fails the second time with a name conflict. What happened, and what should you run instead?</summary><p>The container <code>desk-mysql</code> already exists, so the name is taken. Run <code>docker start desk-mysql</code> to bring the same container back; deleting the container and its volume to clear the error would throw away the data.</p></details>
+        <details class="check"><summary>Give three reasons to keep the desk's tickets in a relational database instead of a JSON file, and one case where a file is fine.</summary><p>Each fact lives in one row and other rows point at it, so an update happens in one place. The server checks every value against its column's type and serves many connections at once, and SQL answers questions without loading everything into a loop. A settings file or a small one-person tool, whose shape changes freely, can stay a file.</p></details>
+        <details class="check"><summary>You type <code>SELECT VERSION()</code> at the <code>mysql&gt;</code> prompt and press Enter. The prompt turns into <code>-&gt;</code> and nothing prints. What is going on?</summary><p>The statement has no semicolon, so the client is waiting for the rest of it. Type <code>;</code> and press Enter, and the version table prints.</p></details>
+        <details class="check"><summary>What is a database schema, and how does the word's meaning in MySQL differ from servers that use it as a namespace?</summary><p>A schema is the structure of the data: the tables, the typed fields in each and the relationships between them; the rows are the data. In MySQL a schema is a database and <code>CREATE SCHEMA</code> is a synonym for <code>CREATE DATABASE</code>, while some other servers treat a schema as a namespace inside a database.</p></details>
+        <details class="check"><summary>Pick a type for each: a product code that is always eight characters, a price, a product description, and the id of an event log that could pass two billion rows.</summary><p><code>CHAR(8)</code> for the fixed-length code, <code>DECIMAL</code> with two decimal places for the price because it is exact, <code>VARCHAR(n)</code> for the description whose length varies, and <code>BIGINT</code> for the log id because <code>INT</code> stops at 2,147,483,647.</p></details>
+        <details class="check"><summary>An ERD shows a line with a single bar at customers and a crow's foot at tickets. Read it in both directions, and say how many agents one desk ticket can have.</summary><p>One customer has many tickets, and each ticket belongs to one customer, because the fork marks the many side. A desk ticket names at most one agent, since it has a single <code>agent_id</code> column, while one agent can work many tickets.</p></details>
+        <details class="check"><summary>You changed <code>title</code> to <code>VARCHAR(300)</code> in <code>schema.sql</code> and reran it with no error, but <code>DESCRIBE tickets</code> still shows <code>varchar(200)</code>. Why?</summary><p><code>CREATE TABLE IF NOT EXISTS</code> skips a table whose name already exists, even when its columns differ from the file, so the old table was never touched. Reading the result back with <code>DESCRIBE</code> after every run is what catches it.</p></details>
+      </section>
+
+      <section class="reading-sources" aria-label="Sources and deeper dive">
+        <h2>Sources &amp; deeper dive</h2>
+        <ul>
+          <li id="src-1"><a href="https://dev.mysql.com/doc/refman/9.7/en/innodb-introduction.html" target="_blank" rel="noopener">Introduction to InnoDB</a> — MySQL's default storage engine.</li>
+          <li id="src-2"><a href="https://dev.mysql.com/doc/refman/9.7/en/what-is-mysql.html" target="_blank" rel="noopener">MySQL Reference Manual: What is MySQL?</a> — tables, relations, SQL and many client connections.</li>
+          <li id="src-3"><a href="https://hub.docker.com/_/mysql" target="_blank" rel="noopener">MySQL Docker Hub image</a> — the image tags and the <code>MYSQL_ROOT_PASSWORD</code> variable.</li>
+          <li id="src-4"><a href="https://docs.docker.com/get-started/docker-concepts/the-basics/what-is-a-container/" target="_blank" rel="noopener">What is a container?</a> — images and containers in Docker's own words.</li>
+          <li id="src-5"><a href="https://docs.docker.com/reference/cli/docker/container/run/" target="_blank" rel="noopener">docker container run</a> — <code>-p</code>, <code>-d</code> and the other flags of the run line.</li>
+          <li id="src-6"><a href="https://docs.docker.com/engine/storage/volumes/" target="_blank" rel="noopener">Docker volumes</a> — storage that outlives a container.</li>
+          <li id="src-7"><a href="https://docs.docker.com/reference/cli/docker/container/stop/" target="_blank" rel="noopener">docker container stop</a> — stopping a container while keeping it and its volumes.</li>
+          <li id="src-8"><a href="https://dev.mysql.com/doc/refman/9.7/en/docker-mysql-getting-started.html" target="_blank" rel="noopener">Basic Steps for MySQL Server Deployment with Docker</a> — the official way to start the server and connect from inside the container.</li>
+          <li id="src-9"><a href="https://docs.docker.com/reference/cli/docker/container/exec/" target="_blank" rel="noopener">docker container exec</a> — running a command inside a running container.</li>
+          <li id="src-10"><a href="https://dev.mysql.com/doc/refman/9.7/en/mysql-command-options.html" target="_blank" rel="noopener">mysql Client Options</a> — <code>-p</code> with and without a value, and reading from standard input.</li>
+          <li id="src-11"><a href="https://dev.mysql.com/doc/refman/9.7/en/information-functions.html" target="_blank" rel="noopener">Information Functions</a> — what <code>VERSION()</code> returns.</li>
+          <li id="src-12"><a href="https://dev.mysql.com/doc/refman/9.7/en/sql-mode.html" target="_blank" rel="noopener">Server SQL Modes</a> — strict mode and values that do not fit a column.</li>
+          <li id="src-13"><a href="https://dev.mysql.com/doc/refman/9.7/en/create-table.html" target="_blank" rel="noopener">CREATE TABLE Statement</a> — column definitions and <code>IF NOT EXISTS</code>.</li>
+          <li id="src-14"><a href="https://dev.mysql.com/doc/refman/9.7/en/mysql-commands.html" target="_blank" rel="noopener">mysql Client Commands</a> — how the client ends a statement at the semicolon.</li>
+          <li id="src-15"><a href="https://dev.mysql.com/doc/refman/9.7/en/identifier-case-sensitivity.html" target="_blank" rel="noopener">Identifier Case Sensitivity</a> — when table names are case sensitive.</li>
+          <li id="src-16"><a href="https://dev.mysql.com/doc/refman/9.7/en/comments.html" target="_blank" rel="noopener">Comments</a> — the comment styles MySQL accepts.</li>
+          <li id="src-17"><a href="https://dev.mysql.com/doc/refman/9.7/en/compatibility.html" target="_blank" rel="noopener">MySQL Standards Compliance</a> — where MySQL follows and extends standard SQL.</li>
+          <li id="src-18"><a href="https://dev.mysql.com/doc/refman/9.7/en/create-database.html" target="_blank" rel="noopener">CREATE DATABASE Statement</a> — databases, schemas and the privilege they need.</li>
+          <li id="src-19"><a href="https://dev.mysql.com/doc/refman/9.7/en/use.html" target="_blank" rel="noopener">USE Statement</a> — the session's default database.</li>
+          <li id="src-20"><a href="https://dev.mysql.com/doc/refman/9.7/en/show-databases.html" target="_blank" rel="noopener">SHOW DATABASES Statement</a> — listing the server's databases.</li>
+          <li id="src-21"><a href="https://dev.mysql.com/doc/refman/9.7/en/information-schema.html" target="_blank" rel="noopener">INFORMATION_SCHEMA Tables</a> — the server's description of its own tables and columns.</li>
+          <li id="src-22"><a href="https://dev.mysql.com/doc/refman/9.7/en/data-type-defaults.html" target="_blank" rel="noopener">Data Type Default Values</a> — why a plain column accepts <code>NULL</code>.</li>
+          <li id="src-23"><a href="https://dev.mysql.com/doc/refman/9.7/en/show-tables.html" target="_blank" rel="noopener">SHOW TABLES Statement</a> — the tables in the current database.</li>
+          <li id="src-24"><a href="https://dev.mysql.com/doc/refman/9.7/en/describe.html" target="_blank" rel="noopener">DESCRIBE Statement</a> — the column listing and its six headings.</li>
+          <li id="src-25"><a href="https://dev.mysql.com/doc/refman/9.7/en/show-create-table.html" target="_blank" rel="noopener">SHOW CREATE TABLE Statement</a> — the statement that would rebuild a table.</li>
+          <li id="src-26"><a href="https://dev.mysql.com/doc/refman/9.7/en/data-types.html" target="_blank" rel="noopener">Data Types</a> — the families of numeric, string and time types.</li>
+          <li id="src-27"><a href="https://dev.mysql.com/doc/refman/9.7/en/integer-types.html" target="_blank" rel="noopener">Integer Types</a> — the sizes and ranges of <code>INT</code> and <code>BIGINT</code>.</li>
+          <li id="src-28"><a href="https://dev.mysql.com/doc/refman/9.7/en/numeric-type-syntax.html" target="_blank" rel="noopener">Numeric Type Syntax</a> — <code>BOOL</code> as a synonym for <code>TINYINT(1)</code>.</li>
+          <li id="src-29"><a href="https://dev.mysql.com/doc/refman/9.7/en/fixed-point-types.html" target="_blank" rel="noopener">Fixed-Point Types</a> — exact <code>DECIMAL</code> and what its two numbers mean.</li>
+          <li id="src-30"><a href="https://dev.mysql.com/doc/refman/9.7/en/char.html" target="_blank" rel="noopener">The CHAR and VARCHAR Types</a> — padding, length prefixes and counting characters.</li>
+          <li id="src-31"><a href="https://dev.mysql.com/doc/refman/9.7/en/charset-mysql.html" target="_blank" rel="noopener">Character Sets and Collations</a> — <code>utf8mb4</code> as the default.</li>
+          <li id="src-32"><a href="https://dev.mysql.com/doc/refman/9.7/en/datetime.html" target="_blank" rel="noopener">The DATE, DATETIME, and TIMESTAMP Types</a> — ranges and time-zone handling.</li>
+          <li id="src-33"><a href="https://dev.mysql.com/doc/workbench/en/wb-data-modeling.html" target="_blank" rel="noopener">MySQL Workbench: Data Modeling</a> — entities, attributes and relationship lines.</li>
+          <li id="src-34"><a href="https://dev.mysql.com/doc/workbench/en/wb-getting-started-tutorial-creating-a-model.html" target="_blank" rel="noopener">MySQL Workbench: Creating a Model</a> — drawing a diagram and generating the script from it.</li>
+          <li id="src-35"><a href="https://dev.mysql.com/doc/refman/9.7/en/keywords.html" target="_blank" rel="noopener">Keywords and Reserved Words</a> — names that must be quoted with backticks.</li>
+          <li id="src-36"><a href="https://dev.mysql.com/doc/refman/9.7/en/password-security-user.html" target="_blank" rel="noopener">End-User Guidelines for Password Security</a> — why a password on the command line draws a warning.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · after you have read the page</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 3 Day 1</footer>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 1 — goals &amp; exercise</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Give the reasons for using the relational model: one fact in one place, rules the server enforces, many writers at once and a query language</li>
+      <li>Name the honest limit of those reasons, a schema declared up front, and when a file or document store fits better</li>
+      <li>Describe a schema by its tables, their typed fields and the relationships between them</li>
+      <li>Choose INT, BIGINT, VARCHAR, CHAR, DECIMAL and DATETIME for real columns, and read an ERD's one-to-many lines</li>
+    </ul>
+    <div class="ma-k">Today's exercise</div>
+    <ul class="deliv-list check">
+      <li><a href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-03/day-1-sql-and-rdbms-intro" target="_blank" rel="noopener">exercises/week-03/day-1-sql-and-rdbms-intro</a> — write <code>library.sql</code>: a <code>library</code> database with <code>books</code>, <code>members</code> and <code>loans</code> tables from a short description, a type chosen for every column; pytest runs it in your own <code>desk-mysql</code> and reads the columns back.</li>
+    </ul>
+    <p class="goals-foot">Tuesday assumes your three empty desk tables exist. Finish the check to unlock the next page.</p>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Day 2 — SQL sublanguages →", href: "day-2-sql-sublanguages.html" };
+window.DIAGRAM = {
+  title: "Day 1 · from a JSON file to three tables",
+  width: 500, height: 520,
+  nodes: [
+    { id:"docker", step:0, kind:"example", x:14, y:14, w:472, h:50, label:"MYSQL IN DOCKER\n  image mysql:9.7 · container desk-mysql · volume desk-data", detail:"docker run creates the container once; -p 3306:3306 maps laptop port to container port; the volume keeps the data; docker exec -it opens the mysql client inside." },
+    { id:"json", step:1, x:24, y:86, w:200, h:48, label:"tickets.json\n  rewritten whole · no rules", detail:"Every save rewrites all six records; nothing stops a bad status; two writers can overwrite each other." },
+    { id:"rdbms", step:1, x:276, y:86, w:200, h:48, label:"Relational database\n  rows · one fact, one place", detail:"Tables of rows and columns, related by matching values; the server checks types and serves many connections." },
+    { id:"sql", step:2, x:24, y:156, w:452, h:44, label:"SQL\n  declarative · ends with ; · MySQL is one dialect", detail:"Structured Query Language: say which rows, the server finds them. Without a semicolon the prompt waits at ->." },
+    { id:"schema", step:3, x:24, y:222, w:452, h:44, label:"Schema = database ticket_desk\n  tables · typed fields · relationships", detail:"In MySQL CREATE SCHEMA is CREATE DATABASE. DESCRIBE shows Field, Type, Null, Key, Default, Extra." },
+    { id:"types", step:4, x:24, y:288, w:452, h:44, label:"Data types\n  INT · BIGINT · VARCHAR · CHAR · DECIMAL(8,2) · DATETIME", detail:"DECIMAL is exact, so money; CHAR is fixed length; VARCHAR counts characters; INT stops at 2,147,483,647." },
+    { id:"customers", step:5, x:24, y:356, w:130, h:52, label:"customers\n  # customer_id", detail:"name, email, country, monthly_fee" },
+    { id:"tickets", step:5, x:185, y:356, w:130, h:52, label:"tickets\n  # ticket_id", detail:"title, priority, status, customer_id, agent_id, opened_at, closed_at" },
+    { id:"agents", step:5, x:346, y:356, w:130, h:52, label:"agents\n  # agent_id", detail:"name, email" },
+    { id:"create", step:6, kind:"example", x:24, y:428, w:452, h:36, label:"schema.sql: CREATE TABLE × 3 · docker exec -i … < · DESCRIBE", detail:"IF NOT EXISTS makes a rerun safe but never changes an existing table; read the result back with SHOW TABLES and DESCRIBE." },
+    { id:"check", step:7, x:24, y:474, w:452, h:40, label:"CHECK YOURSELF\n  answer out loud, then open" }
+  ],
+  edges: [
+    { id:"e1", step:1, from:"json", to:"rdbms", label:"move the records" },
+    { id:"e2", step:2, from:"rdbms", to:"sql", label:"asked in" },
+    { id:"e3", step:3, from:"sql", to:"schema", label:"defines" },
+    { id:"e4", step:4, from:"schema", to:"types", label:"one type per column" },
+    { id:"e5", step:5, from:"customers", to:"tickets", label:"1 to many" },
+    { id:"e6", step:5, from:"agents", to:"tickets", label:"1 to many" },
+    { id:"e7", step:6, from:"tickets", to:"create", dir:"-" },
+    { id:"e8", step:7, from:"create", to:"check", dir:"-" }
+  ],
+  captions: [
+    "MySQL runs in a container started from the mysql:9.7 image, its data in the desk-data volume, its client reached with docker exec. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "A JSON file is rewritten whole on every save; a relational database keeps each fact in one row and checks every value.",
+    "SQL is the declarative language of relational databases; MySQL speaks its own dialect of the standard.",
+    "A schema is the tables, their typed fields and their relationships; in MySQL a schema is a database.",
+    "Each column gets one type: INT or BIGINT for ids, VARCHAR and CHAR for text, DECIMAL for money, DATETIME for times.",
+    "The desk's ERD: three boxes, each with its identifying attribute, and two one-to-many lines ending in crow's feet at tickets.",
+    "The model becomes three CREATE TABLE statements in a file, run into the container and read back with DESCRIBE.",
+    "You can now explain the container, argue for the relational model, choose column types and read an ERD aloud."
+  ]
+};
+window.QUIZ = {
+  id: "w03-d1",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "In docker run -p 3306:3306, which number is the laptop's port?",
+      options: ["The first one", "The second one", "Neither; both name ports inside the container", "Both; the flag needs the same number twice"], answer: 0,
+      explain: "-p publishes a container port on the host, written host port first and container port second." },
+    { type: "tf", stem: "A VARCHAR(100) column can hold at most 100 bytes.", answer: false,
+      explain: "The number counts characters, not bytes. Under utf8mb4, MySQL's default character set, one character can take up to four bytes." },
+    { type: "mcq", stem: "Which of these are reasons to move the desk's tickets from a JSON file into a relational database? Select all that apply.",
+      options: ["Each fact is stored once, in one row, and other rows point at it", "The server checks every value against its column's type", "Many programs can connect and write at the same time", "No structure has to be declared before the first row goes in"], answer: [0, 1, 2],
+      explain: "One fact in one place, rules the server enforces and many writers are the reasons. A relational table needs its columns declared up front, which is the model's cost, not a benefit." },
+    { type: "match", stem: "Match each desk column to the type that fits it.",
+      pairs: [
+        { l: "monthly_fee", r: "DECIMAL(8,2): exact money to the cent" },
+        { l: "country", r: "CHAR(2): always two letters" },
+        { l: "opened_at", r: "DATETIME: a date and time with no time zone" },
+        { l: "title", r: "VARCHAR(200): text whose length varies" }
+      ],
+      explain: "Money is exact, so DECIMAL. A fixed-length code is CHAR. Naive timestamps stay as written in DATETIME. Varying text is VARCHAR." },
+    { type: "scq", stem: "An ERD line has a single bar at the customers box and a crow's foot at the tickets box. What does it say?",
+      options: ["One ticket belongs to many customers", "One customer has many tickets, and each ticket belongs to one customer", "Customers and tickets are the same entity", "Every customer has exactly one ticket"], answer: 1,
+      explain: "The crow's foot marks the many side. Read from customers, one customer has many tickets; read from tickets, each ticket belongs to one customer." },
+    { type: "open", stem: "In two or three sentences: a teammate changes a column's type in schema.sql, which uses CREATE TABLE IF NOT EXISTS, reruns it with no error, and the table has not changed. Explain why, and how they could have caught it.",
+      hint: "What does IF NOT EXISTS check, and what reads a table back?",
+      model: "IF NOT EXISTS only checks whether a table of that name exists; when it does, the whole CREATE TABLE is skipped, even if the columns in the file differ. The rerun was quiet because skipping is a warning, not an error. Running DESCRIBE on the table after the rerun would have shown the old type." }
+  ]
+};
+</script>
+
+<script src="../../assets/js/diagram.js?v=20261023"></script>
+<script src="../../assets/js/scrolly.js?v=20261023"></script>
+<script src="../../assets/js/modals.js?v=20261023"></script>
+<script src="../../assets/js/quiz.js?v=20261023"></script>
+<script src="../../assets/js/widgets.js?v=20261023"></script>
+<script src="../../assets/js/glossary.js?v=20261023"></script>
+</body>
+</html>

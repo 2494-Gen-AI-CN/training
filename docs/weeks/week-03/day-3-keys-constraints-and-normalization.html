@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w03d3">
+<title>W3·D3 — Keys, constraints &amp; normalization | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261023">
+<script src="../../assets/js/theme.js?v=20261023"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises" target="_blank" rel="noopener">Exercises</a>
+    <a class="topnav" href="../../exit-criteria/index.html">Exit criteria</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>Keys, constraints &amp; normalization: a schema that refuses bad rows</h1>
+        <div class="meta">
+          <span><b>Week 3</b> · Day 3</span>
+          <span>Wed Oct 28, 2026</span>
+          <span>SQL with MySQL</span>
+          <span><b>~40 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span class="verified">Sources checked 2026-10-23 · python 3.15 · mysql 9.7 · mysql-connector-python 26.7.0 · pytest 9.1.1</span>
+          <span class="exit"><a href="../../exit-criteria/qc-2-sql.html#w03d3">Exit criteria</a></span>
+        </div>
+        <p class="summary">This page assumes Tuesday's ticket desk in MySQL: tables with columns and types only, rows
+        loaded by INSERT, and the duplicate ticket 1 that a table with no key let in. It teaches the keys that identify
+        rows and link tables, normalization from a flat sheet to third normal form, the constraints that make the server
+        refuse bad rows, cascades and a rebuild script, and INSERT, UPDATE and DELETE from Python. Afterwards you can
+        explain a primary, foreign, composite, unique and alternate key, walk a table from 0NF to 3NF with a reason per
+        step, and name every constraint an interviewer lists.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="0">
+        <div class="tag">Keys</div>
+        <h2>Primary, candidate and composite keys</h2>
+        <p>Tuesday's <code>tickets</code> table had columns and types and nothing else, and a table declared with no
+        primary key and no unique key accepts two identical rows.<sup class="cite"><a href="#src-1">1</a></sup> That is
+        how a second ticket 1 got in. A key is the rule that stops it.</p>
+        <h3>What a primary key guarantees</h3>
+        <p>A primary key is the column, or set of columns, whose value picks out exactly one row. MySQL holds two promises
+        for it: the value is unique across the table, and it is never NULL, because a primary key column is implicitly
+        NOT NULL.<sup class="cite"><a href="#src-1">1</a></sup> A table has at most one primary
+        key.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <p>Everything that refers to a row depends on those two promises. A foreign key in another table, the WHERE of an
+        UPDATE and a Python object rebuilt from the row all assume the id they hold means one row and only one.</p>
+        <p>The examples on this page run in order in a scratch database called <code>keys_lab</code>, so the desk's own
+        database stays as its rebuild leaves it. Open the client in the container and type:</p>
+<pre><code>CREATE DATABASE keys_lab;
+USE keys_lab;
+CREATE TABLE tickets (
+    ticket_id INT PRIMARY KEY,
+    title VARCHAR(200)
+);</code></pre>
+        <p>The client answers <code>Query OK, 1 row affected</code>, then <code>Database changed</code>, then
+        <code>Query OK, 0 rows affected</code>. Now try the duplicate that Tuesday's table let in, and a row with no id at
+        all:</p>
+<pre><code>INSERT INTO tickets (ticket_id, title) VALUES (1, 'Login page returns 500');
+INSERT INTO tickets (ticket_id, title) VALUES (1, 'Login page returns 500');
+INSERT INTO tickets (ticket_id, title) VALUES (NULL, 'Invoice PDF is blank');</code></pre>
+<pre class="out">Query OK, 1 row affected
+ERROR 1062 (23000): Duplicate entry '1' for key 'tickets.PRIMARY'
+ERROR 1048 (23000): Column 'ticket_id' cannot be null</pre>
+        <p>Error 1062 is the duplicate-key refusal, and it is what now turns away the second ticket
+        1.<sup class="cite"><a href="#src-2">2</a></sup> Error 1048 is the NOT NULL that came with the key.<sup class="cite"><a href="#src-2">2</a></sup> You recognise a
+        primary key on sight as <code>ticket_id INT PRIMARY KEY</code> on the column's line, or as a
+        <code>PRIMARY KEY (ticket_id)</code> line at the end of a CREATE TABLE. In <code>DESCRIBE</code> output its column
+        shows <code>PRI</code> under Key.</p>
+        <h3>Candidate keys: the columns that could be primary</h3>
+        <p>Before you choose a primary key, list the candidates. A candidate key is a minimal set of columns whose value
+        is unique and present in every row the table could ever hold, not only the rows it holds today. Each candidate
+        has to pass three tests:</p>
+        <ul>
+          <li>Unique: no two real rows could ever share the value. Two customers can share a name, so <code>name</code> fails.</li>
+          <li>Never null: every row has a value. A phone number that some customers never give fails.</li>
+          <li>Minimal: no column can be removed from the set and still leave it unique. The pair
+          (<code>customer_id</code>, <code>email</code>) is unique, but <code>customer_id</code> alone already is, so the pair is not a candidate.</li>
+        </ul>
+        <p>On the desk's <code>customers</code> table, <code>customer_id</code> and <code>email</code> each pick out exactly
+        one customer, so both are candidate keys.<sup class="cite"><a href="#src-1">1</a></sup> One is chosen as primary,
+        and every candidate left over becomes an alternate key, which the step after next covers.</p>
+        <p>The choice has a cost later on. A natural primary key that can change, such as an email, forces
+        every foreign key that references it to change too.<sup class="cite"><a href="#src-3">3</a></sup> So the desk keys
+        customers on a short integer that never changes and keeps the email beside it.</p>
+        <h3>Composite keys</h3>
+        <p>Some rows are identified by a combination. A composite primary key lists several columns in one
+        <code>PRIMARY KEY</code> clause, and the combination must be unique, not each column on its
+        own.<sup class="cite"><a href="#src-1">1</a></sup> The table that links tickets to tags is the standard case:</p>
+<pre><code>CREATE TABLE ticket_tags (
+    ticket_id INT,
+    tag_id INT,
+    PRIMARY KEY (ticket_id, tag_id)
+);
+INSERT INTO ticket_tags (ticket_id, tag_id) VALUES (4, 2), (4, 3), (6, 3);
+INSERT INTO ticket_tags (ticket_id, tag_id) VALUES (4, 2);
+DESCRIBE ticket_tags;</code></pre>
+<pre class="out">Query OK, 0 rows affected
+Query OK, 3 rows affected
+Records: 3  Duplicates: 0  Warnings: 0
+ERROR 1062 (23000): Duplicate entry '4-2' for key 'ticket_tags.PRIMARY'
++-----------+------+------+-----+---------+-------+
+| Field     | Type | Null | Key | Default | Extra |
++-----------+------+------+-----+---------+-------+
+| ticket_id | int  | NO   | PRI | NULL    |       |
+| tag_id    | int  | NO   | PRI | NULL    |       |
++-----------+------+------+-----+---------+-------+
+2 rows in set</pre>
+        <p>Ticket 4 appears twice and tag 3 appears twice, yet only the repeated pair (4, 2) is
+        refused.<sup class="cite"><a href="#src-1">1</a></sup> Both columns show <code>NO</code> under Null, because every
+        column of a composite primary key is NOT NULL.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <p>A common question is why the table does not get its own <code>link_id</code> column instead. A lone generated
+        id is unique on every row, so the same ticket and tag could be linked twice under two different ids; the
+        composite key makes the duplicate link impossible.<sup class="cite"><a href="#src-1">1</a></sup> The limit is
+        width. A foreign key must name the same columns as the key it references, so any table that points at a
+        <code>ticket_tags</code> row would need both columns.<sup class="cite"><a href="#src-3">3</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A primary key is unique and never NULL, and a table has at most one.</li>
+          <li>A candidate key is a minimal unique, never-null column set; one becomes primary.</li>
+          <li>A composite key makes the combination unique, so each column may repeat on its own.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A primary key is the column or columns that identify exactly one row. The database guarantees it's unique
+          and never null, and a table gets one of them. Without it, a table will accept two identical rows, and nothing
+          that refers to the row can tell them apart.</p>
+          <p>To find candidate keys I ask which columns are unique for every row the table could ever hold, never null,
+          and minimal. On a customers table both the id and the email qualify. I'd make the integer id primary because
+          it never changes, and keep the email as an alternate key.</p>
+          <p>A composite key is a primary key over two or more columns, where only the combination has to be unique. I
+          use one on a link table, like ticket id and tag id, so the same link can't be stored twice.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">Keys</div>
+        <h2>Foreign keys and referential integrity</h2>
+        <p>A primary key names a row inside its own table. A database needs one table to be able to name a row in
+        another, and the server to refuse a name that points at nothing.</p>
+        <h3>A foreign key points at a parent row</h3>
+        <p>A foreign key is a column in one table, the child, whose values must match a key in another table, the parent.
+        InnoDB enforces foreign keys, and the referenced columns must be the parent's primary key or a unique key, with a
+        compatible type in the child.<sup class="cite"><a href="#src-3">3</a></sup> InnoDB is MySQL's default storage
+        engine, so a plain CREATE TABLE gets that enforcement.<sup class="cite"><a href="#src-4">4</a></sup></p>
+        <p>In the scratch database, give tickets a customer. <code>DROP TABLE</code> removes a table with its rows, as on
+        Tuesday, so the table can be created again with the new column:</p>
+<pre><code>CREATE TABLE customers (
+    customer_id INT PRIMARY KEY,
+    name VARCHAR(100)
+);
+DROP TABLE tickets;
+CREATE TABLE tickets (
+    ticket_id INT PRIMARY KEY,
+    title VARCHAR(200),
+    customer_id INT,
+    FOREIGN KEY (customer_id) REFERENCES customers (customer_id)
+);</code></pre>
+        <p>Each of the three statements prints <code>Query OK, 0 rows affected</code>. The last line of the CREATE TABLE is
+        the shape to recognise in any schema: <code>FOREIGN KEY (child_column) REFERENCES parent (parent_column)</code>.
+        The parent's key is named in brackets after the parent table.</p>
+        <p>A foreign key column may hold NULL unless it is also declared NOT NULL, and NULL means the row has no
+        parent.<sup class="cite"><a href="#src-3">3</a></sup> On the desk that is how a ticket with no agent is stored:
+        <code>agent_id</code> is NULL until someone picks the ticket up.</p>
+        <h3>Referential integrity and the orphan row</h3>
+        <p>Referential integrity is the guarantee that every foreign key value matches an existing parent row or is NULL.
+        The failure it prevents is the orphan row, a child whose parent does not exist. An orphan ticket would name
+        customer 99, and a report that looked up customer 99 would find no one to bill.</p>
+<pre><code>INSERT INTO customers (customer_id, name) VALUES (1, 'Dana Whitfield'), (2, 'Ravi Patel');
+INSERT INTO tickets (ticket_id, title, customer_id) VALUES (1, 'Login page returns 500', 1);
+INSERT INTO tickets (ticket_id, title, customer_id) VALUES (2, 'Ghost ticket', 99);
+INSERT INTO tickets (ticket_id, title, customer_id) VALUES (3, 'Question by phone', NULL);
+DELETE FROM customers WHERE customer_id = 1;</code></pre>
+<pre class="out">Query OK, 2 rows affected
+Records: 2  Duplicates: 0  Warnings: 0
+Query OK, 1 row affected
+ERROR 1452 (23000): Cannot add or update a child row: a foreign key constraint fails (`keys_lab`.`tickets`, CONSTRAINT `tickets_ibfk_1` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`customer_id`))
+Query OK, 1 row affected
+ERROR 1451 (23000): Cannot delete or update a parent row: a foreign key constraint fails (`keys_lab`.`tickets`, CONSTRAINT `tickets_ibfk_1` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`customer_id`))</pre>
+        <p>The integrity rule works from both sides. A child insert with an unknown parent id fails with
+        1452.<sup class="cite"><a href="#src-3">3</a></sup> Deleting a parent that a child still references fails with
+        1451, so Dana cannot vanish from under her ticket. From Python, mysql-connector-python raises both as
+        <code>mysql.connector.IntegrityError</code>.<sup class="cite"><a href="#src-5">5</a></sup> The NULL customer on
+        ticket 3 passes, because NULL claims no parent.</p>
+        <p>What happens on a parent delete is a choice written on the foreign key. Five referential actions
+        exist:<sup class="cite"><a href="#src-3">3</a></sup></p>
+        <table>
+          <thead><tr><th>Action</th><th>When the parent row is deleted</th></tr></thead>
+          <tbody>
+            <tr><td><code>RESTRICT</code></td><td>The delete is refused while children exist (1451).</td></tr>
+            <tr><td><code>NO ACTION</code></td><td>Also refused; RESTRICT or NO ACTION is what you get when no action is written.</td></tr>
+            <tr><td><code>CASCADE</code></td><td>The child rows are deleted with the parent.</td></tr>
+            <tr><td><code>SET NULL</code></td><td>The child rows stay and their foreign key becomes NULL.</td></tr>
+            <tr><td><code>SET DEFAULT</code></td><td>Rejected by InnoDB.</td></tr>
+          </tbody>
+        </table>
+        <p>RESTRICT protects data but forces the caller to delete the children first. CASCADE is convenient but can
+        delete far more than intended.<sup class="cite"><a href="#src-3">3</a></sup> The CASCADE step later on this page
+        puts both on the desk's tables.</p>
+        <h3>Parents first, and what the check costs</h3>
+        <p>Order matters twice. The parent table must exist before a child table that references it is created, and
+        parent rows must be inserted before the child rows that name them.<sup class="cite"><a href="#src-3">3</a></sup>
+        There is no <code>agents</code> table in the scratch database yet, so this fails:</p>
+<pre><code>CREATE TABLE agent_notes (
+    note_id INT PRIMARY KEY,
+    agent_id INT,
+    FOREIGN KEY (agent_id) REFERENCES agents (agent_id)
+);</code></pre>
+<pre class="out">ERROR 1824 (HY000): Failed to open the referenced table 'agents'</pre>
+        <p>That is why a schema file creates its lookup and parent tables at the top. The check also has a price: a
+        foreign key adds a lookup on every write to the child and on every delete or key change in the parent, which
+        costs time on heavy writes.<sup class="cite"><a href="#src-3">3</a></sup> The price buys a database where no
+        ticket can name a customer who does not exist.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A foreign key's values must match the parent's primary or unique key, or be NULL.</li>
+          <li>Referential integrity refuses orphans: 1452 on a bad child, 1451 on a referenced parent.</li>
+          <li>Create and fill parent tables before the child tables that point at them.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A foreign key is a column in a child table that has to match the primary key, or a unique key, of a row in
+          a parent table. On a ticket desk, tickets carry a customer id that must exist in customers. It can be null if I
+          allow that, which means the row has no parent, like a ticket nobody has picked up.</p>
+          <p>Referential integrity means every foreign key points at a row that really exists. The database enforces it
+          both ways: it refuses a child row with an unknown parent, and it refuses to delete a parent that still has
+          children, unless the key says to cascade or set null.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">Keys</div>
+        <h2>Unique keys and alternate keys</h2>
+        <p>A primary key is one unique column set per table. Most tables have other columns that must not repeat either,
+        and UNIQUE is how you say so.</p>
+        <h3>UNIQUE and what it still allows</h3>
+        <p>A UNIQUE constraint refuses a duplicate value, but for every engine it permits several NULLs in a column that
+        can hold NULL.<sup class="cite"><a href="#src-1">1</a></sup> A table can have many UNIQUE keys and only one
+        primary key.<sup class="cite"><a href="#src-1">1</a></sup> Add agents to the scratch database, with an email that
+        may be missing:</p>
+<pre><code>CREATE TABLE agents (
+    agent_id INT PRIMARY KEY,
+    name VARCHAR(50),
+    email VARCHAR(255) UNIQUE
+);
+INSERT INTO agents (agent_id, name, email) VALUES (1, 'Priya', 'priya@desk.example');
+INSERT INTO agents (agent_id, name, email) VALUES (2, 'Marco', 'priya@desk.example');
+INSERT INTO agents (agent_id, name, email) VALUES (3, 'Sam', NULL), (4, 'Lee', NULL);
+SELECT agent_id, name, email FROM agents;</code></pre>
+<pre class="out">Query OK, 0 rows affected
+Query OK, 1 row affected
+ERROR 1062 (23000): Duplicate entry 'priya@desk.example' for key 'agents.email'
+Query OK, 2 rows affected
+Records: 2  Duplicates: 0  Warnings: 0
++----------+-------+--------------------+
+| agent_id | name  | email              |
++----------+-------+--------------------+
+|        1 | Priya | priya@desk.example |
+|        3 | Sam   | NULL               |
+|        4 | Lee   | NULL               |
++----------+-------+--------------------+
+3 rows in set</pre>
+        <p>The duplicate email raises 1062, the same error a repeated primary key
+        raises.<sup class="cite"><a href="#src-2">2</a></sup> The unique key takes its column's name, so the message says
+        <code>agents.email</code>. Sam and Lee both got in with no email, which is the limit: on its own, UNIQUE does
+        not promise that every row has a value. Pair it with NOT NULL when the column must identify a
+        row.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <p>The two kinds of key differ in a handful of ways:</p>
+        <table>
+          <thead><tr><th></th><th>PRIMARY KEY</th><th>UNIQUE</th></tr></thead>
+          <tbody>
+            <tr><td>How many per table</td><td>At most one</td><td>As many as you need</td></tr>
+            <tr><td>NULL allowed</td><td>Never</td><td>Yes, several, unless the column is NOT NULL</td></tr>
+            <tr><td>Duplicate error</td><td>1062 for key <code>PRIMARY</code></td><td>1062 for the key's name</td></tr>
+            <tr><td>A foreign key may reference it</td><td>Yes</td><td>Yes</td></tr>
+          </tbody>
+        </table>
+        <p>The last row comes from the foreign key rule: the referenced columns must be the parent's primary key or a
+        unique key.<sup class="cite"><a href="#src-3">3</a></sup> You recognise a unique key on sight as
+        <code>email VARCHAR(255) NOT NULL UNIQUE</code> on the column's line, or as a named line such as
+        <code>UNIQUE KEY uq_email (email)</code> in the table's definition.</p>
+        <h3>Alternate keys, natural keys and surrogate keys</h3>
+        <p>Every candidate key that was not chosen as primary is an alternate key, sometimes called a secondary key, and
+        in MySQL it is declared UNIQUE NOT NULL.<sup class="cite"><a href="#src-1">1</a></sup> On the desk's customers, <code>customer_id</code> is primary
+        and <code>email</code> is the alternate key.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <p>Two terms name the options. A natural key is a value with meaning outside the database, such
+        as an email. A surrogate key is a meaningless generated id, such as <code>customer_id</code>. A surrogate id
+        keeps foreign keys short and stable when the natural key changes.<sup class="cite"><a href="#src-3">3</a></sup></p>
+        <p>Suppose the desk had made email the primary key of <code>customers</code>. Every ticket would then carry the
+        customer's email as its foreign key. When Dana changes her address, every one of her tickets would have to change
+        too, or the key would need <code>ON UPDATE CASCADE</code> to carry the change
+        down.<sup class="cite"><a href="#src-3">3</a></sup> With an integer primary key, her email changes in one row and
+        no ticket notices.</p>
+        <p>A natural key still makes sense when the value truly never changes and is short. The desk's
+        <code>priorities</code> lookup table is keyed on the word itself (<code>'high'</code>, <code>'normal'</code>,
+        <code>'low'</code>), because a ticket that stores <code>'high'</code> reads clearly and the words are fixed. In
+        someone else's schema, the pattern to look for is an integer primary key with an
+        <code>email ... NOT NULL UNIQUE</code> line right below it.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>UNIQUE refuses duplicates but allows several NULLs unless the column is also NOT NULL.</li>
+          <li>An alternate key is a candidate key not chosen as primary, declared UNIQUE NOT NULL.</li>
+          <li>A surrogate primary key keeps foreign keys short and stable when a natural value changes.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A table has one primary key but can have many unique keys. Both refuse duplicates, but a primary key is
+          never null, while a unique column can hold several nulls unless I also make it not null. That's why an email
+          that must identify a customer is declared not null unique.</p>
+          <p>An alternate key is a candidate key I didn't pick as the primary key. For customers I'd make a generated
+          integer the primary key and keep the email as the alternate key, because emails change and I don't want every
+          ticket's foreign key changing with them.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="3">
+        <div class="tag">Design</div>
+        <h2>Normalization from 0NF to 3NF, and multiplicity</h2>
+        <p>Keys say how rows are identified. Normalization decides which tables should exist in the first place, by
+        asking of every column which key it is a fact about.</p>
+        <h3>The flat sheet: unnormalized form</h3>
+        <p>Teams often start with one sheet, one row per ticket:</p>
+        <table>
+          <thead><tr><th>ticket</th><th>customer</th><th>email</th><th>agent</th><th>priority</th><th>sla_hours</th><th>tags</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>Dana Whitfield</td><td>dana@example.com</td><td></td><td>high</td><td>4</td><td>login</td></tr>
+            <tr><td>3</td><td>Dana Whitfield</td><td>dana@example.com</td><td></td><td>normal</td><td>24</td><td></td></tr>
+            <tr><td>4</td><td>Mei Chen</td><td>mei@example.com</td><td>Priya</td><td>high</td><td>4</td><td>billing, ui</td></tr>
+            <tr><td>6</td><td>Mei Chen</td><td>mei@example.com</td><td></td><td>low</td><td>72</td><td>ui</td></tr>
+          </tbody>
+        </table>
+        <p>This is unnormalized form, or 0NF. It reads easily and breaks in three ways, called anomalies:</p>
+        <ul>
+          <li>Update anomaly: Dana's email sits on two rows, and changing one leaves the sheet disagreeing with itself.</li>
+          <li>Insert anomaly: a new customer with no ticket yet has no row to live on.</li>
+          <li>Delete anomaly: deleting Mei's last ticket would erase the only record that Mei exists.</li>
+        </ul>
+        <p>No constraint can make the email on Dana's first row agree with the email on her second, so a fact repeated
+        across rows can drift out of agreement; storing it once in a customers row prevents that.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <h3>First normal form: one value per cell</h3>
+        <p>A table is in first normal form (1NF) when every column holds one value and there are no repeating groups. The
+        tags cell breaks it: <code>'billing, ui'</code> is two values. The fix makes the list into rows, one row per
+        ticket and tag, so ticket 4 now appears twice, once with billing and once with ui.</p>
+        <p>A foreign key compares a column's whole value with a parent key, so a comma
+        list can never reference a tags table, while one tag per row can.<sup class="cite"><a href="#src-3">3</a></sup>
+        The 1NF result gives tags a table of their own, keyed by <code>tag_id</code>.</p>
+        <h3>Second normal form: facts about the whole key</h3>
+        <p>After 1NF, the row for a ticket and a tag is identified by the pair, a composite key of ticket and tag. Second
+        normal form (2NF) requires a 1NF table whose non-key columns depend on the whole key, not part of it.</p>
+        <p>The customer, agent and priority depend on the ticket alone, half of the key, so they move to a
+        <code>tickets</code> table keyed on <code>ticket_id</code>. A tag's name depends on the tag alone, so it stays in
+        <code>tags</code>, and <code>ticket_tags</code> keeps only the pair.</p>
+        <h3>Third normal form: facts about nothing but the key</h3>
+        <p>Third normal form (3NF) requires a 2NF table in which no non-key column depends on another non-key column.
+        <code>tickets</code> still breaks it twice. <code>sla_hours</code> depends on the priority, since every high ticket
+        has 4. The customer's name and email depend on the customer. Each moves to its own table, and
+        <code>tickets</code> keeps only the key that points there:</p>
+        <ul>
+          <li><code>priorities</code> (<code>priority</code>, <code>sla_hours</code>), referenced by <code>tickets.priority</code></li>
+          <li><code>customers</code> (<code>customer_id</code>, <code>name</code>, <code>email</code>), referenced by <code>tickets.customer_id</code></li>
+          <li><code>agents</code> (<code>agent_id</code>, <code>name</code>), referenced by <code>tickets.agent_id</code></li>
+        </ul>
+        <p>The lookup table also guards its values. A foreign key refuses a value its parent does not hold (1452), so an
+        unknown priority such as <code>'urgent'</code> can no longer be stored.<sup class="cite"><a href="#src-3">3</a></sup>
+        In the scratch database the new tables look like this; a line starting with <code>--</code> is a comment:</p>
+<pre><code>-- 3NF: sla_hours depends on the priority, not the ticket
+CREATE TABLE priorities (
+    priority VARCHAR(10) PRIMARY KEY,
+    sla_hours INT
+);
+-- 1NF: one tag per row, not a comma list
+CREATE TABLE tags (
+    tag_id INT PRIMARY KEY,
+    name VARCHAR(30) UNIQUE
+);
+DROP TABLE ticket_tags;
+-- 2NF: each row depends on the whole (ticket_id, tag_id) key
+CREATE TABLE ticket_tags (
+    ticket_id INT,
+    tag_id INT,
+    PRIMARY KEY (ticket_id, tag_id),
+    CONSTRAINT fk_ticket_tags_ticket
+        FOREIGN KEY (ticket_id) REFERENCES tickets (ticket_id),
+    CONSTRAINT fk_ticket_tags_tag
+        FOREIGN KEY (tag_id) REFERENCES tags (tag_id)
+);
+INSERT INTO tags (tag_id, name) VALUES (1, 'login'), (2, 'billing');
+INSERT INTO ticket_tags (ticket_id, tag_id) VALUES (1, 1), (1, 2);</code></pre>
+        <p>Each statement prints <code>Query OK</code>; the two INSERTs each report <code>2 rows affected</code>. The
+        <code>CONSTRAINT</code> names are explained in the next step.</p>
+        <div class="ix-spot" data-snippet="CREATE TABLE ticket_tags (&#10;    ticket_id INT,&#10;    tag_id INT,&#10;    tag_name VARCHAR(30),&#10;    PRIMARY KEY (ticket_id, tag_id)&#10;);" data-q="Which normal form does this table break, and how do you fix it?" data-a="2NF. tag_name depends only on tag_id, half of the composite key. Drop the column and keep the name once, in the tags table."></div>
+        <h3>Multiplicity and bridge tables</h3>
+        <p>Multiplicity, or cardinality, says how many rows sit on each side of a relationship. Monday's ERD drew it as
+        the crow's-foot ends of each line.</p>
+        <table>
+          <thead><tr><th>Multiplicity</th><th>Desk example</th><th>How the tables express it</th></tr></thead>
+          <tbody>
+            <tr><td>One-to-many</td><td>A customer files many tickets</td><td>A foreign key on the many side, <code>tickets.customer_id</code></td></tr>
+            <tr><td>Many-to-many</td><td>A ticket has many tags; a tag labels many tickets</td><td>A bridge table whose composite primary key is its two foreign keys, <code>ticket_tags</code></td></tr>
+            <tr><td>One-to-one</td><td>A customer and a single billing profile</td><td>A foreign key that is also UNIQUE, so each parent has at most one child</td></tr>
+          </tbody>
+        </table>
+        <p>A foreign key column
+        holds one parent value per row, so it can express one-to-many directly but many-to-many only through a third
+        table.<sup class="cite"><a href="#src-3">3</a></sup> Declaring the foreign key column UNIQUE allows each parent at
+        most one child.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <h3>What normalization buys and what it costs</h3>
+        <p>Normalizing stores each fact once in a parent table that children reference by key, which removes the update,
+        insert and delete anomalies.<sup class="cite"><a href="#src-3">3</a></sup> Dana now has her own row, so deleting
+        her last ticket no longer erases her.</p>
+        <p>The cost is more tables, and a join to read one record back whole, which Thursday teaches. Teams sometimes
+        denormalize on purpose, repeating data to save reads after measuring a slow query, usually in reporting tables. To design a schema for any flat data set, take it through the three forms, then give every
+        table a primary key and every pointer a foreign key.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>1NF: one value per cell, so a comma list becomes one row per item.</li>
+          <li>2NF: no column depends on only part of a composite key.</li>
+          <li>3NF: no non-key column depends on another non-key column.</li>
+          <li>Many-to-many needs a bridge table keyed on its two foreign keys.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>For first normal form, the comma list of tags becomes one row per ticket and tag. For second, the ticket's
+          details depend only on the ticket, half of that key, so they move to a tickets table. For third, the SLA hours
+          depend on the priority and the email on the customer, so each gets its own table.</p>
+          <p>One-to-many puts a foreign key on the many side, like a customer id on each ticket. Many-to-many needs a
+          bridge table holding both foreign keys as its composite primary key. One-to-one is a foreign key that's also
+          unique.</p>
+          <p>Normalizing removes update, insert and delete anomalies because each fact lives in one row. The cost is
+          more tables and more joins to read a record back.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">Constraints</div>
+        <h2>Consistency through constraints</h2>
+        <h3>Consistency: rules the database holds for every writer</h3>
+        <p>A database is consistent when every row obeys the rules that say what valid data is. Declared constraints are
+        the schema's statement of those rules.<sup class="cite"><a href="#src-6">6</a></sup> The server refuses a
+        statement that violates one, and InnoDB rolls back that statement, so no half-applied write is
+        left.<sup class="cite"><a href="#src-6">6</a></sup></p>
+        <p>Strict SQL mode backs this up. With <code>STRICT_TRANS_TABLES</code> on, which is the default, an invalid or
+        missing value is an error instead of a silent adjustment.<sup class="cite"><a href="#src-7">7</a></sup></p>
+        <p>A rule in the database holds for every client, while a
+        rule kept only in application code can be bypassed by another writer, such as a script or a teammate at the
+        prompt.<sup class="cite"><a href="#src-6">6</a></sup> Each constraint costs a check per write, but the rule lives in
+        one place.<sup class="cite"><a href="#src-6">6</a></sup> In other people's code, the sign that this was missed is
+        Python validation repeating a rule the schema could hold with NOT NULL or CHECK.</p>
+        <h3>Constraints on a column, on a table, and by name</h3>
+        <p>MySQL gives a table these constraints:</p>
+        <ul>
+          <li><code>NOT NULL</code>: the column must have a value</li>
+          <li><code>UNIQUE</code>: no two rows share the value</li>
+          <li><code>PRIMARY KEY</code>: unique and not null, one per table</li>
+          <li><code>FOREIGN KEY</code>: the value must exist in the parent</li>
+          <li><code>CHECK</code>: a condition every row must meet</li>
+          <li><code>DEFAULT</code>: the value used when an INSERT leaves the column out</li>
+        </ul>
+        <p>A column constraint sits on one column's line and applies to that column; a table constraint is its own line
+        and can span several columns, as a composite key does.<sup class="cite"><a href="#src-1">1</a></sup> Any of them can
+        be named with <code>CONSTRAINT name</code>, and <code>ALTER TABLE</code> adds or drops one
+        later.<sup class="cite"><a href="#src-8">8</a></sup> A name makes the error message readable and the constraint
+        easy to remove.</p>
+        <h3>NOT NULL and DEFAULT</h3>
+        <p>NOT NULL refuses NULL, and in strict mode an INSERT that omits a NOT NULL column with no default
+        fails.<sup class="cite"><a href="#src-9">9</a></sup> DEFAULT supplies the value only when the INSERT omits the
+        column or writes the keyword <code>DEFAULT</code> as its value.<sup class="cite"><a href="#src-9">9</a></sup>
+        Together they require a value and name the one the server fills in. Add a status to the scratch
+        tickets, then test it:</p>
+<pre><code>ALTER TABLE tickets
+    ADD COLUMN status VARCHAR(10) NOT NULL DEFAULT 'open'
+    CONSTRAINT chk_tickets_status CHECK (status IN ('open', 'assigned', 'closed'));
+INSERT INTO tickets (ticket_id, title, customer_id) VALUES (4, 'Checkout button frozen', 2);
+SELECT ticket_id, status FROM tickets;
+UPDATE tickets SET status = 'done' WHERE ticket_id = 4;
+INSERT INTO tickets (ticket_id, title, customer_id, status) VALUES (5, 'Export is missing rows', 2, NULL);</code></pre>
+<pre class="out">Query OK, 2 rows affected
+Records: 2  Duplicates: 0  Warnings: 0
+Query OK, 1 row affected
++-----------+--------+
+| ticket_id | status |
++-----------+--------+
+|         1 | open   |
+|         3 | open   |
+|         4 | open   |
++-----------+--------+
+3 rows in set
+ERROR 3819 (HY000): Check constraint 'chk_tickets_status' is violated.
+ERROR 1048 (23000): Column 'status' cannot be null</pre>
+        <p>The two existing rows took the default when the column arrived, and ticket 4 got it by leaving the column out.
+        An explicit NULL is an error, not the default.<sup class="cite"><a href="#src-9">9</a></sup> The limit of a
+        default is that it hides an omitted value instead of flagging it, so choose defaults that are truly
+        sensible.<sup class="cite"><a href="#src-9">9</a></sup> On the desk, <code>country CHAR(2) NOT NULL DEFAULT 'CA'</code>
+        is one.</p>
+        <h3>CHECK</h3>
+        <p>A CHECK is a condition every row must meet. MySQL enforces CHECK constraints since 8.0.16, so on 9.7, and a
+        violating INSERT or UPDATE fails with error 3819.<sup class="cite"><a href="#src-10">10</a></sup> In the condition
+        above, <code>IN</code> is true when the value equals one of the listed values; Thursday covers it with the other
+        operators. From Python, the connector raises a CHECK failure as <code>DatabaseError</code>, not
+        <code>IntegrityError</code>.<sup class="cite"><a href="#src-11">11</a></sup></p>
+        <p>Two limits matter. A CHECK that evaluates to NULL passes, so pair it with NOT
+        NULL.<sup class="cite"><a href="#src-10">10</a></sup> And a CHECK cannot use subqueries or read other tables, so a
+        list that grows belongs in a lookup table with a foreign key.<sup class="cite"><a href="#src-10">10</a></sup> That is
+        why the desk keeps priorities as rows, where adding one is an INSERT, and keeps a CHECK list for its three fixed
+        statuses.</p>
+        <p>You will meet CHECKs such as <code>CHECK (monthly_fee &gt;= 0)</code> and
+        <code>CHECK (closed_at IS NULL OR closed_at &gt;= opened_at)</code>. Read <code>&gt;=</code> as "at least",
+        <code>IS NULL</code> as "has no value" and <code>OR</code> as "either side is enough".</p>
+        <h3>AUTO_INCREMENT and BIGINT ids</h3>
+        <p>AUTO_INCREMENT makes the server generate the next integer for a key column, normally the primary key, when the
+        INSERT omits it or passes NULL.<sup class="cite"><a href="#src-12">12</a></sup> An event log gains a row for every
+        change to a ticket, so its id is a BIGINT:</p>
+<pre><code>CREATE TABLE ticket_events (
+    event_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    ticket_id INT NOT NULL,
+    kind VARCHAR(20) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_ticket_events_ticket
+        FOREIGN KEY (ticket_id) REFERENCES tickets (ticket_id)
+        ON DELETE CASCADE
+);
+INSERT INTO ticket_events (ticket_id, kind) VALUES (1, 'opened');
+START TRANSACTION;
+INSERT INTO ticket_events (ticket_id, kind) VALUES (4, 'opened');
+ROLLBACK;
+INSERT INTO ticket_events (ticket_id, kind) VALUES (4, 'opened');
+SELECT event_id, ticket_id, kind FROM ticket_events;</code></pre>
+<pre class="out">Query OK, 0 rows affected
+Query OK, 1 row affected
+Query OK, 0 rows affected
+Query OK, 1 row affected
+Query OK, 0 rows affected
+Query OK, 1 row affected
++----------+-----------+--------+
+| event_id | ticket_id | kind   |
++----------+-----------+--------+
+|        1 |         1 | opened |
+|        3 |         4 | opened |
++----------+-----------+--------+
+2 rows in set</pre>
+        <p>Id 2 is missing. InnoDB hands out an auto-increment value before the row is checked, and a failed or
+        rolled-back insert discards it, so ids have gaps.<sup class="cite"><a href="#src-13">13</a></sup> A gap is
+        normal; code should never assume ids are consecutive. <code>CURRENT_TIMESTAMP</code> is a function the server
+        runs for each new row, and a DATETIME column may take it as its
+        default.<sup class="cite"><a href="#src-14">14</a></sup> The CASCADE line is the next step's subject.</p>
+        <p>BIGINT holds up to 9223372036854775807 signed, against 2147483647 for
+        INT.<sup class="cite"><a href="#src-15">15</a></sup> An INT id overflows at its limit, and BIGINT delays that for
+        log-like tables. You recognise the pattern as <code>event_id BIGINT AUTO_INCREMENT PRIMARY KEY</code>.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Constraints in the schema hold for every writer; the server refuses a violating statement.</li>
+          <li>NOT NULL requires a value; DEFAULT fills one in only when the column is left out.</li>
+          <li>CHECK fails with 3819, passes on NULL, and cannot read other tables.</li>
+          <li>AUTO_INCREMENT ids can have gaps; BIGINT suits fast-growing tables.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>The constraints are not null, unique, primary key, foreign key, check and default, plus auto increment for
+          generated ids.</p>
+          <p>Not null forces a value, unique stops duplicates, the primary key identifies the row, a foreign
+          key must match a parent, a check is a condition every row has to meet, and default fills in a value when the
+          insert leaves the column out.</p>
+          <p>I put rules in the schema because they hold for every client that writes to the database, including
+          scripts and other services. For a status column I'd write not null, default open, and a check that the value is one of open,
+          assigned or closed.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
+        <div class="tag">Constraints</div>
+        <h2>CASCADE, and the CREATE, DROP, TRUNCATE rebuild</h2>
+        <h3>ON DELETE CASCADE and ON DELETE SET NULL</h3>
+        <p><code>ON DELETE CASCADE</code> on a foreign key deletes the child rows when their parent row is
+        deleted.<sup class="cite"><a href="#src-3">3</a></sup> Without an ON DELETE action the parent delete is refused
+        with 1451.<sup class="cite"><a href="#src-3">3</a></sup> In the scratch database, <code>ticket_events</code>
+        cascades and <code>ticket_tags</code> does not yet, so deleting ticket 1 fails until the bridge's key is replaced
+        by name:</p>
+<pre><code>DELETE FROM tickets WHERE ticket_id = 1;
+ALTER TABLE ticket_tags DROP FOREIGN KEY fk_ticket_tags_ticket;
+ALTER TABLE ticket_tags
+    ADD CONSTRAINT fk_ticket_tags_ticket
+    FOREIGN KEY (ticket_id) REFERENCES tickets (ticket_id)
+    ON DELETE CASCADE;
+DELETE FROM tickets WHERE ticket_id = 1;
+SELECT ticket_id, tag_id FROM ticket_tags;
+SELECT event_id, ticket_id, kind FROM ticket_events;</code></pre>
+<pre class="out">ERROR 1451 (23000): Cannot delete or update a parent row: a foreign key constraint fails (`keys_lab`.`ticket_tags`, CONSTRAINT `fk_ticket_tags_ticket` FOREIGN KEY (`ticket_id`) REFERENCES `tickets` (`ticket_id`))
+Query OK, 0 rows affected
+Records: 0  Duplicates: 0  Warnings: 0
+Query OK, 2 rows affected
+Records: 2  Duplicates: 0  Warnings: 0
+Query OK, 1 row affected
+Empty set
++----------+-----------+--------+
+| event_id | ticket_id | kind   |
++----------+-----------+--------+
+|        3 |         4 | opened |
++----------+-----------+--------+
+1 row in set</pre>
+        <p>Deleting the ticket removed its two tag links and its event as well, because both keys now
+        cascade.<sup class="cite"><a href="#src-3">3</a></sup> Look at the count, though: the client reported
+        <code>1 row affected</code>. A cascade can delete a whole tree of child rows in one statement while reporting
+        only the parent.<sup class="cite"><a href="#src-3">3</a></sup> Cascades run inside the same statement and roll
+        back with it.<sup class="cite"><a href="#src-3">3</a></sup></p>
+        <p>CASCADE suits rows that mean nothing without their parent, such as a ticket's tags and history. It is
+        dangerous on a key like <code>tickets.customer_id</code>, where one careless DELETE of a customer would erase every
+        ticket they ever filed. The desk leaves that key on the default, which refuses.</p>
+        <p><code>ON DELETE SET NULL</code> keeps the child and clears its foreign key. The desk uses it for
+        <code>tickets.agent_id</code>, so an agent who leaves turns their tickets back into unassigned ones instead of
+        deleting them.<sup class="cite"><a href="#src-3">3</a></sup> Its relative, <code>ON UPDATE CASCADE</code>, carries a
+        changed parent key down to the children.<sup class="cite"><a href="#src-3">3</a></sup> You recognise all of these on the foreign key's own line, after
+        <code>REFERENCES</code>.</p>
+        <h3>DROP, DELETE and TRUNCATE</h3>
+        <p>Tuesday compared the three ways to remove data. Foreign keys and AUTO_INCREMENT add two more columns to that
+        comparison:</p>
+        <table>
+          <thead><tr><th>Statement</th><th>Removes</th><th>WHERE</th><th>Id counter</th><th>Undo with ROLLBACK</th></tr></thead>
+          <tbody>
+            <tr><td><code>DROP TABLE</code></td><td>The structure and every row</td><td>No</td><td>Gone with the table</td><td>No</td></tr>
+            <tr><td><code>DELETE</code></td><td>Matching rows, one by one</td><td>Yes</td><td>Kept where it was</td><td>Yes</td></tr>
+            <tr><td><code>TRUNCATE TABLE</code></td><td>Every row, keeping the table</td><td>No</td><td>Reset to the start</td><td>No</td></tr>
+          </tbody>
+        </table>
+        <p>DROP TABLE removes structure and rows.<sup class="cite"><a href="#src-16">16</a></sup> DELETE without WHERE
+        removes every row but keeps the structure and the AUTO_INCREMENT
+        counter.<sup class="cite"><a href="#src-17">17</a></sup> TRUNCATE TABLE empties a table, resets its counter and
+        causes an implicit commit, and it is refused on a table that another table's foreign key
+        references.<sup class="cite"><a href="#src-18">18</a></sup> An implicit commit ends the current transaction, which
+        is why a TRUNCATE cannot be rolled back.</p>
+<pre><code>TRUNCATE TABLE tags;
+TRUNCATE TABLE ticket_events;
+INSERT INTO ticket_events (ticket_id, kind) VALUES (4, 'assigned');
+SELECT event_id, ticket_id, kind FROM ticket_events;</code></pre>
+<pre class="out">ERROR 1701 (42000): Cannot truncate a table referenced in a foreign key constraint (`keys_lab`.`ticket_tags`, CONSTRAINT `fk_ticket_tags_tag`)
+Query OK, 0 rows affected
+Query OK, 1 row affected
++----------+-----------+----------+
+| event_id | ticket_id | kind     |
++----------+-----------+----------+
+|        1 |         4 | assigned |
++----------+-----------+----------+
+1 row in set</pre>
+        <p>The bridge points at <code>tags</code>, so it cannot be truncated, even with no links left. Nothing references
+        <code>ticket_events</code>, so it empties, and the next event starts again at 1. TRUNCATE is fast, but it takes
+        no WHERE and cannot be undone.<sup class="cite"><a href="#src-18">18</a></sup></p>
+        <h3>A rebuild script you can run twice</h3>
+        <p>A schema file that can run twice gives the same database every time. Its first line is
+        <code>DROP DATABASE IF EXISTS</code>, which removes a database and all its tables without an error when it is
+        missing.<sup class="cite"><a href="#src-19">19</a></sup> The scratch database has done its job, so drop it twice:</p>
+<pre><code>DROP DATABASE IF EXISTS keys_lab;
+DROP DATABASE IF EXISTS keys_lab;</code></pre>
+<pre class="out">Query OK, 7 rows affected
+Query OK, 0 rows affected, 1 warning</pre>
+        <p>The first run reports the seven tables it removed. The second finds nothing and warns instead of failing.
+        Monday's file used <code>CREATE TABLE IF NOT EXISTS</code>, which skips creation when the table exists and so
+        hides a stale structure; a rebuild drops instead.<sup class="cite"><a href="#src-1">1</a></sup> After the DROP and
+        a <code>CREATE DATABASE</code>, the desk's file creates each parent before any table that points at it, and its
+        seed file inserts in the same order:</p>
+        <ol>
+          <li><code>priorities</code>, <code>customers</code> and <code>agents</code>, which reference nothing</li>
+          <li><code>tickets</code>, which references all three</li>
+          <li><code>tags</code>, which references nothing but must exist before the bridge</li>
+          <li><code>ticket_tags</code> and <code>ticket_events</code>, which reference tickets</li>
+        </ol>
+        <p>The desk runs the schema file and the seed file as one stream into the client in the container. Run from the
+        folder that holds both files:</p>
+<pre><code>cat schema.sql seed.sql | docker exec -i desk-mysql mysql -uroot -pdesk</code></pre>
+<pre class="out">mysql: [Warning] Using a password on the command line interface can be insecure.</pre>
+        <p><code>cat</code> prints the files one after the other, and the pipe <code>|</code> feeds that text into the
+        client. The warning is the only output, because every statement succeeded.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>CASCADE deletes children with the parent; SET NULL keeps them and clears the key.</li>
+          <li>TRUNCATE resets the id counter, commits at once and is refused on a referenced table.</li>
+          <li>A rebuild starts with DROP DATABASE IF EXISTS and creates parents before children.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>On delete cascade means deleting a parent row also deletes its child rows, in the same statement. I'd use it
+          for rows that mean nothing alone, like a ticket's tags or history. I wouldn't use it from customers to
+          tickets, because one delete could wipe a customer's whole history, and the client only reports the parent
+          row.</p>
+          <p>Drop removes the table itself. Delete removes rows, takes a where clause and can be rolled back. Truncate
+          empties the table fast and resets the id counter, but it commits immediately and it's refused on a table a
+          foreign key points to.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="6">
+        <div class="tag">Python</div>
+        <h2>INSERT, UPDATE and DELETE from Python</h2>
+        <p>The desk's Python code read and wrote <code>tickets.json</code> in week 2. From here it talks to MySQL through a
+        driver, and the same three DML statements from Tuesday do the writing.</p>
+        <h3>Connecting with mysql-connector-python</h3>
+        <p>mysql-connector-python is MySQL's own driver for Python.<sup class="cite"><a href="#src-20">20</a></sup> Version
+        26.7.0 ships as a pure-Python wheel that installs on Python 3.15 with
+        <code>python -m pip install mysql-connector-python==26.7.0</code>.<sup class="cite"><a href="#src-20">20</a></sup> Its <code>connect()</code> function takes the
+        server's host and port, the user, the password and the database as keyword
+        arguments.<sup class="cite"><a href="#src-20">20</a></sup></p>
+        <p>To try this step, set the password variable in Git Bash, start <code>python</code> in the desk's folder with
+        its virtual environment active, and type the blocks one after another. The REPL reports an error and carries
+        on. At the REPL, an empty line ends an indented block, so keep the empty lines the blocks show.</p>
+<pre><code>import os
+
+import mysql.connector
+
+
+def connect():
+    """Open a connection to the desk database as desk_app."""
+    return mysql.connector.connect(
+        host="127.0.0.1",
+        port=3306,
+        user="desk_app",
+        password=os.environ["DESK_DB_PASSWORD"],
+        database="ticket_desk",
+    )
+
+
+conn = connect()
+cursor = conn.cursor()
+cursor.execute("SELECT ticket_id, title, opened_at FROM tickets WHERE ticket_id = %s", (4,))
+print(cursor.fetchall())
+conn.commit()</code></pre>
+<pre class="out">[(4, 'Checkout button frozen', datetime.datetime(2026, 10, 19, 8, 0))]</pre>
+        <p>The password comes from an environment variable, set in Git Bash with
+        <code>export DESK_DB_PASSWORD=deskapp</code>, so it never sits in a committed file. If the variable is missing,
+        <code>os.environ[...]</code> raises <code>KeyError</code>. Each row arrives as a tuple, as the output
+        shows.</p>
+        <p>The connector runs with autocommit off, so nothing a connection writes is saved until
+        <code>conn.commit()</code>.<sup class="cite"><a href="#src-21">21</a></sup> That is Tuesday's COMMIT, called from
+        Python, and it ends the transaction.<sup class="cite"><a href="#src-22">22</a></sup> The desk ends every
+        function that touches the database with one, even a read.</p>
+        <h3>INSERT with placeholders</h3>
+        <p>Values never go into the SQL text. The statement carries a <code>%s</code> placeholder for each value, whatever
+        its type, and the values travel as a tuple that the driver escapes.<sup class="cite"><a href="#src-22">22</a></sup>
+        A title with an apostrophe shows why, in the same session:</p>
+<pre><code>from datetime import datetime
+
+
+def insert_ticket(conn, ticket_id, title, priority, customer_id, opened_at):
+    """Insert one ticket and commit it."""
+    cursor = conn.cursor()
+    cursor.execute(
+        """INSERT INTO tickets (ticket_id, title, priority, customer_id, opened_at)
+        VALUES (%s, %s, %s, %s, %s)""",
+        (ticket_id, title, priority, customer_id, opened_at),
+    )
+    conn.commit()
+    cursor.close()
+
+
+title = "Can't reset password"
+insert_ticket(conn, 7, title, "high", 1, datetime(2026, 10, 19, 13, 0))
+cursor.execute(f"UPDATE tickets SET title = '{title}' WHERE ticket_id = 6")</code></pre>
+        <p>The insert prints nothing and commits ticket 7, with <code>status</code> filled in as <code>'open'</code> by its
+        DEFAULT. The f-string line fails, and its traceback ends:</p>
+<pre class="out">mysql.connector.errors.ProgrammingError: 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 't reset password' WHERE ticket_id = 6' at line 1</pre>
+        <p>The apostrophe in "Can't" closed the string early. A user who types a title on purpose can close it and add
+        SQL of their own, which is SQL injection. With placeholders the title is only ever data. In code review, any
+        f-string or <code>+</code> inside <code>execute()</code> is what to flag.</p>
+        <p>Two more habits come from the INSERT reference. Name the columns, because an INSERT without a column list
+        breaks when the table gains a column. And one INSERT with several VALUES tuples inserts many rows in one
+        statement.<sup class="cite"><a href="#src-23">23</a></sup> When the server generates the id instead,
+        <code>cursor.lastrowid</code> returns the id the last INSERT
+        generated.<sup class="cite"><a href="#src-24">24</a></sup></p>
+        <h3>UPDATE and DELETE, and the rows they touch</h3>
+        <p>UPDATE assigns several columns in one SET, separated by commas.<sup class="cite"><a href="#src-25">25</a></sup>
+        It reports changed rows, so setting a value to what it already is reports
+        0.<sup class="cite"><a href="#src-25">25</a></sup> After a DELETE, <code>cursor.rowcount</code> counts the rows
+        removed.<sup class="cite"><a href="#src-26">26</a></sup></p>
+<pre><code>closed = datetime(2026, 10, 19, 15, 0)
+for attempt in range(2):
+    cursor.execute(
+        """UPDATE tickets
+        SET status = 'closed', closed_at = %s
+        WHERE ticket_id = %s""",
+        (closed, 7),
+    )
+    print(cursor.rowcount)
+
+cursor.execute("DELETE FROM tickets WHERE ticket_id = %s", (7,))
+print(cursor.rowcount)
+conn.commit()</code></pre>
+<pre class="out">1
+0
+1</pre>
+        <p>The first UPDATE closed ticket 7, the second changed nothing, and the DELETE removed one row. Code that
+        checks <code>rowcount</code> to learn whether a ticket exists has to remember the 0 from an unchanged row. An
+        UPDATE or DELETE without WHERE touches every row, so a safe habit is to run the WHERE as a SELECT
+        first.<sup class="cite"><a href="#src-25">25</a></sup></p>
+        <p>Many teams avoid DELETE for records they may need later and use a soft delete instead: a status or flag
+        column marks the row as removed, and the history stays.<sup class="cite"><a href="#src-17">17</a></sup></p>
+        <p>A DELETE of a parent row is refused with 1451 or cascades, according to the foreign key's
+        action.<sup class="cite"><a href="#src-3">3</a></sup> An UPDATE that breaks a CHECK or a foreign key fails and
+        changes nothing.<sup class="cite"><a href="#src-10">10</a></sup> The constraint errors reach Python as exceptions:</p>
+<pre><code>try:
+    insert_ticket(conn, 8, "Ghost ticket", "low", 99, datetime(2026, 10, 19, 13, 0))
+except mysql.connector.IntegrityError as err:
+    print(err.errno, err.msg)
+
+try:
+    cursor.execute("UPDATE tickets SET status = %s WHERE ticket_id = %s", ("done", 4))
+except mysql.connector.DatabaseError as err:
+    print(type(err).__name__, err.errno, err.msg)
+
+conn.close()</code></pre>
+<pre class="out">1452 Cannot add or update a child row: a foreign key constraint fails (`ticket_desk`.`tickets`, CONSTRAINT `tickets_ibfk_2` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`customer_id`))
+DatabaseError 3819 Check constraint 'tickets_chk_1' is violated.</pre>
+        <p>The unknown customer 99 is a foreign-key error, raised as
+        <code>IntegrityError</code>.<sup class="cite"><a href="#src-5">5</a></sup> The CHECK failure is a
+        <code>DatabaseError</code>, so a handler that catches only <code>IntegrityError</code> misses
+        it.<sup class="cite"><a href="#src-11">11</a></sup> Production code catches <code>mysql.connector.Error</code>,
+        and a test names the exact class it expects.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>With autocommit off, a write is saved only when the connection commits.</li>
+          <li>Pass values as placeholders with a tuple, never inside an f-string.</li>
+          <li>rowcount counts changed rows, so an UPDATE to the same value reports 0.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I write the statement with a placeholder for each value and pass the values as a tuple, so the driver
+          escapes them. Building the SQL with an f-string lets a value change the statement itself, which is SQL
+          injection, and even an apostrophe in a title breaks it.</p>
+          <p>To close one ticket I'd run an UPDATE that sets the status and closed time with a WHERE on the ticket id.
+          Without the WHERE it would change every row, so I check the WHERE with a SELECT first. Then I commit, because
+          the connector doesn't save anything until I do.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="7">
+        <div class="tag">Check yourself</div>
+        <h2>Check yourself</h2>
+        <p>Ten retrieval questions covering every step. Answer each out loud before you open it.</p>
+        <details class="check"><summary>What two things does a primary key guarantee, and how did a second ticket 1 get into Tuesday's table?</summary><p>Every value is unique and none is NULL, and a table has one primary key. Tuesday's table had no primary key and no unique key, so the server had no rule against two identical rows.</p></details>
+        <details class="check"><summary>A customers table has <code>customer_id</code>, <code>email</code>, <code>name</code> and <code>phone</code>. Which are candidate keys, which becomes primary, and what is the other called?</summary><p><code>customer_id</code> and <code>email</code> are each unique and always present; <code>name</code> can repeat and <code>phone</code> can be missing. Make the integer id primary because it never changes; the email becomes the alternate key, declared UNIQUE NOT NULL.</p></details>
+        <details class="check"><summary>Errors 1452 and 1451 are both foreign-key refusals. Which side of the relationship causes each?</summary><p>1452 comes from the child: an insert or update names a parent id that does not exist. 1451 comes from the parent: a delete or key change would leave children pointing at nothing. Together they are referential integrity.</p></details>
+        <details class="check"><summary>Can a UNIQUE email column hold two NULLs, and what makes every row carry an email?</summary><p>Yes; UNIQUE allows several NULLs in a column that can hold NULL. Adding NOT NULL makes the value required, which is how an alternate key is declared.</p></details>
+        <details class="check"><summary>A flat sheet has one row per ticket with the customer's name and email, the priority, its SLA hours and a comma list of tags. Take it to 3NF, then make it a schema.</summary><p>1NF: the tag list becomes one row per ticket and tag. 2NF: the ticket's details depend only on the ticket, so they move to <code>tickets</code>, and the bridge keeps only (ticket, tag). 3NF: SLA hours depend on the priority and the name and email on the customer, so each moves to its own table. Then give every table a primary key and every pointer a foreign key.</p></details>
+        <details class="check"><summary>How do you store a many-to-many relationship between tickets and tags?</summary><p>With a bridge table, <code>ticket_tags</code>, holding a foreign key to each side. Its composite primary key over the two columns stops the same link being stored twice.</p></details>
+        <details class="check"><summary>Name the constraints you can declare on a table. Which one fills in a value, and which one refuses a value outside a list?</summary><p>NOT NULL, UNIQUE, PRIMARY KEY, FOREIGN KEY, CHECK and DEFAULT, with AUTO_INCREMENT for generated ids. DEFAULT fills in a value when the INSERT leaves the column out; a CHECK such as <code>status IN ('open', 'assigned', 'closed')</code> refuses anything else with error 3819.</p></details>
+        <details class="check"><summary>An events table shows ids 1 and 3 but no 2. Is something wrong?</summary><p>No. InnoDB hands out an auto-increment value before the row is checked, so a failed or rolled-back insert leaves a gap. Code should never assume ids are consecutive.</p></details>
+        <details class="check"><summary>What does <code>ON DELETE CASCADE</code> do on <code>ticket_tags</code>, and why is it a bad idea on <code>tickets.customer_id</code>?</summary><p>Deleting a ticket also deletes its tag links in the same statement. On the customer key, one DELETE would erase every ticket that customer filed, while the client reports only one row affected.</p></details>
+        <details class="check"><summary>Why does the desk pass values as <code>%s</code> placeholders, and what does <code>rowcount</code> report for an UPDATE that sets a value it already has?</summary><p>Placeholders send the values as data the driver escapes, so a value can never change the statement, which stops SQL injection. <code>rowcount</code> counts changed rows, so that UPDATE reports 0.</p></details>
+      </section>
+
+      <section class="reading-sources" aria-label="Sources and deeper dive">
+        <h2>Sources &amp; deeper dive</h2>
+        <ul>
+          <li id="src-1"><a href="https://dev.mysql.com/doc/refman/9.7/en/create-table.html" target="_blank" rel="noopener">MySQL Reference Manual: CREATE TABLE</a> — primary, composite and unique keys, NULL rules and column against table constraints.</li>
+          <li id="src-2"><a href="https://dev.mysql.com/doc/mysql-errors/9.7/en/server-error-reference.html" target="_blank" rel="noopener">MySQL Error Reference: Server Error Message Reference</a> — what error 1062 and its neighbours mean.</li>
+          <li id="src-3"><a href="https://dev.mysql.com/doc/refman/9.7/en/create-table-foreign-keys.html" target="_blank" rel="noopener">MySQL Reference Manual: FOREIGN KEY Constraints</a> — parent rules, errors 1452 and 1451, and every referential action.</li>
+          <li id="src-4"><a href="https://dev.mysql.com/doc/refman/9.7/en/innodb-storage-engine.html" target="_blank" rel="noopener">MySQL Reference Manual: The InnoDB Storage Engine</a> — the default engine that enforces foreign keys.</li>
+          <li id="src-5"><a href="https://dev.mysql.com/doc/connector-python/en/connector-python-api-errors-integrityerror.html" target="_blank" rel="noopener">MySQL Connector/Python: errors.IntegrityError</a> — the exception for key and foreign-key violations.</li>
+          <li id="src-6"><a href="https://dev.mysql.com/doc/refman/9.7/en/constraints.html" target="_blank" rel="noopener">MySQL Reference Manual: How MySQL Deals with Constraints</a> — what the server does with a statement that breaks a rule.</li>
+          <li id="src-7"><a href="https://dev.mysql.com/doc/refman/9.7/en/sql-mode.html" target="_blank" rel="noopener">MySQL Reference Manual: Server SQL Modes</a> — strict mode and why invalid values are errors.</li>
+          <li id="src-8"><a href="https://dev.mysql.com/doc/refman/9.7/en/alter-table.html" target="_blank" rel="noopener">MySQL Reference Manual: ALTER TABLE</a> — adding and dropping named constraints on an existing table.</li>
+          <li id="src-9"><a href="https://dev.mysql.com/doc/refman/9.7/en/data-type-defaults.html" target="_blank" rel="noopener">MySQL Reference Manual: Data Type Default Values</a> — when DEFAULT applies and how it meets NOT NULL.</li>
+          <li id="src-10"><a href="https://dev.mysql.com/doc/refman/9.7/en/create-table-check-constraints.html" target="_blank" rel="noopener">MySQL Reference Manual: CHECK Constraints</a> — enforcement, error 3819 and what a CHECK may not do.</li>
+          <li id="src-11"><a href="https://dev.mysql.com/doc/connector-python/en/connector-python-api-errors-databaseerror.html" target="_blank" rel="noopener">MySQL Connector/Python: errors.DatabaseError</a> — the exception a CHECK failure raises.</li>
+          <li id="src-12"><a href="https://dev.mysql.com/doc/refman/9.7/en/example-auto-increment.html" target="_blank" rel="noopener">MySQL Reference Manual: Using AUTO_INCREMENT</a> — how generated ids are assigned.</li>
+          <li id="src-13"><a href="https://dev.mysql.com/doc/refman/9.7/en/innodb-auto-increment-handling.html" target="_blank" rel="noopener">MySQL Reference Manual: AUTO_INCREMENT Handling in InnoDB</a> — why ids can have gaps.</li>
+          <li id="src-14"><a href="https://dev.mysql.com/doc/refman/9.7/en/timestamp-initialization.html" target="_blank" rel="noopener">MySQL Reference Manual: Automatic Initialization and Updating for TIMESTAMP and DATETIME</a> — a DATETIME that defaults to now.</li>
+          <li id="src-15"><a href="https://dev.mysql.com/doc/refman/9.7/en/integer-types.html" target="_blank" rel="noopener">MySQL Reference Manual: Integer Types</a> — the ranges of INT and BIGINT.</li>
+          <li id="src-16"><a href="https://dev.mysql.com/doc/refman/9.7/en/drop-table.html" target="_blank" rel="noopener">MySQL Reference Manual: DROP TABLE</a> — removing a table's structure and rows.</li>
+          <li id="src-17"><a href="https://dev.mysql.com/doc/refman/9.7/en/delete.html" target="_blank" rel="noopener">MySQL Reference Manual: DELETE</a> — removing rows and what happens to the counter.</li>
+          <li id="src-18"><a href="https://dev.mysql.com/doc/refman/9.7/en/truncate-table.html" target="_blank" rel="noopener">MySQL Reference Manual: TRUNCATE TABLE</a> — counter reset, implicit commit and the foreign-key refusal.</li>
+          <li id="src-19"><a href="https://dev.mysql.com/doc/refman/9.7/en/drop-database.html" target="_blank" rel="noopener">MySQL Reference Manual: DROP DATABASE</a> — the IF EXISTS form a rebuild script starts with.</li>
+          <li id="src-20"><a href="https://dev.mysql.com/doc/connector-python/en/" target="_blank" rel="noopener">MySQL Connector/Python Developer Guide</a> — installing the driver and connecting.</li>
+          <li id="src-21"><a href="https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlconnection-commit.html" target="_blank" rel="noopener">MySQL Connector/Python: MySQLConnection.commit()</a> — why nothing is saved until you commit.</li>
+          <li id="src-22"><a href="https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursor-execute.html" target="_blank" rel="noopener">MySQL Connector/Python: MySQLCursor.execute()</a> — placeholders and the parameter tuple.</li>
+          <li id="src-23"><a href="https://dev.mysql.com/doc/refman/9.7/en/insert.html" target="_blank" rel="noopener">MySQL Reference Manual: INSERT</a> — column lists and several rows in one statement.</li>
+          <li id="src-24"><a href="https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursor-lastrowid.html" target="_blank" rel="noopener">MySQL Connector/Python: MySQLCursor.lastrowid</a> — the id the last INSERT generated.</li>
+          <li id="src-25"><a href="https://dev.mysql.com/doc/refman/9.7/en/update.html" target="_blank" rel="noopener">MySQL Reference Manual: UPDATE</a> — SET, WHERE and the changed-rows count.</li>
+          <li id="src-26"><a href="https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursor-rowcount.html" target="_blank" rel="noopener">MySQL Connector/Python: MySQLCursor.rowcount</a> — the rows a statement changed or removed.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · after you have read the page</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 3 Day 3</footer>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 3 — goals &amp; exercise</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Explain what a primary key guarantees in a data set, and choose one from a table's candidate keys</li>
+      <li>Explain how a foreign key enforces referential integrity, and what the server does when a parent row with children is deleted</li>
+      <li>Normalize a flat data set from 0NF to 3NF with a reason for each form, and turn the result into a valid schema</li>
+      <li>Describe and declare a table's constraints: primary key, foreign key, unique, not null, auto increment, default and check</li>
+    </ul>
+    <div class="ma-k">Today's exercise</div>
+    <ul class="deliv-list check">
+      <li><a href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-03/day-3-keys-constraints-and-normalization" target="_blank" rel="noopener">exercises/week-03/day-3-keys-constraints-and-normalization</a> — a pytest-checked exercise: the <code>library</code> schema rebuilt with primary keys, a composite key on <code>loans</code>, foreign keys with ON DELETE CASCADE, UNIQUE, CHECK and DEFAULT, then <code>library_db.py</code> with <code>add_member(conn, ...)</code> and <code>return_book(conn, ...)</code> through mysql-connector-python. The tests run against your own container and roll back.</li>
+    </ul>
+    <p class="goals-foot">Thursday assumes your constrained schema rebuilds cleanly. Finish the check to unlock the next page.</p>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Day 4 — Joins, subqueries & transactions →", href: "day-4-joins-subqueries-and-transactions.html" };
+window.DIAGRAM = {
+  title: "Day 3 · from a flat sheet to seven constrained tables",
+  width: 500, height: 560,
+  nodes: [
+    { id:"tickets", step:0, kind:"example", x:180, y:20, w:140, h:56, label:"tickets\n  ticket_id PK\n  unique · never NULL", detail:"A primary key picks out exactly one row: unique, implicitly NOT NULL, one per table. A second ticket 1 is now ERROR 1062." },
+    { id:"tt", step:0, x:180, y:112, w:140, h:56, label:"ticket_tags\n  PK (ticket_id, tag_id)\n  composite", detail:"Only the pair must be unique: (4, 2) and (4, 3) can both exist, (4, 2) twice cannot. Every column of the key is NOT NULL." },
+    { id:"customers", step:1, x:24, y:20, w:140, h:56, label:"customers\n  customer_id PK\n  email UNIQUE", detail:"The parent of tickets. customer_id and email are both candidate keys: the id is primary, the email the alternate key." },
+    { id:"agents", step:2, x:336, y:20, w:140, h:56, label:"agents\n  agent_id PK\n  email NOT NULL UNIQUE", detail:"UNIQUE refuses a duplicate email (1062) but allows several NULLs unless the column is also NOT NULL." },
+    { id:"priorities", step:3, x:24, y:112, w:140, h:56, label:"priorities  (3NF)\n  priority PK\n  sla_hours", detail:"sla_hours depends on the priority, not the ticket, so it lives here once. An unknown priority such as 'urgent' is refused with 1452." },
+    { id:"tags", step:3, x:336, y:112, w:140, h:56, label:"tags  (1NF)\n  tag_id PK\n  name UNIQUE", detail:"A comma list of tags breaks 1NF; one tag per row can be referenced by a foreign key." },
+    { id:"nf", step:3, x:24, y:200, w:452, h:44, label:"0NF → 1NF one value per cell → 2NF whole key → 3NF nothing but the key", detail:"Each form removes a dependency, and with it the update, insert and delete anomalies of the flat sheet. The cost is more tables and joins." },
+    { id:"cons", step:4, x:24, y:272, w:220, h:60, label:"Constraints\n  NOT NULL · DEFAULT 'open'\n  CHECK (status IN (...))", detail:"The server refuses a violating statement: a NULL in a NOT NULL column or a row that fails its CHECK is an error. DEFAULT fills a column only when the INSERT leaves it out." },
+    { id:"events", step:4, x:256, y:272, w:220, h:60, label:"ticket_events\n  event_id BIGINT AUTO_INCREMENT\n  created_at DEFAULT now", detail:"Generated ids can have gaps after a failed or rolled-back insert. BIGINT goes past INT's 2147483647." },
+    { id:"cascade", step:5, x:256, y:358, w:220, h:56, label:"ON DELETE CASCADE\n  tags and events go with the ticket\n  SET NULL on agent_id", detail:"Deleting a ticket deletes its ticket_tags and ticket_events rows; the client reports only the parent row." },
+    { id:"rebuild", step:5, x:24, y:358, w:220, h:56, label:"Rebuild\n  DROP DATABASE IF EXISTS\n  parents before children", detail:"TRUNCATE resets the counter and is refused on a referenced table. cat schema.sql seed.sql | docker exec -i ... rebuilds from the files." },
+    { id:"python", step:6, kind:"example", x:24, y:440, w:452, h:52, label:"PYTHON · mysql-connector-python 26.7.0\n  execute(sql, (a, b)) with %s · conn.commit() · rowcount", detail:"Placeholders stop SQL injection. IntegrityError for 1062, 1451 and 1452; DatabaseError for a CHECK (3819)." },
+    { id:"check", step:7, x:24, y:510, w:452, h:40, label:"CHECK YOURSELF\n  answer out loud, then open" }
+  ],
+  edges: [
+    { id:"e1", step:1, from:"tickets", to:"customers", label:"customer_id FK" },
+    { id:"e2", step:2, from:"tickets", to:"agents", label:"agent_id FK" },
+    { id:"e3", step:3, from:"tickets", to:"priorities", label:"priority FK" },
+    { id:"e4", step:3, from:"tt", to:"tickets", label:"bridge" },
+    { id:"e5", step:3, from:"tt", to:"tags", label:"bridge" },
+    { id:"e6", step:5, from:"events", to:"cascade", dir:"-" },
+    { id:"e7", step:5, from:"cons", to:"rebuild", dir:"-" },
+    { id:"e8", step:6, from:"python", to:"rebuild", label:"INSERT · UPDATE · DELETE" },
+    { id:"e9", step:7, from:"python", to:"check", dir:"-" }
+  ],
+  captions: [
+    "A primary key identifies one row; a composite key makes a pair unique. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "A foreign key points a child at a parent, and referential integrity refuses orphans from both sides (1452, 1451).",
+    "UNIQUE keeps a second identifier honest; the candidate key not chosen as primary becomes the alternate key.",
+    "Normalization from 0NF to 3NF splits the flat sheet into priorities, customers, tags and a bridge table.",
+    "Constraints make the server refuse bad rows: NOT NULL, DEFAULT, CHECK, and generated BIGINT ids with gaps.",
+    "CASCADE and SET NULL decide what a parent delete does; the rebuild drops and recreates parents before children.",
+    "From Python, values travel as %s placeholders, each write ends with commit, and rowcount counts changed rows.",
+    "You can now explain every key, walk a sheet to 3NF and name each constraint and its error."
+  ]
+};
+window.QUIZ = {
+  id: "w03-d3",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "ticket_tags has PRIMARY KEY (ticket_id, tag_id) and already holds the row (4, 2). Which insert is refused?",
+      options: ["(4, 3)", "(5, 2)", "(4, 2)", "(2, 4)"], answer: 2,
+      explain: "A composite key makes the combination unique, not each column. Only the repeated pair (4, 2) is a duplicate, refused with error 1062." },
+    { type: "tf", stem: "A column declared UNIQUE can hold at most one NULL.", answer: false,
+      explain: "UNIQUE allows several NULLs in a column that can hold NULL. Add NOT NULL when every row must carry a value, as an alternate key does." },
+    { type: "mcq", stem: "Which are true of TRUNCATE TABLE in MySQL? Select all that apply.",
+      options: ["It resets the AUTO_INCREMENT counter", "It accepts a WHERE clause", "It is refused on a table another table's foreign key references", "It can be undone with ROLLBACK"], answer: [0, 2],
+      explain: "TRUNCATE empties the whole table (it takes no WHERE) and resets the counter, and its implicit commit means ROLLBACK cannot undo it. It is refused on a table that a foreign key references." },
+    { type: "match", stem: "Match each MySQL error to its cause.",
+      pairs: [
+        { l: "1062", r: "a duplicate value in a primary or unique key" },
+        { l: "1452", r: "a child row names a parent that does not exist" },
+        { l: "1451", r: "a parent row still has children pointing at it" },
+        { l: "3819", r: "a CHECK constraint is violated" }
+      ],
+      explain: "1062 is the duplicate-key error. 1452 and 1451 are the two sides of referential integrity. 3819 is a failed CHECK, which the connector raises as DatabaseError rather than IntegrityError." },
+    { type: "scq", stem: "A tickets table stores sla_hours on every row, and sla_hours depends on the priority. Where does sla_hours belong in 3NF?",
+      options: ["Stay in tickets beside priority", "In a priorities table keyed on priority", "In ticket_tags", "In customers"], answer: 1,
+      explain: "A non-key column that depends on another non-key column breaks 3NF. sla_hours moves to priorities, and tickets keeps priority as a foreign key to it." },
+    { type: "open", stem: "In two or three sentences: why make customer_id the primary key of customers and email an alternate key, rather than the other way round?",
+      hint: "Think about what every ticket stores, and what happens when a customer changes their email.",
+      model: "Both are candidate keys, since each picks out one customer. If email were primary, every ticket would store it as its foreign key, so a changed email would have to change in every child row or rely on ON UPDATE CASCADE. A short generated id never changes, so the email stays unique as an alternate key (UNIQUE NOT NULL) and changes in one row only." }
+  ]
+};
+</script>
+
+<script src="../../assets/js/diagram.js?v=20261023"></script>
+<script src="../../assets/js/scrolly.js?v=20261023"></script>
+<script src="../../assets/js/modals.js?v=20261023"></script>
+<script src="../../assets/js/quiz.js?v=20261023"></script>
+<script src="../../assets/js/widgets.js?v=20261023"></script>
+<script src="../../assets/js/glossary.js?v=20261023"></script>
+</body>
+</html>
