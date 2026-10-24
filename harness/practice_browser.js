@@ -47,7 +47,7 @@ export default async function practicePass() {
       const starterSolved = r.solved;
       if (starterSolved) problem(id, "the starter is marked solved", r);
 
-      r = await check(t, data.model);
+      r = await check(t, data.model[id]);
       const labels = r.rows.map((x) => x.label);
       const modelOk = r.solved && r.rows.length > 0 && r.rows.every((x) => x.ok);
       if (!modelOk) problem(id, "the model answer is not marked solved", r);
@@ -86,7 +86,7 @@ export default async function practicePass() {
     const t = tasks[0];
     let r = await check(t, "class Loop:\n    def m(self):\n        pass\n    def __repr__(self):\n        return f'Loop({self.m})'\nrepr(Loop())\n");
     if (!r.out.includes("Python stopped")) problem("recovery", "an endless recursion did not end in the restart note", r);
-    r = await check(t, data.model);
+    r = await check(t, data.model[t.dataset.id]);
     if (!(r.solved && r.rows.length > 0 && r.rows.every((x) => x.ok))) problem("recovery", "the model answer did not pass on a fresh runtime after the crash", r);
     t.querySelector('[data-act="reset"]').click();
   }

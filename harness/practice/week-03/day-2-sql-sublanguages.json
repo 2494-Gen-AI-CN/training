@@ -1,0 +1,105 @@
+{
+  "day": "w03d2",
+  "page": "docs/weeks/week-03/day-2-sql-sublanguages.html",
+  "assessed": "2026-10-23",
+  "verdict": "partial",
+  "summary": "The day lends itself to three one-statement SQL tasks on the desk tables, a rerunnable DROP TABLE IF EXISTS, a DELETE that removes only the duplicate ticket 1, and a SELECT with a column list, WHERE and AS aliases, while its DCL, TCL, overview and interview steps rest on accounts, START TRANSACTION at the client, a naming convention or a spoken answer that sqlite3 in the page cannot show.",
+  "steps": [
+    {
+      "step": 0,
+      "title": "DDL: statements that shape tables",
+      "suitable": true,
+      "reason": "DROP TABLE IF EXISTS runs unchanged on SQLite 3.39 and MySQL 9.7, and its effect is visible: the table is gone, the other tables keep their rows, and a second run raises nothing. The page names the slips a check catches: a plain DROP fails the second time, and DELETE removes rows but keeps the table; MODIFY, CHANGE, TRUNCATE and DESCRIBE stay out because SQLite lacks them.",
+      "task": "t1"
+    },
+    {
+      "step": 1,
+      "title": "DML: adding, changing and removing rows",
+      "suitable": true,
+      "reason": "A DELETE leaves rows a second SELECT reads back, and the page's own case, two rows answering to ticket 1, makes the named mistakes fail: WHERE ticket_id = 1 alone removes both, and no WHERE removes every ticket. The task is the duplicate on tickets, a sibling of the exercise's delete_sql on loans, not that function.",
+      "task": "t2"
+    },
+    {
+      "step": 2,
+      "title": "DQL: reading rows with SELECT",
+      "suitable": true,
+      "reason": "A SELECT's column list, its WHERE on one column and its AS aliases show up as the rows and the column names a check reads from the cursor. SELECT * and a list without AS give the wrong headings, and a missing WHERE returns all six tickets; everything used runs unchanged on SQLite 3.39.",
+      "task": "t3"
+    },
+    {
+      "step": 3,
+      "title": "DCL: who may run what",
+      "suitable": false,
+      "reason": "CREATE USER, GRANT, REVOKE, SHOW GRANTS and the ERROR 1142 refusal belong to MySQL's account system, which SQLite does not have, so the step stays none until ix-sql (D-0062) lands. The page's slips, a missing host part and ON ticket_desk without .*, only fail against a MySQL server.",
+      "task": null
+    },
+    {
+      "step": 4,
+      "title": "TCL: changes that land or vanish together",
+      "suitable": false,
+      "reason": "The step's point is START TRANSACTION, ROLLBACK, SAVEPOINT and autocommit typed at the mysql client, and the implicit commit a CREATE TABLE causes; SQLite has no START TRANSACTION and does not commit on DDL, so the bar rules it out. A transaction is also several statements, and a task here is one.",
+      "task": null
+    },
+    {
+      "step": 5,
+      "title": "The five sublanguages side by side",
+      "suitable": false,
+      "reason": "The step sorts statements into five groups, which the page itself calls a teaching convention, and which ones ROLLBACK can undo; no statement's rows show that sorting, so the bar's first rule rules it out. The Check yourself question on naming the groups practises it aloud.",
+      "task": null
+    },
+    {
+      "step": 6,
+      "title": "Getting ready for your interview, part 2",
+      "suitable": false,
+      "reason": "The step teaches the shape of a spoken answer (definition, example, limit), practised aloud with a partner, which no check can see. Its runnable block compares DELETE, TRUNCATE and DROP, and TRUNCATE does not exist in SQLite; DELETE and DROP are already practised in t1 and t2.",
+      "task": null
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "title": "DDL",
+      "step": 0,
+      "idea": "The reader writes one DROP statement that removes the scratch_notes table and can be run again safely, as a clean-up script needs. The setup builds customers, agents and tickets with their rows plus scratch_notes with two notes, runs the statement, and runs it a second time. DROP TABLE IF EXISTS scratch_notes; is the shape.",
+      "checks": [
+        "After the statement, scratch_notes no longer exists, read back from sqlite_master; DELETE FROM scratch_notes empties the table but keeps it and fails.",
+        "Running the same statement a second time, with the table already gone, raises no error; a plain DROP TABLE scratch_notes fails here, as the second DROP on the page does.",
+        "The tickets table still holds its six rows, so a DROP that names the wrong table fails."
+      ],
+      "approved": true,
+      "q": "The checks build the desk's <code>customers</code>, <code>agents</code> and <code>tickets</code> tables with their rows, plus a <code>scratch_notes</code> table holding two notes. Write one DDL statement that removes the <code>scratch_notes</code> table itself, its definition and its rows, and that a clean-up script can run a second time without an error once the table is gone. Type the statement between the triple quotes; the checks run it, then run it again. Afterwards the database holds the tables <code>customers</code>, <code>agents</code> and <code>tickets</code> and no <code>scratch_notes</code>, and the second run reports no error.",
+      "starter": "QUERY = \"\"\"\n-- remove scratch_notes so the statement can run twice\n\"\"\"\n",
+      "tests": "import sqlite3\nconn = sqlite3.connect(\":memory:\")\nconn.execute(\"PRAGMA foreign_keys = ON\")\nconn.executescript(\"\"\"\nCREATE TABLE customers (\n    customer_id INT,\n    name VARCHAR(100),\n    email VARCHAR(255),\n    country CHAR(2),\n    monthly_fee DECIMAL(8,2)\n);\nCREATE TABLE agents (\n    agent_id INT,\n    name VARCHAR(50),\n    email VARCHAR(255)\n);\nCREATE TABLE tickets (\n    ticket_id INT,\n    title VARCHAR(200),\n    priority VARCHAR(10),\n    status VARCHAR(10),\n    customer_id INT,\n    agent_id INT,\n    opened_at DATETIME,\n    closed_at DATETIME\n);\nINSERT INTO customers (customer_id, name, email, country, monthly_fee)\nVALUES (1, 'Dana Whitfield', 'dana@example.com', 'CA', 49.00),\n       (2, 'Ravi Patel', 'ravi@example.com', 'CA', 199.00),\n       (3, 'Mei Chen', 'mei@example.com', 'US', 0.00),\n       (4, 'Omar Haddad', 'omar@example.com', 'GB', 49.00);\nINSERT INTO agents (agent_id, name, email)\nVALUES (1, 'Priya', 'priya@desk.example'),\n       (2, 'Marco', 'marco@desk.example'),\n       (3, 'Sam', 'sam@desk.example'),\n       (4, 'Lee', 'lee@desk.example');\nINSERT INTO tickets (ticket_id, title, priority, status, customer_id, agent_id, opened_at, closed_at)\nVALUES (1, 'Login page returns 500', 'high', 'closed', 1, NULL, '2026-10-18 08:00:00', '2026-10-18 11:00:00'),\n       (2, 'Invoice PDF is blank', 'normal', 'closed', 2, NULL, '2026-10-17 12:00:00', '2026-10-18 18:00:00'),\n       (3, 'Typo on pricing page', 'normal', 'closed', 1, NULL, '2026-10-18 18:00:00', '2026-10-19 04:00:00'),\n       (4, 'Checkout button frozen', 'high', 'assigned', 3, 1, '2026-10-19 08:00:00', NULL),\n       (5, 'Export is missing rows', 'normal', 'assigned', 2, 2, '2026-10-18 12:00:00', NULL),\n       (6, 'Add a dark mode', 'low', 'open', 3, NULL, '2026-10-19 12:00:00', NULL);\nCREATE TABLE scratch_notes (\n    note_id INT,\n    body VARCHAR(50)\n);\nINSERT INTO scratch_notes VALUES (1, 'call back'), (2, 'refund sent');\n\"\"\")\ncur = conn.execute(QUERY)\nrows = cur.fetchall()\nassert conn.execute(\"SELECT name FROM sqlite_master WHERE name = 'scratch_notes'\").fetchall() == [], \"scratch_notes is gone as a table, not just emptied\"\nassert not raises(sqlite3.Error, conn.execute, QUERY), \"a second run, with scratch_notes already gone, raises no error\"\nassert [r[0] for r in conn.execute(\"SELECT name FROM sqlite_master WHERE type = 'table' AND name != 'scratch_notes' ORDER BY name\")] == [\"agents\", \"customers\", \"tickets\"], \"customers, agents and tickets are all still there\"\n"
+    },
+    {
+      "id": "t2",
+      "title": "DML",
+      "step": 1,
+      "idea": "The setup loads the six desk tickets plus the second ticket 1 from the page, an open copy of the closed one. The reader writes one DELETE that removes only the open duplicate: DELETE FROM tickets WHERE ticket_id = 1 AND status = 'open';. Afterwards one ticket 1 remains, the closed one.",
+      "checks": [
+        "Exactly one row is removed, read from conn.total_changes; DELETE FROM tickets WHERE ticket_id = 1 removes both copies and fails.",
+        "One row with ticket_id 1 remains and its status is 'closed'; a condition on status = 'closed' removes the wrong copy and fails.",
+        "Tickets 2 to 6 are all still there; a DELETE with no WHERE removes every ticket and fails."
+      ],
+      "approved": true,
+      "q": "The checks load the six desk tickets into <code>tickets</code> (columns <code>ticket_id</code>, <code>title</code>, <code>priority</code>, <code>status</code>, <code>customer_id</code>, <code>agent_id</code>, <code>opened_at</code>, <code>closed_at</code>) plus the second ticket 1 from the DELETE section above: the same title with status <code>'open'</code>, next to the original whose status is <code>'closed'</code>. Write one DELETE that removes only the open copy of ticket 1. Afterwards one row has <code>ticket_id</code> 1, the closed one, and tickets 2 to 6 are untouched. Type the statement between the triple quotes.",
+      "starter": "QUERY = \"\"\"\n-- remove the open copy of ticket 1 and nothing else\n\"\"\"\n",
+      "tests": "import sqlite3\nconn = sqlite3.connect(\":memory:\")\nconn.execute(\"PRAGMA foreign_keys = ON\")\nconn.executescript(\"\"\"\nCREATE TABLE tickets (\n    ticket_id INT,\n    title VARCHAR(200),\n    priority VARCHAR(10),\n    status VARCHAR(10),\n    customer_id INT,\n    agent_id INT,\n    opened_at DATETIME,\n    closed_at DATETIME\n);\nINSERT INTO tickets (ticket_id, title, priority, status, customer_id, agent_id, opened_at, closed_at)\nVALUES (1, 'Login page returns 500', 'high', 'closed', 1, NULL, '2026-10-18 08:00:00', '2026-10-18 11:00:00'),\n       (2, 'Invoice PDF is blank', 'normal', 'closed', 2, NULL, '2026-10-17 12:00:00', '2026-10-18 18:00:00'),\n       (3, 'Typo on pricing page', 'normal', 'closed', 1, NULL, '2026-10-18 18:00:00', '2026-10-19 04:00:00'),\n       (4, 'Checkout button frozen', 'high', 'assigned', 3, 1, '2026-10-19 08:00:00', NULL),\n       (5, 'Export is missing rows', 'normal', 'assigned', 2, 2, '2026-10-18 12:00:00', NULL),\n       (6, 'Add a dark mode', 'low', 'open', 3, NULL, '2026-10-19 12:00:00', NULL);\nINSERT INTO tickets (ticket_id, title, priority, status, customer_id, agent_id, opened_at, closed_at)\nVALUES (1, 'Login page returns 500', 'high', 'open', 1, NULL, '2026-10-20 09:00:00', NULL);\n\"\"\")\nbefore = conn.total_changes\ncur = conn.execute(QUERY)\nrows = cur.fetchall()\nassert conn.total_changes - before == 1, \"removes exactly one row\"\nassert conn.execute(\"SELECT status FROM tickets WHERE ticket_id = 1\").fetchall() == [(\"closed\",)], \"the one ticket 1 left is the closed one\"\nassert conn.execute(\"SELECT ticket_id FROM tickets WHERE ticket_id > 1 ORDER BY ticket_id\").fetchall() == [(2,), (3,), (4,), (5,), (6,)], \"tickets 2 to 6 are all still there\"\n"
+    },
+    {
+      "id": "t3",
+      "title": "DQL",
+      "step": 2,
+      "idea": "The reader writes one SELECT that returns the tickets with status 'assigned', showing ticket_id under the heading id and title under the heading summary, in that order. On the seeded desk it returns (4, 'Checkout button frozen') and (5, 'Export is missing rows').",
+      "checks": [
+        "The result columns are named id and summary, in that order; SELECT * and a column list without AS give other headings and fail.",
+        "The rows are exactly tickets 4 and 5 with their titles, compared sorted; leaving out WHERE returns all six tickets and fails.",
+        "Each row holds two values, the id before the title; a list written title first fails."
+      ],
+      "approved": true,
+      "q": "The checks load the six desk tickets into <code>tickets</code> (columns <code>ticket_id</code>, <code>title</code>, <code>priority</code>, <code>status</code>, <code>customer_id</code>, <code>agent_id</code>, <code>opened_at</code>, <code>closed_at</code>). Write one SELECT that returns the tickets whose <code>status</code> is <code>'assigned'</code>, with two result columns: <code>ticket_id</code> under the heading <code>id</code>, then <code>title</code> under the heading <code>summary</code>. <code>AS</code> changes only the headings of the result, not the table. On these rows it returns <code>(4, 'Checkout button frozen')</code> and <code>(5, 'Export is missing rows')</code>, in any order. Type the statement between the triple quotes.",
+      "starter": "QUERY = \"\"\"\n-- the assigned tickets as id and summary\n\"\"\"\n",
+      "tests": "import sqlite3\nconn = sqlite3.connect(\":memory:\")\nconn.execute(\"PRAGMA foreign_keys = ON\")\nconn.executescript(\"\"\"\nCREATE TABLE tickets (\n    ticket_id INT,\n    title VARCHAR(200),\n    priority VARCHAR(10),\n    status VARCHAR(10),\n    customer_id INT,\n    agent_id INT,\n    opened_at DATETIME,\n    closed_at DATETIME\n);\nINSERT INTO tickets (ticket_id, title, priority, status, customer_id, agent_id, opened_at, closed_at)\nVALUES (1, 'Login page returns 500', 'high', 'closed', 1, NULL, '2026-10-18 08:00:00', '2026-10-18 11:00:00'),\n       (2, 'Invoice PDF is blank', 'normal', 'closed', 2, NULL, '2026-10-17 12:00:00', '2026-10-18 18:00:00'),\n       (3, 'Typo on pricing page', 'normal', 'closed', 1, NULL, '2026-10-18 18:00:00', '2026-10-19 04:00:00'),\n       (4, 'Checkout button frozen', 'high', 'assigned', 3, 1, '2026-10-19 08:00:00', NULL),\n       (5, 'Export is missing rows', 'normal', 'assigned', 2, 2, '2026-10-18 12:00:00', NULL),\n       (6, 'Add a dark mode', 'low', 'open', 3, NULL, '2026-10-19 12:00:00', NULL);\n\"\"\")\ncur = conn.execute(QUERY)\nrows = cur.fetchall()\nassert [c[0] for c in cur.description] == [\"id\", \"summary\"], \"the result columns are headed id and summary, in that order\"\nassert sorted(rows) == [(4, \"Checkout button frozen\"), (5, \"Export is missing rows\")], \"returns the two assigned tickets and no others\"\nassert all(len(r) == 2 and isinstance(r[0], int) and isinstance(r[1], str) for r in rows), \"each row holds two values, the ticket id before the title\"\n"
+    }
+  ]
+}

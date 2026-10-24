@@ -742,6 +742,30 @@ CREATE TABLE IF NOT EXISTS tickets (
         </div>
       </section>
 
+      <section class="practice" id="practice" hidden>
+        <div class="tag">Practice</div>
+        <h2>Practice</h2>
+        <div class="ix-task" data-id="t1" data-title="SQL data types" data-q="The starter&#x27;s &lt;code&gt;CREATE TABLE&lt;/code&gt; for the desk&#x27;s support plans gives every column of &lt;code&gt;plans&lt;/code&gt; the wrong type. Change only the types, keeping the table and column names as they are, so that each column fits what it holds: &lt;code&gt;plan_code&lt;/code&gt; is always exactly three letters, such as &lt;code&gt;PRO&lt;/code&gt;; &lt;code&gt;name&lt;/code&gt; is text of up to 50 characters whose length varies, such as &lt;code&gt;Basic&lt;/code&gt; or &lt;code&gt;Business&lt;/code&gt;; &lt;code&gt;monthly_fee&lt;/code&gt; is money, exact to the cent and never more than 999999.99; &lt;code&gt;created_at&lt;/code&gt; is a date and a time written with no time zone, such as &lt;code&gt;2026-10-26 09:00:00&lt;/code&gt;. The checks run your statement on an empty database and read back the type declared for each column.">
+<pre class="task-starter"><code>QUERY = """
+CREATE TABLE plans (
+    plan_code VARCHAR(255),
+    name CHAR(3),
+    monthly_fee FLOAT,
+    created_at TIMESTAMP
+);
+"""</code></pre>
+<pre class="task-tests" hidden><code>import sqlite3
+conn = sqlite3.connect(":memory:")
+conn.execute("PRAGMA foreign_keys = ON")
+conn.execute(QUERY)
+types = {row[1]: row[2].upper().replace(" ", "") for row in conn.execute("PRAGMA table_info(plans)")}
+assert types.get("plan_code") == "CHAR(3)", "plan_code has the type for a value that is always three characters long"
+assert types.get("name") == "VARCHAR(50)", "name has the type for text whose length varies, up to 50 characters"
+assert types.get("monthly_fee") == "DECIMAL(8,2)", "monthly_fee has an exact type that holds money up to 999999.99"
+assert types.get("created_at") == "DATETIME", "created_at keeps a date and time with no time zone as written, past 2038"</code></pre>
+        </div>
+      </section>
+
       <section class="step" data-diagram="0" data-step="7">
         <div class="tag">Check yourself</div>
         <h2>Check yourself</h2>

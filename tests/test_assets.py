@@ -6,9 +6,13 @@ import ast
 import json
 import re
 import runpy
+import sys
 import unittest
 
-from helpers import ALLOWED_JS, DOCS, FORBIDDEN_RE, TRAINER, ParsedPage, authored_days
+from helpers import ALLOWED_JS, DOCS, FORBIDDEN_RE, HARNESS, TRAINER, ParsedPage, authored_days
+
+sys.path.insert(0, str(HARNESS))
+import practice_browser  # noqa: E402  (model_sections: practice.py split per task)
 
 
 def _runner() -> dict:
@@ -126,10 +130,12 @@ class PracticeTaskTests(unittest.TestCase):
                 continue
             answers = TRAINER / rel / "solutions" / "practice.py"
             self.assertTrue(answers.is_file(), f"{rel}: the page has tasks, so the trainer repo needs solutions/practice.py")
-            code = answers.read_text(encoding="utf-8")
+            models, problems = practice_browser.model_sections(answers.read_text(encoding="utf-8"), [t.attrs["data-id"] for t in tasks])
+            with self.subTest(rel=rel, what="practice.py has one '# Task N:' section per page task"):
+                self.assertEqual([], problems)
             for t in tasks:
                 with self.subTest(rel=rel, task=t.attrs.get("data-id")):
-                    self.assertTrue(_solves(g, code, t.find("pre", "task-tests").text()))
+                    self.assertTrue(_solves(g, models[t.attrs["data-id"]], t.find("pre", "task-tests").text()))
 
     @unittest.skipUnless(TRAINER.exists(), "trainer/ (private repo) not present")
     def test_checks_pass_right_answers_and_catch_wrong_ones(self):

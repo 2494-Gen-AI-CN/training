@@ -66,6 +66,25 @@ def check(g: dict, code: str, checks: str) -> tuple[bool, list[dict]]:
     return finished, (json.loads(g["_tc_check"](checks)) if finished else [])
 
 
+TASK_HEADER = re.compile(r"^# Task (\d+): .+$", re.M)
+
+
+def model_sections(model: str, tids: list[str]) -> tuple[dict[str, str], list[str]]:
+    """practice.py split at its `# Task N: <title>` headers, one answer per task in page order: {task id: code},
+    problems. Each section is run alone against its own task's checks, after whatever precedes the first header
+    (docstring, imports), so a SQL day's `QUERY = \"\"\"...\"\"\"` per task does not collide with the next one."""
+    heads = list(TASK_HEADER.finditer(model))
+    nums = [int(m.group(1)) for m in heads]
+    problems = []
+    if nums != list(range(1, len(tids) + 1)):
+        problems.append(f"practice.py needs one '# Task N: <title>' header per page task, numbered 1 to {len(tids)} "
+                        f"in page order; it has {nums}")
+    pre = model[:heads[0].start()] if heads else model
+    ends = [m.start() for m in heads[1:]] + [len(model)]
+    parts = [pre + model[m.start():e] for m, e in zip(heads, ends)]
+    return {tid: (parts[i] if i < len(parts) else model) for i, tid in enumerate(tids)}, problems
+
+
 def task_line(tid: str, starter_solved: bool, model_ok: bool, accept_ok: int, accepts: int, reject_ok: int, rejects: int, kills: list[int]) -> str:
     """One line per task; practice_browser.js builds the same line from what the page shows. "per check" is how
     many wrong answers fail each check, in page order. No key=value pairs: a browser tool may withhold output
@@ -86,7 +105,8 @@ def expected(rel: str) -> tuple[dict, list[str]]:
             raise SystemExit(f"missing {sol / name}")
     model = (sol / "practice.py").read_text(encoding="utf-8")
     cases = runpy.run_path(str(sol / "practice_cases.py"))["CASES"]
-    g, lines, problems = runner(), {}, []
+    models, problems = model_sections(model, [t.attrs["data-id"] for t in tasks])
+    g, lines = runner(), {}
     for t in tasks:
         tid, source = t.attrs["data-id"], t.find("pre", "task-tests").text()
         starter = t.find("pre", "task-starter").text().strip("\n") + "\n"
@@ -102,14 +122,14 @@ def expected(rel: str) -> tuple[dict, list[str]]:
                 if x in kills:
                     kills[x] += 1
             reject_ok += (not finished) if label is None else (finished and label in failed)
-        line = task_line(tid, solved(check(g, starter, source)), solved(check(g, model, source)),
+        line = task_line(tid, solved(check(g, starter, source)), solved(check(g, models[tid], source)),
                          accept_ok, len(cases[tid]["accept"]), reject_ok, len(cases[tid]["reject"]), list(kills.values()))
         lines[tid] = line
         want = task_line(tid, False, True, len(cases[tid]["accept"]), len(cases[tid]["accept"]),
                          len(cases[tid]["reject"]), len(cases[tid]["reject"]), list(kills.values()))
         if line != want or 0 in kills.values():
             problems.append(line)
-    return {"rel": rel, "didNotRun": DID_NOT_RUN, "model": model, "cases": cases, "expected": lines}, problems
+    return {"rel": rel, "didNotRun": DID_NOT_RUN, "model": models, "cases": cases, "expected": lines}, problems
 
 
 def main(argv: list[str]) -> int:

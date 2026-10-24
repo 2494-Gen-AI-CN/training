@@ -839,6 +839,149 @@ DatabaseError 3819 Check constraint 'tickets_chk_1' is violated.</pre>
         </div>
       </section>
 
+      <section class="practice" id="practice" hidden>
+        <div class="tag">Practice</div>
+        <h2>Practice</h2>
+        <div class="ix-task" data-id="t1" data-title="Composite keys" data-q="Write one &lt;code&gt;CREATE TABLE&lt;/code&gt; statement in &lt;code&gt;QUERY&lt;/code&gt; for the bridge table &lt;code&gt;ticket_tags&lt;/code&gt;, which links tickets to tags. It has two columns, &lt;code&gt;ticket_id INT&lt;/code&gt; and &lt;code&gt;tag_id INT&lt;/code&gt;, in that order and no others, and a composite primary key over the pair. Once it runs, the links (4, 2), (4, 3) and (6, 3) all go in, though ticket 4 and tag 3 each appear twice, and a second link (4, 2) is refused.">
+<pre class="task-starter"><code>QUERY = """
+-- the ticket_tags table, keyed on the pair of ids
+"""</code></pre>
+<pre class="task-tests" hidden><code>import sqlite3
+conn = sqlite3.connect(":memory:")
+conn.execute("PRAGMA foreign_keys = ON")
+sql = globals().get("QUERY_T1") or QUERY
+conn.execute(sql)
+def goes_in(statement):
+    try:
+        conn.execute(statement)
+    except sqlite3.Error:
+        return False
+    return True
+assert goes_in("INSERT INTO ticket_tags (ticket_id, tag_id) VALUES (4, 2), (4, 3), (6, 3)"), "the links (4, 2), (4, 3) and (6, 3) all go in, though ticket 4 and tag 3 each appear twice"
+assert raises(sqlite3.IntegrityError, conn.execute, "INSERT INTO ticket_tags (ticket_id, tag_id) VALUES (4, 2)"), "a second link (4, 2) is refused"
+assert [c[0] for c in conn.execute("SELECT * FROM ticket_tags").description] == ["ticket_id", "tag_id"], "the table's columns are ticket_id and tag_id, in that order, and no others"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t2" data-title="Foreign keys" data-q="The setup builds &lt;code&gt;customers (customer_id INT PRIMARY KEY, name VARCHAR(100))&lt;/code&gt; with Dana Whitfield as customer 1 and Ravi Patel as customer 2. Write one &lt;code&gt;CREATE TABLE&lt;/code&gt; statement in &lt;code&gt;QUERY&lt;/code&gt; for &lt;code&gt;tickets&lt;/code&gt; with the columns &lt;code&gt;ticket_id INT PRIMARY KEY&lt;/code&gt;, &lt;code&gt;title VARCHAR(200)&lt;/code&gt; and &lt;code&gt;customer_id INT&lt;/code&gt;, where &lt;code&gt;customer_id&lt;/code&gt; is a foreign key to &lt;code&gt;customers (customer_id)&lt;/code&gt;. A ticket for customer 1 goes in, and so does a ticket with no customer, whose &lt;code&gt;customer_id&lt;/code&gt; is NULL. A ticket for customer 99 is refused, and so is deleting customer 1 while her ticket still names her.">
+<pre class="task-starter"><code>QUERY = """
+-- the tickets table, each ticket pointing at its customer
+"""</code></pre>
+<pre class="task-tests" hidden><code>import sqlite3
+conn = sqlite3.connect(":memory:")
+conn.execute("PRAGMA foreign_keys = ON")
+conn.executescript("""
+CREATE TABLE customers (
+    customer_id INT PRIMARY KEY,
+    name VARCHAR(100)
+);
+INSERT INTO customers (customer_id, name) VALUES (1, 'Dana Whitfield'), (2, 'Ravi Patel');
+""")
+sql = globals().get("QUERY_T2") or QUERY
+conn.execute(sql)
+def goes_in(statement):
+    try:
+        conn.execute(statement)
+    except sqlite3.Error:
+        return False
+    return True
+assert goes_in("INSERT INTO tickets (ticket_id, title, customer_id) VALUES (1, 'Login page returns 500', 1)") and goes_in("INSERT INTO tickets (ticket_id, title, customer_id) VALUES (3, 'Question by phone', NULL)"), "a ticket for customer 1 and a ticket with customer_id NULL both go in"
+assert raises(sqlite3.IntegrityError, conn.execute, "INSERT INTO tickets (ticket_id, title, customer_id) VALUES (2, 'Ghost ticket', 99)"), "a ticket for customer 99, who does not exist, is refused"
+assert raises(sqlite3.IntegrityError, conn.execute, "DELETE FROM customers WHERE customer_id = 1"), "deleting customer 1 while ticket 1 names her is refused"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t3" data-title="Alternate keys" data-q="Write one &lt;code&gt;CREATE TABLE&lt;/code&gt; statement in &lt;code&gt;QUERY&lt;/code&gt; for &lt;code&gt;customers&lt;/code&gt; with the columns &lt;code&gt;customer_id INT PRIMARY KEY&lt;/code&gt;, &lt;code&gt;name VARCHAR(100)&lt;/code&gt; and &lt;code&gt;email VARCHAR(255)&lt;/code&gt;, where &lt;code&gt;email&lt;/code&gt; is the alternate key: every customer has one and no two customers share it. After Dana Whitfield goes in as customer 1 with &lt;code&gt;dana@example.com&lt;/code&gt;, a second customer with that email is refused, a customer whose email is NULL is refused, and a second customer also named Dana Whitfield, with a different email, goes in.">
+<pre class="task-starter"><code>QUERY = """
+-- the customers table, with email as the alternate key
+"""</code></pre>
+<pre class="task-tests" hidden><code>import sqlite3
+conn = sqlite3.connect(":memory:")
+conn.execute("PRAGMA foreign_keys = ON")
+sql = globals().get("QUERY_T3") or QUERY
+conn.execute(sql)
+def goes_in(statement):
+    try:
+        conn.execute(statement)
+    except sqlite3.Error:
+        return False
+    return True
+goes_in("INSERT INTO customers (customer_id, name, email) VALUES (1, 'Dana Whitfield', 'dana@example.com')")
+assert raises(sqlite3.IntegrityError, conn.execute, "INSERT INTO customers (customer_id, name, email) VALUES (2, 'Ravi Patel', 'dana@example.com')"), "a second customer with dana@example.com is refused"
+assert raises(sqlite3.IntegrityError, conn.execute, "INSERT INTO customers (customer_id, name, email) VALUES (3, 'Mei Chen', NULL)"), "a customer whose email is NULL is refused"
+assert goes_in("INSERT INTO customers (customer_id, name, email) VALUES (4, 'Dana Whitfield', 'dana.w@example.com')"), "a second Dana Whitfield with a different email goes in, since two customers can share a name"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t4" data-title="Multiplicity" data-q="The setup builds &lt;code&gt;customers&lt;/code&gt; with customers 1, 2 and 3. Write one &lt;code&gt;CREATE TABLE&lt;/code&gt; statement in &lt;code&gt;QUERY&lt;/code&gt; for &lt;code&gt;billing_profiles&lt;/code&gt; with the columns &lt;code&gt;profile_id INT PRIMARY KEY&lt;/code&gt; and &lt;code&gt;customer_id INT&lt;/code&gt;, where &lt;code&gt;customer_id&lt;/code&gt; is a foreign key to &lt;code&gt;customers (customer_id)&lt;/code&gt; and each customer has at most one billing profile, a one-to-one relationship. Profile 101 for customer 1 and profile 102 for customer 2 go in. A second profile, 103, for customer 1 is refused, and so is profile 104 for customer 99, who does not exist.">
+<pre class="task-starter"><code>QUERY = """
+-- the billing_profiles table, at most one per customer
+"""</code></pre>
+<pre class="task-tests" hidden><code>import sqlite3
+conn = sqlite3.connect(":memory:")
+conn.execute("PRAGMA foreign_keys = ON")
+conn.executescript("""
+CREATE TABLE customers (
+    customer_id INT PRIMARY KEY,
+    name VARCHAR(100)
+);
+INSERT INTO customers (customer_id, name) VALUES (1, 'Dana Whitfield'), (2, 'Ravi Patel'), (3, 'Mei Chen');
+""")
+sql = globals().get("QUERY_T4") or QUERY
+conn.execute(sql)
+def goes_in(statement):
+    try:
+        conn.execute(statement)
+    except sqlite3.Error:
+        return False
+    return True
+assert goes_in("INSERT INTO billing_profiles (profile_id, customer_id) VALUES (101, 1)") and goes_in("INSERT INTO billing_profiles (profile_id, customer_id) VALUES (102, 2)"), "profile 101 for customer 1 and profile 102 for customer 2 both go in"
+assert raises(sqlite3.IntegrityError, conn.execute, "INSERT INTO billing_profiles (profile_id, customer_id) VALUES (103, 1)"), "a second profile for customer 1 is refused"
+assert raises(sqlite3.IntegrityError, conn.execute, "INSERT INTO billing_profiles (profile_id, customer_id) VALUES (104, 99)"), "a profile for customer 99, who does not exist, is refused"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t5" data-title="Constraints" data-q="Write one &lt;code&gt;CREATE TABLE&lt;/code&gt; statement in &lt;code&gt;QUERY&lt;/code&gt; for &lt;code&gt;tickets&lt;/code&gt; with the columns &lt;code&gt;ticket_id INT PRIMARY KEY&lt;/code&gt;, &lt;code&gt;title VARCHAR(200)&lt;/code&gt; and &lt;code&gt;status VARCHAR(10)&lt;/code&gt;. A status is required, is &lt;code&gt;&#x27;open&#x27;&lt;/code&gt; when an INSERT leaves the column out, and must pass &lt;code&gt;CHECK (status IN (&#x27;open&#x27;, &#x27;assigned&#x27;, &#x27;closed&#x27;))&lt;/code&gt;, where &lt;code&gt;IN&lt;/code&gt; is true when the value equals one of the listed values. A ticket inserted without a status reads back as &lt;code&gt;&#x27;open&#x27;&lt;/code&gt;. A ticket with status NULL is refused, a status of &lt;code&gt;&#x27;done&#x27;&lt;/code&gt; is refused, and &lt;code&gt;&#x27;closed&#x27;&lt;/code&gt; goes in.">
+<pre class="task-starter"><code>QUERY = """
+-- the tickets table, with a required, checked status
+"""</code></pre>
+<pre class="task-tests" hidden><code>import sqlite3
+conn = sqlite3.connect(":memory:")
+conn.execute("PRAGMA foreign_keys = ON")
+sql = globals().get("QUERY_T5") or QUERY
+conn.execute(sql)
+def goes_in(statement):
+    try:
+        conn.execute(statement)
+    except sqlite3.Error:
+        return False
+    return True
+goes_in("INSERT INTO tickets (ticket_id, title) VALUES (1, 'Login page returns 500')")
+assert conn.execute("SELECT status FROM tickets WHERE ticket_id = 1").fetchall() == [("open",)], "a ticket inserted without a status reads back with status 'open'"
+assert raises(sqlite3.IntegrityError, conn.execute, "INSERT INTO tickets (ticket_id, title, status) VALUES (2, 'Export is missing rows', NULL)"), "a ticket inserted with status NULL is refused"
+assert raises(sqlite3.IntegrityError, conn.execute, "INSERT INTO tickets (ticket_id, title, status) VALUES (3, 'Checkout button frozen', 'done')") and goes_in("INSERT INTO tickets (ticket_id, title, status) VALUES (4, 'Invoice PDF is blank', 'closed')"), "a status of 'done' is refused and 'closed' goes in"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t6" data-title="CASCADE" data-q="The setup builds &lt;code&gt;tickets&lt;/code&gt; with tickets 1 and 4. Write one &lt;code&gt;CREATE TABLE&lt;/code&gt; statement in &lt;code&gt;QUERY&lt;/code&gt; for &lt;code&gt;ticket_events&lt;/code&gt; with the columns &lt;code&gt;event_id INT PRIMARY KEY&lt;/code&gt;, &lt;code&gt;ticket_id INT NOT NULL&lt;/code&gt; and &lt;code&gt;kind VARCHAR(20) NOT NULL&lt;/code&gt;, where &lt;code&gt;ticket_id&lt;/code&gt; is a foreign key to &lt;code&gt;tickets (ticket_id)&lt;/code&gt; and a ticket&#x27;s events are deleted with the ticket. After events 1 and 2 for ticket 1 and event 3 for ticket 4 go in, deleting ticket 1 goes through and leaves only event 3. An event for ticket 99, which does not exist, is refused.">
+<pre class="task-starter"><code>QUERY = """
+-- the ticket_events table, whose rows go with their ticket
+"""</code></pre>
+<pre class="task-tests" hidden><code>import sqlite3
+conn = sqlite3.connect(":memory:")
+conn.execute("PRAGMA foreign_keys = ON")
+conn.executescript("""
+CREATE TABLE tickets (
+    ticket_id INT PRIMARY KEY,
+    title VARCHAR(200)
+);
+INSERT INTO tickets (ticket_id, title) VALUES (1, 'Login page returns 500'), (4, 'Checkout button frozen');
+""")
+sql = globals().get("QUERY_T6") or QUERY
+conn.execute(sql)
+def goes_in(statement):
+    try:
+        conn.execute(statement)
+    except sqlite3.Error:
+        return False
+    return True
+goes_in("INSERT INTO ticket_events (event_id, ticket_id, kind) VALUES (1, 1, 'opened'), (2, 1, 'assigned'), (3, 4, 'opened')")
+assert goes_in("DELETE FROM tickets WHERE ticket_id = 1"), "deleting ticket 1 goes through while it still has events"
+assert sorted(conn.execute("SELECT event_id, ticket_id, kind FROM ticket_events").fetchall()) == [(3, 4, "opened")], "after the delete only ticket 4's event is left"
+assert raises(sqlite3.IntegrityError, conn.execute, "INSERT INTO ticket_events (event_id, ticket_id, kind) VALUES (5, 99, 'opened')"), "an event for ticket 99, which does not exist, is refused"</code></pre>
+        </div>
+      </section>
+
       <section class="step" data-diagram="0" data-step="7">
         <div class="tag">Check yourself</div>
         <h2>Check yourself</h2>

@@ -1,0 +1,91 @@
+{
+  "day": "w03d1",
+  "page": "docs/weeks/week-03/day-1-sql-and-rdbms-intro.html",
+  "assessed": "2026-10-23",
+  "verdict": "partial",
+  "summary": "The day lends itself to two one-statement SQL tasks, fixing the column types of a CREATE TABLE and writing a rerunnable CREATE TABLE from a column list, while its Docker, RDBMS, SQL-prompt, DESCRIBE and ERD steps are tools, concepts, MySQL-only statements or diagrams read aloud.",
+  "steps": [
+    {
+      "step": 0,
+      "title": "MySQL in a Docker container",
+      "suitable": false,
+      "reason": "The step teaches a tool: docker pull, run, exec and volumes, and the mysql client. None of it is a SQL statement, and the page has no terminal or Docker.",
+      "task": null
+    },
+    {
+      "step": 1,
+      "title": "Why a relational database",
+      "suitable": false,
+      "reason": "The step argues a concept (whole-file saves, one fact in one place, rules the server enforces, many writers), and its one SQL-shaped idea, strict mode refusing a value that does not fit, is behaviour SQLite does not have, so a check would fake it.",
+      "task": null
+    },
+    {
+      "step": 2,
+      "title": "What SQL is",
+      "suitable": false,
+      "reason": "The step teaches what kind of language SQL is, the semicolon at the mysql> prompt and a house style; those are client behaviour and conventions, and its only statements, SELECT 1 + 1 and SELECT VERSION(), have no wrong answer but not writing them (VERSION() is also MySQL-only and a function deferred to Thursday).",
+      "task": null
+    },
+    {
+      "step": 3,
+      "title": "Schemas and table structure",
+      "suitable": false,
+      "reason": "The step teaches vocabulary (schema, row, column, field, NULL) and statements SQLite lacks: CREATE DATABASE, USE, SHOW TABLES, DESCRIBE, SHOW CREATE TABLE and information_schema. The critic's SQL-days rule keeps DESCRIBE and SHOW at none until ix-sql lands.",
+      "task": null
+    },
+    {
+      "step": 4,
+      "title": "SQL data types",
+      "suitable": true,
+      "reason": "Type choice shows up in a CREATE TABLE's declared types, which SQLite keeps exactly as written and a check reads back through pragma_table_info; the page names the slips (FLOAT for money, CHAR for a short value whose length varies, TIMESTAMP for times written with no zone). SQLite does not enforce lengths, so no check can test a value being refused, only the declared type text.",
+      "task": "t1"
+    },
+    {
+      "step": 5,
+      "title": "Data modelling and reading an ERD",
+      "suitable": false,
+      "reason": "The step teaches modelling on paper and reading boxes and crow's feet aloud; turning a box into a table is step 6's CREATE TABLE, so a task here would repeat t2, and its slip (reading a line backwards) is a sentence said aloud, not a statement's result.",
+      "task": null
+    },
+    {
+      "step": 6,
+      "title": "Defining the schema with CREATE TABLE",
+      "suitable": true,
+      "reason": "A CREATE TABLE IF NOT EXISTS with plain types runs unchanged on SQLite 3.39 and MySQL 9.7, and its effect is checkable: the table's columns and declared types read back, and running the statement a second time raises no error. The page's slips map to checks: leaving out IF NOT EXISTS fails the rerun, a comma after the last column is refused outright, and VARCHAR(255) for every text column fails the type check. The shell redirect and DESCRIBE parts of the step stay out.",
+      "task": "t2"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "title": "SQL data types",
+      "step": 4,
+      "idea": "A fix-it task: the starter holds a CREATE TABLE for the desk's support plans, plans (plan_code, name, monthly_fee, created_at), with the wrong type on each column (VARCHAR(255) for a code that is always three letters such as PRO, CHAR(3) for a name whose length varies, FLOAT for the fee, TIMESTAMP for a time written with no zone). The reader changes only the types, to CHAR(3), VARCHAR(50), DECIMAL(8,2) and DATETIME, as the task text describes each column.",
+      "checks": [
+        "plan_code is declared CHAR(3), because every code has exactly three letters; leaving it VARCHAR(255) fails.",
+        "name is declared VARCHAR(50); keeping CHAR because names are short fails, since their length varies.",
+        "monthly_fee is declared DECIMAL(8,2); FLOAT or DOUBLE for money fails, because those types are approximate.",
+        "created_at is declared DATETIME; TIMESTAMP fails, because it shifts zoneless times through UTC and stops in 2038."
+      ],
+      "approved": true,
+      "q": "The starter's <code>CREATE TABLE</code> for the desk's support plans gives every column of <code>plans</code> the wrong type. Change only the types, keeping the table and column names as they are, so that each column fits what it holds: <code>plan_code</code> is always exactly three letters, such as <code>PRO</code>; <code>name</code> is text of up to 50 characters whose length varies, such as <code>Basic</code> or <code>Business</code>; <code>monthly_fee</code> is money, exact to the cent and never more than 999999.99; <code>created_at</code> is a date and a time written with no time zone, such as <code>2026-10-26 09:00:00</code>. The checks run your statement on an empty database and read back the type declared for each column.",
+      "starter": "QUERY = \"\"\"\nCREATE TABLE plans (\n    plan_code VARCHAR(255),\n    name CHAR(3),\n    monthly_fee FLOAT,\n    created_at TIMESTAMP\n);\n\"\"\"",
+      "tests": "import sqlite3\nconn = sqlite3.connect(\":memory:\")\nconn.execute(\"PRAGMA foreign_keys = ON\")\nconn.execute(QUERY)\ntypes = {row[1]: row[2].upper().replace(\" \", \"\") for row in conn.execute(\"PRAGMA table_info(plans)\")}\nassert types.get(\"plan_code\") == \"CHAR(3)\", \"plan_code has the type for a value that is always three characters long\"\nassert types.get(\"name\") == \"VARCHAR(50)\", \"name has the type for text whose length varies, up to 50 characters\"\nassert types.get(\"monthly_fee\") == \"DECIMAL(8,2)\", \"monthly_fee has an exact type that holds money up to 999999.99\"\nassert types.get(\"created_at\") == \"DATETIME\", \"created_at keeps a date and time with no time zone as written, past 2038\""
+    },
+    {
+      "id": "t2",
+      "title": "Defining schema",
+      "step": 6,
+      "idea": "The reader writes one CREATE TABLE statement for a new desk table, teams, from a column list in the task text: team_id INT, name VARCHAR(50), lead_agent_id INT, in that order, with no keys or rules, so the schema file can be rerun. The model answer is CREATE TABLE IF NOT EXISTS teams (team_id INT, name VARCHAR(50), lead_agent_id INT); written one column per line.",
+      "checks": [
+        "The teams table has the columns team_id, name and lead_agent_id, in that order, with the declared types INT, VARCHAR(50) and INT; VARCHAR(255) for name fails.",
+        "Running the same statement a second time raises no error; a statement without IF NOT EXISTS fails.",
+        "No column of teams is a key; adding PRIMARY KEY to team_id because the ERD marks it fails, since today's tables carry types only."
+      ],
+      "approved": false,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    }
+  ]
+}

@@ -1084,6 +1084,259 @@ conn.commit()</code></pre>
         </div>
       </section>
 
+      <section class="practice" id="practice" hidden>
+        <div class="tag">Practice</div>
+        <h2>Practice</h2>
+        <div class="ix-task" data-id="t1" data-title="Clauses" data-q="Inside the quotes of &lt;code&gt;UNASSIGNED_QUERY&lt;/code&gt;, write one SELECT on &lt;code&gt;tickets&lt;/code&gt; that returns two columns: &lt;code&gt;priority&lt;/code&gt;, and the number of tickets under that priority that have no agent. Keep only the priorities with at least two such tickets, and put the larger count first. The checks run it on the page&#x27;s six tickets plus two more open tickets with no agent, one &lt;code&gt;normal&lt;/code&gt; and one &lt;code&gt;low&lt;/code&gt;, so the rows that come back are &lt;code&gt;(&#x27;normal&#x27;, 3)&lt;/code&gt; and then &lt;code&gt;(&#x27;low&#x27;, 2)&lt;/code&gt;.">
+<pre class="task-starter"><code>UNASSIGNED_QUERY = """
+-- each priority and its count of tickets with no agent
+"""</code></pre>
+<pre class="task-tests" hidden><code>import sqlite3
+conn = sqlite3.connect(":memory:")
+conn.execute("PRAGMA foreign_keys = ON")
+conn.executescript("""
+CREATE TABLE priorities (priority VARCHAR(10) PRIMARY KEY, sla_hours INT NOT NULL);
+CREATE TABLE customers (customer_id INT PRIMARY KEY, name VARCHAR(100) NOT NULL, email VARCHAR(255) NOT NULL UNIQUE);
+CREATE TABLE agents (agent_id INT PRIMARY KEY, name VARCHAR(50) NOT NULL);
+CREATE TABLE tickets (
+    ticket_id INT PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    priority VARCHAR(10) NOT NULL REFERENCES priorities (priority),
+    status VARCHAR(10) NOT NULL DEFAULT 'open',
+    customer_id INT NOT NULL REFERENCES customers (customer_id),
+    agent_id INT REFERENCES agents (agent_id),
+    opened_at DATETIME NOT NULL,
+    closed_at DATETIME
+);
+INSERT INTO priorities VALUES ('high', 4), ('normal', 24), ('low', 72);
+INSERT INTO customers VALUES
+    (1, 'Dana Whitfield', 'dana@example.com'), (2, 'Ravi Patel', 'ravi@example.com'),
+    (3, 'Mei Chen', 'mei@example.com'), (4, 'Omar Haddad', 'omar@example.com');
+INSERT INTO agents VALUES (1, 'Priya'), (2, 'Marco'), (3, 'Sam'), (4, 'Lee');
+INSERT INTO tickets VALUES
+    (1, 'Login page returns 500', 'high', 'closed', 1, NULL, '2026-10-18 08:00:00', '2026-10-18 11:00:00'),
+    (2, 'Invoice PDF is blank', 'normal', 'closed', 2, NULL, '2026-10-17 12:00:00', '2026-10-18 18:00:00'),
+    (3, 'Typo on pricing page', 'normal', 'closed', 1, NULL, '2026-10-18 18:00:00', '2026-10-19 04:00:00'),
+    (4, 'Checkout button frozen', 'high', 'assigned', 3, 1, '2026-10-19 08:00:00', NULL),
+    (5, 'Export is missing rows', 'normal', 'assigned', 2, 2, '2026-10-18 12:00:00', NULL),
+    (6, 'Add dark mode', 'low', 'open', 3, NULL, '2026-10-19 12:00:00', NULL),
+    (7, 'Dark mode for emails', 'low', 'open', 4, NULL, '2026-10-20 09:00:00', NULL),
+    (8, 'Search ignores accents', 'normal', 'open', 4, NULL, '2026-10-20 10:00:00', NULL);
+""")
+cur = conn.execute(UNASSIGNED_QUERY)
+rows = cur.fetchall()
+cols = [c[0] for c in cur.description]
+assert dict(rows).get("normal") == 3, "counts only the tickets that have no agent"
+assert sorted(rows) == [("low", 2), ("normal", 3)], "keeps only the priorities with at least two tickets that have no agent"
+assert rows == [("normal", 3), ("low", 2)], "puts the larger count first"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t2" data-title="Functions" data-q="Inside the quotes of &lt;code&gt;STATUS_QUERY&lt;/code&gt;, write one SELECT on &lt;code&gt;tickets&lt;/code&gt; that returns one row per status with three columns: &lt;code&gt;status&lt;/code&gt;, the number of tickets with that status named &lt;code&gt;tickets&lt;/code&gt;, and the number of those tickets that have an agent named &lt;code&gt;assigned&lt;/code&gt;, ordered by status. On the page&#x27;s seeded tickets the &lt;code&gt;closed&lt;/code&gt; row is &lt;code&gt;(&#x27;closed&#x27;, 3, 0)&lt;/code&gt;.">
+<pre class="task-starter"><code>STATUS_QUERY = """
+-- per status: the status, its ticket count, and how many of them have an agent
+"""</code></pre>
+<pre class="task-tests" hidden><code>import sqlite3
+conn = sqlite3.connect(":memory:")
+conn.execute("PRAGMA foreign_keys = ON")
+conn.executescript("""
+CREATE TABLE priorities (priority VARCHAR(10) PRIMARY KEY, sla_hours INT NOT NULL);
+CREATE TABLE customers (customer_id INT PRIMARY KEY, name VARCHAR(100) NOT NULL, email VARCHAR(255) NOT NULL UNIQUE);
+CREATE TABLE agents (agent_id INT PRIMARY KEY, name VARCHAR(50) NOT NULL);
+CREATE TABLE tickets (
+    ticket_id INT PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    priority VARCHAR(10) NOT NULL REFERENCES priorities (priority),
+    status VARCHAR(10) NOT NULL DEFAULT 'open',
+    customer_id INT NOT NULL REFERENCES customers (customer_id),
+    agent_id INT REFERENCES agents (agent_id),
+    opened_at DATETIME NOT NULL,
+    closed_at DATETIME
+);
+INSERT INTO priorities VALUES ('high', 4), ('normal', 24), ('low', 72);
+INSERT INTO customers VALUES
+    (1, 'Dana Whitfield', 'dana@example.com'), (2, 'Ravi Patel', 'ravi@example.com'),
+    (3, 'Mei Chen', 'mei@example.com'), (4, 'Omar Haddad', 'omar@example.com');
+INSERT INTO agents VALUES (1, 'Priya'), (2, 'Marco'), (3, 'Sam'), (4, 'Lee');
+INSERT INTO tickets VALUES
+    (1, 'Login page returns 500', 'high', 'closed', 1, NULL, '2026-10-18 08:00:00', '2026-10-18 11:00:00'),
+    (2, 'Invoice PDF is blank', 'normal', 'closed', 2, NULL, '2026-10-17 12:00:00', '2026-10-18 18:00:00'),
+    (3, 'Typo on pricing page', 'normal', 'closed', 1, NULL, '2026-10-18 18:00:00', '2026-10-19 04:00:00'),
+    (4, 'Checkout button frozen', 'high', 'assigned', 3, 1, '2026-10-19 08:00:00', NULL),
+    (5, 'Export is missing rows', 'normal', 'assigned', 2, 2, '2026-10-18 12:00:00', NULL),
+    (6, 'Add dark mode', 'low', 'open', 3, NULL, '2026-10-19 12:00:00', NULL);
+""")
+cur = conn.execute(STATUS_QUERY)
+rows = cur.fetchall()
+cols = [c[0] for c in cur.description]
+assert cols == ["status", "tickets", "assigned"], "the columns are named status, tickets and assigned"
+assert [(r[0], r[2]) for r in rows] == [("assigned", 2), ("closed", 0), ("open", 0)], "assigned counts only the tickets of the status that have an agent"
+assert [(r[0], r[1]) for r in rows] == [("assigned", 2), ("closed", 3), ("open", 1)], "tickets counts every ticket of the status, one row per status in status order"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t3" data-title="Subqueries" data-q="Inside the quotes of &lt;code&gt;NEVER_CLOSED_QUERY&lt;/code&gt;, write one SELECT on &lt;code&gt;agents&lt;/code&gt; that returns the &lt;code&gt;name&lt;/code&gt; of every agent who has closed no ticket, using a subquery on &lt;code&gt;tickets&lt;/code&gt;. An agent has closed a ticket when a ticket with &lt;code&gt;status&lt;/code&gt; &lt;code&gt;&#x27;closed&#x27;&lt;/code&gt; carries that agent&#x27;s &lt;code&gt;agent_id&lt;/code&gt;. The checks use the page&#x27;s desk with one change: Marco closed ticket 2 and Sam closed ticket 3, while ticket 1 is still closed with no agent. Priya, who holds only ticket 4, which is not closed, and Lee, who holds no ticket, come back; the order does not matter.">
+<pre class="task-starter"><code>NEVER_CLOSED_QUERY = """
+-- the names of the agents who have closed no ticket
+"""</code></pre>
+<pre class="task-tests" hidden><code>import sqlite3
+conn = sqlite3.connect(":memory:")
+conn.execute("PRAGMA foreign_keys = ON")
+conn.executescript("""
+CREATE TABLE priorities (priority VARCHAR(10) PRIMARY KEY, sla_hours INT NOT NULL);
+CREATE TABLE customers (customer_id INT PRIMARY KEY, name VARCHAR(100) NOT NULL, email VARCHAR(255) NOT NULL UNIQUE);
+CREATE TABLE agents (agent_id INT PRIMARY KEY, name VARCHAR(50) NOT NULL);
+CREATE TABLE tickets (
+    ticket_id INT PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    priority VARCHAR(10) NOT NULL REFERENCES priorities (priority),
+    status VARCHAR(10) NOT NULL DEFAULT 'open',
+    customer_id INT NOT NULL REFERENCES customers (customer_id),
+    agent_id INT REFERENCES agents (agent_id),
+    opened_at DATETIME NOT NULL,
+    closed_at DATETIME
+);
+INSERT INTO priorities VALUES ('high', 4), ('normal', 24), ('low', 72);
+INSERT INTO customers VALUES
+    (1, 'Dana Whitfield', 'dana@example.com'), (2, 'Ravi Patel', 'ravi@example.com'),
+    (3, 'Mei Chen', 'mei@example.com'), (4, 'Omar Haddad', 'omar@example.com');
+INSERT INTO agents VALUES (1, 'Priya'), (2, 'Marco'), (3, 'Sam'), (4, 'Lee');
+INSERT INTO tickets VALUES
+    (1, 'Login page returns 500', 'high', 'closed', 1, NULL, '2026-10-18 08:00:00', '2026-10-18 11:00:00'),
+    (2, 'Invoice PDF is blank', 'normal', 'closed', 2, 2, '2026-10-17 12:00:00', '2026-10-18 18:00:00'),
+    (3, 'Typo on pricing page', 'normal', 'closed', 1, 3, '2026-10-18 18:00:00', '2026-10-19 04:00:00'),
+    (4, 'Checkout button frozen', 'high', 'assigned', 3, 1, '2026-10-19 08:00:00', NULL),
+    (5, 'Export is missing rows', 'normal', 'assigned', 2, 2, '2026-10-18 12:00:00', NULL),
+    (6, 'Add dark mode', 'low', 'open', 3, NULL, '2026-10-19 12:00:00', NULL);
+""")
+cur = conn.execute(NEVER_CLOSED_QUERY)
+rows = cur.fetchall()
+cols = [c[0] for c in cur.description]
+assert ("Lee",) in rows, "an agent with no ticket at all is in the result"
+assert ("Priya",) in rows, "an agent who holds a ticket that is not closed, and has closed none, is in the result"
+assert sorted(rows) == [("Lee",), ("Priya",)], "the result is exactly the agents who have closed no ticket"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t4" data-title="Joins" data-q="Inside the quotes of &lt;code&gt;CLOSED_QUERY&lt;/code&gt;, write one SELECT that joins &lt;code&gt;tickets&lt;/code&gt; to &lt;code&gt;customers&lt;/code&gt; and returns, for each closed ticket, its &lt;code&gt;ticket_id&lt;/code&gt;, its &lt;code&gt;title&lt;/code&gt; and its customer&#x27;s &lt;code&gt;name&lt;/code&gt; under the alias &lt;code&gt;customer&lt;/code&gt;, in that column order, ordered by &lt;code&gt;ticket_id&lt;/code&gt;. On the page&#x27;s seeded desk the first row is &lt;code&gt;(1, &#x27;Login page returns 500&#x27;, &#x27;Dana Whitfield&#x27;)&lt;/code&gt;.">
+<pre class="task-starter"><code>CLOSED_QUERY = """
+-- each closed ticket with its customer's name
+"""</code></pre>
+<pre class="task-tests" hidden><code>import sqlite3
+conn = sqlite3.connect(":memory:")
+conn.execute("PRAGMA foreign_keys = ON")
+conn.executescript("""
+CREATE TABLE priorities (priority VARCHAR(10) PRIMARY KEY, sla_hours INT NOT NULL);
+CREATE TABLE customers (customer_id INT PRIMARY KEY, name VARCHAR(100) NOT NULL, email VARCHAR(255) NOT NULL UNIQUE);
+CREATE TABLE agents (agent_id INT PRIMARY KEY, name VARCHAR(50) NOT NULL);
+CREATE TABLE tickets (
+    ticket_id INT PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    priority VARCHAR(10) NOT NULL REFERENCES priorities (priority),
+    status VARCHAR(10) NOT NULL DEFAULT 'open',
+    customer_id INT NOT NULL REFERENCES customers (customer_id),
+    agent_id INT REFERENCES agents (agent_id),
+    opened_at DATETIME NOT NULL,
+    closed_at DATETIME
+);
+INSERT INTO priorities VALUES ('high', 4), ('normal', 24), ('low', 72);
+INSERT INTO customers VALUES
+    (1, 'Dana Whitfield', 'dana@example.com'), (2, 'Ravi Patel', 'ravi@example.com'),
+    (3, 'Mei Chen', 'mei@example.com'), (4, 'Omar Haddad', 'omar@example.com');
+INSERT INTO agents VALUES (1, 'Priya'), (2, 'Marco'), (3, 'Sam'), (4, 'Lee');
+INSERT INTO tickets VALUES
+    (1, 'Login page returns 500', 'high', 'closed', 1, NULL, '2026-10-18 08:00:00', '2026-10-18 11:00:00'),
+    (2, 'Invoice PDF is blank', 'normal', 'closed', 2, NULL, '2026-10-17 12:00:00', '2026-10-18 18:00:00'),
+    (3, 'Typo on pricing page', 'normal', 'closed', 1, NULL, '2026-10-18 18:00:00', '2026-10-19 04:00:00'),
+    (4, 'Checkout button frozen', 'high', 'assigned', 3, 1, '2026-10-19 08:00:00', NULL),
+    (5, 'Export is missing rows', 'normal', 'assigned', 2, 2, '2026-10-18 12:00:00', NULL),
+    (6, 'Add dark mode', 'low', 'open', 3, NULL, '2026-10-19 12:00:00', NULL);
+""")
+cur = conn.execute(CLOSED_QUERY)
+rows = cur.fetchall()
+cols = [c[0] for c in cur.description]
+assert rows == [(1, "Login page returns 500", "Dana Whitfield"), (2, "Invoice PDF is blank", "Ravi Patel"), (3, "Typo on pricing page", "Dana Whitfield")], "each closed ticket comes back once, with its own customer, in ticket_id order"
+assert sorted({r[0] for r in rows}) == [1, 2, 3], "only the closed tickets come back"
+assert cols == ["ticket_id", "title", "customer"], "the columns are ticket_id, title and customer, in that order"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t5" data-title="Outer joins" data-q="Inside the quotes of &lt;code&gt;OPEN_COUNT_QUERY&lt;/code&gt;, write one SELECT that returns every customer&#x27;s &lt;code&gt;name&lt;/code&gt; and the number of their tickets that are not closed under the alias &lt;code&gt;open_tickets&lt;/code&gt;, ordered by &lt;code&gt;customer_id&lt;/code&gt;, with 0 for a customer who has none. On the page&#x27;s seeded desk Dana, whose tickets are all closed, and Omar, who has no ticket, both read 0.">
+<pre class="task-starter"><code>OPEN_COUNT_QUERY = """
+-- every customer's name and how many of their tickets are not closed
+"""</code></pre>
+<pre class="task-tests" hidden><code>import sqlite3
+conn = sqlite3.connect(":memory:")
+conn.execute("PRAGMA foreign_keys = ON")
+conn.executescript("""
+CREATE TABLE priorities (priority VARCHAR(10) PRIMARY KEY, sla_hours INT NOT NULL);
+CREATE TABLE customers (customer_id INT PRIMARY KEY, name VARCHAR(100) NOT NULL, email VARCHAR(255) NOT NULL UNIQUE);
+CREATE TABLE agents (agent_id INT PRIMARY KEY, name VARCHAR(50) NOT NULL);
+CREATE TABLE tickets (
+    ticket_id INT PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    priority VARCHAR(10) NOT NULL REFERENCES priorities (priority),
+    status VARCHAR(10) NOT NULL DEFAULT 'open',
+    customer_id INT NOT NULL REFERENCES customers (customer_id),
+    agent_id INT REFERENCES agents (agent_id),
+    opened_at DATETIME NOT NULL,
+    closed_at DATETIME
+);
+INSERT INTO priorities VALUES ('high', 4), ('normal', 24), ('low', 72);
+INSERT INTO customers VALUES
+    (1, 'Dana Whitfield', 'dana@example.com'), (2, 'Ravi Patel', 'ravi@example.com'),
+    (3, 'Mei Chen', 'mei@example.com'), (4, 'Omar Haddad', 'omar@example.com');
+INSERT INTO agents VALUES (1, 'Priya'), (2, 'Marco'), (3, 'Sam'), (4, 'Lee');
+INSERT INTO tickets VALUES
+    (1, 'Login page returns 500', 'high', 'closed', 1, NULL, '2026-10-18 08:00:00', '2026-10-18 11:00:00'),
+    (2, 'Invoice PDF is blank', 'normal', 'closed', 2, NULL, '2026-10-17 12:00:00', '2026-10-18 18:00:00'),
+    (3, 'Typo on pricing page', 'normal', 'closed', 1, NULL, '2026-10-18 18:00:00', '2026-10-19 04:00:00'),
+    (4, 'Checkout button frozen', 'high', 'assigned', 3, 1, '2026-10-19 08:00:00', NULL),
+    (5, 'Export is missing rows', 'normal', 'assigned', 2, 2, '2026-10-18 12:00:00', NULL),
+    (6, 'Add dark mode', 'low', 'open', 3, NULL, '2026-10-19 12:00:00', NULL);
+""")
+cur = conn.execute(OPEN_COUNT_QUERY)
+rows = cur.fetchall()
+cols = [c[0] for c in cur.description]
+assert ("Omar Haddad", 0) in rows, "a customer with no ticket appears with 0"
+assert ("Dana Whitfield", 0) in rows, "a customer whose tickets are all closed appears with 0"
+assert [r[1] for r in rows] == [0, 1, 2, 0], "open_tickets counts each customer's tickets that are not closed, in customer_id order"
+assert cols == ["name", "open_tickets"], "the columns are name and open_tickets"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t6" data-title="CRUD" data-q="Inside the quotes of &lt;code&gt;ESCALATE_UPDATE&lt;/code&gt;, write one UPDATE on &lt;code&gt;tickets&lt;/code&gt; that sets &lt;code&gt;priority&lt;/code&gt; to &lt;code&gt;&#x27;high&#x27;&lt;/code&gt; on every ticket that has no agent and is not closed, and leaves every other ticket as it was. On the page&#x27;s seeded desk only ticket 6 changes, from &lt;code&gt;&#x27;low&#x27;&lt;/code&gt; to &lt;code&gt;&#x27;high&#x27;&lt;/code&gt;; the checks read every ticket&#x27;s priority back with a SELECT afterwards.">
+<pre class="task-starter"><code>ESCALATE_UPDATE = """
+-- raise to high every ticket that has no agent and is not closed
+"""</code></pre>
+<pre class="task-tests" hidden><code>import sqlite3
+conn = sqlite3.connect(":memory:")
+conn.execute("PRAGMA foreign_keys = ON")
+conn.executescript("""
+CREATE TABLE priorities (priority VARCHAR(10) PRIMARY KEY, sla_hours INT NOT NULL);
+CREATE TABLE customers (customer_id INT PRIMARY KEY, name VARCHAR(100) NOT NULL, email VARCHAR(255) NOT NULL UNIQUE);
+CREATE TABLE agents (agent_id INT PRIMARY KEY, name VARCHAR(50) NOT NULL);
+CREATE TABLE tickets (
+    ticket_id INT PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    priority VARCHAR(10) NOT NULL REFERENCES priorities (priority),
+    status VARCHAR(10) NOT NULL DEFAULT 'open',
+    customer_id INT NOT NULL REFERENCES customers (customer_id),
+    agent_id INT REFERENCES agents (agent_id),
+    opened_at DATETIME NOT NULL,
+    closed_at DATETIME
+);
+INSERT INTO priorities VALUES ('high', 4), ('normal', 24), ('low', 72);
+INSERT INTO customers VALUES
+    (1, 'Dana Whitfield', 'dana@example.com'), (2, 'Ravi Patel', 'ravi@example.com'),
+    (3, 'Mei Chen', 'mei@example.com'), (4, 'Omar Haddad', 'omar@example.com');
+INSERT INTO agents VALUES (1, 'Priya'), (2, 'Marco'), (3, 'Sam'), (4, 'Lee');
+INSERT INTO tickets VALUES
+    (1, 'Login page returns 500', 'high', 'closed', 1, NULL, '2026-10-18 08:00:00', '2026-10-18 11:00:00'),
+    (2, 'Invoice PDF is blank', 'normal', 'closed', 2, NULL, '2026-10-17 12:00:00', '2026-10-18 18:00:00'),
+    (3, 'Typo on pricing page', 'normal', 'closed', 1, NULL, '2026-10-18 18:00:00', '2026-10-19 04:00:00'),
+    (4, 'Checkout button frozen', 'high', 'assigned', 3, 1, '2026-10-19 08:00:00', NULL),
+    (5, 'Export is missing rows', 'normal', 'assigned', 2, 2, '2026-10-18 12:00:00', NULL),
+    (6, 'Add dark mode', 'low', 'open', 3, NULL, '2026-10-19 12:00:00', NULL);
+""")
+conn.execute(ESCALATE_UPDATE)
+after = dict(conn.execute("SELECT ticket_id, priority FROM tickets").fetchall())
+assert after[6] == "high", "the ticket that has no agent and is not closed ends at high"
+assert [after[4], after[5]] == ["high", "normal"], "the tickets that have an agent keep their priority"
+assert [after[1], after[2], after[3]] == ["high", "normal", "normal"], "the closed tickets with no agent keep their priority"</code></pre>
+        </div>
+      </section>
+
       <section class="step" data-diagram="0" data-step="8">
         <div class="tag">Check yourself</div>
         <h2>Check yourself</h2>

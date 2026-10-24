@@ -1,0 +1,68 @@
+{
+  "day": "w03d5",
+  "page": "docs/weeks/week-03/day-5-views-procedures-and-indexes.html",
+  "assessed": "2026-10-23",
+  "verdict": "partial",
+  "summary": "The day lends itself to one SQL task, a CREATE VIEW over the desk's tables whose column names, rows and live link to the tickets table a SELECT can read back in sqlite3; triggers, procedures, functions and EXPLAIN are MySQL syntax or MySQL behaviour that SQLite 3.39 does not run unchanged, and the review is a recap with connector, Docker and pytest code.",
+  "steps": [
+    {
+      "step": 0,
+      "title": "Triggers: SQL that runs when a row changes",
+      "suitable": false,
+      "reason": "Triggers are on the critic's list of steps that stay none until ix-sql lands: the page's trigger needs DELIMITER, an IF block, the NULL-safe <=> and CONCAT, none of which SQLite runs unchanged. A lone SELECT on NULL <=> NULL would also fail on SQLite and would practise an operator, not the trigger the step teaches.",
+      "task": null
+    },
+    {
+      "step": 1,
+      "title": "Views: a saved query with a name",
+      "suitable": true,
+      "reason": "CREATE VIEW over a join with aliases runs unchanged on SQLite 3.39 and MySQL 9.7, and a SELECT from the view shows its column names and rows, so the page's points become checks: aliases name the view's columns, a NULL test needs IS NULL, and a view holds no rows of its own and follows the table. The task stays off open_board (the walkthrough's view, which uses CONCAT and DATE_ADD) and the exercise's library overdue_loans.",
+      "task": "t1"
+    },
+    {
+      "step": 2,
+      "title": "Stored procedures: a unit of work kept in the database",
+      "suitable": false,
+      "reason": "Stored procedures, CALL, IN and OUT parameters, DELIMITER and callproc are on the critic's list of steps that stay none until ix-sql lands: SQLite has no CREATE PROCEDURE, so no statement of this step runs in the page's sqlite3.",
+      "task": null
+    },
+    {
+      "step": 3,
+      "title": "User-defined functions: one value, used inside a query",
+      "suitable": false,
+      "reason": "Stored functions are on the critic's list of steps that stay none until ix-sql lands: SQLite has no CREATE FUNCTION, and the step's mistakes (a missing DETERMINISTIC refused with error 1418, NULL from TIMESTAMPDIFF) are MySQL behaviour SQLite cannot show.",
+      "task": null
+    },
+    {
+      "step": 4,
+      "title": "Indexes: finding rows without reading them all",
+      "suitable": false,
+      "reason": "The step's evidence is the EXPLAIN plan reading Table scan or Index lookup, and EXPLAIN is on the critic's list of steps that stay none. A CREATE INDEX changes no rows a SELECT returns, so a check could only read SQLite's own catalog, which the page never teaches, and the exercise already checks idx_loans_due_on and its plan.",
+      "task": null
+    },
+    {
+      "step": 5,
+      "title": "Review: the week's desk in one database",
+      "suitable": false,
+      "reason": "The review recaps the week and the choice between trigger, view, procedure, function and index, a judgement the Check yourself questions practise. Its code is a placeholder query through mysql-connector-python, a docker exec rebuild and a pytest fixture, none of which is one SQL statement the page's sqlite3 can run.",
+      "task": null
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "title": "Views",
+      "step": 1,
+      "idea": "The reader writes one CREATE VIEW statement for unassigned_queue: the tickets with status 'open' and no agent, joined to customers, with the columns ticket_id, title, priority and customer (the customer's name under that alias), ordered by ticket_id. On the page's six tickets plus ticket 7 'Reset link expired' (normal, Omar Haddad, open, no agent, as step 0 inserts it), SELECT * FROM unassigned_queue returns (6, 'Add dark mode', 'low', 'Mei Chen') and (7, 'Reset link expired', 'normal', 'Omar Haddad'), and assigning ticket 6 an agent with an UPDATE drops it from the next read.",
+      "checks": [
+        "SELECT * FROM unassigned_queue has the columns ticket_id, title, priority, customer in that order; leaving out AS customer names the last column name instead.",
+        "The view returns exactly the open tickets with no agent, in ticket_id order; writing agent_id = NULL in place of agent_id IS NULL returns no rows, and dropping the status test lets a closed ticket through.",
+        "After an UPDATE gives ticket 6 an agent, a second SELECT from the view no longer returns it; a CREATE TABLE ... AS SELECT copy keeps the old row, because only a view runs its query on every read."
+      ],
+      "approved": true,
+      "q": "Write one <code>CREATE VIEW</code> statement, inside the quotes of <code>QUERY</code>, that makes a view named <code>unassigned_queue</code>: the tickets whose <code>status</code> is <code>'open'</code> and whose <code>agent_id</code> is NULL, joined to <code>customers</code> on <code>customer_id</code>. The view's columns are <code>ticket_id</code>, <code>title</code>, <code>priority</code> and <code>customer</code> (the customer's <code>name</code> under that alias), in that order, and its rows come in <code>ticket_id</code> order. The checks build the desk's <code>priorities</code>, <code>customers</code>, <code>agents</code> and <code>tickets</code> tables with closed, assigned and open tickets, ticket 7 <code>'Reset link expired'</code> among them (normal, Omar Haddad, open, no agent). On those rows <code>SELECT * FROM unassigned_queue</code> returns <code>(6, 'Add dark mode', 'low', 'Mei Chen')</code> and <code>(7, 'Reset link expired', 'normal', 'Omar Haddad')</code>. After <code>UPDATE tickets SET agent_id = 3 WHERE ticket_id = 6</code>, the next read of the view returns ticket 7 alone.",
+      "starter": "QUERY = \"\"\"\n-- a view of the open tickets with no agent, with each customer's name\n\"\"\"",
+      "tests": "import sqlite3\nconn = sqlite3.connect(\":memory:\")\nconn.execute(\"PRAGMA foreign_keys = ON\")\nconn.executescript(\"\"\"\nCREATE TABLE priorities (priority VARCHAR(10) PRIMARY KEY, sla_hours INT NOT NULL);\nCREATE TABLE customers (customer_id INT PRIMARY KEY, name VARCHAR(100) NOT NULL);\nCREATE TABLE agents (agent_id INT PRIMARY KEY, name VARCHAR(50) NOT NULL);\nCREATE TABLE tickets (\n    ticket_id INT PRIMARY KEY,\n    title VARCHAR(200) NOT NULL,\n    priority VARCHAR(10) NOT NULL REFERENCES priorities (priority),\n    status VARCHAR(10) NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'assigned', 'closed')),\n    customer_id INT NOT NULL REFERENCES customers (customer_id),\n    agent_id INT REFERENCES agents (agent_id)\n);\nINSERT INTO priorities VALUES ('high', 4), ('normal', 24), ('low', 72);\nINSERT INTO customers VALUES (1, 'Dana Whitfield'), (2, 'Ravi Patel'), (3, 'Mei Chen'), (4, 'Omar Haddad');\nINSERT INTO agents VALUES (1, 'Priya'), (2, 'Marco'), (3, 'Sam');\nINSERT INTO tickets VALUES\n    (1, 'Login page returns 500', 'high', 'closed', 1, NULL),\n    (2, 'Invoice PDF is blank', 'normal', 'closed', 2, NULL),\n    (4, 'Checkout button frozen', 'high', 'assigned', 3, 1),\n    (5, 'Export is missing rows', 'normal', 'assigned', 2, 2),\n    (6, 'Add dark mode', 'low', 'open', 3, NULL),\n    (7, 'Reset link expired', 'normal', 'open', 4, NULL);\n\"\"\")\nconn.execute(QUERY)\ncur = conn.execute(\"SELECT * FROM unassigned_queue\")\nrows = cur.fetchall()\nassert [c[0] for c in cur.description] == [\"ticket_id\", \"title\", \"priority\", \"customer\"], \"the view's columns are ticket_id, title, priority and customer, in that order\"\nassert rows == [(6, \"Add dark mode\", \"low\", \"Mei Chen\"), (7, \"Reset link expired\", \"normal\", \"Omar Haddad\")], \"the view returns the open tickets with no agent, one row each, in ticket_id order\"\nconn.execute(\"UPDATE tickets SET agent_id = 3 WHERE ticket_id = 6\")\nassert conn.execute(\"SELECT * FROM unassigned_queue\").fetchall() == [(7, \"Reset link expired\", \"normal\", \"Omar Haddad\")], \"after ticket 6 gets an agent, the next read of the view leaves it out\""
+    }
+  ]
+}

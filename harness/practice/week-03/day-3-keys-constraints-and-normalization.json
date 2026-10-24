@@ -1,0 +1,150 @@
+{
+  "day": "w03d3",
+  "page": "docs/weeks/week-03/day-3-keys-constraints-and-normalization.html",
+  "assessed": "2026-10-23",
+  "verdict": "partial",
+  "summary": "The day lends itself to six one-statement CREATE TABLE tasks on the desk's tables whose keys, constraints and cascades sqlite3 in memory enforces the way the page describes (a refused row is a sqlite3.IntegrityError), while the connector step, AUTO_INCREMENT, TRUNCATE, the NULL refusal of a primary key and the parents-first CREATE order stay out because SQLite has none of them or behaves differently.",
+  "steps": [
+    {
+      "step": 0,
+      "title": "Primary, candidate and composite keys",
+      "suitable": true,
+      "reason": "A composite PRIMARY KEY refusing only the repeated pair is behaviour sqlite3 shows unchanged, and the page names the slips a check catches: a key on one column (each column may repeat on its own) and a lone link_id that lets the same link in twice. SQLite lets NULL into a non-INTEGER primary key, so the NULL refusal (1048) stays out of the checks.",
+      "task": "t1"
+    },
+    {
+      "step": 1,
+      "title": "Foreign keys and referential integrity",
+      "suitable": true,
+      "reason": "With PRAGMA foreign_keys = ON, sqlite3 refuses an orphan child and the delete of a referenced parent, both sides of referential integrity the page shows, and a NULL foreign key passes as no parent. SQLite does not refuse a CREATE TABLE that names a missing parent (1824), so the parents-first order is not checked.",
+      "task": "t2"
+    },
+    {
+      "step": 2,
+      "title": "Unique keys and alternate keys",
+      "suitable": true,
+      "reason": "UNIQUE refusing a duplicate and admitting several NULLs runs the same in sqlite3, so the page's alternate key, email NOT NULL UNIQUE on customers, is checkable, and its named limit (UNIQUE alone lets NULL in) fails a check.",
+      "task": "t3"
+    },
+    {
+      "step": 3,
+      "title": "Normalization from 0NF to 3NF, and multiplicity",
+      "suitable": true,
+      "reason": "Walking a sheet to 3NF is a design the reader explains aloud, but the multiplicity table ends in one statement a check can see: a one-to-one link is a foreign key that is also UNIQUE. The slip is a foreign key without UNIQUE, which is one-to-many and lets a customer hold two billing profiles.",
+      "task": "t4"
+    },
+    {
+      "step": 4,
+      "title": "Consistency through constraints",
+      "suitable": true,
+      "reason": "NOT NULL, DEFAULT and CHECK behave the same in sqlite3, and the page names two slips a check catches: expecting DEFAULT to replace an explicit NULL, and a CHECK without NOT NULL, which passes NULL. AUTO_INCREMENT and its gaps are MySQL only and stay out; the CHECK condition uses IN, which w03d4 teaches, so the task text hands over the page's own condition word for word.",
+      "task": "t5"
+    },
+    {
+      "step": 5,
+      "title": "CASCADE, and the CREATE, DROP, TRUNCATE rebuild",
+      "suitable": true,
+      "reason": "ON DELETE CASCADE removing a ticket's events with the ticket runs unchanged in sqlite3, and the slip the page shows, a foreign key with no ON DELETE action, makes the parent delete fail. TRUNCATE, DROP DATABASE IF EXISTS and the docker rebuild are MySQL or terminal behaviour and stay out.",
+      "task": "t6"
+    },
+    {
+      "step": 6,
+      "title": "INSERT, UPDATE and DELETE from Python",
+      "suitable": false,
+      "reason": "The step's point is mysql-connector-python: connect(), %s placeholders, commit(), rowcount and IntegrityError against DatabaseError, which the SQL-days rule keeps out of practice. Its bare UPDATE and DELETE are Tuesday's DML, and rowcount's 0 for an unchanged row is MySQL behaviour sqlite3 counts differently.",
+      "task": null
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "title": "Composite keys",
+      "step": 0,
+      "idea": "The reader writes one CREATE TABLE for ticket_tags with columns ticket_id INT and tag_id INT and a composite primary key over the pair. After it runs, the links (4, 2), (4, 3) and (6, 3) go in, and a second (4, 2) is refused.",
+      "checks": [
+        "The links (4, 2), (4, 3) and (6, 3) all go in; a PRIMARY KEY or UNIQUE on ticket_id alone refuses (4, 3), because ticket 4 repeats.",
+        "A second (4, 2) raises sqlite3.IntegrityError; a table with no key, or one keyed on a separate link_id column, lets the duplicate link in.",
+        "The table's columns are ticket_id and tag_id, in that order, with no extra id column."
+      ],
+      "approved": true,
+      "q": "Write one <code>CREATE TABLE</code> statement in <code>QUERY</code> for the bridge table <code>ticket_tags</code>, which links tickets to tags. It has two columns, <code>ticket_id INT</code> and <code>tag_id INT</code>, in that order and no others, and a composite primary key over the pair. Once it runs, the links (4, 2), (4, 3) and (6, 3) all go in, though ticket 4 and tag 3 each appear twice, and a second link (4, 2) is refused.",
+      "starter": "QUERY = \"\"\"\n-- the ticket_tags table, keyed on the pair of ids\n\"\"\"",
+      "tests": "import sqlite3\nconn = sqlite3.connect(\":memory:\")\nconn.execute(\"PRAGMA foreign_keys = ON\")\nsql = globals().get(\"QUERY_T1\") or QUERY\nconn.execute(sql)\ndef goes_in(statement):\n    try:\n        conn.execute(statement)\n    except sqlite3.Error:\n        return False\n    return True\nassert goes_in(\"INSERT INTO ticket_tags (ticket_id, tag_id) VALUES (4, 2), (4, 3), (6, 3)\"), \"the links (4, 2), (4, 3) and (6, 3) all go in, though ticket 4 and tag 3 each appear twice\"\nassert raises(sqlite3.IntegrityError, conn.execute, \"INSERT INTO ticket_tags (ticket_id, tag_id) VALUES (4, 2)\"), \"a second link (4, 2) is refused\"\nassert [c[0] for c in conn.execute(\"SELECT * FROM ticket_tags\").description] == [\"ticket_id\", \"tag_id\"], \"the table's columns are ticket_id and tag_id, in that order, and no others\""
+    },
+    {
+      "id": "t2",
+      "title": "Foreign keys",
+      "step": 1,
+      "idea": "The setup builds customers (customer_id INT PRIMARY KEY, name) with Dana Whitfield as 1 and Ravi Patel as 2. The reader writes one CREATE TABLE for tickets with ticket_id INT PRIMARY KEY, title VARCHAR(200) and customer_id INT, where customer_id is a foreign key to customers (customer_id). Ticket 1 for customer 1 goes in, a ticket for customer 99 is refused.",
+      "checks": [
+        "A ticket for customer 1 and a ticket with customer_id NULL both go in; declaring customer_id NOT NULL refuses the ticket with no parent.",
+        "A ticket for customer 99 raises sqlite3.IntegrityError; a table without the FOREIGN KEY line stores the orphan.",
+        "Deleting customer 1 while ticket 1 names her raises sqlite3.IntegrityError and leaves both rows; adding ON DELETE CASCADE deletes her ticket instead."
+      ],
+      "approved": true,
+      "q": "The setup builds <code>customers (customer_id INT PRIMARY KEY, name VARCHAR(100))</code> with Dana Whitfield as customer 1 and Ravi Patel as customer 2. Write one <code>CREATE TABLE</code> statement in <code>QUERY</code> for <code>tickets</code> with the columns <code>ticket_id INT PRIMARY KEY</code>, <code>title VARCHAR(200)</code> and <code>customer_id INT</code>, where <code>customer_id</code> is a foreign key to <code>customers (customer_id)</code>. A ticket for customer 1 goes in, and so does a ticket with no customer, whose <code>customer_id</code> is NULL. A ticket for customer 99 is refused, and so is deleting customer 1 while her ticket still names her.",
+      "starter": "QUERY = \"\"\"\n-- the tickets table, each ticket pointing at its customer\n\"\"\"",
+      "tests": "import sqlite3\nconn = sqlite3.connect(\":memory:\")\nconn.execute(\"PRAGMA foreign_keys = ON\")\nconn.executescript(\"\"\"\nCREATE TABLE customers (\n    customer_id INT PRIMARY KEY,\n    name VARCHAR(100)\n);\nINSERT INTO customers (customer_id, name) VALUES (1, 'Dana Whitfield'), (2, 'Ravi Patel');\n\"\"\")\nsql = globals().get(\"QUERY_T2\") or QUERY\nconn.execute(sql)\ndef goes_in(statement):\n    try:\n        conn.execute(statement)\n    except sqlite3.Error:\n        return False\n    return True\nassert goes_in(\"INSERT INTO tickets (ticket_id, title, customer_id) VALUES (1, 'Login page returns 500', 1)\") and goes_in(\"INSERT INTO tickets (ticket_id, title, customer_id) VALUES (3, 'Question by phone', NULL)\"), \"a ticket for customer 1 and a ticket with customer_id NULL both go in\"\nassert raises(sqlite3.IntegrityError, conn.execute, \"INSERT INTO tickets (ticket_id, title, customer_id) VALUES (2, 'Ghost ticket', 99)\"), \"a ticket for customer 99, who does not exist, is refused\"\nassert raises(sqlite3.IntegrityError, conn.execute, \"DELETE FROM customers WHERE customer_id = 1\"), \"deleting customer 1 while ticket 1 names her is refused\""
+    },
+    {
+      "id": "t3",
+      "title": "Alternate keys",
+      "step": 2,
+      "idea": "The reader writes one CREATE TABLE for customers with customer_id INT PRIMARY KEY, name VARCHAR(100) and email VARCHAR(255) declared as the alternate key. Dana Whitfield at dana@example.com goes in; a second customer with the same email, or with no email, is refused.",
+      "checks": [
+        "A second customer with dana@example.com raises sqlite3.IntegrityError; a table with no UNIQUE on email stores both.",
+        "A customer with email NULL raises sqlite3.IntegrityError; UNIQUE without NOT NULL lets the row in, the limit the page names.",
+        "Two customers named Dana Whitfield with different emails both go in; a UNIQUE on name refuses the second, though a name is no candidate key."
+      ],
+      "approved": true,
+      "q": "Write one <code>CREATE TABLE</code> statement in <code>QUERY</code> for <code>customers</code> with the columns <code>customer_id INT PRIMARY KEY</code>, <code>name VARCHAR(100)</code> and <code>email VARCHAR(255)</code>, where <code>email</code> is the alternate key: every customer has one and no two customers share it. After Dana Whitfield goes in as customer 1 with <code>dana@example.com</code>, a second customer with that email is refused, a customer whose email is NULL is refused, and a second customer also named Dana Whitfield, with a different email, goes in.",
+      "starter": "QUERY = \"\"\"\n-- the customers table, with email as the alternate key\n\"\"\"",
+      "tests": "import sqlite3\nconn = sqlite3.connect(\":memory:\")\nconn.execute(\"PRAGMA foreign_keys = ON\")\nsql = globals().get(\"QUERY_T3\") or QUERY\nconn.execute(sql)\ndef goes_in(statement):\n    try:\n        conn.execute(statement)\n    except sqlite3.Error:\n        return False\n    return True\ngoes_in(\"INSERT INTO customers (customer_id, name, email) VALUES (1, 'Dana Whitfield', 'dana@example.com')\")\nassert raises(sqlite3.IntegrityError, conn.execute, \"INSERT INTO customers (customer_id, name, email) VALUES (2, 'Ravi Patel', 'dana@example.com')\"), \"a second customer with dana@example.com is refused\"\nassert raises(sqlite3.IntegrityError, conn.execute, \"INSERT INTO customers (customer_id, name, email) VALUES (3, 'Mei Chen', NULL)\"), \"a customer whose email is NULL is refused\"\nassert goes_in(\"INSERT INTO customers (customer_id, name, email) VALUES (4, 'Dana Whitfield', 'dana.w@example.com')\"), \"a second Dana Whitfield with a different email goes in, since two customers can share a name\""
+    },
+    {
+      "id": "t4",
+      "title": "Multiplicity",
+      "step": 3,
+      "idea": "The setup builds customers with three rows. The reader writes one CREATE TABLE for billing_profiles with profile_id INT PRIMARY KEY and customer_id INT, a foreign key to customers declared so that each customer has at most one profile. Profiles for customers 1 and 2 go in; a second profile for customer 1 is refused.",
+      "checks": [
+        "Profiles for customers 1 and 2 go in.",
+        "A second profile for customer 1 raises sqlite3.IntegrityError; a foreign key without UNIQUE is one-to-many and stores it.",
+        "A profile for customer 99 raises sqlite3.IntegrityError; a UNIQUE customer_id with no FOREIGN KEY line stores it."
+      ],
+      "approved": true,
+      "q": "The setup builds <code>customers</code> with customers 1, 2 and 3. Write one <code>CREATE TABLE</code> statement in <code>QUERY</code> for <code>billing_profiles</code> with the columns <code>profile_id INT PRIMARY KEY</code> and <code>customer_id INT</code>, where <code>customer_id</code> is a foreign key to <code>customers (customer_id)</code> and each customer has at most one billing profile, a one-to-one relationship. Profile 101 for customer 1 and profile 102 for customer 2 go in. A second profile, 103, for customer 1 is refused, and so is profile 104 for customer 99, who does not exist.",
+      "starter": "QUERY = \"\"\"\n-- the billing_profiles table, at most one per customer\n\"\"\"",
+      "tests": "import sqlite3\nconn = sqlite3.connect(\":memory:\")\nconn.execute(\"PRAGMA foreign_keys = ON\")\nconn.executescript(\"\"\"\nCREATE TABLE customers (\n    customer_id INT PRIMARY KEY,\n    name VARCHAR(100)\n);\nINSERT INTO customers (customer_id, name) VALUES (1, 'Dana Whitfield'), (2, 'Ravi Patel'), (3, 'Mei Chen');\n\"\"\")\nsql = globals().get(\"QUERY_T4\") or QUERY\nconn.execute(sql)\ndef goes_in(statement):\n    try:\n        conn.execute(statement)\n    except sqlite3.Error:\n        return False\n    return True\nassert goes_in(\"INSERT INTO billing_profiles (profile_id, customer_id) VALUES (101, 1)\") and goes_in(\"INSERT INTO billing_profiles (profile_id, customer_id) VALUES (102, 2)\"), \"profile 101 for customer 1 and profile 102 for customer 2 both go in\"\nassert raises(sqlite3.IntegrityError, conn.execute, \"INSERT INTO billing_profiles (profile_id, customer_id) VALUES (103, 1)\"), \"a second profile for customer 1 is refused\"\nassert raises(sqlite3.IntegrityError, conn.execute, \"INSERT INTO billing_profiles (profile_id, customer_id) VALUES (104, 99)\"), \"a profile for customer 99, who does not exist, is refused\""
+    },
+    {
+      "id": "t5",
+      "title": "Constraints",
+      "step": 4,
+      "idea": "The reader writes one CREATE TABLE for tickets with ticket_id INT PRIMARY KEY, title VARCHAR(200) and status VARCHAR(10), where status is required, defaults to 'open' and passes the CHECK the task text gives word for word from the page, status IN ('open', 'assigned', 'closed'). A ticket inserted without a status reads back as 'open'; a status of 'done' is refused.",
+      "checks": [
+        "A ticket inserted without status reads back with status 'open'; a table without the DEFAULT refuses it or stores NULL.",
+        "A ticket inserted with status NULL raises sqlite3.IntegrityError; DEFAULT does not replace an explicit NULL, and a CHECK without NOT NULL passes it.",
+        "A ticket with status 'done' raises sqlite3.IntegrityError, and one with 'closed' goes in; a table without the CHECK stores 'done'."
+      ],
+      "approved": true,
+      "q": "Write one <code>CREATE TABLE</code> statement in <code>QUERY</code> for <code>tickets</code> with the columns <code>ticket_id INT PRIMARY KEY</code>, <code>title VARCHAR(200)</code> and <code>status VARCHAR(10)</code>. A status is required, is <code>'open'</code> when an INSERT leaves the column out, and must pass <code>CHECK (status IN ('open', 'assigned', 'closed'))</code>, where <code>IN</code> is true when the value equals one of the listed values. A ticket inserted without a status reads back as <code>'open'</code>. A ticket with status NULL is refused, a status of <code>'done'</code> is refused, and <code>'closed'</code> goes in.",
+      "starter": "QUERY = \"\"\"\n-- the tickets table, with a required, checked status\n\"\"\"",
+      "tests": "import sqlite3\nconn = sqlite3.connect(\":memory:\")\nconn.execute(\"PRAGMA foreign_keys = ON\")\nsql = globals().get(\"QUERY_T5\") or QUERY\nconn.execute(sql)\ndef goes_in(statement):\n    try:\n        conn.execute(statement)\n    except sqlite3.Error:\n        return False\n    return True\ngoes_in(\"INSERT INTO tickets (ticket_id, title) VALUES (1, 'Login page returns 500')\")\nassert conn.execute(\"SELECT status FROM tickets WHERE ticket_id = 1\").fetchall() == [(\"open\",)], \"a ticket inserted without a status reads back with status 'open'\"\nassert raises(sqlite3.IntegrityError, conn.execute, \"INSERT INTO tickets (ticket_id, title, status) VALUES (2, 'Export is missing rows', NULL)\"), \"a ticket inserted with status NULL is refused\"\nassert raises(sqlite3.IntegrityError, conn.execute, \"INSERT INTO tickets (ticket_id, title, status) VALUES (3, 'Checkout button frozen', 'done')\") and goes_in(\"INSERT INTO tickets (ticket_id, title, status) VALUES (4, 'Invoice PDF is blank', 'closed')\"), \"a status of 'done' is refused and 'closed' goes in\""
+    },
+    {
+      "id": "t6",
+      "title": "CASCADE",
+      "step": 5,
+      "idea": "The setup builds tickets 1 and 4. The reader writes one CREATE TABLE for ticket_events with event_id INT PRIMARY KEY, ticket_id INT NOT NULL and kind VARCHAR(20) NOT NULL, where ticket_id is a foreign key to tickets whose events go when the ticket is deleted. After events for both tickets are added, deleting ticket 1 leaves only ticket 4's events.",
+      "checks": [
+        "Deleting ticket 1 removes its events and keeps ticket 4's; a foreign key with no ON DELETE action refuses the delete with sqlite3.IntegrityError.",
+        "After the delete, ticket 4 still has every event it had; ON DELETE SET NULL on the NOT NULL ticket_id makes the delete fail instead.",
+        "An event for ticket 99 raises sqlite3.IntegrityError; a table without the FOREIGN KEY line stores it."
+      ],
+      "approved": true,
+      "q": "The setup builds <code>tickets</code> with tickets 1 and 4. Write one <code>CREATE TABLE</code> statement in <code>QUERY</code> for <code>ticket_events</code> with the columns <code>event_id INT PRIMARY KEY</code>, <code>ticket_id INT NOT NULL</code> and <code>kind VARCHAR(20) NOT NULL</code>, where <code>ticket_id</code> is a foreign key to <code>tickets (ticket_id)</code> and a ticket's events are deleted with the ticket. After events 1 and 2 for ticket 1 and event 3 for ticket 4 go in, deleting ticket 1 goes through and leaves only event 3. An event for ticket 99, which does not exist, is refused.",
+      "starter": "QUERY = \"\"\"\n-- the ticket_events table, whose rows go with their ticket\n\"\"\"",
+      "tests": "import sqlite3\nconn = sqlite3.connect(\":memory:\")\nconn.execute(\"PRAGMA foreign_keys = ON\")\nconn.executescript(\"\"\"\nCREATE TABLE tickets (\n    ticket_id INT PRIMARY KEY,\n    title VARCHAR(200)\n);\nINSERT INTO tickets (ticket_id, title) VALUES (1, 'Login page returns 500'), (4, 'Checkout button frozen');\n\"\"\")\nsql = globals().get(\"QUERY_T6\") or QUERY\nconn.execute(sql)\ndef goes_in(statement):\n    try:\n        conn.execute(statement)\n    except sqlite3.Error:\n        return False\n    return True\ngoes_in(\"INSERT INTO ticket_events (event_id, ticket_id, kind) VALUES (1, 1, 'opened'), (2, 1, 'assigned'), (3, 4, 'opened')\")\nassert goes_in(\"DELETE FROM tickets WHERE ticket_id = 1\"), \"deleting ticket 1 goes through while it still has events\"\nassert sorted(conn.execute(\"SELECT event_id, ticket_id, kind FROM ticket_events\").fetchall()) == [(3, 4, \"opened\")], \"after the delete only ticket 4's event is left\"\nassert raises(sqlite3.IntegrityError, conn.execute, \"INSERT INTO ticket_events (event_id, ticket_id, kind) VALUES (5, 99, 'opened')\"), \"an event for ticket 99, which does not exist, is refused\""
+    }
+  ]
+}

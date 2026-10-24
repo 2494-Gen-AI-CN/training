@@ -1,0 +1,157 @@
+{
+  "day": "w03d4",
+  "page": "docs/weeks/week-03/day-4-joins-subqueries-and-transactions.html",
+  "assessed": "2026-10-23",
+  "verdict": "partial",
+  "summary": "The day lends itself to six one-statement SQL tasks on the desk's tables, run by sqlite3 in memory: a grouped report with IS NULL and HAVING, COUNT(*) against COUNT(column) under aliases, NOT EXISTS where NOT IN meets a NULL, an inner join that a forgotten ON turns into a cross join, a LEFT JOIN count with its condition in ON, and an UPDATE whose WHERE keeps the other rows; it does not lend itself to the transaction, ACID, autocommit and isolation steps, which are typed at the mysql client or reached through mysql-connector-python.",
+  "steps": [
+    {
+      "step": 0,
+      "title": "Clauses: filtering, sorting and grouping rows",
+      "suitable": true,
+      "reason": "WHERE with IS NULL, GROUP BY, HAVING and ORDER BY run unchanged on SQLite 3.39 and leave rows a check reads. The page's named mistakes change those rows: = NULL returns nothing, a missing HAVING keeps the group of one, and COUNT(*) in WHERE is refused outright.",
+      "task": "t1"
+    },
+    {
+      "step": 1,
+      "title": "Scalar functions, aggregate functions and aliases",
+      "suitable": true,
+      "reason": "COUNT(*) against COUNT(column) and column aliases show up in the rows and in the column names cur.description reports, and the page names COUNT(*) where COUNT(column) is meant. CONCAT, DATE_ADD and NOW() do not run on SQLite 3.39, so the task stays on the aggregates and AS.",
+      "task": "t2"
+    },
+    {
+      "step": 2,
+      "title": "Subqueries and common table expressions",
+      "suitable": true,
+      "reason": "NOT IN against a subquery that returns a NULL gives no rows on SQLite as on MySQL, and the correlated NOT EXISTS gives the right ones, so the page's headline trap fails a row check. The task asks for agents with no closed ticket, a sibling of the page's agents-with-no-ticket query, because a seeded closed ticket has no agent.",
+      "task": "t3"
+    },
+    {
+      "step": 3,
+      "title": "Joins: cross, equi, theta and inner",
+      "suitable": true,
+      "reason": "An inner join along the foreign key returns one row per ticket, and the forgotten ON the page names returns the cross product, which a row count catches; an unprefixed shared column is refused as ambiguous on SQLite too. The theta join on a deadline needs DATE_ADD, which SQLite lacks, so the task is an equi join.",
+      "task": "t4"
+    },
+    {
+      "step": 4,
+      "title": "Left, right and full outer joins, and UNION",
+      "suitable": true,
+      "reason": "A LEFT JOIN count keeps the customer with no ticket, and both mistakes the page names change the rows: the right table's condition in WHERE drops the customers with only closed tickets, and COUNT(*) gives 1 where 0 is meant. It stays off the exercise's members_without_loans by counting open tickets per customer rather than listing the unmatched side.",
+      "task": "t5"
+    },
+    {
+      "step": 5,
+      "title": "Transactions and the ACID properties",
+      "suitable": false,
+      "reason": "START TRANSACTION and ROLLBACK typed at the client, autocommit and the implicit commit after DDL are the step's point, and the bar keeps all of them out until ix-sql lands; ACID itself is a concept with no rows to read. The task widget runs one statement, so a transaction has nothing to group.",
+      "task": null
+    },
+    {
+      "step": 6,
+      "title": "Commit, rollback and isolation levels",
+      "suitable": false,
+      "reason": "start_transaction, commit and rollback are mysql-connector-python methods, and isolation levels need two live connections to a server; the bar rules out both and a SQL day takes no Python. The try, commit, except-rollback shape is also the exercise's lend_book.",
+      "task": null
+    },
+    {
+      "step": 7,
+      "title": "CRUD from Python, and sequences",
+      "suitable": true,
+      "reason": "The step's SQL point, that an UPDATE or DELETE without WHERE touches every row, shows up in rows a second SELECT reads back. Placeholders, rowcount, lastrowid and AUTO_INCREMENT gaps are Python or MySQL-only and stay out, and the check reads the table, not total_changes, because SQLite counts a row set to its current value where MySQL's rowcount does not.",
+      "task": "t6"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "title": "Clauses",
+      "step": 0,
+      "idea": "The reader writes one SELECT on tickets that returns priority and the number of tickets with no agent under that priority, keeping only priorities with at least two such tickets, the larger count first. The seed holds two priorities with at least two unassigned tickets each and one priority with a single one (for example normal 3, low 2, high 1), so the result is [('normal', 3), ('low', 2)] and the order is testable.",
+      "checks": [
+        "The unassigned tickets are counted, so WHERE agent_id = NULL, which matches no row and returns an empty result, fails.",
+        "A priority with a single unassigned ticket is left out, so a query without the HAVING fails.",
+        "The rows come larger count first, [('normal', 3), ('low', 2)] on the seed, so a query with no ORDER BY compared in order, or one sorted by priority, fails."
+      ],
+      "approved": true,
+      "q": "Inside the quotes of <code>UNASSIGNED_QUERY</code>, write one SELECT on <code>tickets</code> that returns two columns: <code>priority</code>, and the number of tickets under that priority that have no agent. Keep only the priorities with at least two such tickets, and put the larger count first. The checks run it on the page's six tickets plus two more open tickets with no agent, one <code>normal</code> and one <code>low</code>, so the rows that come back are <code>('normal', 3)</code> and then <code>('low', 2)</code>.",
+      "starter": "UNASSIGNED_QUERY = \"\"\"\n-- each priority and its count of tickets with no agent\n\"\"\"",
+      "tests": "import sqlite3\nconn = sqlite3.connect(\":memory:\")\nconn.execute(\"PRAGMA foreign_keys = ON\")\nconn.executescript(\"\"\"\nCREATE TABLE priorities (priority VARCHAR(10) PRIMARY KEY, sla_hours INT NOT NULL);\nCREATE TABLE customers (customer_id INT PRIMARY KEY, name VARCHAR(100) NOT NULL, email VARCHAR(255) NOT NULL UNIQUE);\nCREATE TABLE agents (agent_id INT PRIMARY KEY, name VARCHAR(50) NOT NULL);\nCREATE TABLE tickets (\n    ticket_id INT PRIMARY KEY,\n    title VARCHAR(200) NOT NULL,\n    priority VARCHAR(10) NOT NULL REFERENCES priorities (priority),\n    status VARCHAR(10) NOT NULL DEFAULT 'open',\n    customer_id INT NOT NULL REFERENCES customers (customer_id),\n    agent_id INT REFERENCES agents (agent_id),\n    opened_at DATETIME NOT NULL,\n    closed_at DATETIME\n);\nINSERT INTO priorities VALUES ('high', 4), ('normal', 24), ('low', 72);\nINSERT INTO customers VALUES\n    (1, 'Dana Whitfield', 'dana@example.com'), (2, 'Ravi Patel', 'ravi@example.com'),\n    (3, 'Mei Chen', 'mei@example.com'), (4, 'Omar Haddad', 'omar@example.com');\nINSERT INTO agents VALUES (1, 'Priya'), (2, 'Marco'), (3, 'Sam'), (4, 'Lee');\nINSERT INTO tickets VALUES\n    (1, 'Login page returns 500', 'high', 'closed', 1, NULL, '2026-10-18 08:00:00', '2026-10-18 11:00:00'),\n    (2, 'Invoice PDF is blank', 'normal', 'closed', 2, NULL, '2026-10-17 12:00:00', '2026-10-18 18:00:00'),\n    (3, 'Typo on pricing page', 'normal', 'closed', 1, NULL, '2026-10-18 18:00:00', '2026-10-19 04:00:00'),\n    (4, 'Checkout button frozen', 'high', 'assigned', 3, 1, '2026-10-19 08:00:00', NULL),\n    (5, 'Export is missing rows', 'normal', 'assigned', 2, 2, '2026-10-18 12:00:00', NULL),\n    (6, 'Add dark mode', 'low', 'open', 3, NULL, '2026-10-19 12:00:00', NULL),\n    (7, 'Dark mode for emails', 'low', 'open', 4, NULL, '2026-10-20 09:00:00', NULL),\n    (8, 'Search ignores accents', 'normal', 'open', 4, NULL, '2026-10-20 10:00:00', NULL);\n\"\"\")\ncur = conn.execute(UNASSIGNED_QUERY)\nrows = cur.fetchall()\ncols = [c[0] for c in cur.description]\nassert dict(rows).get(\"normal\") == 3, \"counts only the tickets that have no agent\"\nassert sorted(rows) == [(\"low\", 2), (\"normal\", 3)], \"keeps only the priorities with at least two tickets that have no agent\"\nassert rows == [(\"normal\", 3), (\"low\", 2)], \"puts the larger count first\""
+    },
+    {
+      "id": "t2",
+      "title": "Functions",
+      "step": 1,
+      "idea": "The reader writes one SELECT on tickets that returns, per status, the status, COUNT(*) AS tickets and COUNT(agent_id) AS assigned, ordered by status. On the page's seed the closed row reads ('closed', 3, 0).",
+      "checks": [
+        "The result's column names are status, tickets and assigned, so a query without the AS aliases fails.",
+        "assigned counts only tickets with an agent, so COUNT(*) in its place fails.",
+        "tickets counts every row of the status, so COUNT(agent_id) in its place fails."
+      ],
+      "approved": true,
+      "q": "Inside the quotes of <code>STATUS_QUERY</code>, write one SELECT on <code>tickets</code> that returns one row per status with three columns: <code>status</code>, the number of tickets with that status named <code>tickets</code>, and the number of those tickets that have an agent named <code>assigned</code>, ordered by status. On the page's seeded tickets the <code>closed</code> row is <code>('closed', 3, 0)</code>.",
+      "starter": "STATUS_QUERY = \"\"\"\n-- per status: the status, its ticket count, and how many of them have an agent\n\"\"\"",
+      "tests": "import sqlite3\nconn = sqlite3.connect(\":memory:\")\nconn.execute(\"PRAGMA foreign_keys = ON\")\nconn.executescript(\"\"\"\nCREATE TABLE priorities (priority VARCHAR(10) PRIMARY KEY, sla_hours INT NOT NULL);\nCREATE TABLE customers (customer_id INT PRIMARY KEY, name VARCHAR(100) NOT NULL, email VARCHAR(255) NOT NULL UNIQUE);\nCREATE TABLE agents (agent_id INT PRIMARY KEY, name VARCHAR(50) NOT NULL);\nCREATE TABLE tickets (\n    ticket_id INT PRIMARY KEY,\n    title VARCHAR(200) NOT NULL,\n    priority VARCHAR(10) NOT NULL REFERENCES priorities (priority),\n    status VARCHAR(10) NOT NULL DEFAULT 'open',\n    customer_id INT NOT NULL REFERENCES customers (customer_id),\n    agent_id INT REFERENCES agents (agent_id),\n    opened_at DATETIME NOT NULL,\n    closed_at DATETIME\n);\nINSERT INTO priorities VALUES ('high', 4), ('normal', 24), ('low', 72);\nINSERT INTO customers VALUES\n    (1, 'Dana Whitfield', 'dana@example.com'), (2, 'Ravi Patel', 'ravi@example.com'),\n    (3, 'Mei Chen', 'mei@example.com'), (4, 'Omar Haddad', 'omar@example.com');\nINSERT INTO agents VALUES (1, 'Priya'), (2, 'Marco'), (3, 'Sam'), (4, 'Lee');\nINSERT INTO tickets VALUES\n    (1, 'Login page returns 500', 'high', 'closed', 1, NULL, '2026-10-18 08:00:00', '2026-10-18 11:00:00'),\n    (2, 'Invoice PDF is blank', 'normal', 'closed', 2, NULL, '2026-10-17 12:00:00', '2026-10-18 18:00:00'),\n    (3, 'Typo on pricing page', 'normal', 'closed', 1, NULL, '2026-10-18 18:00:00', '2026-10-19 04:00:00'),\n    (4, 'Checkout button frozen', 'high', 'assigned', 3, 1, '2026-10-19 08:00:00', NULL),\n    (5, 'Export is missing rows', 'normal', 'assigned', 2, 2, '2026-10-18 12:00:00', NULL),\n    (6, 'Add dark mode', 'low', 'open', 3, NULL, '2026-10-19 12:00:00', NULL);\n\"\"\")\ncur = conn.execute(STATUS_QUERY)\nrows = cur.fetchall()\ncols = [c[0] for c in cur.description]\nassert cols == [\"status\", \"tickets\", \"assigned\"], \"the columns are named status, tickets and assigned\"\nassert [(r[0], r[2]) for r in rows] == [(\"assigned\", 2), (\"closed\", 0), (\"open\", 0)], \"assigned counts only the tickets of the status that have an agent\"\nassert [(r[0], r[1]) for r in rows] == [(\"assigned\", 2), (\"closed\", 3), (\"open\", 1)], \"tickets counts every ticket of the status, one row per status in status order\""
+    },
+    {
+      "id": "t3",
+      "title": "Subqueries",
+      "step": 2,
+      "idea": "The reader writes one SELECT on agents that returns the names of the agents who have closed no ticket, using a subquery on tickets. On a seed where a closed ticket has no agent and Priya holds only an open ticket, Priya is in the result.",
+      "checks": [
+        "The result holds the agents with no closed ticket, so NOT IN (SELECT agent_id FROM tickets WHERE status = 'closed'), which returns nothing because that list holds a NULL, fails.",
+        "An agent who holds an open ticket but no closed one is in the result, so a subquery that drops the status test and asks for agents with no ticket at all fails.",
+        "An agent who has closed a ticket is left out, so a NOT EXISTS whose subquery forgets to name the outer agent, and returns no one, fails."
+      ],
+      "approved": true,
+      "q": "Inside the quotes of <code>NEVER_CLOSED_QUERY</code>, write one SELECT on <code>agents</code> that returns the <code>name</code> of every agent who has closed no ticket, using a subquery on <code>tickets</code>. An agent has closed a ticket when a ticket with <code>status</code> <code>'closed'</code> carries that agent's <code>agent_id</code>. The checks use the page's desk with one change: Marco closed ticket 2 and Sam closed ticket 3, while ticket 1 is still closed with no agent. Priya, who holds only ticket 4, which is not closed, and Lee, who holds no ticket, come back; the order does not matter.",
+      "starter": "NEVER_CLOSED_QUERY = \"\"\"\n-- the names of the agents who have closed no ticket\n\"\"\"",
+      "tests": "import sqlite3\nconn = sqlite3.connect(\":memory:\")\nconn.execute(\"PRAGMA foreign_keys = ON\")\nconn.executescript(\"\"\"\nCREATE TABLE priorities (priority VARCHAR(10) PRIMARY KEY, sla_hours INT NOT NULL);\nCREATE TABLE customers (customer_id INT PRIMARY KEY, name VARCHAR(100) NOT NULL, email VARCHAR(255) NOT NULL UNIQUE);\nCREATE TABLE agents (agent_id INT PRIMARY KEY, name VARCHAR(50) NOT NULL);\nCREATE TABLE tickets (\n    ticket_id INT PRIMARY KEY,\n    title VARCHAR(200) NOT NULL,\n    priority VARCHAR(10) NOT NULL REFERENCES priorities (priority),\n    status VARCHAR(10) NOT NULL DEFAULT 'open',\n    customer_id INT NOT NULL REFERENCES customers (customer_id),\n    agent_id INT REFERENCES agents (agent_id),\n    opened_at DATETIME NOT NULL,\n    closed_at DATETIME\n);\nINSERT INTO priorities VALUES ('high', 4), ('normal', 24), ('low', 72);\nINSERT INTO customers VALUES\n    (1, 'Dana Whitfield', 'dana@example.com'), (2, 'Ravi Patel', 'ravi@example.com'),\n    (3, 'Mei Chen', 'mei@example.com'), (4, 'Omar Haddad', 'omar@example.com');\nINSERT INTO agents VALUES (1, 'Priya'), (2, 'Marco'), (3, 'Sam'), (4, 'Lee');\nINSERT INTO tickets VALUES\n    (1, 'Login page returns 500', 'high', 'closed', 1, NULL, '2026-10-18 08:00:00', '2026-10-18 11:00:00'),\n    (2, 'Invoice PDF is blank', 'normal', 'closed', 2, 2, '2026-10-17 12:00:00', '2026-10-18 18:00:00'),\n    (3, 'Typo on pricing page', 'normal', 'closed', 1, 3, '2026-10-18 18:00:00', '2026-10-19 04:00:00'),\n    (4, 'Checkout button frozen', 'high', 'assigned', 3, 1, '2026-10-19 08:00:00', NULL),\n    (5, 'Export is missing rows', 'normal', 'assigned', 2, 2, '2026-10-18 12:00:00', NULL),\n    (6, 'Add dark mode', 'low', 'open', 3, NULL, '2026-10-19 12:00:00', NULL);\n\"\"\")\ncur = conn.execute(NEVER_CLOSED_QUERY)\nrows = cur.fetchall()\ncols = [c[0] for c in cur.description]\nassert (\"Lee\",) in rows, \"an agent with no ticket at all is in the result\"\nassert (\"Priya\",) in rows, \"an agent who holds a ticket that is not closed, and has closed none, is in the result\"\nassert sorted(rows) == [(\"Lee\",), (\"Priya\",)], \"the result is exactly the agents who have closed no ticket\""
+    },
+    {
+      "id": "t4",
+      "title": "Joins",
+      "step": 3,
+      "idea": "The reader writes one SELECT that joins tickets to customers and returns ticket_id, title and the customer's name AS customer for the closed tickets, ordered by ticket_id. On the page's seed the first row is (1, 'Login page returns 500', 'Dana Whitfield').",
+      "checks": [
+        "Each closed ticket appears once with its own customer, so a JOIN with the ON left off, which pairs every ticket with every customer, fails.",
+        "Only closed tickets are returned, so a query without the WHERE on status fails.",
+        "The columns are ticket_id, title and customer in that order, so selecting c.name without the alias fails."
+      ],
+      "approved": true,
+      "q": "Inside the quotes of <code>CLOSED_QUERY</code>, write one SELECT that joins <code>tickets</code> to <code>customers</code> and returns, for each closed ticket, its <code>ticket_id</code>, its <code>title</code> and its customer's <code>name</code> under the alias <code>customer</code>, in that column order, ordered by <code>ticket_id</code>. On the page's seeded desk the first row is <code>(1, 'Login page returns 500', 'Dana Whitfield')</code>.",
+      "starter": "CLOSED_QUERY = \"\"\"\n-- each closed ticket with its customer's name\n\"\"\"",
+      "tests": "import sqlite3\nconn = sqlite3.connect(\":memory:\")\nconn.execute(\"PRAGMA foreign_keys = ON\")\nconn.executescript(\"\"\"\nCREATE TABLE priorities (priority VARCHAR(10) PRIMARY KEY, sla_hours INT NOT NULL);\nCREATE TABLE customers (customer_id INT PRIMARY KEY, name VARCHAR(100) NOT NULL, email VARCHAR(255) NOT NULL UNIQUE);\nCREATE TABLE agents (agent_id INT PRIMARY KEY, name VARCHAR(50) NOT NULL);\nCREATE TABLE tickets (\n    ticket_id INT PRIMARY KEY,\n    title VARCHAR(200) NOT NULL,\n    priority VARCHAR(10) NOT NULL REFERENCES priorities (priority),\n    status VARCHAR(10) NOT NULL DEFAULT 'open',\n    customer_id INT NOT NULL REFERENCES customers (customer_id),\n    agent_id INT REFERENCES agents (agent_id),\n    opened_at DATETIME NOT NULL,\n    closed_at DATETIME\n);\nINSERT INTO priorities VALUES ('high', 4), ('normal', 24), ('low', 72);\nINSERT INTO customers VALUES\n    (1, 'Dana Whitfield', 'dana@example.com'), (2, 'Ravi Patel', 'ravi@example.com'),\n    (3, 'Mei Chen', 'mei@example.com'), (4, 'Omar Haddad', 'omar@example.com');\nINSERT INTO agents VALUES (1, 'Priya'), (2, 'Marco'), (3, 'Sam'), (4, 'Lee');\nINSERT INTO tickets VALUES\n    (1, 'Login page returns 500', 'high', 'closed', 1, NULL, '2026-10-18 08:00:00', '2026-10-18 11:00:00'),\n    (2, 'Invoice PDF is blank', 'normal', 'closed', 2, NULL, '2026-10-17 12:00:00', '2026-10-18 18:00:00'),\n    (3, 'Typo on pricing page', 'normal', 'closed', 1, NULL, '2026-10-18 18:00:00', '2026-10-19 04:00:00'),\n    (4, 'Checkout button frozen', 'high', 'assigned', 3, 1, '2026-10-19 08:00:00', NULL),\n    (5, 'Export is missing rows', 'normal', 'assigned', 2, 2, '2026-10-18 12:00:00', NULL),\n    (6, 'Add dark mode', 'low', 'open', 3, NULL, '2026-10-19 12:00:00', NULL);\n\"\"\")\ncur = conn.execute(CLOSED_QUERY)\nrows = cur.fetchall()\ncols = [c[0] for c in cur.description]\nassert rows == [(1, \"Login page returns 500\", \"Dana Whitfield\"), (2, \"Invoice PDF is blank\", \"Ravi Patel\"), (3, \"Typo on pricing page\", \"Dana Whitfield\")], \"each closed ticket comes back once, with its own customer, in ticket_id order\"\nassert sorted({r[0] for r in rows}) == [1, 2, 3], \"only the closed tickets come back\"\nassert cols == [\"ticket_id\", \"title\", \"customer\"], \"the columns are ticket_id, title and customer, in that order\""
+    },
+    {
+      "id": "t5",
+      "title": "Outer joins",
+      "step": 4,
+      "idea": "The reader writes one SELECT that returns every customer's name and COUNT of their tickets that are not closed AS open_tickets, ordered by customer_id, with 0 for a customer who has none. On the page's seed Dana, whose tickets are all closed, and Omar, who has no ticket, both read 0.",
+      "checks": [
+        "Omar, who has no ticket, appears with 0, so an inner join fails.",
+        "Dana, whose tickets are all closed, appears with 0, so putting status <> 'closed' in WHERE instead of ON, which turns the LEFT JOIN back into an inner join, fails.",
+        "A customer with no open ticket reads 0, so COUNT(*), which counts the unmatched row as 1, fails."
+      ],
+      "approved": true,
+      "q": "Inside the quotes of <code>OPEN_COUNT_QUERY</code>, write one SELECT that returns every customer's <code>name</code> and the number of their tickets that are not closed under the alias <code>open_tickets</code>, ordered by <code>customer_id</code>, with 0 for a customer who has none. On the page's seeded desk Dana, whose tickets are all closed, and Omar, who has no ticket, both read 0.",
+      "starter": "OPEN_COUNT_QUERY = \"\"\"\n-- every customer's name and how many of their tickets are not closed\n\"\"\"",
+      "tests": "import sqlite3\nconn = sqlite3.connect(\":memory:\")\nconn.execute(\"PRAGMA foreign_keys = ON\")\nconn.executescript(\"\"\"\nCREATE TABLE priorities (priority VARCHAR(10) PRIMARY KEY, sla_hours INT NOT NULL);\nCREATE TABLE customers (customer_id INT PRIMARY KEY, name VARCHAR(100) NOT NULL, email VARCHAR(255) NOT NULL UNIQUE);\nCREATE TABLE agents (agent_id INT PRIMARY KEY, name VARCHAR(50) NOT NULL);\nCREATE TABLE tickets (\n    ticket_id INT PRIMARY KEY,\n    title VARCHAR(200) NOT NULL,\n    priority VARCHAR(10) NOT NULL REFERENCES priorities (priority),\n    status VARCHAR(10) NOT NULL DEFAULT 'open',\n    customer_id INT NOT NULL REFERENCES customers (customer_id),\n    agent_id INT REFERENCES agents (agent_id),\n    opened_at DATETIME NOT NULL,\n    closed_at DATETIME\n);\nINSERT INTO priorities VALUES ('high', 4), ('normal', 24), ('low', 72);\nINSERT INTO customers VALUES\n    (1, 'Dana Whitfield', 'dana@example.com'), (2, 'Ravi Patel', 'ravi@example.com'),\n    (3, 'Mei Chen', 'mei@example.com'), (4, 'Omar Haddad', 'omar@example.com');\nINSERT INTO agents VALUES (1, 'Priya'), (2, 'Marco'), (3, 'Sam'), (4, 'Lee');\nINSERT INTO tickets VALUES\n    (1, 'Login page returns 500', 'high', 'closed', 1, NULL, '2026-10-18 08:00:00', '2026-10-18 11:00:00'),\n    (2, 'Invoice PDF is blank', 'normal', 'closed', 2, NULL, '2026-10-17 12:00:00', '2026-10-18 18:00:00'),\n    (3, 'Typo on pricing page', 'normal', 'closed', 1, NULL, '2026-10-18 18:00:00', '2026-10-19 04:00:00'),\n    (4, 'Checkout button frozen', 'high', 'assigned', 3, 1, '2026-10-19 08:00:00', NULL),\n    (5, 'Export is missing rows', 'normal', 'assigned', 2, 2, '2026-10-18 12:00:00', NULL),\n    (6, 'Add dark mode', 'low', 'open', 3, NULL, '2026-10-19 12:00:00', NULL);\n\"\"\")\ncur = conn.execute(OPEN_COUNT_QUERY)\nrows = cur.fetchall()\ncols = [c[0] for c in cur.description]\nassert (\"Omar Haddad\", 0) in rows, \"a customer with no ticket appears with 0\"\nassert (\"Dana Whitfield\", 0) in rows, \"a customer whose tickets are all closed appears with 0\"\nassert [r[1] for r in rows] == [0, 1, 2, 0], \"open_tickets counts each customer's tickets that are not closed, in customer_id order\"\nassert cols == [\"name\", \"open_tickets\"], \"the columns are name and open_tickets\""
+    },
+    {
+      "id": "t6",
+      "title": "CRUD",
+      "step": 7,
+      "idea": "The reader writes one UPDATE that sets priority to 'high' on every ticket that has no agent and is not closed. On the page's seed only ticket 6 changes, from 'low' to 'high'; a SELECT after the statement reads every ticket's priority back.",
+      "checks": [
+        "The open ticket with no agent ends at 'high', so WHERE agent_id = NULL, which matches no row, fails.",
+        "The tickets that have an agent keep their priority, so an UPDATE without a WHERE fails.",
+        "The closed tickets with no agent keep their priority, so a WHERE that tests only agent_id IS NULL fails."
+      ],
+      "approved": true,
+      "q": "Inside the quotes of <code>ESCALATE_UPDATE</code>, write one UPDATE on <code>tickets</code> that sets <code>priority</code> to <code>'high'</code> on every ticket that has no agent and is not closed, and leaves every other ticket as it was. On the page's seeded desk only ticket 6 changes, from <code>'low'</code> to <code>'high'</code>; the checks read every ticket's priority back with a SELECT afterwards.",
+      "starter": "ESCALATE_UPDATE = \"\"\"\n-- raise to high every ticket that has no agent and is not closed\n\"\"\"",
+      "tests": "import sqlite3\nconn = sqlite3.connect(\":memory:\")\nconn.execute(\"PRAGMA foreign_keys = ON\")\nconn.executescript(\"\"\"\nCREATE TABLE priorities (priority VARCHAR(10) PRIMARY KEY, sla_hours INT NOT NULL);\nCREATE TABLE customers (customer_id INT PRIMARY KEY, name VARCHAR(100) NOT NULL, email VARCHAR(255) NOT NULL UNIQUE);\nCREATE TABLE agents (agent_id INT PRIMARY KEY, name VARCHAR(50) NOT NULL);\nCREATE TABLE tickets (\n    ticket_id INT PRIMARY KEY,\n    title VARCHAR(200) NOT NULL,\n    priority VARCHAR(10) NOT NULL REFERENCES priorities (priority),\n    status VARCHAR(10) NOT NULL DEFAULT 'open',\n    customer_id INT NOT NULL REFERENCES customers (customer_id),\n    agent_id INT REFERENCES agents (agent_id),\n    opened_at DATETIME NOT NULL,\n    closed_at DATETIME\n);\nINSERT INTO priorities VALUES ('high', 4), ('normal', 24), ('low', 72);\nINSERT INTO customers VALUES\n    (1, 'Dana Whitfield', 'dana@example.com'), (2, 'Ravi Patel', 'ravi@example.com'),\n    (3, 'Mei Chen', 'mei@example.com'), (4, 'Omar Haddad', 'omar@example.com');\nINSERT INTO agents VALUES (1, 'Priya'), (2, 'Marco'), (3, 'Sam'), (4, 'Lee');\nINSERT INTO tickets VALUES\n    (1, 'Login page returns 500', 'high', 'closed', 1, NULL, '2026-10-18 08:00:00', '2026-10-18 11:00:00'),\n    (2, 'Invoice PDF is blank', 'normal', 'closed', 2, NULL, '2026-10-17 12:00:00', '2026-10-18 18:00:00'),\n    (3, 'Typo on pricing page', 'normal', 'closed', 1, NULL, '2026-10-18 18:00:00', '2026-10-19 04:00:00'),\n    (4, 'Checkout button frozen', 'high', 'assigned', 3, 1, '2026-10-19 08:00:00', NULL),\n    (5, 'Export is missing rows', 'normal', 'assigned', 2, 2, '2026-10-18 12:00:00', NULL),\n    (6, 'Add dark mode', 'low', 'open', 3, NULL, '2026-10-19 12:00:00', NULL);\n\"\"\")\nconn.execute(ESCALATE_UPDATE)\nafter = dict(conn.execute(\"SELECT ticket_id, priority FROM tickets\").fetchall())\nassert after[6] == \"high\", \"the ticket that has no agent and is not closed ends at high\"\nassert [after[4], after[5]] == [\"high\", \"normal\"], \"the tickets that have an agent keep their priority\"\nassert [after[1], after[2], after[3]] == [\"high\", \"normal\", \"normal\"], \"the closed tickets with no agent keep their priority\""
+    }
+  ]
+}

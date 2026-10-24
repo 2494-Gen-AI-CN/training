@@ -834,6 +834,137 @@ Query OK, 0 rows affected</pre>
         </div>
       </section>
 
+      <section class="practice" id="practice" hidden>
+        <div class="tag">Practice</div>
+        <h2>Practice</h2>
+        <div class="ix-task" data-id="t1" data-title="DDL" data-q="The checks build the desk&#x27;s &lt;code&gt;customers&lt;/code&gt;, &lt;code&gt;agents&lt;/code&gt; and &lt;code&gt;tickets&lt;/code&gt; tables with their rows, plus a &lt;code&gt;scratch_notes&lt;/code&gt; table holding two notes. Write one DDL statement that removes the &lt;code&gt;scratch_notes&lt;/code&gt; table itself, its definition and its rows, and that a clean-up script can run a second time without an error once the table is gone. Type the statement between the triple quotes; the checks run it, then run it again. Afterwards the database holds the tables &lt;code&gt;customers&lt;/code&gt;, &lt;code&gt;agents&lt;/code&gt; and &lt;code&gt;tickets&lt;/code&gt; and no &lt;code&gt;scratch_notes&lt;/code&gt;, and the second run reports no error.">
+<pre class="task-starter"><code>QUERY = """
+-- remove scratch_notes so the statement can run twice
+"""</code></pre>
+<pre class="task-tests" hidden><code>import sqlite3
+conn = sqlite3.connect(":memory:")
+conn.execute("PRAGMA foreign_keys = ON")
+conn.executescript("""
+CREATE TABLE customers (
+    customer_id INT,
+    name VARCHAR(100),
+    email VARCHAR(255),
+    country CHAR(2),
+    monthly_fee DECIMAL(8,2)
+);
+CREATE TABLE agents (
+    agent_id INT,
+    name VARCHAR(50),
+    email VARCHAR(255)
+);
+CREATE TABLE tickets (
+    ticket_id INT,
+    title VARCHAR(200),
+    priority VARCHAR(10),
+    status VARCHAR(10),
+    customer_id INT,
+    agent_id INT,
+    opened_at DATETIME,
+    closed_at DATETIME
+);
+INSERT INTO customers (customer_id, name, email, country, monthly_fee)
+VALUES (1, 'Dana Whitfield', 'dana@example.com', 'CA', 49.00),
+       (2, 'Ravi Patel', 'ravi@example.com', 'CA', 199.00),
+       (3, 'Mei Chen', 'mei@example.com', 'US', 0.00),
+       (4, 'Omar Haddad', 'omar@example.com', 'GB', 49.00);
+INSERT INTO agents (agent_id, name, email)
+VALUES (1, 'Priya', 'priya@desk.example'),
+       (2, 'Marco', 'marco@desk.example'),
+       (3, 'Sam', 'sam@desk.example'),
+       (4, 'Lee', 'lee@desk.example');
+INSERT INTO tickets (ticket_id, title, priority, status, customer_id, agent_id, opened_at, closed_at)
+VALUES (1, 'Login page returns 500', 'high', 'closed', 1, NULL, '2026-10-18 08:00:00', '2026-10-18 11:00:00'),
+       (2, 'Invoice PDF is blank', 'normal', 'closed', 2, NULL, '2026-10-17 12:00:00', '2026-10-18 18:00:00'),
+       (3, 'Typo on pricing page', 'normal', 'closed', 1, NULL, '2026-10-18 18:00:00', '2026-10-19 04:00:00'),
+       (4, 'Checkout button frozen', 'high', 'assigned', 3, 1, '2026-10-19 08:00:00', NULL),
+       (5, 'Export is missing rows', 'normal', 'assigned', 2, 2, '2026-10-18 12:00:00', NULL),
+       (6, 'Add a dark mode', 'low', 'open', 3, NULL, '2026-10-19 12:00:00', NULL);
+CREATE TABLE scratch_notes (
+    note_id INT,
+    body VARCHAR(50)
+);
+INSERT INTO scratch_notes VALUES (1, 'call back'), (2, 'refund sent');
+""")
+cur = conn.execute(QUERY)
+rows = cur.fetchall()
+assert conn.execute("SELECT name FROM sqlite_master WHERE name = 'scratch_notes'").fetchall() == [], "scratch_notes is gone as a table, not just emptied"
+assert not raises(sqlite3.Error, conn.execute, QUERY), "a second run, with scratch_notes already gone, raises no error"
+assert [r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table' AND name != 'scratch_notes' ORDER BY name")] == ["agents", "customers", "tickets"], "customers, agents and tickets are all still there"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t2" data-title="DML" data-q="The checks load the six desk tickets into &lt;code&gt;tickets&lt;/code&gt; (columns &lt;code&gt;ticket_id&lt;/code&gt;, &lt;code&gt;title&lt;/code&gt;, &lt;code&gt;priority&lt;/code&gt;, &lt;code&gt;status&lt;/code&gt;, &lt;code&gt;customer_id&lt;/code&gt;, &lt;code&gt;agent_id&lt;/code&gt;, &lt;code&gt;opened_at&lt;/code&gt;, &lt;code&gt;closed_at&lt;/code&gt;) plus the second ticket 1 from the DELETE section above: the same title with status &lt;code&gt;&#x27;open&#x27;&lt;/code&gt;, next to the original whose status is &lt;code&gt;&#x27;closed&#x27;&lt;/code&gt;. Write one DELETE that removes only the open copy of ticket 1. Afterwards one row has &lt;code&gt;ticket_id&lt;/code&gt; 1, the closed one, and tickets 2 to 6 are untouched. Type the statement between the triple quotes.">
+<pre class="task-starter"><code>QUERY = """
+-- remove the open copy of ticket 1 and nothing else
+"""</code></pre>
+<pre class="task-tests" hidden><code>import sqlite3
+conn = sqlite3.connect(":memory:")
+conn.execute("PRAGMA foreign_keys = ON")
+conn.executescript("""
+CREATE TABLE tickets (
+    ticket_id INT,
+    title VARCHAR(200),
+    priority VARCHAR(10),
+    status VARCHAR(10),
+    customer_id INT,
+    agent_id INT,
+    opened_at DATETIME,
+    closed_at DATETIME
+);
+INSERT INTO tickets (ticket_id, title, priority, status, customer_id, agent_id, opened_at, closed_at)
+VALUES (1, 'Login page returns 500', 'high', 'closed', 1, NULL, '2026-10-18 08:00:00', '2026-10-18 11:00:00'),
+       (2, 'Invoice PDF is blank', 'normal', 'closed', 2, NULL, '2026-10-17 12:00:00', '2026-10-18 18:00:00'),
+       (3, 'Typo on pricing page', 'normal', 'closed', 1, NULL, '2026-10-18 18:00:00', '2026-10-19 04:00:00'),
+       (4, 'Checkout button frozen', 'high', 'assigned', 3, 1, '2026-10-19 08:00:00', NULL),
+       (5, 'Export is missing rows', 'normal', 'assigned', 2, 2, '2026-10-18 12:00:00', NULL),
+       (6, 'Add a dark mode', 'low', 'open', 3, NULL, '2026-10-19 12:00:00', NULL);
+INSERT INTO tickets (ticket_id, title, priority, status, customer_id, agent_id, opened_at, closed_at)
+VALUES (1, 'Login page returns 500', 'high', 'open', 1, NULL, '2026-10-20 09:00:00', NULL);
+""")
+before = conn.total_changes
+cur = conn.execute(QUERY)
+rows = cur.fetchall()
+assert conn.total_changes - before == 1, "removes exactly one row"
+assert conn.execute("SELECT status FROM tickets WHERE ticket_id = 1").fetchall() == [("closed",)], "the one ticket 1 left is the closed one"
+assert conn.execute("SELECT ticket_id FROM tickets WHERE ticket_id &gt; 1 ORDER BY ticket_id").fetchall() == [(2,), (3,), (4,), (5,), (6,)], "tickets 2 to 6 are all still there"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t3" data-title="DQL" data-q="The checks load the six desk tickets into &lt;code&gt;tickets&lt;/code&gt; (columns &lt;code&gt;ticket_id&lt;/code&gt;, &lt;code&gt;title&lt;/code&gt;, &lt;code&gt;priority&lt;/code&gt;, &lt;code&gt;status&lt;/code&gt;, &lt;code&gt;customer_id&lt;/code&gt;, &lt;code&gt;agent_id&lt;/code&gt;, &lt;code&gt;opened_at&lt;/code&gt;, &lt;code&gt;closed_at&lt;/code&gt;). Write one SELECT that returns the tickets whose &lt;code&gt;status&lt;/code&gt; is &lt;code&gt;&#x27;assigned&#x27;&lt;/code&gt;, with two result columns: &lt;code&gt;ticket_id&lt;/code&gt; under the heading &lt;code&gt;id&lt;/code&gt;, then &lt;code&gt;title&lt;/code&gt; under the heading &lt;code&gt;summary&lt;/code&gt;. &lt;code&gt;AS&lt;/code&gt; changes only the headings of the result, not the table. On these rows it returns &lt;code&gt;(4, &#x27;Checkout button frozen&#x27;)&lt;/code&gt; and &lt;code&gt;(5, &#x27;Export is missing rows&#x27;)&lt;/code&gt;, in any order. Type the statement between the triple quotes.">
+<pre class="task-starter"><code>QUERY = """
+-- the assigned tickets as id and summary
+"""</code></pre>
+<pre class="task-tests" hidden><code>import sqlite3
+conn = sqlite3.connect(":memory:")
+conn.execute("PRAGMA foreign_keys = ON")
+conn.executescript("""
+CREATE TABLE tickets (
+    ticket_id INT,
+    title VARCHAR(200),
+    priority VARCHAR(10),
+    status VARCHAR(10),
+    customer_id INT,
+    agent_id INT,
+    opened_at DATETIME,
+    closed_at DATETIME
+);
+INSERT INTO tickets (ticket_id, title, priority, status, customer_id, agent_id, opened_at, closed_at)
+VALUES (1, 'Login page returns 500', 'high', 'closed', 1, NULL, '2026-10-18 08:00:00', '2026-10-18 11:00:00'),
+       (2, 'Invoice PDF is blank', 'normal', 'closed', 2, NULL, '2026-10-17 12:00:00', '2026-10-18 18:00:00'),
+       (3, 'Typo on pricing page', 'normal', 'closed', 1, NULL, '2026-10-18 18:00:00', '2026-10-19 04:00:00'),
+       (4, 'Checkout button frozen', 'high', 'assigned', 3, 1, '2026-10-19 08:00:00', NULL),
+       (5, 'Export is missing rows', 'normal', 'assigned', 2, 2, '2026-10-18 12:00:00', NULL),
+       (6, 'Add a dark mode', 'low', 'open', 3, NULL, '2026-10-19 12:00:00', NULL);
+""")
+cur = conn.execute(QUERY)
+rows = cur.fetchall()
+assert [c[0] for c in cur.description] == ["id", "summary"], "the result columns are headed id and summary, in that order"
+assert sorted(rows) == [(4, "Checkout button frozen"), (5, "Export is missing rows")], "returns the two assigned tickets and no others"
+assert all(len(r) == 2 and isinstance(r[0], int) and isinstance(r[1], str) for r in rows), "each row holds two values, the ticket id before the title"</code></pre>
+        </div>
+      </section>
+
       <section class="step" data-diagram="0" data-step="7">
         <div class="tag">Check yourself</div>
         <h2>Check yourself</h2>
