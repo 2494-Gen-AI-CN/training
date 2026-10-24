@@ -7,7 +7,7 @@ The page is reference and study material (D-0040): a reader who studies it answe
 ## Structure (must match the template)
 
 1. `<meta name="tc-day" content="<id>">` present; `<title>` ends with the site title.
-2. Topbar: brand, Home, Demos, Exercises links (relative path `../../index.html`; Demos = `config.demoRepo.url`, the public demo repo and the ONLY demo link on the site, D-0055; Exercises = the config repo URL).
+2. Topbar: brand, Home, Demos, Exit criteria links and no other (Home = `../../index.html`; Demos = `config.demoRepo.url`, the public demo repo and the ONLY demo link on the site, D-0055; Exit criteria = `../../exit-criteria/index.html`, D-0063; no hand-in link, D-0068).
 3. `main.lesson2 > .reading2col` with `nav.toc`, `article.reading-col`, `aside.side`.
 4. `.lede` has `h1`, `.meta` with "Week W · Day D", the date, the week theme, "~N min" where N == round(prose words / `readingWpm`) within ±1, and `span.verified` reading "Sources checked YYYY-MM-DD" (the brief's `verified:` date) followed by "· <lib> <version>" stamps that all exist in the brief's `version-stamps:` (python at least). The `.summary` names in one sentence what the page assumes from the previous day, what it teaches and what the reader can answer afterwards.
 5. `section.step` count within `metrics.notes.stepsMin..stepsMax`; `data-step` values are 0..n-1 in order; each has a `.tag` and an `h2`.
@@ -17,7 +17,7 @@ The page is reference and study material (D-0040): a reader who studies it answe
    - 5d. Page total of `<pre>` code blocks ≥ `codeBlocksMin`; every block is runnable as shown (or a terminal transcript) and is followed IMMEDIATELY by its output: a `<pre class="out">` holding what it prints (preferred, D-0060) or a `<p>` that states it. A block followed by an `h3` or another block is a critique. `pre.out` is output, not code: it is not counted in `codeBlocksMin` and never carries a prompt character. The two `<pre>` inside a `.ix-task` (item 17) are a task's starter and its checks, not examples, and are not held to this.
 6. `section.reading-sources` with ≥ `sourcesMin` `<li id="src-N">` items (N = 1..), each one `http` link plus a one-line reason, every URL taken from the research brief (Sources, Claims or Notes depth).
 7. Aside: `.side-diagram` with `svg#diagram` + `.stage-caption`; `.side-cards` containing a quiz `.activity-card[data-modal="quiz-modal"]` and an optional deep-dive card, and NO demo card (D-0055: demos are disconnected from the site; a `.demo-card` or `data-demo` attribute anywhere is a FAIL); `.side-nav`.
-8. Modals: `#quiz-modal` (with `section#quiz` + `.modal-next`), `#goals-modal` (`goalsMin..goalsMax` `.goals-list` items + "Today's exercise" link to the exercise README; NO demo list, D-0055), optional `#deep-modal`; no `#code-*` popups.
+8. Modals: `#quiz-modal` (with `section#quiz` + `.modal-next`), `#goals-modal` (title `Day N — goals`; the goals list only: `goalsMin..goalsMax` `.goals-list` items, no hand-in link, D-0068; NO demo list, D-0055), optional `#deep-modal`; no `#code-*` popups.
 9. Script tags, in order: `theme.js` in head; at the bottom exactly `diagram.js, scrolly.js, modals.js, quiz.js, widgets.js, glossary.js` (no `survey.js` on any day, D-0061; no `codeviewer.js`, D-0055). No other scripts. No `FDE_`, `roster`, `progress.js`, `day-summary`, `auth.js`, `workers.dev`, `2463` anywhere.
 
 ## Content

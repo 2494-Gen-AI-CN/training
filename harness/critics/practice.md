@@ -42,7 +42,7 @@ A step fits when ALL of these hold:
 3. The page alone is enough to solve it: every name, method and idiom the model answer needs is taught on this page or listed as known in the audience line. Nothing the week plan's anti-spoiler rows defer from this day to a later one.
 4. It is small: a model answer of at most `modelLinesMax` lines, one function, class or short script.
 5. Each proposed check proves ONE behaviour, and a mistake the page names (its pitfalls, its "recognise on sight" lines, the brief's Pitfalls) fails it. A task whose only wrong answer is "did not write it" is not worth a slot.
-6. It does not hand over the day's exercise: read `exercises/<rel>/README.md` and stay off its functions and its acceptance criteria. The same holds for the day's demo rungs: the task is a sibling in the same domain, never the rung itself.
+6. It does not hand over the day's demo rungs: the task is a sibling in the same domain, never the rung itself.
 
 Shape of a proposal: at most ONE task per teaching step, ids `t1`, `t2`, ... in step order, `title` the short name of the section it practises (as the exemplar does), `idea` in two or three sentences (what the reader writes, the signature, one example of input and result), `checks` a list of `checksPerTaskMin`..`checksPerTaskMax` plain sentences, each the behaviour one check will prove. Keep to the demo thread's domain where the page does (the exemplar's tasks are all about tickets). `q`, `starter` and `tests` stay empty and `approved` stays null: the trainer has not answered.
 

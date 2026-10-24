@@ -21,7 +21,7 @@ Usage:
     python harness/args_for.py 2 --plan --cold --today 2026-10-14   # D-0050: previousEndState {} + coldRestart, every
                                                      # thread starts cold (the previous week's ladder was not delivered)
     python harness/args_for.py 1 2 3 --notes-only    # D-0040: research depth + notes page only; the brief must
-                                                     # already be on disk; exercise and runbook are untouched
+                                                     # already be on disk; the runbook is untouched
     python harness/args_for.py 2 1 2 --runbook-only  # D-0055: the runbook alone (brief and notes page on disk)
     python harness/args_for.py 2 --demos --today 2026-10-15   # D-0055: demo-series.js args: the week's walkthrough
                                                      # blocks in ladder order (plan must pass; a brief per day)
@@ -82,7 +82,6 @@ def _day_base(cur: dict, week: dict, d: dict, s: dict) -> dict:
         "dateLabel": bi.date_label(s["date"], year=True),
         "feedback": bi.is_feedback(week, d),
         "notes": d.get("notes", ""),
-        "exerciseKind": d.get("exerciseKind", "pytest"),
         "status": d.get("status", "planned"),
         "taught": d.get("taught"),
         "rel": f"{week['dir']}/{d['slug']}",
@@ -295,13 +294,11 @@ def practice_args(cur: dict, week: dict, day_nos: list[int], build: bool, today:
             (refused if named else notes).append(f"{d['id']}: {why}")
             continue
         brief = ROOT / "harness" / "research" / f"{rel}.md"
-        readme = ROOT / "exercises" / rel / "README.md"
         day = {
             **_day_base(cur, week, d, by_slot[d["day"]]),
             "pageFile": _fwd(pt.page_for(rel)), "pageRel": f"docs/weeks/{rel}.html",
             "practiceFile": _fwd(pt.path_for(rel)), "practiceRel": f"harness/practice/{rel}.json",
             "researchBrief": _fwd(brief) if brief.is_file() else None,
-            "exerciseReadme": _fwd(readme) if readme.is_file() else None,
             "solutionsDir": f"trainer/{rel}/solutions",
             "spoilerRows": plan_check.day_rows(plan, d["id"]).get("spoilerRows", []) if plan else [],
         }

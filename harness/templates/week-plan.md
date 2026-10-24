@@ -92,13 +92,13 @@ as-is from its walkthroughs on disk (D-0052).
 
 <!-- One "### <id> — <title> (<dateLabel>)" per teaching day of the week, in order. AM and PM list every block of
      the day: setup check, framing, the walkthrough (name, minutes), facilitation blocks by subtopic, breaks,
-     lunch, notes handoff, exercise briefing, exercise, wrap-up. Stop points and cut lists live in the
+     lunch, notes handoff, sprint / project work, wrap-up. Stop points and cut lists live in the
      week-level sections below. -->
 
 ### w02d1 — {{title}} ({{dateLabel}})
 
 - AM: setup check (10), framing (5), Walkthrough 01-desk-modules (105; a 15-minute break inside it after Step 4), lunch (60).
-- PM: Walkthrough 02-pip-and-module-split (75), break (10), notes page handoff (15), exercise briefing (10), exercise (60), wrap-up (10). Total 375.
+- PM: Walkthrough 02-pip-and-module-split (75), break (10), notes page handoff (15), sprint / project work (70), wrap-up (10). Total 375.
 - Demo minutes: 180.
 
 ## Stop points
@@ -113,8 +113,8 @@ as-is from its walkthroughs on disk (D-0052).
 
 ## Squeeze priorities
 
-<!-- Over budget: cut in this order. Then what is never cut: the steps a later block starts from, the exercise
-     briefing, the wrap-up questions. -->
+<!-- Over budget: cut in this order. Then what is never cut: the steps a later block starts from and the wrap-up
+     questions. -->
 
 **Cut first** (lowest cost to the through-line):
 1. 01-desk-modules Step 6 (the `re.sub` redaction): name it, the pattern stays in the commit.
@@ -122,7 +122,7 @@ as-is from its walkthroughs on disk (D-0052).
 
 **Never cut** (the lesson dies without these):
 - 01-desk-modules Steps 2–4 (the module imports every later block reads).
-- The exercise briefing and the wrap-up questions of every block.
+- The wrap-up questions of every block.
 
 ## Hard-stop rule
 
@@ -181,7 +181,7 @@ what a professional team would build instead of what the demos build.
 
 <!-- D-0063. Every criterion of this week's exit-criteria group (args exitGroup; `python harness/exit_criteria.py show <group>`
      prints the ids and the exact text) EXACTLY ONCE, in one of three Day forms:
-       w03d2     mapped to a day of this week: Where = the walkthrough of that day that exercises it, or facilitation, or
+       w03d2     mapped to a day of this week: Where = the walkthrough of that day that covers it, or facilitation, or
                  notes-only; Notes step = the page step that teaches it, 1-based, required on every Required row
        week 04   a LATER week of the group = deferred (Where and Notes step —); the last week of a group may defer nothing
        week 02   an EARLIER week of the group = taught earlier (Where and Notes step —); that week's plan maps it in-week,

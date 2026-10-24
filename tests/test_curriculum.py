@@ -227,7 +227,6 @@ class CurriculumTests(unittest.TestCase):
                 self.assertTrue((DOCS / "weeks" / f"{rel}.html").exists())
                 self.assertFalse(any(f.is_file() for f in (ROOT / "demos").rglob("*")) if (ROOT / "demos").exists() else False,
                                  "D-0055: nothing is published under demos/ in this repo")
-                self.assertTrue((ROOT / "exercises" / rel / "README.md").exists())
                 self.assertTrue((HARNESS / "research" / f"{rel}.md").exists())
 
 

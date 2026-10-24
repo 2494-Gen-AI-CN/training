@@ -52,6 +52,7 @@ def _common_checks(tc: unittest.TestCase, page: ParsedPage):
     nav = [a for a in r.find_all("a", "topnav") if a.text().strip() == "Projects"]
     tc.assertEqual(1, len(nav), "the shared shell (site_pages.SECTIONS) links the Projects section once")
     tc.assertEqual("../projects/index.html", nav[0].attrs.get("href"))
+    tc.assertEqual([], [a for a in r.find_all("a", "topnav") if a.text().strip() == "Exercises"], "no Exercises topnav (D-0068)")
     tc.assertIsNone(FORBIDDEN_RE.search(page.raw), FORBIDDEN_RE.search(page.raw))
     tc.assertNotRegex(page.raw, r"<html[^>]*\bdata-view")
     tc.assertNotRegex(page.raw, r"<html[^>]*\bdata-theme")
@@ -94,7 +95,8 @@ class SyncTests(unittest.TestCase):
         nav = [a for a in page.root.find_all("a", "topnav") if a.text().strip() == "Exit criteria"]
         self.assertEqual(1, len(nav))
         self.assertEqual("exit-criteria/index.html", nav[0].attrs.get("href"))
-        rail = [a for a in page.root.find("div", "friday-rituals").find_all("a", "fr-btn") if a.attrs.get("href") == "exit-criteria/index.html"]
+        self.assertEqual([], [a for a in page.root.find_all("a", "topnav") if a.text().strip() == "Exercises"], "no Exercises topnav (D-0068)")
+        rail =[a for a in page.root.find("div", "friday-rituals").find_all("a", "fr-btn") if a.attrs.get("href") == "exit-criteria/index.html"]
         self.assertEqual(1, len(rail))
 
 

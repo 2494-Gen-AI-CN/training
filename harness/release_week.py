@@ -8,7 +8,7 @@ one step that makes a week visible. It refuses, naming every reason on its own l
 
   a. harness/plans/week-WW.md exists and passes harness/plan_check.py (the same check args_for.py gates on);
   b. every teaching day of the week is authored or already live (a planned day is named);
-  c. every authored day has docs/weeks/<rel>.html and exercises/<rel>/README.md on disk, and its page passes
+  c. every authored day has docs/weeks/<rel>.html on disk (the page is the only per-day gate, D-0068), and it passes
      harness/notes_check.py (counts, phrases, stamps, citations; no network link phase);
   d. harness/last-tests.json exists, its last contract test run is green, and it is not older than the newest
      authored page of the week (its `at` timestamp against the page mtime; its `date` when `at` is absent);
@@ -222,10 +222,9 @@ def gate(week_no: int, today: dt.date, cur: dict, root: Path = ROOT) -> dict:
         rel = f"{wk['dir']}/{d['slug']}"
         page = f"docs/weeks/{rel}.html"
         pages.append((page, root / page))
-        for need in (page, f"exercises/{rel}/README.md"):
-            if not (root / need).is_file():
-                reasons.append(f"{d['id']} is authored but {need} is missing")
-        if (root / page).is_file():
+        if not (root / page).is_file():
+            reasons.append(f"{d['id']} is authored but {page} is missing")
+        else:
             reasons += [f"notes_check {page}: {f}" for f in notes_findings(root / page)]
     tr = tests_reason(root, pages)
     if tr:

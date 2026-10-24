@@ -1,9 +1,0 @@
--- library schema: write the three CREATE TABLE statements here, parents first.
--- The tests create an empty database, run this file in it, then check the rules.
--- Do not put CREATE DATABASE, DROP DATABASE or USE in this file.
---
--- members: member_id (generated key), name (required), email (required, unique), joined (defaults to today)
--- books:   book_id (key), title (required), copies (required, default 1, never negative)
--- loans:   member_id and book_id (together the key, each a foreign key with ON DELETE CASCADE),
---          loaned_on (required date), returned_on (date, may be empty),
---          status ('out' or 'returned', default 'out')

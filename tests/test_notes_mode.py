@@ -107,6 +107,7 @@ class TierTests(unittest.TestCase):
 
     def test_every_tier_call_names_a_configured_stage(self):
         stages = set(CONFIG["models"]["stages"])
+        self.assertNotIn("exercise", stages, "the exercise stage is gone (D-0068)")
         for src, label in ((FANOUT, "day-fanout.js"), (WEEK_PLAN, "week-plan.js")):
             used = set(re.findall(r"tier\('([\w-]+)'", src))
             self.assertTrue(used, label)

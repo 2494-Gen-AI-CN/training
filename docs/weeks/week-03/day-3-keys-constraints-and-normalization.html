@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="tc-day" content="w03d3">
 <title>W3·D3 — Keys, constraints &amp; normalization | 2494 · Gen-AI Python</title>
-<link rel="stylesheet" href="../../assets/css/style.css?v=20261023">
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261024">
 <script src="../../assets/js/theme.js?v=20261023"></script>
 </head>
 <body>
@@ -18,7 +18,6 @@
   </div>
   <nav class="topbar-center">
     <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
-    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises" target="_blank" rel="noopener">Exercises</a>
     <a class="topnav" href="../../exit-criteria/index.html">Exit criteria</a>
   </nav>
   <div class="topbar-right">
@@ -1073,17 +1072,13 @@ assert raises(sqlite3.IntegrityError, conn.execute, "INSERT INTO ticket_events (
 <div id="goals-modal" class="modal-overlay" hidden>
   <div class="modal-card">
     <button class="modal-close" type="button" aria-label="Close">✕</button>
-    <h2>Day 3 — goals &amp; exercise</h2>
+    <h2>Day 3 — goals</h2>
     <div class="ma-k">By the end of today you can</div>
     <ul class="goals-list">
       <li>Explain what a primary key guarantees in a data set, and choose one from a table's candidate keys</li>
       <li>Explain how a foreign key enforces referential integrity, and what the server does when a parent row with children is deleted</li>
       <li>Normalize a flat data set from 0NF to 3NF with a reason for each form, and turn the result into a valid schema</li>
       <li>Describe and declare a table's constraints: primary key, foreign key, unique, not null, auto increment, default and check</li>
-    </ul>
-    <div class="ma-k">Today's exercise</div>
-    <ul class="deliv-list check">
-      <li><a href="https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-03/day-3-keys-constraints-and-normalization" target="_blank" rel="noopener">exercises/week-03/day-3-keys-constraints-and-normalization</a> — a pytest-checked exercise: the <code>library</code> schema rebuilt with primary keys, a composite key on <code>loans</code>, foreign keys with ON DELETE CASCADE, UNIQUE, CHECK and DEFAULT, then <code>library_db.py</code> with <code>add_member(conn, ...)</code> and <code>return_book(conn, ...)</code> through mysql-connector-python. The tests run against your own container and roll back.</li>
     </ul>
     <p class="goals-foot">Thursday assumes your constrained schema rebuilds cleanly. Finish the check to unlock the next page.</p>
   </div>

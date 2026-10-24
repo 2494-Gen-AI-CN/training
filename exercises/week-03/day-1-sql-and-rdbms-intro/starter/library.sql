@@ -1,5 +1,0 @@
--- library.sql: the city_library database with books, members and loans (types only, no keys, no rows).
--- Start with these three lines (remove the "-- " in front of each), then add the three CREATE TABLEs.
--- DROP DATABASE IF EXISTS city_library;
--- CREATE DATABASE city_library;
--- USE city_library;

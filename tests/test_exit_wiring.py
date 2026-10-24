@@ -29,10 +29,9 @@ class DayFanoutTests(unittest.TestCase):
                 m = re.search(r"label:`\$\{d\.id\}:([\w-]+)`", chunk)
                 self.assertIsNotNone(m, "every exitCtx prompt is a labelled per-day agent")
                 self.assertRegex(m.group(1), r"^(research|research-depth|notes|runbook)(-crit)?$", m.group(1))
-                self.assertNotIn("exercise", m.group(1), "exercise prompts never see the exit rows (D-0063)")
                 seen.append(m.group(1))
         self.assertEqual(sorted(seen), sorted(["research", "research-crit", "research-depth", "research-depth-crit", "notes", "notes-crit", "runbook", "runbook-crit"]))
-        self.assertTrue(all(EXIT not in chunk.split("{ schema:")[0] for chunk in FANOUT.split("agent(")[1:] if "exercise" in chunk.split("{ schema:")[0] and "label:`${d.id}:exercise" in chunk))
+        self.assertNotIn("label:`${d.id}:exercise", FANOUT, "the per-day exercise stage is gone (D-0068)")
 
     def test_humanize_and_verify_do_not_see_it(self):
         for start, end in (("const humanize = ", "const humanizeTrainer = "), ("const humanizeTrainer = ", "function demoFacts"), ("const notesVerify", "async function notesStage")):

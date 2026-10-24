@@ -34,20 +34,19 @@
     ]
   },
   "learnerRepo": {
-    "_comment": "Learner repo convention (D-0051, supersedes D-0037): one PUBLIC repository per trainee inside the cohort organisation, created in the W1D2 Git exercise and kept for the whole course. Reaches every exercise and runbook author/critic prompt through args_for.py and day-fanout.js (learnerCtx). The trainer's live demo repository is demoRepo below, a different repository. Change via a decision entry.",
+    "_comment": "Learner repo convention (D-0051, supersedes D-0037): one PUBLIC repository per trainee inside the cohort organisation, created in the W1D2 Git block and kept for the whole course; sprint / project work is handed in there, in <week-dir>/hackathon/ (D-0068). Reaches the runbook author and critic prompts through args_for.py and day-fanout.js (learnerCtx). The trainer's live demo repository is demoRepo below, a different repository. Change via a decision entry.",
     "org": "2494-Gen-AI-CN",
     "name": "FirstnameLastname",
     "nameRule": "the trainee's first and last name as on the class roster, run together in PascalCase, ASCII letters and digits; a hyphen or underscore between the names is tolerated; a clash gets a trailing digit",
     "visibility": "public",
     "createdIn": "w01d2",
     "layout": {
-      "root": "hello.py, .gitignore and README.md from the W1D2 Git exercise stay at the top level",
-      "exercises": "<week-dir>/<day-slug>/, the same relative path the exercise has under exercises/ in the training repo",
+      "root": "hello.py, .gitignore and README.md from the W1D2 Git block stay at the top level",
       "hackathon": "<week-dir>/hackathon/ for the week's hackathon deliverable, due on the week's last teaching day unless the trainer says otherwise",
       "codeAlong": "optional: code-along/<week-dir>/<day-slug>/ for the trainee's own copy of what was typed in class; never marked",
       "scratch": "scratch/ for explorations; never marked"
     },
-    "handIn": "commit and push to main; the trainer reads the day's folder in the trainee's repository"
+    "handIn": "commit and push to main; the trainer reads the hand-in folder in the trainee's repository"
   },
   "demoRepo": {
     "_comment": "The trainer's live demo repository (D-0050, D-0055): a PUBLIC GitHub repo separate from this one, cloned at localDir (gitignored, like trainer/). The trainer types live on branch (and the week plan's feature branches); harness/workflows/demo-series.js authors each week's blocks as one commit per block on prepBranch (WW = zero-padded week number), which is the answer key of every walkthrough; harness/close_day.py diffs the day's live commits against those prep commits to close a day. Thread code lives under threads.<id>.repoDir. Change via a decision entry.",
@@ -93,7 +92,6 @@
       "notes-verify-light": { "model": "haiku", "effort": "low" },
       "notes-verify-full": { "model": "sonnet", "effort": "medium" },
       "humanize": { "model": "sonnet", "effort": "medium" },
-      "exercise": { "model": "sonnet", "effort": "medium" },
       "runbook": { "model": "opus", "effort": "high" },
       "critic": { "model": "opus", "effort": "medium" },
       "wire": { "model": "haiku", "effort": "low" },

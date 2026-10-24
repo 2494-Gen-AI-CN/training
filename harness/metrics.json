@@ -26,7 +26,6 @@
   },
   "demos": { "_comment": "D-0055: one walkthrough per demo block (AM/PM) under trainer/week-WW/demos/; typed = non-blank python lines + bash commands, about 1.5 lines per minute.", "blocksPerDayMin": 0, "blocksPerDayMax": 2, "minutesPerBlockMin": 30, "minutesPerBlockMax": 180, "stepsPerBlockMin": 4, "stepsPerBlockMax": 12, "maxTypedLinesPerBlock": 250 },
   "practice": { "_comment": "D-0047: practice tasks on a notes page (harness/practice_tasks.py verify, harness/critics/practice.md). At most one task per teaching step.", "checksPerTaskMin": 2, "checksPerTaskMax": 4, "acceptMin": 1, "starterLinesMax": 12, "modelLinesMax": 15 },
-  "exercise": { "testsMin": 4, "testsMax": 10, "pytestTimeoutSec": 120 },
   "runbook": { "dayMinutesMin": 330, "dayMinutesMax": 390 },
   "research": { "claimsMin": 12, "sourcesMin": 5, "glossaryMin": 3, "glossaryMax": 8, "pitfallsMin": 3, "pitfallsMax": 6, "demoHintsMin": 2, "demoHintsMax": 4, "fullGateUrlSpotChecks": 3 }
 }

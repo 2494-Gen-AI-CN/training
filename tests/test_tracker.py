@@ -65,11 +65,11 @@ class TrackerDataTests(unittest.TestCase):
         self.assertEqual(len(list(authored_days())), sum(1 for d in teaching if d["status"] in ("authored", "live")))
         for d in teaching:
             self.assertIn(d["status"], ("planned", "authored", "live"), d["id"])
-            self.assertEqual({"research", "demos", "notes", "exercise", "runbook", "solutions", "closed"}, set(d["a"]), d["id"])
+            self.assertEqual({"research", "demos", "notes", "runbook", "closed"}, set(d["a"]), d["id"])
             self.assertEqual({"planned", "scripts"}, set(d["a"]["demos"]), d["id"])
         for w, d, rel in authored_days():
             td = next(x for x in teaching if x["id"] == d["id"])
-            self.assertTrue(td["a"]["research"] and td["a"]["notes"] and td["a"]["exercise"] and td["a"]["runbook"],
+            self.assertTrue(td["a"]["research"] and td["a"]["notes"] and td["a"]["runbook"],
                             f"{d['id']} is {d['status']} but an artifact is missing")
 
     def test_status_and_stages_are_parsed(self):
@@ -233,7 +233,7 @@ class TrackerPageTests(unittest.TestCase):
             built = status in ("authored", "live")      # D-0052: an authored day has every artifact, it is only unreleased
             return {"id": i, "slot": 1, "date": date, "kind": "lesson", "title": i, "status": status, "taught": taught, "demoFormat": "walkthrough",
                     "a": {"research": built, "demos": {"planned": 2, "scripts": 2 if built else 0},
-                          "notes": built, "exercise": built, "runbook": built, "solutions": False,
+                          "notes": built, "runbook": built,
                           "closed": closed}}
 
         def week(n, start, days, plan):
@@ -296,7 +296,7 @@ class TrackerPageTests(unittest.TestCase):
             self.assertFalse([a for a in alerts if "close w01d4" in a], "a day with delivery.json raises no close alarm")
         self.assertFalse([a for a in later if "w05d1" in a], "a day three weeks out raises no alarm")
         self.assertEqual("w01d3", out["next"])
-        self.assertEqual(["research", "demos", "notes", "exercise", "runbook"], out["missing"])
+        self.assertEqual(["research", "demos", "notes", "runbook"], out["missing"])
         self.assertEqual([], out["missingAuthored"])
         self.assertEqual(["not authored", "not authored, due Friday", "authored, not released", "date passed, never authored"], out["texts"])
         self.assertEqual([2, 4], out["counts"], "counts: live, authored")

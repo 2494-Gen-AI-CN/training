@@ -2,7 +2,7 @@
 """Shared page shell for the generated site sections (exit criteria, projects).
 
 Every generated section under docs/<dir>/ shares the same chrome: skip link, topbar with the brand,
-Home, Demos, Exercises and one topnav per section in SECTIONS, an empty .topbar-right, the main/article
+Home, Demos and one topnav per section in SECTIONS, an empty .topbar-right, the main/article
 wrappers and the footer. The generators (build_exit_pages.py, build_projects.py) hand `shell()` their
 body and page-local CSS and append their own script and closing tags.
 
@@ -69,7 +69,6 @@ def shell(title: str, body: str, cfg: dict, v: str, *, active: str, extra_css: s
     """
     site = cfg.get("siteTitle", "")
     brand = cfg.get("brand", {}) or {}
-    repo = (cfg.get("repoUrl") or "").rstrip("/")
     demo = ((cfg.get("demoRepo") or {}).get("url") or "").rstrip("/")
     return f"""<!doctype html>
 <html lang="en">
@@ -91,7 +90,6 @@ def shell(title: str, body: str, cfg: dict, v: str, *, active: str, extra_css: s
   </div>
   <nav class="topbar-center">
     <a class="topnav" href="{esc(demo)}" target="_blank" rel="noopener">Demos</a>
-    <a class="topnav" href="{esc(repo)}/tree/main/exercises" target="_blank" rel="noopener">Exercises</a>
 {_section_nav(active)}
   </nav>
   <div class="topbar-right"></div>

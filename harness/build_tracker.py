@@ -19,7 +19,7 @@ artifact flags are read from disk for every day, whatever its status.
 Sources:
   harness/curriculum.json           calendar, days, status (planned | authored | live, D-0052), taught
   harness/plans/week-WW.md          week plans: plan_check verdict, planned walkthrough blocks per day
-  harness/research/, docs/weeks/, exercises/, trainer/<rel>/, trainer/week-WW/demos/   per-day artifacts on disk
+  harness/research/, docs/weeks/, trainer/<rel>/, trainer/week-WW/demos/   per-day artifacts on disk
   trainer/<rel>/delivery.json       delivery record written by harness/close_day.py when a day is closed (D-0050)
   harness/config.json               threads, tracker alarm thresholds
   STATUS.md                         phase line, milestones, open items, latest log lines
@@ -242,22 +242,17 @@ def _day(cur: dict, week: dict, slot: dict, plan_info: dict | None) -> dict:
     if rows and rows["ladderRows"]:
         minutes = sum(int(r["Minutes"]) for r in rows["ladderRows"] if r["Minutes"].isdigit())
     delivery = _delivery(p["trainer"] / "delivery.json")
-    rubric = d.get("exerciseKind", "pytest") == "rubric"
-    sol = p["trainer"] / "solutions"
-    solutions = (sol / "RUBRIC.md").is_file() if rubric else (sol.is_dir() and any(sol.glob("*.py")))
     return {
         "slot": slot["slot"], "date": slot["date"].isoformat(), "id": d["id"], "rel": rel,
         "title": d["title"], "subtitle": d.get("subtitle", ""), "kind": d["kind"], "gate": d["gate"],
-        "demoFormat": d["demoFormat"], "exerciseKind": d.get("exerciseKind", "pytest"),
+        "demoFormat": d["demoFormat"],
         "status": d.get("status", "planned"), "taught": d.get("taught"), "feedback": bi.is_feedback(week, d),
         "subtopics": len(d["subtopics"]),
         "a": {
             "research": p["research"].is_file(),
             "demos": {"planned": planned, "scripts": scripts},
             "notes": p["page_fs"].is_file(),
-            "exercise": (p["exercise"] / "README.md").is_file(),
             "runbook": (p["trainer"] / "runbook.md").is_file(),
-            "solutions": bool(solutions),
             "closed": delivery is not None,
         },
         "delivery": delivery,

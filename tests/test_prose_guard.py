@@ -286,7 +286,7 @@ class WorkflowWiringTests(unittest.TestCase):
         src = self.src
         self.assertEqual(1, src.count("const humanizeTrainer = "))
         self.assertEqual(1, src.count("humanizeTrainer("), "one call, for the runbook (the walkthroughs are humanized in demo-series.js)")
-        runbook = src[src.index("const runbook = () =>"):src.index("// notes + exercise first")]
+        runbook = src[src.index("const runbook = () =>"):src.index("// notes first (the runbook reads the page for objectives), then the runbook")]
         self.assertLess(runbook.index("You are the RUNBOOK author"), runbook.index("humanizeTrainer(d, 'runbook'"))
         self.assertLess(runbook.index("humanizeTrainer(d, 'runbook'"), runbook.index("RUNBOOK CRITIC"))
         series = self.series

@@ -1,7 +1,7 @@
 """harness/release_week.py, the Friday gate (D-0052): authored -> live only when the week is ready.
 
 Every fixture lives in a temporary tree (a copy of the curriculum, fake last-tests.json, delivery.json files,
-pages and exercise READMEs); the real harness/curriculum.json is never written. The plan check is patched to pass,
+pages; the page is the only per-day artifact gate, D-0068); the real harness/curriculum.json is never written. The plan check is patched to pass,
 since plan_check reads the real curriculum and a fixture plan would only re-test plan_check.
 """
 
@@ -48,7 +48,6 @@ class ReleaseWeekTests(unittest.TestCase):
         for d in build_index.teaching_days(self.w2):
             rel = self._rel(self.w2, d)
             self._set_mtime(self._touch(f"docs/weeks/{rel}.html", "<!doctype html>\n"), PAGE_DAY)
-            self._touch(f"exercises/{rel}/README.md", "# exercise\n")
         # week 1 days dated before the fixture Friday are closed
         for d in build_index.teaching_days(self.w1):
             if build_index.slot_date(self.cur, 1, d["day"]) < dt.date.fromisoformat(TODAY):
@@ -136,7 +135,7 @@ class ReleaseWeekTests(unittest.TestCase):
         self.assertIn("last contract test run is red (2 failure(s)", out)
         self.assertEqual(before, self._cur_bytes())
 
-    def test_refuses_on_missing_page_or_exercise(self):
+    def test_refuses_on_missing_page(self):
         d = self._w2(3)
         (self.root / "docs" / "weeks" / f"{self._rel(self.w2, d)}.html").unlink()
         code, out = self._run("--check")

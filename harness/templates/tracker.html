@@ -202,7 +202,7 @@ noscript p { padding: 20px; }
       <span><i class="mk on">R</i> present</span>
       <span><i class="mk part">1/3</i> partial</span>
       <span><i class="mk">R</i> missing</span>
-      <span class="muted">R research · D demos · N notes · E exercise · B runbook</span>
+      <span class="muted">R research · D demos · N notes · B runbook</span>
       <span class="st st-amber"><span class="st-g" aria-hidden="true">▲</span>due soon</span>
       <span class="st st-red"><span class="st-g" aria-hidden="true">✕</span>late</span>
     </div>
@@ -243,7 +243,7 @@ window.TRACKER = null;
   var WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   var MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   var ARTS = [["research", "R", "research brief"], ["demos", "D", "walkthrough blocks"], ["notes", "N", "notes page"],
-              ["exercise", "E", "exercise"], ["runbook", "B", "runbook"]];
+              ["runbook", "B", "runbook"]];
   var GLYPH = { red: "✕", amber: "▲", good: "✓", none: "○" };
 
   // ---------- pure helpers (also run under node in tests/test_tracker.py) ----------
@@ -417,7 +417,7 @@ window.TRACKER = null;
     return h("span", { class: "badge", text: d.kind === "review" ? "review" : "planned" });
   }
   function links(w, d) {
-    return { research: "harness/research/" + d.rel + ".md", notes: "docs/weeks/" + d.rel + ".html", exercise: "exercises/" + d.rel + "/README.md",
+    return { research: "harness/research/" + d.rel + ".md", notes: "docs/weeks/" + d.rel + ".html",
              runbook: "trainer/" + d.rel + "/runbook.md", demos: "trainer/" + d.rel.split("/")[0] + "/demos/", plan: w.plan.path };
   }
 
@@ -447,7 +447,7 @@ window.TRACKER = null;
         (d.demoMinutes ? " · " + d.demoMinutes + " demo min planned" : "")]),
       h("div", { style: "margin-top:8px" }, [d.status === "live" ? st("good", "live") : alarm ? st(alarm.level, alarm.text) : ready ? st("good", "authored, not released yet") : st("none", "not authored yet"),
         "  ", w.plan.ok ? st("good", "week plan ok") : st(w.plan.exists ? "red" : "none", w.plan.exists ? "week plan fails its check" : "no week plan")]),
-      miss.length ? h("div", { style: "margin-top:8px" }, ["Missing: " + miss.join(", ") + "."]) : h("div", { style: "margin-top:8px" }, ["All five artifacts are on disk."]),
+      miss.length ? h("div", { style: "margin-top:8px" }, ["Missing: " + miss.join(", ") + "."]) : h("div", { style: "margin-top:8px" }, ["All four artifacts are on disk."]),
       ready ? null : h("div", { class: "cmd" }, [h("span", { class: "muted small", text: "Author it with one invocation: " }),
         h("code", { text: "python harness/args_for.py " + w.week + " " + d.slot + " --today " + today })]),
       h("div", { style: "margin-top:10px" }, [h("button", { class: "btn", type: "button", "data-open": d.id, text: "Open day detail" })])
@@ -520,11 +520,11 @@ window.TRACKER = null;
         var a = TR.dayAlarm(w, d, today, D.rules), dm = d.a.demos, ds = TR.demosState(d);
         var yn = function (v) { return h("td", {}, [st(v ? "good" : "none", v ? "yes" : "no")]); };
         rows.push(h("tr", {}, [h("td", {}, [h("button", { class: "btn", type: "button", "data-open": d.id, text: d.id })]), h("td", { text: TR.fmt(d.date) }), h("td", { text: d.title }),
-          yn(w.plan.ok), yn(d.a.research), h("td", { text: ds === "na" ? "n/a" : dm.scripts + " / " + (dm.planned == null ? "?" : dm.planned) }), yn(d.a.notes), yn(d.a.exercise), yn(d.a.runbook),
+          yn(w.plan.ok), yn(d.a.research), h("td", { text: ds === "na" ? "n/a" : dm.scripts + " / " + (dm.planned == null ? "?" : dm.planned) }), yn(d.a.notes), yn(d.a.runbook),
           h("td", { text: d.taught ? "taught" : d.status }), h("td", {}, [a ? st(a.level, a.text) : ""])]));
       });
     });
-    fill("view-list", [table(["Day", "Date", "Title", "Plan", "Research", "Demos", "Notes", "Exercise", "Runbook", "State", "Alarm"], rows)]);
+    fill("view-list", [table(["Day", "Date", "Title", "Plan", "Research", "Demos", "Notes", "Runbook", "State", "Alarm"], rows)]);
   }
 
   function renderItems() {
@@ -601,7 +601,7 @@ window.TRACKER = null;
     var runs = D.runs.filter(function (r) { return r.days.indexOf(d.id) >= 0; }).reverse();
     fill("d-body", [
       h("h3", { id: "d-title", text: d.title }),
-      h("div", { class: "muted", text: d.id + " · " + TR.fmt(d.date) + " · week " + w.week + " · " + d.kind + " · gate " + d.gate + " · exercise " + d.exerciseKind + (d.feedback ? " · feedback form" : "") }),
+      h("div", { class: "muted", text: d.id + " · " + TR.fmt(d.date) + " · week " + w.week + " · " + d.kind + " · gate " + d.gate + (d.feedback ? " · feedback form" : "") }),
       h("div", { class: "small muted", style: "margin-top:4px", text: d.subtitle }),
       h("div", { style: "margin-top:10px" }, [badge(d), "  ", a ? st(a.level, a.text) : st("good", "no alarm")]),
       h("h4", { text: "Artifacts" }),
@@ -610,8 +610,7 @@ window.TRACKER = null;
         art("research brief", d.a.research, L.research),
         d.demoFormat === "none" ? art("demos", true, null) :
           art("walkthroughs (" + dm.scripts + " of " + (dm.planned == null ? "?" : dm.planned) + " blocks)", TR.demosState(d) === "full" || TR.demosState(d) === "na", L.demos),
-        art("notes page", d.a.notes, L.notes), art("exercise", d.a.exercise, L.exercise), art("runbook", d.a.runbook, L.runbook),
-        art(d.exerciseKind === "rubric" ? "marking guide" : "solutions", d.a.solutions, "trainer/" + d.rel + "/solutions/"),
+        art("notes page", d.a.notes, L.notes), art("runbook", d.a.runbook, L.runbook),
         art("taught", !!d.taught, null, d.taught || "delivery close not run"),
         art("delivery record", d.a.closed, "trainer/" + d.rel + "/delivery.json", "close_day.py not run"),
         d.delivery ? h("tr", {}, [h("td", { colspan: "2", class: "small muted",

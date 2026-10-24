@@ -1,7 +1,7 @@
 # {{id}} runbook — {{title}}
 
 Week {{week}} · Day {{day}} · {{dateLabel}} · {{theme}}
-Notes page: [{{rel}}.html]({{siteUrl}}weeks/{{rel}}.html) · Walkthroughs: [../demos/](../demos/) · Exercise: [exercises/{{rel}}]({{repoUrl}}/tree/main/exercises/{{rel}}) · Brief: [research/{{rel}}.md]({{repoUrl}}/blob/main/harness/research/{{rel}}.md) · Solutions / marking guide: [solutions/](solutions/)
+Notes page: [{{rel}}.html]({{siteUrl}}weeks/{{rel}}.html) · Walkthroughs: [../demos/](../demos/) · Brief: [research/{{rel}}.md]({{repoUrl}}/blob/main/harness/research/{{rel}}.md)
 
 ## Day at a glance
 
@@ -15,8 +15,7 @@ Notes page: [{{rel}}.html]({{siteUrl}}weeks/{{rel}}.html) · Walkthroughs: [../d
 | Walkthrough 02-<slug>.md | 75 | ../demos/02-<slug>.md |
 | Break | 10 | — |
 | Notes page handoff | 10 | docs/weeks/… |
-| Exercise briefing | 10 | exercises/… |
-| Exercise (trainees work) | 70 | exercises/… |
+| Sprint / project work | 80 | trainee's learner repo, `<week-dir>/hackathon/` |
 | Wrap-up / questions | 20 | — |
 | **Total** | **360** | |
 
@@ -71,14 +70,12 @@ Exit criteria mapped to today
 - Open docs/weeks/{{rel}}.html; show the table of contents and the "Check yourself" step at the end. The page is tonight's study material (30–45 minutes of reading, D-0040), not a recap of the day: name the 2–3 sections that go beyond what the demos built.
 - Trainees read it after class and do the 6-question check (unlocks tomorrow's page).
 
-## Exercise briefing
+## Sprint / project work
 
-- Task in one sentence: ...
-- Acceptance: all tests in `exercises/{{rel}}/tests/` pass.
-- Where trainees work and hand in: `{{rel}}/` in their own public `<FirstnameLastname>` repository (D-0051), committed and pushed to `main`.
-- Where trainees get stuck: ...
-- Rubric hints (trainer-only): ...
-- Solution: trainer/{{rel}}/solutions/
+- What to work on: the current sprint or official project spec on the site's Projects page, named in one sentence (D-0068).
+- Where trainees hand in: `<week-dir>/hackathon/` (the week dir of `{{rel}}`) in their own public `<FirstnameLastname>` repository (D-0051), committed and pushed to `main`.
+- Where trainees get stuck: ≥2 likely points, each with the nudge you give.
+- How you circulate: ...
 
 ## Common questions
 

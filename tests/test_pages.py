@@ -54,6 +54,12 @@ def _structure_checks(tc: unittest.TestCase, page: ParsedPage, day_id: str | Non
     exit_links = [a for a in r.find_all("a", "topnav") if a.text().strip() == "Exit criteria"]
     tc.assertEqual(1, len(exit_links), "exactly one topnav Exit criteria link")
     tc.assertTrue(exit_links[0].attrs.get("href", "").endswith("exit-criteria/index.html"), exit_links[0].attrs.get("href"))
+    # D-0068: the per-day exercise is gone: no Exercises topnav and nothing in the goals modal points at exercises/
+    tc.assertEqual([], [a for a in r.find_all("a", "topnav") if a.text().strip() == "Exercises"], "no Exercises topnav (D-0068)")
+    modal = r.find("div", id="goals-modal")
+    tc.assertIsNotNone(modal)
+    tc.assertNotIn("exercises/", " ".join(a.attrs.get("href", "") for a in modal.find_all("a")), "goals modal links no exercise (D-0068)")
+    tc.assertNotIn("Today's exercise", modal.text(), "goals modal has the goals list only (D-0068)")
     if day_id:
         week_no = int(day_id[1:3])
         if week_no >= exit_criteria.registry()["fromWeek"]:
@@ -137,9 +143,6 @@ class AuthoredPageTests(unittest.TestCase):
                 self.assertTrue(M["goalsMin"] <= len(goals) <= M["goalsMax"])
                 src_links = [a for a in page.root.find("section", "reading-sources").find_all("a") if a.attrs.get("href", "").startswith("http")]
                 self.assertGreaterEqual(len(src_links), M["sourcesMin"])
-                # goals modal links to exercise README
-                goal_hrefs = " ".join(a.attrs.get("href", "") for a in page.root.find("div", id="goals-modal").find_all("a"))
-                self.assertIn(f"exercises/{rel}", goal_hrefs)
                 # relative links resolve
                 for href in page.hrefs():
                     if href.startswith(("http", "#", "mailto:")):

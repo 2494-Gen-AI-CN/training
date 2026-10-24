@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>2494 · Gen-AI Python Developer Training</title>
-<link rel="stylesheet" href="assets/css/style.css?v=20261023">
+<link rel="stylesheet" href="assets/css/style.css?v=20261024">
 <script src="assets/js/theme.js?v=20261023"></script>
 <style>
   .cell-chips { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
@@ -38,7 +38,6 @@
   </div>
   <nav class="topbar-center">
     <a class="topnav" id="nav-demos" href="#" target="_blank" rel="noopener">Demos</a>
-    <a class="topnav" id="nav-exercises" href="#" target="_blank" rel="noopener">Exercises</a>
     <a class="topnav" href="exit-criteria/index.html">Exit criteria</a>
     <a class="topnav" href="projects/index.html">Projects</a>
   </nav>
@@ -88,24 +87,24 @@ window.SPRINTS = [{"slug": "data-analysis-mini-sprint", "title": "Data analysis 
 window.WEEKS = [
   { w:1, phase:"py", project:"P0", title:"Agile for developers, Git & Python fundamentals", start:"2026-10-12", end:"2026-10-16", days:[
     {"kind": "holiday", "date": "2026-10-12", "label": "Thanksgiving (Canada)"},
-    {"t": "Orientation, Agile & Git fundamentals", "s": "SDLC · Scrum · story pointing · git init/commit/branch/merge/push/pull", "id": "w01d2", "date": "2026-10-13", "href": "weeks/week-01/day-2-orientation-agile-and-git.html", "ex": "https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-01/day-2-orientation-agile-and-git"},
-    {"t": "Python basics", "s": "syntax · comments · variables & datatypes · operators · input/output", "id": "w01d3", "date": "2026-10-14", "href": "weeks/week-01/day-3-python-basics.html", "ex": "https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-01/day-3-python-basics"},
-    {"t": "Python data types", "s": "strings · casting · bool · list · tuple · range · set · dict · numbers · datetime", "id": "w01d4", "date": "2026-10-15", "href": "weeks/week-01/day-4-python-data-types.html", "ex": "https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-01/day-4-python-data-types"},
-    {"t": "Control flow, functions & classes", "s": "if/else · loops · functions · lambda · arrays · OOP · inheritance · iterators · scope", "id": "w01d5", "date": "2026-10-16", "href": "weeks/week-01/day-5-control-flow-functions-and-classes.html", "ex": "https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-01/day-5-control-flow-functions-and-classes", "feedback": true}
+    {"t": "Orientation, Agile & Git fundamentals", "s": "SDLC · Scrum · story pointing · git init/commit/branch/merge/push/pull", "id": "w01d2", "date": "2026-10-13", "href": "weeks/week-01/day-2-orientation-agile-and-git.html"},
+    {"t": "Python basics", "s": "syntax · comments · variables & datatypes · operators · input/output", "id": "w01d3", "date": "2026-10-14", "href": "weeks/week-01/day-3-python-basics.html"},
+    {"t": "Python data types", "s": "strings · casting · bool · list · tuple · range · set · dict · numbers · datetime", "id": "w01d4", "date": "2026-10-15", "href": "weeks/week-01/day-4-python-data-types.html"},
+    {"t": "Control flow, functions & classes", "s": "if/else · loops · functions · lambda · arrays · OOP · inheritance · iterators · scope", "id": "w01d5", "date": "2026-10-16", "href": "weeks/week-01/day-5-control-flow-functions-and-classes.html", "feedback": true}
   ]},
   { w:2, phase:"py", project:"P0", title:"Python advanced", start:"2026-10-19", end:"2026-10-23", days:[
-    {"t": "Modules, packaging & pip", "s": "math · logging · regex · pip · pylint · writing your own module", "id": "w02d1", "date": "2026-10-19", "href": "weeks/week-02/day-1-modules-packaging-and-pip.html", "ex": "https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-02/day-1-modules-packaging-and-pip"},
-    {"t": "Exceptions, files & JSON", "s": "errors · try/except · read, write, create, delete files · JSON", "id": "w02d2", "date": "2026-10-20", "href": "weeks/week-02/day-2-exceptions-files-and-json.html", "ex": "https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-02/day-2-exceptions-files-and-json"},
-    {"t": "Testing with pytest & NumPy", "s": "testing overview · unit testing · pytest · NumPy · interview mindset pt 1", "id": "w02d3", "date": "2026-10-21", "href": "weeks/week-02/day-3-pytest-and-numpy.html", "ex": "https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-02/day-3-pytest-and-numpy"},
-    {"t": "Collections & pandas", "s": "Counter · namedtuple · OrderedDict · collections · pandas", "id": "w02d4", "date": "2026-10-22", "href": "weeks/week-02/day-4-collections-and-pandas.html", "ex": "https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-02/day-4-collections-and-pandas"},
-    {"t": "Review, Matplotlib & mini-project", "s": "data visualisation · Matplotlib · Python review · mini-project", "id": "w02d5", "date": "2026-10-23", "href": "weeks/week-02/day-5-review-matplotlib-and-mini-project.html", "ex": "https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-02/day-5-review-matplotlib-and-mini-project", "feedback": true}
+    {"t": "Modules, packaging & pip", "s": "math · logging · regex · pip · pylint · writing your own module", "id": "w02d1", "date": "2026-10-19", "href": "weeks/week-02/day-1-modules-packaging-and-pip.html"},
+    {"t": "Exceptions, files & JSON", "s": "errors · try/except · read, write, create, delete files · JSON", "id": "w02d2", "date": "2026-10-20", "href": "weeks/week-02/day-2-exceptions-files-and-json.html"},
+    {"t": "Testing with pytest & NumPy", "s": "testing overview · unit testing · pytest · NumPy · interview mindset pt 1", "id": "w02d3", "date": "2026-10-21", "href": "weeks/week-02/day-3-pytest-and-numpy.html"},
+    {"t": "Collections & pandas", "s": "Counter · namedtuple · OrderedDict · collections · pandas", "id": "w02d4", "date": "2026-10-22", "href": "weeks/week-02/day-4-collections-and-pandas.html"},
+    {"t": "Review, Matplotlib & mini-project", "s": "data visualisation · Matplotlib · Python review · mini-project", "id": "w02d5", "date": "2026-10-23", "href": "weeks/week-02/day-5-review-matplotlib-and-mini-project.html", "feedback": true}
   ]},
   { w:3, phase:"data", project:"P0", title:"SQL with MySQL", start:"2026-10-26", end:"2026-10-30", days:[
-    {"t": "SQL & RDBMS introduction", "s": "MySQL · schema · tables · data types · ERD · data modeling", "id": "w03d1", "date": "2026-10-26", "href": "weeks/week-03/day-1-sql-and-rdbms-intro.html", "ex": "https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-03/day-1-sql-and-rdbms-intro", "due": [{"slug": "data-analysis-mini-sprint", "title": "Data analysis and visualisation mini-sprint"}]},
-    {"t": "SQL sublanguages", "s": "DDL · DML · DQL · DCL · TCL · interview prep pt 2", "id": "w03d2", "date": "2026-10-27", "href": "weeks/week-03/day-2-sql-sublanguages.html", "ex": "https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-03/day-2-sql-sublanguages"},
-    {"t": "Keys, constraints & normalization", "s": "primary/composite/foreign/unique keys · referential integrity · normalization · CRUD", "id": "w03d3", "date": "2026-10-28", "href": "weeks/week-03/day-3-keys-constraints-and-normalization.html", "ex": "https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-03/day-3-keys-constraints-and-normalization"},
-    {"t": "Joins, subqueries & transactions", "s": "clauses · scalar/aggregate functions · joins · ACID · isolation levels", "id": "w03d4", "date": "2026-10-29", "href": "weeks/week-03/day-4-joins-subqueries-and-transactions.html", "ex": "https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-03/day-4-joins-subqueries-and-transactions"},
-    {"t": "Advanced SQL: triggers, views, procedures & indexes", "s": "trigger · views · stored procedures · UDFs · indexes · review", "id": "w03d5", "date": "2026-10-30", "href": "weeks/week-03/day-5-views-procedures-and-indexes.html", "ex": "https://github.com/2494-Gen-AI-CN/training/tree/main/exercises/week-03/day-5-views-procedures-and-indexes", "feedback": true}
+    {"t": "SQL & RDBMS introduction", "s": "MySQL · schema · tables · data types · ERD · data modeling", "id": "w03d1", "date": "2026-10-26", "href": "weeks/week-03/day-1-sql-and-rdbms-intro.html", "due": [{"slug": "data-analysis-mini-sprint", "title": "Data analysis and visualisation mini-sprint"}]},
+    {"t": "SQL sublanguages", "s": "DDL · DML · DQL · DCL · TCL · interview prep pt 2", "id": "w03d2", "date": "2026-10-27", "href": "weeks/week-03/day-2-sql-sublanguages.html"},
+    {"t": "Keys, constraints & normalization", "s": "primary/composite/foreign/unique keys · referential integrity · normalization · CRUD", "id": "w03d3", "date": "2026-10-28", "href": "weeks/week-03/day-3-keys-constraints-and-normalization.html"},
+    {"t": "Joins, subqueries & transactions", "s": "clauses · scalar/aggregate functions · joins · ACID · isolation levels", "id": "w03d4", "date": "2026-10-29", "href": "weeks/week-03/day-4-joins-subqueries-and-transactions.html"},
+    {"t": "Advanced SQL: triggers, views, procedures & indexes", "s": "trigger · views · stored procedures · UDFs · indexes · review", "id": "w03d5", "date": "2026-10-30", "href": "weeks/week-03/day-5-views-procedures-and-indexes.html", "feedback": true}
   ]},
   { w:4, phase:"data", project:"P0", title:"Data fundamentals, cloud concepts, data warehousing, ETL/ELT", start:"2026-11-02", end:"2026-11-06", days:[
     {"t": "Cloud computing concepts", "s": "model & service types · IaaS/PaaS/SaaS · pricing · AWS/Azure/GCP data services", "id": "w04d1", "date": "2026-11-02"},
@@ -178,7 +177,6 @@ window.SITE = {
 (function () {
   const S = window.SITE;
   document.getElementById("nav-demos").href = S.demoRepoUrl;   // the public demo repo (D-0055)
-  document.getElementById("nav-exercises").href = S.repoUrl + "/tree/main/exercises";
   document.getElementById("rail-repo").href = S.repoUrl;
   document.getElementById("rail-feedback").href = S.feedbackFormUrl;
   document.getElementById("rail-revpro").href = S.revProUrl;
@@ -254,7 +252,6 @@ window.SITE = {
       let chips = "";
       if (live) {
         chips += `<a class="chip" href="${day.href}">Notes</a>`;
-        if (day.ex) chips += `<a class="chip" href="${day.ex}" target="_blank" rel="noopener">Exercise</a>`;
       } else {
         chips += `<span class="chip soon">coming soon</span>`;
       }

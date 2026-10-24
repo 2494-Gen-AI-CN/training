@@ -1,6 +1,6 @@
 # 2494 · Gen-AI Python Developer Training
 
-Welcome. This repo holds everything you need for the 11-week program: the code we type together in class, the notes site, and the daily exercises.
+Welcome. This repo holds everything you need for the 11-week program: the code we type together in class, the notes site, and the sprint and project specs.
 
 **This repo:** https://github.com/2494-Gen-AI-CN/training
 **Notes site:** https://2494-gen-ai-cn.github.io/training/
@@ -23,7 +23,7 @@ So week 1 is Tue–Fri, week 7 (Nov 23–27) is Mon–Wed, and week 11 (Dec 21�
 
 1. **Code-along demos** — the trainer types the day's examples live, step by step; you type along. After the session the finished files (the answer key) are published to `demos/<week>/<day>/` with a README that lists them in order, so you can replay anything you missed. On a day the trainer improvised, the folder holds the files typed in class, as committed to the public demo repo `2494-Gen-AI-CN/demos`.
 2. **Notes page** — on the site, one page per day: the ideas behind the demo, a live diagram, and a 6-question self-check. Finishing the check unlocks the next day's page.
-3. **Exercise** — in `exercises/<week>/<day>/`. Implement the starter file until the tests pass.
+3. **Practice and projects** — the notes pages carry practice tasks you run right in the page, and the [Projects page](https://2494-gen-ai-cn.github.io/training/projects/) holds the sprints and Project 0. The last part of most days is sprint or project work in your own learner repository.
 
 ## Setup (once)
 
@@ -52,23 +52,16 @@ python 01_<name>.py
 
 The README in each demo folder lists the files in run order and what each one shows. A `.md` file there is the transcript of a terminal demo: replay its `$` commands in a scratch folder. The folder appears after the day has been taught.
 
-## Doing an exercise
+## Sprints and projects
 
-```
-cd exercises/week-01/day-2-python-basics
-python -m pytest -q
-```
-
-Everything fails at first. Open `starter/<module>.py`, implement the functions (each has a docstring telling you what it should do), and re-run until the tests are green. The exercise README has the acceptance criteria and hints.
-
-Keep your work on your own branch or fork; do not push to `main`.
+Each spec on the [Projects page](https://2494-gen-ai-cn.github.io/training/projects/) says what to build, when it is due and how it is presented. Your work goes in your own public learner repository, `https://github.com/2494-Gen-AI-CN/<FirstnameLastname>`, in `<week-dir>/hackathon/` (for example `week-03/hackathon/`) unless the spec names another folder. Commit as you go and push to `main` there; nothing is pushed to this repo.
 
 ## Where things are
 
 ```
 docs/        the notes site (served by GitHub Pages)
 demos/       code-along files, one folder per day
-exercises/   daily exercises: README, starter/, tests/
+projects/    sprint and project specs (shown on the site's Projects page)
 Curricula/   the official topic grid for all 11 weeks
 ```
 

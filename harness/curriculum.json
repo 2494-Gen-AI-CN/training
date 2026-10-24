@@ -155,7 +155,6 @@
           "status": "live",
           "title": "Orientation, Agile & Git fundamentals",
           "subtitle": "SDLC · Scrum · story pointing · git init/commit/branch/merge/push/pull",
-          "exerciseKind": "rubric",
           "subtopics": [
             "What is Python, why Python",
             "Professionalism at Revature",
@@ -349,7 +348,6 @@
           "status": "live",
           "title": "Review, Matplotlib & mini-project",
           "subtitle": "data visualisation · Matplotlib · Python review · mini-project",
-          "exerciseKind": "rubric",
           "subtopics": [
             "Overview of data visualization",
             "Matplotlib",

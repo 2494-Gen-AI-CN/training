@@ -83,7 +83,6 @@ const context = (d) =>
   `Notes page (already authored, the reader's only material): ${d.pageFile}\n` +
   `Practice file (the one source of this page's tasks): ${d.practiceFile}\n` +
   `Research brief (Pitfalls and Notes depth name the mistakes worth catching): ${d.researchBrief || 'none'}\n` +
-  `Exercise README (a task never hands this over): ${d.exerciseReadme || 'none'}\n` +
   `Week-plan anti-spoiler rows that mention this day (a task uses nothing a row defers from this day to a later one): ${J(d.spoilerRows || [])}\n` +
   `Demo threads in scope (keep to the domain where the page does): ${J(A.threads || {})}\n` +
   `Runtime: Pyodide ${RT.pyodide || '(see the worker)'} in the reader's browser, standard library only, no input(), no packages; the contract is ${ROOT}/${RT.worker || 'docs/assets/js/pyworker.js'}. Course Python is ${CFG.python}.\n` +
@@ -106,7 +105,7 @@ log(`Mode ${A.mode}: ${DAYS.map(d => d.id).join(', ')}. Model tiers: ${TIER_LABE
 // ---------- SUITABILITY: one assessor per authored page; the trainer is the judge, so there is no critic ----------
 const assess = (d) => agent(
   `You are the PRACTICE SUITABILITY assessor (D-0047). You propose; the trainer decides; a later run builds. ${context(d)}` +
-  `Read, in this order: (1) ${A.critic} — "The runtime" and "Suitability" are your bar; (2) ${ROOT}/${RT.worker || 'docs/assets/js/pyworker.js'} — what a check can see; (3) the notes page, every teaching step (each section.step but the last, Check yourself); (4) the research brief's Pitfalls and Notes depth; (5) the exercise README; (6) the exemplar file and its page section, for the size and voice of a task.\n` +
+  `Read, in this order: (1) ${A.critic} — "The runtime" and "Suitability" are your bar; (2) ${ROOT}/${RT.worker || 'docs/assets/js/pyworker.js'} — what a check can see; (3) the notes page, every teaching step (each section.step but the last, Check yourself); (4) the research brief's Pitfalls and Notes depth; (5) the exemplar file and its page section, for the size and voice of a task.\n` +
   `Write ${d.practiceFile} with the Write tool (never echo or a heredoc; it is JSON with quotes in it), with exactly these keys:\n` +
   `- "day": "${d.id}", "page": "${d.pageRel}", "assessed": "${A.today}", "verdict", "summary";\n` +
   `- "steps": one object per teaching step in page order: "step" (the section's data-step number), "title" (its h2 text, exactly), "suitable" (true or false), "reason" (one or two sentences the trainer can act on: what in this step shows up as behaviour a check can see, or which rule of the bar rules a task out), "task" (the task id, or null);\n` +
@@ -121,7 +120,7 @@ const assess = (d) => agent(
 const build = (d) => gated(
   (cr, pass) => agent(
     `You are the PRACTICE TASK author (D-0047), pass ${pass}. The trainer approved these tasks of this day; build exactly these and no other: ${J(d.tasks)}\n${context(d)}` +
-    `Read: (1) ${A.critic} — "The runtime" and "Build" are what the critic checks; (2) ${ROOT}/${RT.worker || 'docs/assets/js/pyworker.js'} — the runner: how a check is tried, what raises() does; (3) the notes page, above all the steps these tasks practise; (4) the practice file as it stands; (5) the exemplar: its file (q, starter, tests), its model answers and its cases — copy those three shapes exactly; (6) the research brief's Pitfalls and the exercise README.\n` +
+    `Read: (1) ${A.critic} — "The runtime" and "Build" are what the critic checks; (2) ${ROOT}/${RT.worker || 'docs/assets/js/pyworker.js'} — the runner: how a check is tried, what raises() does; (3) the notes page, above all the steps these tasks practise; (4) the practice file as it stands; (5) the exemplar: its file (q, starter, tests), its model answers and its cases — copy those three shapes exactly; (6) the research brief's Pitfalls.\n` +
     `Then, with the Write and Edit tools only (never echo or a heredoc: these files carry quotes, backslashes and newlines):\n` +
     `1. In ${d.practiceFile}, for each approved task fill "q" (the task text, HTML with <code> only), "starter" and "tests" (top-level asserts, each with a message that is the label the reader sees). Change nothing else in the file: steps, reasons, ideas, the trainer's answers and every declined task stay as they are.\n` +
     `2. Write ${ROOT}/${d.solutionsDir}/practice.py: one model answer per built task in page order, each under a comment naming the task, in one file whose names do not collide.\n` +

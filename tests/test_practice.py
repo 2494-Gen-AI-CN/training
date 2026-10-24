@@ -192,8 +192,9 @@ class GateTests(unittest.TestCase):
         self.assertEqual(["t2"], [t["id"] for t in day["tasks"]])
         self.assertEqual({"id", "title", "step", "idea", "checks", "built"}, set(day["tasks"][0]))
         self.assertFalse(day["tasks"][0]["built"])
-        for key in ("pageFile", "practiceFile", "solutionsDir", "spoilerRows", "researchBrief", "exerciseReadme"):
+        for key in ("pageFile", "practiceFile", "solutionsDir", "spoilerRows", "researchBrief"):
             self.assertIn(key, day)
+        self.assertNotIn("exerciseReadme", day, "practice keys are not exercise solutions (D-0068)")
 
     def test_a_day_with_nothing_approved_is_not_built(self):
         _quiet(pt.cmd_approve, self.week["week"], self.day["day"], ["--none"])

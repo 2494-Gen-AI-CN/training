@@ -108,7 +108,6 @@ def day_paths(week: dict, day: dict) -> dict:
         "rel": rel,
         "page": f"weeks/{rel}.html",            # relative to docs/
         "page_fs": ROOT / "docs" / "weeks" / f"{rel}.html",
-        "exercise": ROOT / "exercises" / rel,
         "trainer": ROOT / "trainer" / rel,
         "research": ROOT / "harness" / "research" / f"{rel}.md",
     }
@@ -141,9 +140,6 @@ def _project_marks(cur: dict) -> dict:
 def render(cur: dict | None = None) -> str:
     cur = cur or load_curriculum()
     marks = _project_marks(cur)
-    repo = json.loads((ROOT / "harness" / "config.json").read_text(encoding="utf-8"))
-    repo_url = repo.get("repoUrl", "").rstrip("/")
-    branch = repo.get("repoBranch", "main")
     lines = [BEGIN, "<script>", GENERATED_MARK]
     lines.append("window.CAL = " + _js({
         "startDate": cur["startDate"], "endDate": cur["endDate"], "timezone": cur["timezone"],
@@ -172,8 +168,6 @@ def render(cur: dict | None = None) -> str:
                 # D-0052: only live days are linked; an authored day's page exists but stays unlinked (hidden week, not access control).
                 if d.get("status") == "live":
                     entry["href"] = p["page"]
-                    # D-0055: demos are disconnected from the site; the topnav links the public demo repo and no day carries a demo chip
-                    entry["ex"] = f"{repo_url}/tree/{branch}/exercises/{p['rel']}"
                 if d.get("kind") == "review":
                     entry["review"] = True
                 if is_feedback(w, d):
