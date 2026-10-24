@@ -376,7 +376,7 @@
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "walkthrough",
-          "status": "authored",
+          "status": "live",
           "title": "SQL & RDBMS introduction",
           "subtitle": "MySQL · schema · tables · data types · ERD · data modeling",
           "subtopics": [
@@ -397,7 +397,7 @@
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "walkthrough",
-          "status": "authored",
+          "status": "live",
           "title": "SQL sublanguages",
           "subtitle": "DDL · DML · DQL · DCL · TCL · interview prep pt 2",
           "subtopics": [
@@ -417,7 +417,7 @@
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "walkthrough",
-          "status": "authored",
+          "status": "live",
           "title": "Keys, constraints & normalization",
           "subtitle": "primary/composite/foreign/unique keys · referential integrity · normalization · CRUD",
           "subtopics": [
@@ -448,7 +448,7 @@
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "walkthrough",
-          "status": "authored",
+          "status": "live",
           "title": "Joins, subqueries & transactions",
           "subtitle": "clauses · scalar/aggregate functions · joins · ACID · isolation levels",
           "subtopics": [
@@ -478,7 +478,7 @@
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "walkthrough",
-          "status": "authored",
+          "status": "live",
           "title": "Advanced SQL: triggers, views, procedures & indexes",
           "subtitle": "trigger · views · stored procedures · UDFs · indexes · review",
           "subtopics": [
