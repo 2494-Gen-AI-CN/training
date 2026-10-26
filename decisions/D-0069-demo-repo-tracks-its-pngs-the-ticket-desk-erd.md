@@ -10,4 +10,4 @@
 
 ## Notes
 
-Classroom-reality change on demo-repo main only; prep/week-03 keeps its own .gitignore with *.png and is not re-authored (D-0055 close rule). Known follow-up for the trainer: ticket_desk.py still writes status.png and hours.png to ticket-desk/ (lines 99-100), so the next run of the script recreates them at the root, now untracked but no longer ignored; point those two calls at plots/ when the chart code is next touched.
+Classroom-reality change on demo-repo main only; prep/week-03 keeps its own .gitignore with *.png and is not re-authored (D-0055 close rule). Follow-up done the same evening (demo-repo main 2fb1165): ticket_desk.py creates plots/ if needed and saves both charts there (PLOTS = Path("plots")); the regenerated files are byte-identical to the tracked ones and nothing lands at the folder root.
