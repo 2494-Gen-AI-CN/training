@@ -12,7 +12,7 @@ Project 0 takes the dataset your pair analysed with pandas in the data analysis 
 
 ## Goal
 
-Show that you can take raw data all the way into a cloud data warehouse and answer business questions from it. At the showcase, a technical manager sees a star schema, an ETL job, tests and warehouse SQL; a non-technical manager hears who the client is, what they wanted to know and what the data says.
+Show that you can take raw data all the way into a cloud data warehouse and answer business questions from it. The repository holds the proof for a technical reader: a star schema, an ETL job, tests and warehouse SQL. The showcase is for the client: who they are, what they wanted to know, what the data says and what they should do about it.
 
 Technologies: Python 3, pandas, Matplotlib and pytest; SQL; Google BigQuery in the free sandbox (no credit card, a Google account is enough) with the `google-cloud-bigquery` client library; dimensional modelling with a star schema and one slowly changing dimension; an ETL job written in Python.
 
@@ -54,8 +54,8 @@ The showcase is the one checkpoint: the warehouse is loaded, the queries run and
 | Queries | Each query is correct, joins the fact table to its dimensions and answers a client question. |
 | Tests | `pytest` passes and covers the transform functions. |
 | Code quality | Small functions, clear names, no secrets in the repository. |
-| Presentation | Both the technical and the non-technical listeners could follow it. |
+| Presentation | A non-technical listener leaves knowing what the data says and what the client should do; the warehouse appears as evidence, not as the story. |
 
 ## Presentation
 
-Fifteen minutes per pair at the showcase, to an audience of technical and non-technical managers. Open with the client and their decision, two minutes and no code. Then show the BigQuery dataset live, run one query and state its answer in the client's terms, show the chart, walk through the ETL code, show the history rows of the type 2 dimension, and take questions. Both partners speak. Everything is run live, not shown as screenshots.
+Fifteen minutes per pair at the showcase, to an audience of technical and non-technical managers who care about what the data says, not how it was stored. Open with the client and the decision they face, two minutes and no code. Spend most of the time on the findings: take the client's questions one at a time, run the query live in BigQuery, read the answer in the client's terms, show the chart when its question comes up, and close with what you would tell the client to do. Keep the technical side to two or three minutes of evidence near the end: the loaded dataset and one row of the history your type 2 dimension keeps. Do not walk through the ETL code; the README and the rubric cover it. Both partners speak. Everything is run live, not shown as screenshots.

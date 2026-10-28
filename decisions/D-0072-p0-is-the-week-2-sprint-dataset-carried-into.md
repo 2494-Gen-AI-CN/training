@@ -11,3 +11,5 @@
 ## Notes
 
 Handed out Fri 2026-10-30 in the W3D5 slot (D-0071); the room still finishes the week-3 SQL work in that slot and P0 work starts Monday 2026-11-02. Showcase W5D5 Fri 2026-11-13, fifteen minutes per pair, both speak. Technologies named in the spec: Python 3, pandas, Matplotlib, pytest, SQL, BigQuery sandbox with google-cloud-bigquery, star schema, SCD type 2, ETL in Python. Dropped on the trainer's call: reconciliation with the sprint numbers, a cloud and big-data write-up, a MySQL stage, an AI-tool rule, a stretch list.
+
+Follow-up 2026-10-28: the presentation is reweighted toward the findings. The audience cares about what the data says, not how it was stored, so the fifteen minutes run client, questions answered live, recommendation, then two or three minutes of evidence (loaded dataset, one history row); no ETL walkthrough on stage. Requirements and rubric areas unchanged; the Presentation rubric row and the Goal paragraph say the same.
