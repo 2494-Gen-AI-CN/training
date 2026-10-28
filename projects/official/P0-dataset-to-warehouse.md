@@ -1,7 +1,7 @@
 ---
 kind: official
 project: P0
-title: Project 0: from dataset to warehouse
+title: Project 0: Data Warehouse and Analytics for a Client
 status: draft
 handIn: projects/P0/
 checkpoints:
