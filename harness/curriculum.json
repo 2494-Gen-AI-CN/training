@@ -499,6 +499,7 @@
       "phase": "data",
       "project": "P0",
       "theme": "Data fundamentals, cloud concepts, data warehousing, ETL/ELT",
+      "notes": "WEEK ARC (D-0075): the week moves the ticket desk's history out of its MySQL tables into a BigQuery star schema through a Python ETL job. BigQuery runs in a free sandbox project per learner on a personal Google account (project id `desk-<firstname><lastname>`, lowercase, digits appended if the id is taken; no card, 10 GB of storage, 1 TB of queries a month, tables expire after 60 days unless the expiration is changed: name the caps once as a talking point, never meet them by surprise); the datasets are `desk_raw` (staging, the raw extracts) and `desk_dw` (the star schema), both in one location named once and kept; Python reaches BigQuery through `google-cloud-bigquery` alone (DataFrames through `to_dataframe()` with `db-dtypes`; the research brief picks the versions and names the 3.15 wheels, D-0058) and authenticates through Application Default Credentials written once by `gcloud auth application-default login` (no key file, nothing per-learner in the repo except one environment variable carrying the project id, matching P0's credentials rule); the Google account, the sandbox project and the Google Cloud SDK (`gcloud`, `bq`) are set up at home over the weekend (announced on W3D5, verified in Monday's setup check with `gcloud auth list` and one `bq query`). Audience (D-0048): some programming in any language plus what weeks 1 to 3 taught, no cloud, no warehouse theory and no BigQuery, so: Mon (demoFormat none) assumes W3D5's desk (seven MySQL tables, the `open_board` view, the `close_ticket` procedure, `db.connect()` as `desk_app`) and teaches cloud computing from first principles as timed facilitations (definition and characteristics, IaaS/PaaS/SaaS, deployment models, challenges, pricing, regions and zones, the common GCP services and the data services of AWS, Azure and GCP), with the setup check and a first query in the BigQuery console as its one hands-on moment; Tue (demoFormat none) assumes Mon's vocabulary and teaches big data as facilitations (the V's, components, batch and streaming architecture, benefits, challenges, the data lifecycle, structured, semi-structured and unstructured data, the file formats CSV, JSON, XML, Parquet, Avro and ORC) with the desk's tables as the running example; Wed assumes Tue's file formats and teaches warehousing (OLTP versus OLAP, warehouse versus lake, architecture, ODS, data mart, cleansing, vendors, denormalisation), then the thread's first rung starts from `10-desk-views` and extracts `tickets` and `ticket_events` from MySQL into files that land as `desk_raw` staging tables, with datasets, tables, schemas, loads and queries shown in the console and `bq`; Thu assumes Wed's staging tables and teaches dimensional modelling (conceptual, logical and physical models, facts, dimensions, measures, grain, star and snowflake, slowly changing dimensions and their types) by designing the desk's star schema (one fact table of ticket events at a stated grain, dimensions for the ticket, customer, agent and date, one of them SCD type 2 with effective-from, effective-to and a current-row flag) and building it in `desk_dw`; Fri assumes Thu's schema and teaches ETL and ELT (extract, transform, load, where the transform runs and why cloud warehouses favour ELT, staging, rejects with a reason, a load log, reruns that add nothing, incremental loads, BigQuery connections and external data) by turning the week's steps into one Python ETL job with pytest on the transforms, then a review; the job mirrors what P0 (D-0072) asks of every pair. Mon and Tue are facilitation only; Wed to Fri alternate the BigQuery console or `bq` and the Python desk, never both in one block. Exit criteria: every current qc3 row (57 on 2026-10-28, D-0063) maps in week 4 with no `week 05` deferral; the Gen AI rows are appended to the source later and the week-5 plan maps them. Every notes page opens by naming in one sentence what it assumes from earlier days of this course and never claims the reader knows anything from outside it.",
       "days": [
         {
           "day": 1,
@@ -506,7 +507,7 @@
           "id": "w04d1",
           "kind": "lesson",
           "gate": "light",
-          "demoFormat": "walkthrough",
+          "demoFormat": "none",
           "status": "planned",
           "title": "Cloud computing concepts",
           "subtitle": "model & service types · IaaS/PaaS/SaaS · pricing · AWS/Azure/GCP data services",
@@ -526,7 +527,7 @@
           "id": "w04d2",
           "kind": "lesson",
           "gate": "light",
-          "demoFormat": "walkthrough",
+          "demoFormat": "none",
           "status": "planned",
           "title": "Big data fundamentals",
           "subtitle": "components · architecture · data lifecycle · structured/semi/unstructured · file types",
