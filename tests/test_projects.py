@@ -23,7 +23,6 @@ import site_pages  # noqa: E402
 
 OUT = DOCS / "projects"
 ISO_RE = re.compile(r"20\d\d-\d\d-\d\d")
-SEVEN = ["goal", "scope", "requirements", "deliverable", "checkpoints", "rubric", "presentation"]
 BUILD_INDEX_SRC = (HARNESS / "build_index.py").read_text(encoding="utf-8")
 
 
@@ -36,16 +35,19 @@ def sprint(**kw) -> str:
     return f"---\n{head}---\n\nOne paragraph of intro.\n\n## Rules\n\n- One rule.\n"
 
 
-def official(project="P1", status="published", checkpoints=("w08d5 Showcase",), sections=None,
-             reqs="- R-01 The first thing.\n- R-02 The second thing.\n", body_extra="", **kw) -> str:
+def official(project="P1", status="published", checkpoints=("w08d5 Showcase",), sections=("Build", "Rules", "Hand-in"),
+             reqs=None, body_extra="", **kw) -> str:
+    """A free-form official spec (D-0073); `reqs` adds a `## Requirements` section holding that text."""
     meta = {"kind": "official", "project": project, "title": "Fixture project", "status": status,
             "handIn": f"projects/{project}/"}
     meta.update(kw)
     head = "".join(f"{k}: {v}\n" for k, v in meta.items() if v is not None)
     head += "checkpoints:\n" + "".join(f"- {c}\n" for c in checkpoints)
     body = ["Intro paragraph."]
-    for s in (sections if sections is not None else bp.SECTIONS):
-        body.append(f"## {s}\n\n" + (reqs if s == "Requirements" else f"Text for {s.lower()}.") + "\n")
+    for s in sections:
+        body.append(f"## {s}\n\nText for {s.lower()}.\n")
+    if reqs is not None:
+        body.append(f"## Requirements\n\n{reqs}")
     return f"---\n{head}---\n\n" + "\n".join(body) + body_extra
 
 
@@ -276,31 +278,23 @@ class ParserTests(_TempRoot):
         self.put("official/P1-fixture.md", official(status="published"))
         self.assertEqual([], self.problems())
 
-    # sections
-    def test_missing_section(self):
-        self.put("official/P1-fixture.md", official(sections=[s for s in bp.SECTIONS if s != "Rubric"]))
-        self.assertProblem("missing section '## Rubric'")
+    # sections (free-form since D-0073)
+    def test_any_sections_in_any_order(self):
+        self.put("official/P1-fixture.md", official(sections=("Presentation", "Dataset", "Build", "Build")))
+        self.assertEqual([], self.problems())
 
-    def test_section_exactly_once(self):
-        self.put("official/P1-fixture.md", official(sections=bp.SECTIONS + ["Goal"]))
-        self.assertProblem("section '## Goal' appears 2 times")
+    def test_no_sections_at_all(self):
+        self.put("official/P1-fixture.md", official(sections=()))
+        self.assertEqual([], self.problems())
 
-    def test_section_order(self):
-        order = ["Scope", "Goal"] + bp.SECTIONS[2:]
-        self.put("official/P1-fixture.md", official(sections=order))
-        self.assertProblem("sections out of order")
-
-    def test_extra_section_before_the_seven_ends(self):
-        order = bp.SECTIONS[:2] + ["Background"] + bp.SECTIONS[2:]
-        self.put("official/P1-fixture.md", official(sections=order))
-        self.assertProblem("extra section '## Background' comes before '## Presentation'")
-
-    def test_extra_section_after_the_seven_is_fine(self):
-        self.put("official/P1-fixture.md", official(sections=bp.SECTIONS + ["Questions"]))
+    def test_requirements_section_is_optional(self):
+        self.put("official/P1-fixture.md", official(reqs=None))
+        self.assertEqual([], self.problems())
+        self.put("official/P1-fixture.md", official(reqs="- R-01 One.\n- R-02 Two.\n"))
         self.assertEqual([], self.problems())
 
     def test_heading_inside_fenced_code_is_not_a_section(self):
-        self.put("official/P1-fixture.md", official(body_extra="\n```\n## Goal\n```\n"))
+        self.put("official/P1-fixture.md", official(body_extra="\n```\n## Requirements\n```\n"))
         self.assertEqual([], self.problems())
 
     def test_requirements_numbered_from_r01(self):
@@ -546,11 +540,7 @@ class PageTests(unittest.TestCase):
                 facts = {tr.find("th").text().strip(): tr.find("td") for tr in r.find("table", "pj-facts").find_all("tr")}
                 self.assertEqual(s["handIn"], facts["Hand-in"].find("code").text())
                 if s["kind"] == "official":
-                    ids = [sec.attrs.get("id") for sec in r.find_all("section", "step")]
-                    self.assertEqual(SEVEN, [i for i in ids if i in SEVEN], "the seven sections, in order")
-                    for sid in SEVEN:
-                        self.assertIsNotNone(r.find("section", "step", id=sid).find("h2"), sid)
-                    ul = r.find("section", id="checkpoints").find("ul", "pj-checkpoints")
+                    ul = facts["Checkpoints"].find("ul", "pj-checkpoints")
                     self.assertEqual([bp.checkpoint_text(c) for c in s["checkpoints"]],
                                      [li.text().strip() for li in ul.find_all("li")])
                     self.assertEqual([], ul.find_all("a"), "checkpoints are plain text, never a link")

@@ -13,7 +13,7 @@ how to hand it in and when; it does not point at the notes.
 
 | Kind | File | Lifecycle | Body |
 | --- | --- | --- | --- |
-| Official project (P0, P1, P2) | `official/P<n>-<slug>.md` | `draft`, then `published`, then `closed` | the seven required sections, in order |
+| Official project (P0, P1, P2) | `official/P<n>-<slug>.md` | `draft`, then `published`, then `closed` | free-form (D-0073) |
 | Sprint (one to four days) | `sprints/YYYY-MM-DD-<slug>.md` | `open`, then `closed` | free-form |
 
 ### Official projects
@@ -23,8 +23,10 @@ to 11). The process:
 
 1. Start the spec as `status: draft`. A draft gets a page but no card on the projects index and no mark on
    the calendar, so it can be written in the open without being announced.
-2. Fill the seven sections below with real text. Requirements are numbered `R-01`, `R-02`, ... in order,
-   with no gaps; a requirement keeps its number once the spec is published, so add new ones at the end.
+2. Write the body in the shape of a sprint page: a lead paragraph, then short `##` sections of one-line
+   bullets (Dataset, Build, Rules, Presentation, Hand-in, What we look for is the shape P0 uses). If a spec
+   has a `## Requirements` section, its bullets are numbered `R-01`, `R-02`, ... in order with no gaps, and a
+   requirement keeps its number once the spec is published, so new ones go at the end.
 3. Set `status: published` before the first checkpoint day goes live. A draft whose checkpoint day is
    already live is an error: publish the spec or move the checkpoint.
 4. Set `status: closed` after the last checkpoint. A closed spec keeps its page and its card (shown faded).
@@ -32,15 +34,8 @@ to 11). The process:
 The filename prefix must equal `project` (`P0-ticket-desk.md` for `project: P0`). The page is named after
 the file: `P0-ticket-desk.html`.
 
-Required sections, each exactly once and in this order (extra `##` sections may follow the seven):
-
-1. `## Goal`
-2. `## Scope`
-3. `## Requirements` (at least one `- R-01 ...` bullet)
-4. `## Deliverable`
-5. `## Checkpoints` (prose; the page lists the checkpoint days from the frontmatter above it)
-6. `## Rubric`
-7. `## Presentation`
+No section is required (D-0073 withdrew the seven-section rule of D-0065). The checkpoint days from the
+frontmatter render in the page's At a glance table, so the body never repeats them.
 
 ### Sprints
 

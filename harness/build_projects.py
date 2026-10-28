@@ -8,7 +8,9 @@ projects/README.md):
     projects/sprints/YYYY-MM-DD-<slug>.md   one per sprint (a sprint is the week's hackathon)
 
 Each spec opens with a frontmatter block (`---` ... `---`, one `key: value` per line; only
-`checkpoints:` takes `- wNNdN Label` lines under it). This module parses and validates them (stdlib),
+`checkpoints:` takes `- wNNdN Label` lines under it). The body is free-form markdown for both kinds
+(D-0073): the only body rule is that a `## Requirements` section, when a spec has one, numbers its
+bullets `R-01`, `R-02`, ... in order. This module parses and validates them (stdlib),
 renders one page per spec plus an index (the body markdown goes through the `markdown` package from
 requirements-dev.txt, imported lazily inside the renderer so build_index.py and its importers never
 need it), and hands the calendar marks to build_index.py.
@@ -48,7 +50,6 @@ KEYS = {
 }
 STATUSES = {"official": ("draft", "published", "closed"), "sprint": ("open", "closed")}
 MODES = ("pairs", "solo", "teams")
-SECTIONS = ["Goal", "Scope", "Requirements", "Deliverable", "Checkpoints", "Rubric", "Presentation"]
 LABELS = {"open": "Open", "closed": "Closed", "draft": "Draft", "published": "Published",
           "pairs": "Pairs", "solo": "Solo", "teams": "Teams"}
 
@@ -206,22 +207,8 @@ def _check_teaching_day(name: str, d: dt.date, cal: dict, problems: list[str]) -
 
 
 def _check_sections(body: str, problems: list[str]) -> None:
+    """The body is free-form (D-0073); a `## Requirements` section, when present, numbers its bullets R-01.. in order."""
     _pre, secs = _sections(body)
-    heads = [h for h, _ in secs]
-    for name in SECTIONS:
-        n = heads.count(name)
-        if n == 0:
-            problems.append(f"missing section '## {name}'")
-        elif n > 1:
-            problems.append(f"section '## {name}' appears {n} times (exactly once)")
-    seen = [h for h in heads if h in SECTIONS]
-    if len(seen) == len(SECTIONS) and seen != SECTIONS:
-        problems.append("sections out of order: " + ", ".join(seen) + " (expected " + ", ".join(SECTIONS) + ")")
-    if "Presentation" in heads:
-        last = max(i for i, h in enumerate(heads) if h == "Presentation")
-        for h in heads[:last]:
-            if h not in SECTIONS:
-                problems.append(f"extra section '## {h}' comes before '## Presentation' (extra sections go after the seven)")
     req = next((t for h, t in secs if h == "Requirements"), None)
     if req is not None:
         nums = [int(m.group(1)) for m in (REQ_RE.match(ln) for ln in req.split("\n")) if m]
@@ -464,6 +451,7 @@ CSS = """
   .pj-status.draft { color: var(--warn-ink); border-color: var(--warn-line); background: var(--warn-soft); }
   .pj-status.closed { color: var(--dim); }
   .pj-draft { border-left: 3px solid var(--warn-line); padding-left: 12px; }
+  .pj-facts .pj-checkpoints { margin: 0; padding-left: 18px; }
   .pj-checkpoints li { font-weight: 600; color: var(--ink); }
   .pj-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin: 24px 0 0; }
   .pj-card, .pj-slot { margin: 0; display: flex; flex-direction: column; gap: 6px; }
@@ -505,8 +493,8 @@ def checkpoint_text(c: dict) -> str:
     return f"Week {c['week']} · Day {c['slot']} — {bi.date_label(c['date'], year=True)} — {c['label']}"
 
 
-def _body_sections(body: str, used: set[str], prepend: dict[str, str] | None = None) -> tuple[str, list[str]]:
-    """(preamble html, [section html]) with unique ids; `prepend` maps a heading to html placed under its h2."""
+def _body_sections(body: str, used: set[str]) -> tuple[str, list[str]]:
+    """(preamble html, [section html]) with unique ids."""
     pre, secs = _sections(body)
     out = []
     for heading, text in secs:
@@ -516,9 +504,8 @@ def _body_sections(body: str, used: set[str], prepend: dict[str, str] | None = N
             sid = f"{base}-{n}"
             n += 1
         used.add(sid)
-        extra = (prepend or {}).get(heading, "")
         out.append(f'    <section class="step" id="{esc(sid)}">\n      <h2>{esc(heading)}</h2>\n'
-                   f'{extra}{_md(text) if text.strip() else ""}\n    </section>')
+                   f'{_md(text) if text.strip() else ""}\n    </section>')
     return (_md(pre) if pre.strip() else ""), out
 
 
@@ -541,7 +528,6 @@ def render_page(spec: dict, cfg: dict, cur: dict, v: str) -> str:
         if spec["tools"]:
             rows.append(("Tools", esc(", ".join(spec["tools"]))))
         rows.append(("Status", esc(LABELS.get(spec["status"], spec["status"]))))
-        prepend = None
         notice = ""
     else:
         meta = (f'<span><b>{esc(spec["projectLabel"])}</b></span><span>{esc(_weeks_label(spec["weeks"]))}</span>'
@@ -550,11 +536,11 @@ def render_page(spec: dict, cfg: dict, cur: dict, v: str) -> str:
                 ("Weeks", esc(_weeks_label(spec["weeks"]))),
                 ("Hand-in", hand_in),
                 ("Status", esc(LABELS.get(spec["status"], spec["status"])))]
-        items = "\n".join(f"        <li>{esc(checkpoint_text(c))}</li>" for c in spec["checkpoints"])
-        prepend = {"Checkpoints": f'      <ul class="pj-checkpoints">\n{items}\n      </ul>\n'}
+        items = "\n".join(f"            <li>{esc(checkpoint_text(c))}</li>" for c in spec["checkpoints"])
+        rows.insert(2, ("Checkpoints", f'<ul class="pj-checkpoints">\n{items}\n          </ul>'))
         notice = ('      <p class="pj-draft">Draft: this spec is still being written and can change before it is published.</p>\n'
                   if spec["status"] == "draft" else "")
-    pre, secs = _body_sections(spec["body"], used, prepend)
+    pre, secs = _body_sections(spec["body"], used)
     intro = f'      <div class="pj-intro">\n{pre}\n      </div>\n' if pre else ""
     body = (f'    <div class="lede">\n      <h1>{esc(spec["title"])}</h1>\n      <div class="meta">{meta}</div>\n'
             f'{notice}{intro}    </div>\n\n'

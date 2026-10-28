@@ -33,6 +33,7 @@
   .pj-status.draft { color: var(--warn-ink); border-color: var(--warn-line); background: var(--warn-soft); }
   .pj-status.closed { color: var(--dim); }
   .pj-draft { border-left: 3px solid var(--warn-line); padding-left: 12px; }
+  .pj-facts .pj-checkpoints { margin: 0; padding-left: 18px; }
   .pj-checkpoints li { font-weight: 600; color: var(--ink); }
   .pj-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin: 24px 0 0; }
   .pj-card, .pj-slot { margin: 0; display: flex; flex-direction: column; gap: 6px; }
@@ -70,7 +71,7 @@
       <div class="meta"><span><b>Project 0</b></span><span>Weeks 1–5</span><span class="pj-status draft">Draft</span></div>
       <p class="pj-draft">Draft: this spec is still being written and can change before it is published.</p>
       <div class="pj-intro">
-<p>Project 0 takes the dataset your pair analysed with pandas in the data analysis mini-sprint and rebuilds it the way a data team would for a client. It has three parts. Part 1 ingests the raw files: a configurable Python job validates and cleans the records, keeps the rejects, and loads the good rows into staging tables in a cloud warehouse. Part 2 models the data as a star schema in the warehouse, with one dimension that keeps history. Part 3 analyses it and tells the story: SQL and charts that answer a client's questions, and a presentation built around a business case. You work in the same pair as the sprint, with the same dataset.</p>
+<p>Working in the same pair and with the same dataset as the data analysis mini-sprint, rebuild that dataset the way a data team would for a client: load it into a cloud warehouse, model it, and answer the client's questions from there. Two weeks, from Monday 2 November to the showcase on Friday 13 November 2026.</p>
       </div>
     </div>
 
@@ -80,117 +81,81 @@
         <tbody>
           <tr><th scope="row">Project</th><td>Project 0 (P0)</td></tr>
           <tr><th scope="row">Weeks</th><td>Weeks 1–5</td></tr>
+          <tr><th scope="row">Checkpoints</th><td><ul class="pj-checkpoints">
+            <li>Week 5 · Day 5 — Fri Nov 13, 2026 — Showcase</li>
+          </ul></td></tr>
           <tr><th scope="row">Hand-in</th><td><code>projects/P0/</code> in your learner repository</td></tr>
           <tr><th scope="row">Status</th><td>Draft</td></tr>
         </tbody>
       </table>
     </section>
 
-    <section class="step" id="goal">
-      <h2>Goal</h2>
-<p>Show that you can take raw data all the way into a cloud data warehouse and turn it into findings a client can act on. The repository holds the proof for a technical reader: a configurable ingestion job with validation and rejects, a star schema, tests and warehouse SQL. The showcase is for the client: who they are, what they wanted to know, what the data says and what they should do about it.</p>
-<p>Technologies: Python 3, pandas, Matplotlib and pytest (NumPy, Seaborn and any other Python package you find useful are allowed); SQL; Google BigQuery in the free sandbox (no credit card, a Google account is enough) with the <code>google-cloud-bigquery</code> client library; dimensional modelling with a star schema and one slowly changing dimension; an ETL job written in Python and driven by a configuration file.</p>
-    </section>
-
-    <section class="step" id="scope">
-      <h2>Scope</h2>
-<p>In scope: a short business case for a client of your choice; an ingestion job that reads CSV or JSON files named in a configuration file, validates and cleans them, stores the rejects and logs each load; staging tables, a star schema and one history-keeping dimension in BigQuery; analytical queries in BigQuery SQL; feature engineering, one correlation and at least three charts; a slide deck and a README that lets someone else run all of it.</p>
-<p>Out of scope: dashboards and BI tools, orchestration tools such as Airflow, streaming, paid Google Cloud services, a web front end, and a separate MySQL or PostgreSQL stage. The raw files go straight into BigQuery staging tables.</p>
-<p>The dataset is the one your pair used in the mini-sprint: real, non-sensitive, 100,000 rows or more. The client is yours to invent. An anime viewership dataset can become a streaming publisher planning next season's shows against a revenue target; a New York bike-share dataset can become the City of Toronto improving its own bike-share programme. The client does not need to be real; the questions do need to be ones the data can answer.</p>
-    </section>
-
-    <section class="step" id="requirements">
-      <h2>Requirements</h2>
-<p>Part 1, ingestion.</p>
+    <section class="step" id="dataset">
+      <h2>Dataset</h2>
 <ul>
-<li>R-01 Open the README with the business case as a hook: who the client is, the decision they face, and three to five questions the warehouse must answer for them, in one or two paragraphs that a non-technical manager can read. Everything else in the project serves these questions.</li>
-<li>R-02 Drive the ingestion job from a configuration file (YAML, JSON or <code>.env</code>): the raw files, their format (CSV or JSON), the cleansing rules that have settings, and the BigQuery project and dataset. Adding another source file is a configuration change, not a code change.</li>
-<li>R-03 Validate every record against the expected columns and types, apply the cleansing rules listed in the README (missing values, wrong values, formats) and remove duplicates. A record that fails validation goes to a rejects table with the reason it was rejected; the job carries on with the valid records and never stops on one bad row.</li>
-<li>R-04 Load the valid records into staging tables in your BigQuery sandbox, one <code>stg_</code> table per source, and write a load log for every run: when it ran, rows read, rows loaded, rows rejected. Running the job twice does not duplicate rows in any table.</li>
-<li>R-05 Read the BigQuery credentials from an environment variable or from a file outside the repository, never from a file that is committed, and say in the README how to supply them. Any SQL that takes a value from Python uses query parameters, not string formatting, and every client or connection is closed when the job ends.</li>
-<li>R-06 Cover the ingestion and transform code (validation, cleansing, typing, key assignment) with pytest tests at 80 percent line coverage or more, measured with <code>pytest --cov</code>. No test connects to BigQuery.</li>
-</ul>
-<p>Part 2, the warehouse.</p>
-<ul>
-<li>R-07 Design a star schema for the dataset: one fact table at a stated grain chosen for the client's questions and at least three dimension tables, drawn as a diagram saved as an image file, with a short note on why a star schema rather than a snowflake. Build the fact and dimension tables in BigQuery from the staging tables, with surrogate keys assigned in Python.</li>
-<li>R-08 Keep one dimension as a slowly changing dimension of type 2, with an effective-from date, an effective-to date and a current-row flag. If nothing in the dataset changes over time, introduce a second version of some dimension rows yourselves and explain in the README what changed and why.</li>
-</ul>
-<p>Part 3, analysis and the story.</p>
-<ul>
-<li>R-09 Answer at least five analytical questions in BigQuery SQL, each saved as its own <code>.sql</code> file and each joining the fact table to one or more dimensions, with one query that uses the history kept by R-08. The questions from R-01 are among them. Each file opens with a comment that states the question and what the answer means for the client.</li>
-<li>R-10 Engineer at least two features that the raw data does not have (a rate, a bucket, a flag, a rolling figure, a derived date part) in the transform step or in the analysis, and say in the README which question each one serves.</li>
-<li>R-11 Find at least one correlation in the data and state it in the client's terms, with the size of the effect and a sentence on why it may not be a cause.</li>
-<li>R-12 Draw at least three Matplotlib charts from the results of BigQuery queries, saved as image files and titled for the client: what each chart tells them, not the column names. One of them shows the correlation from R-11.</li>
-<li>R-13 Make a slide deck for the showcase that opens with the hook from R-01, presents the findings question by question with the charts, and closes with what the client should do. Commit it to the project folder as a <code>.pptx</code> or <code>.pdf</code>.</li>
+<li>The dataset your pair analysed in the mini-sprint: 100,000 rows or more, real, non-sensitive.</li>
+<li>The client is yours to invent, with one decision they have to make. An anime viewership dataset can become a streaming publisher planning next season against a revenue target; a New York bike-share dataset can become the City of Toronto improving its own programme.</li>
+<li>The client does not need to be real. The questions do need to be ones your data can answer.</li>
 </ul>
     </section>
 
-    <section class="step" id="deliverable">
-      <h2>Deliverable</h2>
-<p>A folder <code>projects/P0/</code> in one partner's learner repository holding the README (the business case first, then how to install, how to supply credentials, how to run the ingestion job, the tests and the coverage report, the cleansing rules, which file meets which requirement, and a link to the other partner's repository), the configuration file with placeholders for anything private, the ingestion and transform code, the tests, the <code>.sql</code> files, the schema diagram, the charts, the slide deck, a sample load log and a sample of the rejects, and the raw data or a link to it when the file is large.</p>
+    <section class="step" id="build">
+      <h2>Build</h2>
+<p>Ingest.</p>
+<ul>
+<li>A Python job, driven by a configuration file (YAML, JSON or <code>.env</code>) that names the raw files, their format (CSV or JSON) and the BigQuery project and dataset. Adding a source file is a configuration change, not a code change.</li>
+<li>The job validates and cleans every record with pandas: expected columns and types, the cleansing rules you list in the README, duplicates removed. A row that fails goes to a rejects table with the reason; the job carries on with the rest.</li>
+<li>Every run writes a load log: when it ran, rows read, rows loaded, rows rejected. Running the job twice adds nothing.</li>
+</ul>
+<p>Warehouse.</p>
+<ul>
+<li>The raw files go straight into staging tables in your free BigQuery sandbox (a Google account is enough, no credit card). No MySQL or PostgreSQL stage in between.</li>
+<li>From staging, build a star schema: one fact table at a grain you state, three or more dimension tables, drawn as a diagram saved as an image.</li>
+<li>One dimension is a slowly changing dimension of type 2: effective-from, effective-to and a current-row flag. If nothing in your data changes over time, introduce a change yourselves and say in the README what changed.</li>
+</ul>
+<p>Analyse and tell.</p>
+<ul>
+<li>Five or more BigQuery SQL files, each joining the fact table to its dimensions and answering one of the client's questions. One of them uses the history the type 2 dimension keeps. Each file opens with a comment: the question, and what the answer means for the client.</li>
+<li>Two engineered features the raw data does not have (a rate, a bucket, a flag, a rolling figure) and one correlation, stated in the client's terms with a line on why it may not be a cause.</li>
+<li>Three or more Matplotlib charts drawn from BigQuery results, titled for the client: what the chart tells them, not the column names.</li>
+<li>A slide deck that opens with the client and their decision, answers the questions one by one with the charts, and closes with what the client should do.</li>
+</ul>
     </section>
 
-    <section class="step" id="checkpoints">
-      <h2>Checkpoints</h2>
-      <ul class="pj-checkpoints">
-        <li>Week 5 · Day 5 — Fri Nov 13, 2026 — Showcase</li>
-      </ul>
-<p>The showcase is the one checkpoint: the warehouse is loaded, the queries run and you present. Each topic of the data week adds the piece the next requirement needs, so build the project as the topics arrive instead of in the last few days. Part 1 can start on day one with the files you already have.</p>
-    </section>
-
-    <section class="step" id="rubric">
-      <h2>Rubric</h2>
-<table>
-<thead>
-<tr>
-<th>Area</th>
-<th>What a complete project shows</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Business case</td>
-<td>A manager can say who the client is, what they wanted to know, what the data told them and what they should do.</td>
-</tr>
-<tr>
-<td>Ingestion</td>
-<td>From a fresh clone, following the README, the job reads the files named in the configuration, rejects the bad records with reasons, logs the load and lands the rows in BigQuery.</td>
-</tr>
-<tr>
-<td>Requirements</td>
-<td>R-01 to R-13 are each met and easy to find.</td>
-</tr>
-<tr>
-<td>Model</td>
-<td>The grain is stated, the dimensions are justified and the type 2 dimension keeps history correctly.</td>
-</tr>
-<tr>
-<td>Queries</td>
-<td>Each query is correct, joins the fact table to its dimensions and answers a client question.</td>
-</tr>
-<tr>
-<td>Analysis</td>
-<td>The features, the correlation and the charts each change what the client would decide.</td>
-</tr>
-<tr>
-<td>Tests</td>
-<td><code>pytest</code> passes, coverage is 80 percent or more, and no test touches BigQuery.</td>
-</tr>
-<tr>
-<td>Code quality</td>
-<td>Small modules and functions, clear names, parameterized queries, connections closed, no secrets in the repository, a readable commit history.</td>
-</tr>
-<tr>
-<td>Presentation</td>
-<td>A non-technical listener leaves knowing what the data says and what the client should do; the warehouse appears as evidence, not as the story.</td>
-</tr>
-</tbody>
-</table>
+    <section class="step" id="rules">
+      <h2>Rules</h2>
+<ul>
+<li>The README opens with the business case: who the client is, the decision they face, and three to five questions, in one or two paragraphs a non-technical manager can read. Everything else serves those questions.</li>
+<li>BigQuery credentials come from an environment variable or a file outside the repository, never from a committed file. The README says how to supply them.</li>
+<li>The transform and cleansing functions have pytest tests. No test connects to BigQuery.</li>
+<li>The README lets someone else run all of it from a fresh clone: install, credentials, the job, the tests, the queries.</li>
+</ul>
     </section>
 
     <section class="step" id="presentation">
       <h2>Presentation</h2>
-<p>Fifteen minutes per pair at the showcase, to an audience of technical and non-technical managers who care about what the data says, not how it was stored. Present from the slide deck. Open with the client and the decision they face, two minutes and no code. Spend most of the time on the findings: take the client's questions one at a time, run the query live in BigQuery, read the answer in the client's terms, show the chart when its question comes up, and close with what you would tell the client to do. Keep the technical side to two or three minutes of evidence near the end: the load log, the loaded dataset and one row of the history your type 2 dimension keeps. Do not walk through the code; the README and the rubric cover it. Both partners speak. The queries are run live, not shown as screenshots.</p>
+<ul>
+<li>When: Friday 13 November 2026, in class.</li>
+<li>Length: 15 minutes per pair.</li>
+<li>Audience: technical and non-technical managers who care about what the data says, not how it was stored.</li>
+<li>Format: your slide deck, with the queries run live in BigQuery, not screenshots.</li>
+<li>Shape: the client and their decision first, two minutes and no code. Then the findings, one question at a time, each answer in the client's terms with its chart, and what you would tell the client to do. Two or three minutes of evidence near the end: the load log, the loaded dataset, one history row from the type 2 dimension. No code walkthrough.</li>
+<li>Both partners speak.</li>
+</ul>
+    </section>
+
+    <section class="step" id="hand-in">
+      <h2>Hand-in</h2>
+<p>Push to <code>projects/P0/</code> in one partner's learner repository before the showcase: the README, the configuration file with placeholders for anything private, the ingestion code and its tests, the <code>.sql</code> files, the schema diagram, the charts, the slide deck, a sample load log and a sample of the rejects, and a link to the dataset (not the data file itself when it is large). The README names the other partner's repository.</p>
+    </section>
+
+    <section class="step" id="what-we-look-for">
+      <h2>What we look for</h2>
+<ul>
+<li>The story lands: a non-technical listener leaves knowing what the data says and what the client should do.</li>
+<li>The warehouse is real: from a fresh clone, following the README, the job runs, the rows land in BigQuery and the queries answer.</li>
+<li>The analysis matters: the features, the correlation and the charts each change what the client would decide.</li>
+</ul>
     </section>
   </article>
 </main>

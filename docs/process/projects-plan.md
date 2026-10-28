@@ -103,7 +103,7 @@ expand_week), tests/test_exit_site.py, tests/helpers.py (ParsedPage, FORBIDDEN_R
    week-02/hackathon/, tools pandas, Matplotlib, status open. Body: the trainer's brief as given (pairs, a
    public dataset of their choice, analysed with pandas and charted with Matplotlib), with no placeholder
    text. Page slug data-analysis-mini-sprint.
-7. projects/official/P0-ticket-desk.md (renamed P0-dataset-to-warehouse.md, D-0072): status draft, checkpoints "- w05d5 Showcase", all seven sections with
+7. projects/official/P0-ticket-desk.md (renamed P0-dataset-to-warehouse.md, D-0072; D-0073 withdrew the seven sections, official bodies are free-form): status draft, checkpoints "- w05d5 Showcase", all seven sections with
    real short text.
 8. requirements-dev.txt gains markdown>=3.11; py -m pip install -r requirements-dev.txt;
    py harness/build_projects.py generates docs/projects/ (the index and two pages).
@@ -162,7 +162,7 @@ the commit subject. Push.
 STAGE S2 — Publish the P0 spec before week 5 goes live.
 Entry: the trainer has P0's requirements; target before Fri 2026-11-06, the week-5 release, a week ahead of
 the W5D5 showcase (Fri 2026-11-13).
-1. projects/official/P0-ticket-desk.md (renamed P0-dataset-to-warehouse.md, D-0072): fill the seven sections from the trainer's requirements (R-01.. in
+1. projects/official/P0-ticket-desk.md (renamed P0-dataset-to-warehouse.md, D-0072; sprint-shaped since D-0073): fill the seven sections from the trainer's requirements (R-01.. in
    Requirements, the rubric rows, the presentation format and time), then status: published.
 2. py harness/build_projects.py --validate; py harness/build_projects.py; py harness/build_index.py: the P0
    card on docs/projects/index.html and a 🏁 on W5D5.
