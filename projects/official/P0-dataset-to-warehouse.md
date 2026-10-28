@@ -50,7 +50,6 @@ Analyse and tell.
 - Length: 15 minutes per pair.
 - Audience: technical and non-technical managers who care about what the data says, not how it was stored.
 - Format: your slide deck, with the queries run live in BigQuery, not screenshots.
-- Shape: the client and what they asked first, two minutes and no code. Then the findings, one question at a time, each answer in the client's terms with its chart, and what you recommend. Two or three minutes of evidence near the end: the load log, the loaded dataset, one history row from the type 2 dimension. No code walkthrough.
 - Both partners speak.
 
 ## Hand-in
