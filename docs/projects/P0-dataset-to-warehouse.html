@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Project 0: the ticket desk | 2494 · Gen-AI Python</title>
+<title>Project 0: from dataset to warehouse | 2494 · Gen-AI Python</title>
 <link rel="stylesheet" href="../assets/css/style.css?v=20261024">
 <script src="../assets/js/theme.js?v=20261023"></script>
 <style>
@@ -66,11 +66,11 @@
 <main class="lesson2 pj-main" id="reading-main">
   <article class="reading-col pj-page">
     <div class="lede">
-      <h1>Project 0: the ticket desk</h1>
+      <h1>Project 0: from dataset to warehouse</h1>
       <div class="meta"><span><b>Project 0</b></span><span>Weeks 1–5</span><span class="pj-status draft">Draft</span></div>
       <p class="pj-draft">Draft: this spec is still being written and can change before it is published.</p>
       <div class="pj-intro">
-<p>Project 0 is the support-ticket desk you build up over the first five weeks: one small codebase that gains a piece with each new topic, from plain Python classes to files, tests, data analysis, a database and a language model.</p>
+<p>Project 0 takes the dataset your pair analysed with pandas in the data analysis mini-sprint and rebuilds it the way a data team would for a client: a client with a decision to make, a dimensional model, an ETL job that loads the data into a cloud warehouse, and SQL that answers the client's questions from BigQuery. You work in the same pair as the sprint, with the same dataset.</p>
       </div>
     </div>
 
@@ -88,29 +88,34 @@
 
     <section class="step" id="goal">
       <h2>Goal</h2>
-<p>Build a working support-ticket desk for a small software team in your own learner repository, and show that you can carry one codebase from plain Python all the way to a feature that calls a language model, keeping it runnable and tested at every step.</p>
+<p>Show that you can take raw data all the way into a cloud data warehouse and answer business questions from it. At the showcase, a technical manager sees a star schema, an ETL job, tests and warehouse SQL; a non-technical manager hears who the client is, what they wanted to know and what the data says.</p>
+<p>Technologies: Python 3, pandas, Matplotlib and pytest; SQL; Google BigQuery in the free sandbox (no credit card, a Google account is enough) with the <code>google-cloud-bigquery</code> client library; dimensional modelling with a star schema and one slowly changing dimension; an ETL job written in Python.</p>
     </section>
 
     <section class="step" id="scope">
       <h2>Scope</h2>
-<p>In scope: tickets with a title, priority, status and history; customers who file tickets and agents who triage them; a service-level target (SLA) in hours for each priority; and the storage, tests, statistics and charts the desk needs.</p>
-<p>Out of scope: a web front end, user accounts and passwords, and deployment to a server. The desk runs from the command line or a notebook.</p>
+<p>In scope: a short business case for a client of your choice; a star schema for your dataset; cleansing and loading the data into BigQuery with Python; one dimension that keeps history; analytical queries in BigQuery SQL; one chart; a README that lets someone else run all of it.</p>
+<p>Out of scope: dashboards and BI tools, orchestration tools such as Airflow, streaming, paid Google Cloud services, a web front end, and a MySQL stage. The raw files go straight into BigQuery.</p>
+<p>The dataset is the one your pair used in the mini-sprint. The client is yours to invent. An anime viewership dataset can become a streaming publisher planning next season's shows against a revenue target; a New York bike-share dataset can become the City of Toronto improving its own bike-share programme. The client does not need to be real; the questions do need to be ones the data can answer.</p>
     </section>
 
     <section class="step" id="requirements">
       <h2>Requirements</h2>
 <ul>
-<li>R-01 Model a ticket as a Python class with a title, priority, status and a history of changes, and let an agent move a ticket from open to in progress to resolved with every change recorded in its history.</li>
-<li>R-02 Save the desk to a JSON file and load it back, handling a missing or malformed file with a clear message instead of a crash.</li>
-<li>R-03 Flag every ticket that has broken its SLA (open longer than the target hours for its priority), with pytest tests for the SLA rule, the status changes of R-01 and the file handling of R-02.</li>
-<li>R-04 Report resolution hours with NumPy (mean, median and worst case per priority), load the tickets into a pandas DataFrame that answers at least three questions about the desk, and save one Matplotlib chart as an image file.</li>
-<li>R-05 Keep tickets, customers and agents in SQL tables, and add one feature that sends a ticket to a language model (a triage suggestion, a summary or a draft reply), reading the API key from the environment and never committing it.</li>
+<li>R-01 Open the README with the business case: who the client is, the decision they face, and three to five questions the warehouse must answer for them, in one or two paragraphs that a non-technical manager can read.</li>
+<li>R-02 Design a star schema for the dataset: one fact table at a stated grain chosen for the client's questions and at least three dimension tables, drawn as a diagram saved as an image file, with a short note on why a star schema rather than a snowflake.</li>
+<li>R-03 Write an ETL job in Python that extracts the raw files, transforms them with pandas (data types, the cleansing rules listed in the README, surrogate keys) and loads the fact and dimension tables into a BigQuery dataset in your sandbox project. Running the job twice does not duplicate rows.</li>
+<li>R-04 Cover the transform functions (cleansing, typing, key assignment) with pytest tests. No test connects to BigQuery.</li>
+<li>R-05 Keep one dimension as a slowly changing dimension of type 2, with an effective-from date, an effective-to date and a current-row flag. If nothing in the dataset changes over time, introduce a second version of some dimension rows yourselves and explain in the README what changed and why.</li>
+<li>R-06 Answer at least five analytical questions in BigQuery SQL, each saved as its own <code>.sql</code> file and each joining the fact table to one or more dimensions, with one query that uses the history kept by R-05. The questions from R-01 are among them. Each file opens with a comment that states the question and what the answer means for the client.</li>
+<li>R-07 Draw one Matplotlib chart from the results of a BigQuery query and save it as an image file, titled for the client: what the chart tells them, not the column names.</li>
+<li>R-08 Read the BigQuery credentials from an environment variable or from a file outside the repository, never from a file that is committed, and say in the README how to supply them.</li>
 </ul>
     </section>
 
     <section class="step" id="deliverable">
       <h2>Deliverable</h2>
-<p>A folder <code>projects/P0/</code> in your learner repository holding the code, the tests, the saved chart and a README that explains how to install, run and test the desk and which file covers each requirement.</p>
+<p>A folder <code>projects/P0/</code> in one partner's learner repository holding the README (the business case first, then how to install, how to supply credentials, how to run the ETL job and the tests, which file meets which requirement, and a link to the other partner's repository), the ETL code, the tests, the <code>.sql</code> files, the schema diagram, the chart, and the raw data or a link to it when the file is large.</p>
     </section>
 
     <section class="step" id="checkpoints">
@@ -118,7 +123,7 @@
       <ul class="pj-checkpoints">
         <li>Week 5 · Day 5 — Fri Nov 13, 2026 — Showcase</li>
       </ul>
-<p>The showcase is the one checkpoint: the desk is complete and you present it. Each topic adds the piece the next requirement needs, so keep the desk working as you go instead of building it all in the last week.</p>
+<p>The showcase is the one checkpoint: the warehouse is loaded, the queries run and you present. Each topic of the data week adds the piece the next requirement needs, so build the project as the topics arrive instead of in the last few days.</p>
     </section>
 
     <section class="step" id="rubric">
@@ -132,16 +137,28 @@
 </thead>
 <tbody>
 <tr>
-<td>Working code</td>
-<td>The desk runs from a fresh clone by following the README.</td>
+<td>Business case</td>
+<td>A manager can say who the client is, what they wanted to know and what the data told them.</td>
+</tr>
+<tr>
+<td>Working ETL</td>
+<td>From a fresh clone, following the README, the job runs and the rows land in BigQuery.</td>
 </tr>
 <tr>
 <td>Requirements</td>
-<td>R-01 to R-05 are each met and easy to find.</td>
+<td>R-01 to R-08 are each met and easy to find.</td>
+</tr>
+<tr>
+<td>Model</td>
+<td>The grain is stated, the dimensions are justified and the type 2 dimension keeps history correctly.</td>
+</tr>
+<tr>
+<td>Queries</td>
+<td>Each query is correct, joins the fact table to its dimensions and answers a client question.</td>
 </tr>
 <tr>
 <td>Tests</td>
-<td><code>pytest</code> passes and covers the SLA rule and the file errors.</td>
+<td><code>pytest</code> passes and covers the transform functions.</td>
 </tr>
 <tr>
 <td>Code quality</td>
@@ -149,7 +166,7 @@
 </tr>
 <tr>
 <td>Presentation</td>
-<td>A clear walk-through, with questions answered from the code.</td>
+<td>Both the technical and the non-technical listeners could follow it.</td>
 </tr>
 </tbody>
 </table>
@@ -157,7 +174,7 @@
 
     <section class="step" id="presentation">
       <h2>Presentation</h2>
-<p>About ten minutes each at the showcase: run the desk live, walk through the code of one requirement, show the chart and the language model feature, then take questions.</p>
+<p>Fifteen minutes per pair at the showcase, to an audience of technical and non-technical managers. Open with the client and their decision, two minutes and no code. Then show the BigQuery dataset live, run one query and state its answer in the client's terms, show the chart, walk through the ETL code, show the history rows of the type 2 dimension, and take questions. Both partners speak. Everything is run live, not shown as screenshots.</p>
     </section>
   </article>
 </main>
