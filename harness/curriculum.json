@@ -439,7 +439,8 @@
             "INSERT",
             "UPDATE",
             "DELETE"
-          ]
+          ],
+          "taught": "2026-10-28"
         },
         {
           "day": 4,
