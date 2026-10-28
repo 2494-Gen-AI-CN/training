@@ -13,7 +13,7 @@ Working in the same pair and with the same dataset as the data analysis mini-spr
 ## Dataset
 
 - The dataset your pair analysed in the mini-sprint: 100,000 rows or more, real, non-sensitive.
-- The client is yours to invent, with one decision they have to make. An anime viewership dataset can become a streaming publisher planning next season against a revenue target; a New York bike-share dataset can become the City of Toronto improving its own programme.
+- The client is yours to invent, with something they want to learn from the data. An anime viewership dataset can become a streaming publisher planning next season against a revenue target; a New York bike-share dataset can become the City of Toronto improving its own programme.
 - The client does not need to be real. The questions do need to be ones your data can answer.
 
 ## Build
@@ -35,11 +35,11 @@ Analyse and tell.
 - Five or more BigQuery SQL files, each joining the fact table to its dimensions and answering one of the client's questions. One of them uses the history the type 2 dimension keeps. Each file opens with a comment: the question, and what the answer means for the client.
 - Two engineered features the raw data does not have (a rate, a bucket, a flag, a rolling figure) and one correlation, stated in the client's terms with a line on why it may not be a cause.
 - Three or more Matplotlib charts drawn from BigQuery results, titled for the client: what the chart tells them, not the column names.
-- A slide deck that opens with the client and their decision, answers the questions one by one with the charts, and closes with what the client should do.
+- A slide deck that opens with the client and what they asked, answers the questions one by one with the charts, and closes with what you recommend.
 
 ## Rules
 
-- The README opens with the business case: who the client is, the decision they face, and three to five questions, in one or two paragraphs a non-technical manager can read. Everything else serves those questions.
+- The README opens with the business case: who the client is, what they want to know, and three to five questions, in one or two paragraphs a non-technical manager can read. Everything else serves those questions.
 - BigQuery credentials come from an environment variable or a file outside the repository, never from a committed file. The README says how to supply them.
 - The transform and cleansing functions have pytest tests. No test connects to BigQuery.
 - The README lets someone else run all of it from a fresh clone: install, credentials, the job, the tests, the queries.
@@ -50,7 +50,7 @@ Analyse and tell.
 - Length: 15 minutes per pair.
 - Audience: technical and non-technical managers who care about what the data says, not how it was stored.
 - Format: your slide deck, with the queries run live in BigQuery, not screenshots.
-- Shape: the client and their decision first, two minutes and no code. Then the findings, one question at a time, each answer in the client's terms with its chart, and what you would tell the client to do. Two or three minutes of evidence near the end: the load log, the loaded dataset, one history row from the type 2 dimension. No code walkthrough.
+- Shape: the client and what they asked first, two minutes and no code. Then the findings, one question at a time, each answer in the client's terms with its chart, and what you recommend. Two or three minutes of evidence near the end: the load log, the loaded dataset, one history row from the type 2 dimension. No code walkthrough.
 - Both partners speak.
 
 ## Hand-in
@@ -59,6 +59,6 @@ Push to `projects/P0/` in one partner's learner repository before the showcase: 
 
 ## What we look for
 
-- The story lands: a non-technical listener leaves knowing what the data says and what the client should do.
+- The story lands: a non-technical listener leaves knowing what the data says and what you recommend.
 - The warehouse is real: from a fresh clone, following the README, the job runs, the rows land in BigQuery and the queries answer.
-- The analysis matters: the features, the correlation and the charts each change what the client would decide.
+- The analysis matters: the features, the correlation and the charts each tell the client something they can act on.

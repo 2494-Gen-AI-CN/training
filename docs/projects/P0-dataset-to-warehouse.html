@@ -94,7 +94,7 @@
       <h2>Dataset</h2>
 <ul>
 <li>The dataset your pair analysed in the mini-sprint: 100,000 rows or more, real, non-sensitive.</li>
-<li>The client is yours to invent, with one decision they have to make. An anime viewership dataset can become a streaming publisher planning next season against a revenue target; a New York bike-share dataset can become the City of Toronto improving its own programme.</li>
+<li>The client is yours to invent, with something they want to learn from the data. An anime viewership dataset can become a streaming publisher planning next season against a revenue target; a New York bike-share dataset can become the City of Toronto improving its own programme.</li>
 <li>The client does not need to be real. The questions do need to be ones your data can answer.</li>
 </ul>
     </section>
@@ -118,14 +118,14 @@
 <li>Five or more BigQuery SQL files, each joining the fact table to its dimensions and answering one of the client's questions. One of them uses the history the type 2 dimension keeps. Each file opens with a comment: the question, and what the answer means for the client.</li>
 <li>Two engineered features the raw data does not have (a rate, a bucket, a flag, a rolling figure) and one correlation, stated in the client's terms with a line on why it may not be a cause.</li>
 <li>Three or more Matplotlib charts drawn from BigQuery results, titled for the client: what the chart tells them, not the column names.</li>
-<li>A slide deck that opens with the client and their decision, answers the questions one by one with the charts, and closes with what the client should do.</li>
+<li>A slide deck that opens with the client and what they asked, answers the questions one by one with the charts, and closes with what you recommend.</li>
 </ul>
     </section>
 
     <section class="step" id="rules">
       <h2>Rules</h2>
 <ul>
-<li>The README opens with the business case: who the client is, the decision they face, and three to five questions, in one or two paragraphs a non-technical manager can read. Everything else serves those questions.</li>
+<li>The README opens with the business case: who the client is, what they want to know, and three to five questions, in one or two paragraphs a non-technical manager can read. Everything else serves those questions.</li>
 <li>BigQuery credentials come from an environment variable or a file outside the repository, never from a committed file. The README says how to supply them.</li>
 <li>The transform and cleansing functions have pytest tests. No test connects to BigQuery.</li>
 <li>The README lets someone else run all of it from a fresh clone: install, credentials, the job, the tests, the queries.</li>
@@ -139,7 +139,7 @@
 <li>Length: 15 minutes per pair.</li>
 <li>Audience: technical and non-technical managers who care about what the data says, not how it was stored.</li>
 <li>Format: your slide deck, with the queries run live in BigQuery, not screenshots.</li>
-<li>Shape: the client and their decision first, two minutes and no code. Then the findings, one question at a time, each answer in the client's terms with its chart, and what you would tell the client to do. Two or three minutes of evidence near the end: the load log, the loaded dataset, one history row from the type 2 dimension. No code walkthrough.</li>
+<li>Shape: the client and what they asked first, two minutes and no code. Then the findings, one question at a time, each answer in the client's terms with its chart, and what you recommend. Two or three minutes of evidence near the end: the load log, the loaded dataset, one history row from the type 2 dimension. No code walkthrough.</li>
 <li>Both partners speak.</li>
 </ul>
     </section>
@@ -152,9 +152,9 @@
     <section class="step" id="what-we-look-for">
       <h2>What we look for</h2>
 <ul>
-<li>The story lands: a non-technical listener leaves knowing what the data says and what the client should do.</li>
+<li>The story lands: a non-technical listener leaves knowing what the data says and what you recommend.</li>
 <li>The warehouse is real: from a fresh clone, following the README, the job runs, the rows land in BigQuery and the queries answer.</li>
-<li>The analysis matters: the features, the correlation and the charts each change what the client would decide.</li>
+<li>The analysis matters: the features, the correlation and the charts each tell the client something they can act on.</li>
 </ul>
     </section>
   </article>
