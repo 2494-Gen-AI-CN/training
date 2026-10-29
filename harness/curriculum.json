@@ -440,7 +440,7 @@
             "UPDATE",
             "DELETE"
           ],
-          "taught": "2026-10-28"
+          "taught": "2026-10-29"
         },
         {
           "day": 4,
@@ -470,7 +470,8 @@
             "Transaction properties",
             "CRUD operations",
             "Sequence"
-          ]
+          ],
+          "taught": "2026-10-29"
         },
         {
           "day": 5,
