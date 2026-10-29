@@ -2,7 +2,7 @@
 kind: official
 project: P0
 title: Project 0: Data Warehouse and Analytics for a Client
-status: draft
+status: published
 handIn: projects/P0/
 checkpoints:
 - w05d5 Showcase
