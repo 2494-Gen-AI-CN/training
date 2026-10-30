@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w04d2">
+<title>W4·D2 — Big data fundamentals | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261030">
+<script src="../../assets/js/theme.js?v=20261030"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="../../exit-criteria/index.html">Exit criteria</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>Big data fundamentals: the five V's, the pipeline and the file formats behind analysis</h1>
+        <div class="meta">
+          <span><b>Week 4</b> · Day 2</span>
+          <span>Tue Nov 3, 2026</span>
+          <span>Data fundamentals, cloud concepts, data warehousing, ETL/ELT</span>
+          <span><b>~44 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span class="verified">Sources checked 2026-10-30 · python 3.15</span>
+          <span class="exit"><a href="../../exit-criteria/qc-3-data-and-gen-ai-fundamentals.html#w04d2">Exit criteria</a></span>
+        </div>
+        <p class="summary">This page assumes Monday's cloud vocabulary (a region, a managed service, the Google Cloud
+        services a data team uses) and the ticket desk's seven MySQL tables from week 3. It teaches big data as a set of
+        design pressures: the five V's, the components of a big data system, batch and streaming architecture and why it
+        is distributed, and the benefits and challenges. It then follows one ticket through the data lifecycle, sorts data
+        into structured, semi-structured and unstructured, and compares six file formats. Afterwards you can explain how
+        each V shapes a warehouse, draw the pipeline with a Google Cloud service at each stage, and choose a file format
+        for a workload.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="0">
+        <div class="tag">Big data</div>
+        <h2>Big data and the five V's</h2>
+        <p>Monday's page set up the cloud vocabulary: a region, a managed service and the Google Cloud services a data
+        team reaches for. This page asks when data needs those services at all. The running example stays the ticket desk
+        from week 3, seven MySQL tables that hold six tickets.</p>
+        <h3>What makes data big</h3>
+        <p>Google Cloud describes big data by three properties: volume, velocity and
+        variety.<sup class="cite"><a href="#src-1">1</a></sup> Volume is the amount of data. Velocity is the speed at which
+        it arrives and has to be processed. Variety is the mix of formats and sources it comes
+        in.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <p>Two more V's are commonly added to make five.<sup class="cite"><a href="#src-1">1</a></sup> Veracity is how far
+        the data can be trusted: whether it holds duplicates, gaps or values that cannot be true. Value is what the data is
+        worth to the business that pays to collect and keep it.</p>
+        <p>None of the five is a size threshold. Each one is measured against what a team's storage and processing can
+        handle, so the V's describe pressures on a system rather than a
+        size.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <h3>The five V's measured on the desk</h3>
+        <p>The desk's six tickets were opened over three days in October, and a
+        query in the MySQL client counts them per day. <code>DATE()</code> keeps only the date part of a
+        DATETIME value.<sup class="cite"><a href="#src-2">2</a></sup></p>
+<pre><code class="language-sql">SELECT DATE(opened_at) AS day, COUNT(*) AS opened
+FROM tickets
+GROUP BY day
+ORDER BY day;</code></pre>
+<pre class="out">+------------+--------+
+| day        | opened |
++------------+--------+
+| 2026-10-17 |      1 |
+| 2026-10-18 |      3 |
+| 2026-10-19 |      2 |
++------------+--------+</pre>
+        <p>Two tickets a day is nothing for one machine. The next snippet sets the desk beside an invented SaaS company with
+        ten thousand customers. It assumes each customer opens two tickets a month, each ticket writes three events, and
+        each customer's twenty users click about five hundred times a day in the product.</p>
+<pre><code class="language-python">SECONDS_PER_DAY = 24 * 60 * 60
+
+
+def profile(name, events_per_day):
+    per_second = events_per_day / SECONDS_PER_DAY
+    print(name, events_per_day, "a day,", round(per_second, 4), "a second")
+
+
+profile("desk events", 2 * 3)
+profile("saas events", 10000 * 2 // 30 * 3)
+profile("saas clicks", 10000 * 20 * 500)</code></pre>
+<pre class="out">desk events 6 a day, 0.0001 a second
+saas events 1998 a day, 0.0231 a second
+saas clicks 100000000 a day, 1157.4074 a second</pre>
+        <p>The SaaS company's ticket events still arrive only about once a minute. The volume and velocity
+        pressure comes from the click log: a hundred million rows a day, more than a thousand a second.</p>
+        <p>Design documents often open with a table like the one below, titled something like "Data profile". When you see
+        rows per day, arrivals per second, the number of sources, a known error rate and a business question, the author is
+        scoring the five V's.</p>
+        <table>
+          <thead><tr><th>V</th><th>The desk</th><th>The SaaS company</th><th>What the profile asks</th></tr></thead>
+          <tbody>
+            <tr><td>Volume</td><td>about two tickets a day</td><td>a hundred million click rows a day</td><td>rows per day and rows kept</td></tr>
+            <tr><td>Velocity</td><td>an event when an agent acts</td><td>over a thousand clicks a second</td><td>arrivals per second, and how fresh an answer must be</td></tr>
+            <tr><td>Variety</td><td>seven tables in one database</td><td>tickets, emails, chat logs, screenshots and the click log</td><td>number of sources and formats</td></tr>
+            <tr><td>Veracity</td><td>few enough rows to read by eye</td><td>duplicates and gaps from many systems</td><td>known error rate</td></tr>
+            <tr><td>Value</td><td>which tickets break their SLA?</td><td>which customers are about to leave?</td><td>the business question</td></tr>
+          </tbody>
+        </table>
+        <div class="ix-predict" data-q="The desk adds a chat widget that saves every message a customer types, with any file the customer drops in. Which of the five V's rise first?" data-a="Velocity and variety. Messages arrive one by one all day, and they bring free text and files beside the tidy ticket rows. Volume grows too, but for a desk this size it stays small for a long time."></div>
+        <h3>How each V shapes a warehouse design</h3>
+        <p>A data warehouse is a database built for analysis rather than for running an application, and it is Wednesday's
+        subject. The five V's are the pressures its design answers, one design choice each.</p>
+        <ul>
+          <li>Volume pushes toward storage that scales out by adding machines and costs little per
+          byte.<sup class="cite"><a href="#src-3">3</a></sup> BigQuery stores table data by column, so a query reads only
+          the columns it names.<sup class="cite"><a href="#src-4">4</a></sup> Large tables are also split by date, so a
+          question about last week reads last week.</li>
+          <li>Velocity pushes toward a streaming path beside the nightly batch one. Dataflow, for example, runs pipelines in
+          both modes.<sup class="cite"><a href="#src-5">5</a></sup></li>
+          <li>Variety pushes toward file formats that carry or tolerate different shapes, and BigQuery loads several of
+          them.<sup class="cite"><a href="#src-6">6</a></sup></li>
+          <li>Veracity pushes toward cleansing before analysis,<sup class="cite"><a href="#src-1">1</a></sup> with a landing
+          copy of the raw data kept so a bad clean can be run again.</li>
+          <li>Value comes first: a stated business question decides which data is worth collecting and paying
+          for.<sup class="cite"><a href="#src-1">1</a></sup></li>
+        </ul>
+        <h3>What counts as big for one team</h3>
+        <p>Interviewers often follow the five V's with "so how big is big?". A useful answer is that data becomes big for a
+        team when one machine running an ordinary database stops coping. The disk fills, the nightly report runs past
+        morning, or a new source will not fit the existing tables.</p>
+        <p>More machines make a slow query fast, so volume and velocity give way to money. Veracity does not: a
+        duplicated row stays wrong on a thousand machines, and only cleansing rules and a data owner fix it.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>The five V's are volume, velocity, variety, veracity and value.</li>
+          <li>The V's are pressures measured against what a team's systems can handle, not a size.</li>
+          <li>Each V pushes one design choice, from scale-out storage to a stated business question.</li>
+          <li>Veracity is the V that extra hardware cannot fix.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Big data is usually described by five V's: volume, velocity, variety, veracity and value. I treat them as
+          pressures on a system rather than a size.</p>
+          <p>In a warehouse, volume pushes me toward columnar storage that scales out
+          and is split by date, velocity toward a streaming path beside the batch load, variety toward formats that tolerate
+          different shapes, veracity toward cleansing with the raw copy kept, and value means I start from the business
+          question.</p>
+          <p>If the source moves from a nightly file to events every second, I'd add a streaming path, because the batch
+          answer would always be a day old.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">Components</div>
+        <h2>The components of a big data system</h2>
+        <p>The V's say why a system is under pressure. The components say what the system is made of. Google Cloud's
+        architecture guide describes a data platform as a lifecycle of stages: ingest, store, process and analyse, then
+        explore and visualise, with a Google Cloud service named for each.<sup class="cite"><a href="#src-7">7</a></sup>
+        Courses and interviewers usually split that into five components.</p>
+        <h3>Five stages from a ticket form to a chart</h3>
+        <p>Picture the desk at the SaaS company's scale and follow its data from the ticket form to a manager's chart.
+        Each component has one job.</p>
+        <ol>
+          <li>Ingestion gets data in from where it is produced. When a customer submits the form or an agent closes a
+          ticket, that event has to leave the application and enter the data system.</li>
+          <li>Storage keeps the data, raw and cheaply, so it can be read again later. Every ticket and event the desk ever
+          produced sits here.</li>
+          <li>Processing turns raw data into usable data. It removes duplicates, fixes types, joins tickets to customers and
+          reshapes rows for the questions people ask.</li>
+          <li>Analysis asks those questions, usually in SQL: how many high-priority tickets broke their SLA last month?</li>
+          <li>Visualisation turns the answers into charts and dashboards, such as tickets opened per hour, which a manager
+          reads without writing a query.</li>
+        </ol>
+        <p>Ingestion takes two shapes. A batch arrives as files, for example a nightly export of the day's tickets. Events
+        arrive one at a time as messages. The snippet below builds one ticket event as a message would carry it.</p>
+<pre><code class="language-python">import json
+
+event = {"ticket_id": 4, "kind": "assigned", "note": "was open, agent 1"}
+message = json.dumps(event)
+print(message)</code></pre>
+<pre class="out">{"ticket_id": 4, "kind": "assigned", "note": "was open, agent 1"}</pre>
+        <p><code>json.dumps</code>, from week 2, turns the dict into one line of text. That line is what the application
+        would send each time an agent assigns a ticket, and whatever receives it turns it back into a dict with
+        <code>json.loads</code>.</p>
+        <h3>A Google Cloud service at each stage</h3>
+        <p>Each component maps to a managed service on Google Cloud.<sup class="cite"><a href="#src-7">7</a></sup> The
+        services below are the ones its architecture guide and product pages describe for these jobs.</p>
+        <table>
+          <thead><tr><th>Component</th><th>Google Cloud service</th><th>What it does there</th></tr></thead>
+          <tbody>
+            <tr><td>Ingestion</td><td>Pub/Sub</td><td>a publisher sends each message to a topic and subscribers receive it<sup class="cite"><a href="#src-8">8</a></sup></td></tr>
+            <tr><td>Storage</td><td>Cloud Storage</td><td>holds objects, which are files, in buckets; the usual landing place for raw files<sup class="cite"><a href="#src-9">9</a></sup></td></tr>
+            <tr><td>Processing</td><td>Dataflow</td><td>runs Apache Beam pipelines over batch or streaming data<sup class="cite"><a href="#src-5">5</a></sup></td></tr>
+            <tr><td>Analysis</td><td>BigQuery</td><td>runs SQL over stored tables, serverless, with storage kept apart from compute<sup class="cite"><a href="#src-3">3</a></sup></td></tr>
+            <tr><td>Visualisation</td><td>Looker Studio</td><td>reads BigQuery tables to draw charts and dashboards<sup class="cite"><a href="#src-10">10</a></sup></td></tr>
+          </tbody>
+        </table>
+        <p>On sight, this is the architecture diagram in almost every data team's wiki: boxes labelled Pub/Sub, Cloud
+        Storage, Dataflow, BigQuery and a dashboard tool, with arrows running left to right. Read it as the five
+        components in order, and ask what each arrow carries: a message, a file, a table or a chart.</p>
+        <p>The trade-off is that each stage has its own service. A team can choose the best tool per stage, but it also
+        owns the work of connecting them: permissions, formats and failure handling at every arrow.<sup class="cite"><a href="#src-7">7</a></sup>
+        A single database that does everything is simpler and runs out of room sooner.</p>
+        <p>Swapping a file drop for a message queue changes the rhythm of everything downstream. With files, processing
+        wakes up when a file lands, handles all of it and stops. With a queue, processing has to be running whenever a
+        message might arrive and handles one event at a time. The next step names those two rhythms batch and
+        streaming.</p>
+        <h3>Who runs the stages: orchestration</h3>
+        <p>Interviewers who hear the five components often ask who starts each one. Something has to start the nightly
+        export, run processing once the file lands and refresh the dashboard after that, in that order, and retry when a
+        stage fails. That job is orchestration.</p>
+        <p>The simplest orchestrator is a scheduled script that runs the stages one after another. Larger teams use a
+        dedicated scheduler that knows which stage depends on which. Either way, name it when you draw the pipeline.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>The five components are ingestion, storage, processing, analysis and visualisation.</li>
+          <li>On Google Cloud they map to Pub/Sub, Cloud Storage, Dataflow, BigQuery and Looker Studio.</li>
+          <li>Separate services give choice per stage and add the work of connecting them.</li>
+          <li>Orchestration starts each stage in order and on schedule.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A big data system has five components. Ingestion brings data in, as files or as a stream of messages. Storage
+          keeps it raw and cheap. Processing cleans, joins and reshapes it. Analysis asks questions of it, usually in SQL.
+          Visualisation turns the answers into dashboards people read.</p>
+          <p>On Google Cloud I'd draw that as Pub/Sub for events, Cloud Storage for raw files, Dataflow for processing,
+          BigQuery for analysis and Looker Studio for the charts, with something like a scheduler starting each stage.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">Architecture</div>
+        <h2>Batch and streaming paths, and why they are distributed</h2>
+        <p>The components can be wired together in two rhythms. A typical big data architecture runs both from the same
+        source, side by side, and spreads the heavy stages across many machines. This step takes the desk's
+        <code>ticket_events</code> table as the source.</p>
+        <h3>The batch path</h3>
+        <p>Batch processing handles a bounded set of data, collected over a period.<sup class="cite"><a href="#src-11">11</a></sup>
+        Bounded means the input has an end: yesterday's events, last month's tickets. A batch job processes that input
+        and then ends.<sup class="cite"><a href="#src-11">11</a></sup></p>
+        <p>On the desk, the batch path is a nightly extract. At two in the morning a job reads the day's rows from
+        <code>ticket_events</code>, writes them to files, loads the files and computes the reports. The function below
+        does the processing part on four events, which stand in for a night's worth.</p>
+<pre><code class="language-python">events = [
+    {"ticket_id": 1, "kind": "open"},
+    {"ticket_id": 1, "kind": "closed"},
+    {"ticket_id": 4, "kind": "open"},
+    {"ticket_id": 4, "kind": "assigned"},
+]
+
+
+def batch_count(rows):
+    counts = {}
+    for row in rows:
+        counts[row["kind"]] = counts.get(row["kind"], 0) + 1
+    return counts
+
+
+print("batch:", batch_count(events))</code></pre>
+<pre class="out">batch: {'open': 2, 'closed': 1, 'assigned': 1}</pre>
+        <p>The function sees the whole list, returns one answer and is done. Nobody sees a count until the run finishes,
+        and an event that arrives at 2:01 waits for the next night.</p>
+        <h3>The streaming path</h3>
+        <p>Stream processing handles an unbounded sequence of events as they
+        arrive.<sup class="cite"><a href="#src-11">11</a></sup> Unbounded means there is no last event, so a streaming job
+        keeps running.<sup class="cite"><a href="#src-11">11</a></sup> On the desk, each new event would be published to a
+        Pub/Sub topic the moment the trigger writes it, and a streaming job would update the counts one event at a
+        time.</p>
+<pre><code class="language-python">running = {}
+for event in events:
+    running[event["kind"]] = running.get(event["kind"], 0) + 1
+    print("stream:", running)</code></pre>
+<pre class="out">stream: {'open': 1}
+stream: {'open': 1, 'closed': 1}
+stream: {'open': 2, 'closed': 1}
+stream: {'open': 2, 'closed': 1, 'assigned': 1}</pre>
+        <p>Run after the batch snippet, the loop prints an answer after every event. A real streaming job never reaches the
+        end of its list, because the list keeps growing.</p>
+        <p>Streaming gives fresh results at a higher cost and with more to get right. Events can arrive out of order, arrive
+        late, or arrive twice when a sender retries. Batch is simpler and cheaper, and its answer is stale until the next
+        run.<sup class="cite"><a href="#src-11">11</a></sup> On an architecture diagram the two paths show up as parallel
+        arrows from one source:</p>
+        <ul>
+          <li>batch: nightly extract, then files, then a batch job, then tables;</li>
+          <li>streaming: each event, then a topic, then a streaming job, then the same tables.</li>
+        </ul>
+        <div class="ix-spot" data-snippet="stream: {'open': 1}&#10;stream: {'open': 1, 'closed': 1}&#10;stream: {'open': 1, 'closed': 2}" data-q="The streaming job's output says ticket 1 was closed twice, but the desk shows one close. What most likely happened?" data-a="The same event was delivered twice, for example when the sender retried after a timeout. Streaming paths have to expect duplicates and drop a repeated event, which a nightly batch over a finished table rarely has to think about."></div>
+        <h3>Why one machine stops being enough</h3>
+        <p>When one database server is too small, the first idea is a bigger server. Scaling up like that hits a hardware
+        ceiling: there is a largest machine you can buy. Scaling out adds ordinary machines to a cluster instead, the model
+        HDFS, Hadoop's distributed file system, is built for.<sup class="cite"><a href="#src-12">12</a></sup></p>
+        <p>A distributed system splits two things across its machines.</p>
+        <ul>
+          <li>Storage: the data is cut into blocks, and each block is copied to several machines, so a failed machine loses
+          no data.<sup class="cite"><a href="#src-12">12</a></sup></li>
+          <li>Processing: a job is split into pieces of work that many workers run at
+          once.<sup class="cite"><a href="#src-5">5</a></sup></li>
+        </ul>
+        <p>The snippet deals the desk's six tickets to three workers by the remainder of the ticket id, the way a cluster
+        deals work out by a key.</p>
+<pre><code class="language-python">workers = {0: [], 1: [], 2: []}
+for ticket_id in range(1, 7):
+    workers[ticket_id % 3].append(ticket_id)
+print(workers)
+
+counts = []
+for tickets in workers.values():
+    counts.append(len(tickets))
+print(counts, sum(counts))</code></pre>
+<pre class="out">{0: [3, 6], 1: [1, 4], 2: [2, 5]}
+[2, 2, 2] 6</pre>
+        <p>Each worker counts its own share, and adding the shares gives the same six a single machine would count. With
+        three workers each handles a third of the rows, and a fourth worker can be added when the data grows.</p>
+        <h3>Latency versus throughput</h3>
+        <p>A common question is which of two numbers a design optimises. Latency is the time from an event to an answer
+        that includes it. Throughput is how much data the system gets through per hour. A nightly batch has high throughput
+        and high latency: it moves a whole day's rows at once, and the answer is up to a day old.</p>
+        <p>Batch is good enough whenever yesterday's answer serves the question, such as a monthly SLA report or a weekly
+        count of tickets per agent. Streaming earns its cost when the answer must be fresh, such as an alert when a
+        high-priority ticket has waited an hour with no agent.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A batch job reads a bounded input and ends; a streaming job reads an unbounded input and keeps running.</li>
+          <li>Streaming is fresher and costlier, with late, out-of-order and duplicate events to handle.</li>
+          <li>Distributed systems scale out by splitting data into copied blocks and work into parallel pieces.</li>
+          <li>A nightly batch optimises throughput; a streaming path optimises latency.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A typical architecture has two paths from the same sources. The batch path collects a bounded set, like a
+          nightly extract, processes it and ends.</p>
+          <p>The streaming path publishes each event to a topic as it happens and a
+          job that never stops processes it. Both land in the same analytical tables.</p>
+          <p>It's distributed because one machine has a ceiling. Scaling out splits the data into replicated blocks across
+          machines, so losing one loses nothing, and splits the processing into pieces that many workers run in
+          parallel.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="3">
+        <div class="tag">Benefits</div>
+        <h2>What big data is worth to an organisation</h2>
+        <p>Everything so far costs money, so the next question is what an organisation gets back. Google Cloud groups the
+        benefits of big data into three kinds: better decisions, new products and services, and more efficient
+        operations.<sup class="cite"><a href="#src-1">1</a></sup> An interview answer needs one concrete example of each,
+        and the desk supplies all three.</p>
+        <h3>Better decisions</h3>
+        <p>Better decisions come from analysing patterns across more records than a person could
+        read.<sup class="cite"><a href="#src-1">1</a></sup> A desk manager decides how many agents to schedule for each
+        hour of the day. Without data that is a guess; with a year of tickets it is a count. <code>HOUR()</code> returns the
+        hour part of a time value.<sup class="cite"><a href="#src-2">2</a></sup></p>
+<pre><code class="language-sql">SELECT HOUR(opened_at) AS hour, COUNT(*) AS opened
+FROM tickets
+GROUP BY hour
+ORDER BY hour;</code></pre>
+<pre class="out">+------+--------+
+| hour | opened |
++------+--------+
+|    8 |      2 |
+|   12 |      3 |
+|   18 |      1 |
++------+--------+</pre>
+        <p>Six tickets prove nothing, but the shape of the answer carries over. Run over a year of the SaaS company's
+        tickets, the same query says that noon needs more agents than six in the evening, and the schedule follows the
+        numbers.</p>
+        <h3>New products and services</h3>
+        <p>New products and services can be built from data an organisation already collects about its
+        customers.<sup class="cite"><a href="#src-1">1</a></sup> The desk already records when every ticket opened and
+        closed, and its priority. From those rows it can offer customers a self-service status page: your ticket is
+        assigned, and tickets of this priority usually close within a day.</p>
+        <p>Nothing new was collected to build that page: the product is the existing records, summarised and shown to the
+        people they describe.</p>
+        <h3>Operational efficiency</h3>
+        <p>Operational efficiency comes from finding delays and waste in a process through the process's own
+        records.<sup class="cite"><a href="#src-1">1</a></sup> Every desk ticket can carry tags such as
+        <code>billing</code> or <code>ui</code>. If the events show that billing tickets wait hours in a shared queue before
+        someone who understands invoices picks them up, routing by tag sends them straight to the billing agents.</p>
+        <p>A project pitch usually sets this out in three columns, and when you see "Today", "With data" and "Expected
+        change" side by side, someone is arguing for a data project's benefit.</p>
+        <table>
+          <thead><tr><th>Benefit</th><th>Today</th><th>With data</th><th>Expected change</th></tr></thead>
+          <tbody>
+            <tr><td>Better decision</td><td>the same number of agents every hour</td><td>agents scheduled by tickets opened per hour</td><td>shorter waits at the busy hours</td></tr>
+            <tr><td>New product</td><td>customers email to ask about their ticket</td><td>a self-service status page</td><td>fewer "any update?" emails</td></tr>
+            <tr><td>Efficiency</td><td>every ticket waits in one shared queue</td><td>tickets routed by tag</td><td>billing tickets assigned sooner</td></tr>
+          </tbody>
+        </table>
+        <h3>Return on investment</h3>
+        <p>A benefit only counts against what it costs. BigQuery bills the bytes stored and the bytes each query scans, so
+        data nobody ever analyses still costs storage every month.<sup class="cite"><a href="#src-13">13</a></sup> The
+        next step covers the challenges that add to that cost.</p>
+        <p>To show a manager the value of a project, measure before and after. For the staffing change, record the average
+        wait before a ticket's first assignment, hour by hour, for a month. Change the schedule, measure the next month the
+        same way, and compare the two, since without the first month's numbers the benefit cannot be checked.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>The three benefits are better decisions, new products and services, and operational efficiency.</li>
+          <li>Each benefit needs one concrete example, such as staffing by hour, a status page or routing by tag.</li>
+          <li>A benefit counts only against its cost, and stored data is billed even when nobody reads it.</li>
+          <li>Measuring a baseline before the change is what proves the benefit afterwards.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I'd name three benefits. Better decisions: a support desk counts tickets opened per hour and staffs to match
+          instead of guessing.</p>
+          <p>New products: the same records power a self-service status page that tells customers how
+          long tickets like theirs take. Operational efficiency: the event history shows billing tickets waiting in a shared
+          queue, so we route them by tag.</p>
+          <p>To prove it, I'd measure the wait before the change and again after, because the benefit has to beat the
+          storage and query costs.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">Challenges</div>
+        <h2>The challenges of big data</h2>
+        <p>The benefits arrive with five standard challenges: data quality, integration of sources, storage and
+        processing cost, privacy and governance, and skills. Each one is easier to explain when it is pinned to a column you
+        can name, so the table ties each to a desk table.</p>
+        <table>
+          <thead><tr><th>Challenge</th><th>Where it shows on the desk</th><th>What follows</th></tr></thead>
+          <tbody>
+            <tr><td>Data quality</td><td>a <code>ticket_events</code> row written twice, or a status typed wrong</td><td>rules that find and drop bad rows before analysis</td></tr>
+            <tr><td>Integration of sources</td><td><code>tickets</code> beside another system's view of the same ticket</td><td>agreed keys, types and time zones</td></tr>
+            <tr><td>Cost</td><td>every table kept and every query run</td><td>keep and scan only what a question needs</td></tr>
+            <tr><td>Privacy and governance</td><td>the <code>email</code> columns of <code>customers</code> and <code>agents</code></td><td>rules on who may see the data and when it is deleted</td></tr>
+            <tr><td>Skills</td><td>a desk team that knows MySQL and Python</td><td>training or hiring for the new tools</td></tr>
+          </tbody>
+        </table>
+        <h3>Data quality and integration of sources</h3>
+        <p>Real systems produce duplicates, misspellings and impossible dates.<sup class="cite"><a href="#src-1">1</a></sup>
+        A retry writes the same event twice, a status arrives as <code>closd</code>, or a ticket is assigned an hour before
+        it was opened. A report built on those rows is wrong without any error message, so data quality is checked, not
+        assumed.</p>
+        <p>Integration is harder, because sources disagree on keys, types and time
+        zones.<sup class="cite"><a href="#src-1">1</a></sup> Suppose the SaaS company's sales system also tracks support
+        tickets. It calls ticket 4 <code>TCK-0004</code>, a string, and records times four hours ahead of the desk.</p>
+<pre><code class="language-python">desk = {"ticket_id": 4, "opened_hour": 8}
+crm = {"ref": "TCK-0004", "opened_hour": 12}
+
+print(desk["ticket_id"] == crm["ref"])
+
+crm_id = int(crm["ref"][4:])
+crm_hour = crm["opened_hour"] - 4
+print(desk["ticket_id"] == crm_id, desk["opened_hour"] == crm_hour)</code></pre>
+<pre class="out">False
+True True</pre>
+        <p>Compared as they arrive, the two records do not match at all. Only after slicing off the prefix, converting to an
+        integer and shifting the hour do they turn out to be one ticket. Every new source brings its own version of this,
+        and someone has to write the rule down.</p>
+        <h3>Storage and processing cost</h3>
+        <p>Cloud storage looks cheap per byte, but it is billed every month, and BigQuery also bills the bytes each query
+        scans.<sup class="cite"><a href="#src-13">13</a></sup> Keeping everything "in case" raises the storage bill and the
+        privacy exposure together.<sup class="cite"><a href="#src-13">13</a></sup> A query that reads every column of a
+        large table every hour costs far more than one that reads the two columns it needs.</p>
+        <h3>Privacy and governance</h3>
+        <p>An email address is personal data, and privacy law applies to it. In Canada, PIPEDA sets rules for collecting, using and keeping
+        personal information.<sup class="cite"><a href="#src-14">14</a></sup> The
+        desk's <code>customers.email</code> column is personal data, and so is <code>agents.email</code>.</p>
+        <p>Location is part of privacy too. A BigQuery dataset's location decides where its data is stored, and it is fixed
+        when the dataset is created.<sup class="cite"><a href="#src-15">15</a></sup> A company that promised to keep Canadian
+        customers' data in Canada has to pick that location before the first table exists.</p>
+        <p>Governance is the idea interviewers pair with privacy: who owns each dataset, who may see it and who
+        must delete it, written down. You spot its absence on sight: a column named <code>email</code> or
+        <code>phone</code> with no note about who may read it or how long it is kept.</p>
+        <div class="ix-predict" data-q="An analyst asks for a copy of the customers table so a weekly report can show which countries open the most tickets. What do you hand over?" data-a="Only the columns the question needs: customer_id and country, and not name or email. The report loses nothing, and the copy no longer holds personal data that someone has to protect and later delete."></div>
+        <h3>Skills</h3>
+        <p>The last challenge is people. Running the pipeline from the earlier steps takes skills a small team may not have:</p>
+        <ul>
+          <li>distributed processing;</li>
+          <li>streaming;</li>
+          <li>SQL over very large tables;</li>
+          <li>cost control;</li>
+          <li>privacy rules.</li>
+        </ul>
+        <p>A desk team fluent in
+        MySQL and Python still has to learn the new services, and hiring data engineers costs money and time.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>The five challenges are quality, integration, cost, privacy and governance, and skills.</li>
+          <li>Integration is hard because sources disagree on keys, types and time zones.</li>
+          <li>Storage and scanned bytes are both billed, so keeping everything costs money and privacy.</li>
+          <li>Customer emails are personal data, and a dataset's location is fixed at creation.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>The usual five are data quality, integration, cost, privacy and governance, and skills. Quality means
+          duplicates and impossible dates. Integration means two systems that name the same ticket differently and record
+          time in different zones.</p>
+          <p>Cost means paying for storage and for every byte a query scans.</p>
+          <p>On a support desk the customers' email column is personal data, so in Canada PIPEDA applies: we decide who can
+          see it, where it's stored and when it's deleted. And the team needs people who can run all of this.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
+        <div class="tag">Lifecycle</div>
+        <h2>The data lifecycle: one ticket from form to deletion</h2>
+        <p>The components describe the machinery. The data lifecycle describes the life of the data itself, from the moment
+        it exists to the moment it is gone. Sources count the stages differently: Google's architecture guide uses four
+        (ingest, store, process and analyse, explore and visualise), and this course uses
+        eight.<sup class="cite"><a href="#src-7">7</a></sup> The eight add the stages that matter for privacy and cost:
+        sharing, archival and deletion.</p>
+        <h3>Eight stages in order</h3>
+        <p>Data is generated by applications, devices and people, and then collected into
+        storage.<sup class="cite"><a href="#src-7">7</a></sup> From there it moves through the remaining six stages in
+        order.</p>
+        <ol>
+          <li>Generation: an event happens and produces data, such as a customer submitting a form.</li>
+          <li>Collection: the data is captured and brought into a system, the ingestion component's job.</li>
+          <li>Storage: the data is kept. A relational database stores collected records as rows in
+          tables.<sup class="cite"><a href="#src-2">2</a></sup></li>
+          <li>Processing: the data is cleaned, joined and reshaped for the questions people ask.</li>
+          <li>Analysis: queries and reports turn the processed data into answers.</li>
+          <li>Sharing: the answers, or the data, go to people and systems outside the team that produced them.</li>
+          <li>Archival: data that is rarely read moves somewhere cheaper but is still kept. Cold data can move to cheaper
+          storage classes.<sup class="cite"><a href="#src-16">16</a></sup></li>
+          <li>Deletion: the data is destroyed once nobody may or should keep it.</li>
+        </ol>
+        <p>A common slip in interviews is listing the stages out of order or dropping sharing and archival. Deletion always
+        comes last, and it follows a retention period rather than happening the moment data stops being useful.</p>
+        <h3>Following ticket 1 through the stages</h3>
+        <p>The clearest way to learn the stages is to follow one record through all eight. Here is ticket 1 as the desk
+        stores it today.</p>
+<pre><code class="language-sql">SELECT ticket_id, title, status, opened_at, closed_at
+FROM tickets
+WHERE ticket_id = 1;</code></pre>
+<pre class="out">+-----------+------------------------+--------+---------------------+---------------------+
+| ticket_id | title                  | status | opened_at           | closed_at           |
++-----------+------------------------+--------+---------------------+---------------------+
+|         1 | Login page returns 500 | closed | 2026-10-18 08:00:00 | 2026-10-18 11:00:00 |
++-----------+------------------------+--------+---------------------+---------------------+</pre>
+        <p>That row is stage three. The table shows what the desk holds at each of the eight.</p>
+        <table>
+          <thead><tr><th>Stage</th><th>What happens to ticket 1</th></tr></thead>
+          <tbody>
+            <tr><td>Generation</td><td>a customer fills in the form: the login page returns 500</td></tr>
+            <tr><td>Collection</td><td>the application runs an INSERT into <code>tickets</code></td></tr>
+            <tr><td>Storage</td><td>the MySQL row above, and its events in <code>ticket_events</code></td></tr>
+            <tr><td>Processing</td><td>a nightly extract copies it out, and duplicates and bad rows are removed</td></tr>
+            <tr><td>Analysis</td><td>it counts toward "high-priority tickets closed within their SLA" in a report</td></tr>
+            <tr><td>Sharing</td><td>the report goes to the desk manager, without the customer's email</td></tr>
+            <tr><td>Archival</td><td>months after closing, the row moves to cheaper storage nobody queries daily</td></tr>
+            <tr><td>Deletion</td><td>when the retention period ends, the row and its copies are destroyed</td></tr>
+          </tbody>
+        </table>
+        <h3>Retention policy: when archival becomes deletion</h3>
+        <p>A retention policy is a rule stating how long data is kept. It decides when archival turns into deletion. Data is
+        archived rather than deleted at once because someone may still need it: a customer disputes an old ticket, or an
+        auditor asks for last year's response times. Archival keeps it at a lower price until that need has passed.</p>
+        <p>Suppose the desk's policy archives a ticket 90 days after it closes and deletes it two years after it closes.
+        The snippet adds each period to ticket 1's closing time.</p>
+<pre><code class="language-python">from datetime import datetime, timedelta
+
+closed_at = datetime(2026, 10, 18, 11, 0)
+archive_after = timedelta(days=90)
+delete_after = timedelta(days=730)
+
+print("closed  ", closed_at)
+print("archive ", closed_at + archive_after)
+print("delete  ", closed_at + delete_after)</code></pre>
+<pre class="out">closed   2026-10-18 11:00:00
+archive  2027-01-16 11:00:00
+delete   2028-10-17 11:00:00</pre>
+        <p>The policy turns into dates a machine can act on, which is how deletion is triggered in practice. Cloud Storage
+        can delete objects automatically through bucket lifecycle rules,<sup class="cite"><a href="#src-17">17</a></sup> and
+        a BigQuery table can carry an expiration time after which it is removed.<sup class="cite"><a href="#src-18">18</a></sup>
+        When you see a table expiration setting, or a bucket rule that deletes objects after a number of days, you are
+        looking at a retention policy written as configuration.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>The eight stages are generation, collection, storage, processing, analysis, sharing, archival and deletion.</li>
+          <li>Different sources count different stages; Google's guide uses four.</li>
+          <li>Archival keeps rarely read data at a lower price until the retention period ends.</li>
+          <li>A retention policy becomes dates, and expiration settings or lifecycle rules act on them.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I'd list eight stages: generation, collection, storage, processing, analysis, sharing, archival and deletion.</p>
+          <p>For a support ticket that's the form, the insert, the database row, the nightly extract and cleaning, the SLA
+          report, the report going to a manager, the row moving to cheap storage after a few months, and deletion when the
+          retention period ends.</p>
+          <p>We archive instead of deleting straight away because disputes and audits still need old records. Deletion is
+          triggered by the retention policy, usually as an expiration or lifecycle rule.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="6">
+        <div class="tag">Types of data</div>
+        <h2>Structured, semi-structured and unstructured data</h2>
+        <p>Variety, the third V, is easier to discuss with three labels for how much shape data carries. The desk holds
+        all three kinds once its attachments and emails are counted, and each kind is stored and queried in its own
+        way.</p>
+        <table>
+          <thead><tr><th>Type</th><th>Desk example</th><th>Usually stored in</th><th>Queried by</th></tr></thead>
+          <tbody>
+            <tr><td>Structured</td><td>the seven MySQL tables</td><td>a relational database table</td><td>SQL over named columns</td></tr>
+            <tr><td>Semi-structured</td><td>week 2's <code>tickets.json</code>, events with notes as JSON</td><td>files, or JSON columns in a table</td><td>reading keys, with a plan for missing ones</td></tr>
+            <tr><td>Unstructured</td><td>a screenshot attached to a ticket, the body of a customer's email</td><td>object storage such as Cloud Storage</td><td>extracting structure or metadata first</td></tr>
+          </tbody>
+        </table>
+        <h3>Structured data</h3>
+        <p>Structured data fits a fixed schema of rows and columns, the shape of a SQL
+        table.<sup class="cite"><a href="#src-1">1</a></sup> Every row of <code>tickets</code> has the same eight columns,
+        each with a declared type, and the database rejects a row that does not fit. That is why SQL can query it directly:
+        the column names and types are known before anyone asks.<sup class="cite"><a href="#src-2">2</a></sup></p>
+        <h3>Semi-structured data</h3>
+        <p>Semi-structured data carries its own structure through keys or tags, as JSON and XML
+        do.<sup class="cite"><a href="#src-1">1</a></sup> Each JSON object names its fields, but nothing forces two objects
+        to name the same ones. JSON looks tidy, which tempts people to call it structured; it is semi-structured because
+        each object may carry different keys.</p>
+<pre><code class="language-python">import json
+
+text = '[{"id": 4, "tags": ["billing", "ui"], "note": null}, {"id": 5, "note": "rows missing"}]'
+tickets = json.loads(text)
+
+for ticket in tickets:
+    print(ticket["id"], ticket.get("tags", []), ticket["note"])</code></pre>
+<pre class="out">4 ['billing', 'ui'] None
+5 [] rows missing</pre>
+        <p>Ticket 5 has no <code>tags</code> key at all. Reading it with <code>ticket["tags"]</code> would stop with a
+        <code>KeyError</code>, so the loop uses <code>get</code> with an empty list as the default. Two objects side by side,
+        one with a key and one without, are how you recognise semi-structured data on sight.</p>
+        <p>Semi-structured data is flexible to write, because a sender can add a field without asking
+        anyone, but it is costly to query reliably, because fields may be missing or change type from one record to the
+        next.<sup class="cite"><a href="#src-19">19</a></sup></p>
+        <h3>Unstructured data</h3>
+        <p>Unstructured data has no predefined model: images, free text, audio.<sup class="cite"><a href="#src-1">1</a></sup>
+        A screenshot of the frozen checkout button has pixels, not columns. Images and email bodies are stored as objects,
+        such as files in a Cloud Storage bucket.<sup class="cite"><a href="#src-9">9</a></sup></p>
+        <p>To query unstructured data, structure or metadata is extracted from it
+        first.<sup class="cite"><a href="#src-1">1</a></sup> The screenshot's file name, size and ticket id go into a table
+        row that points at the object, and the email's sender and date are pulled out of its header. So the answer to
+        "where would a screenshot attached to a ticket be stored?" is in object storage, with a structured row describing
+        it.</p>
+        <h3>Nested and repeated fields</h3>
+        <p>The first question once JSON meets a table is what happens to a list inside one object, such as ticket 4's two
+        tags. One answer is to flatten it into extra rows, one per tag, the way the desk's <code>ticket_tags</code> table
+        does.</p>
+<pre><code class="language-python">for ticket in tickets:
+    for tag in ticket.get("tags", []):
+        print("row:", ticket["id"], tag)</code></pre>
+<pre class="out">row: 4 billing
+row: 4 ui</pre>
+        <p>The other answer is to keep the list inside the row. BigQuery can load and query JSON with nested and repeated
+        fields, so semi-structured data can be queried without flattening
+        first.<sup class="cite"><a href="#src-19">19</a></sup> A nested object loads as a RECORD column and a list as a
+        REPEATED column.<sup class="cite"><a href="#src-19">19</a></sup> Flattening suits a relational database; nesting
+        keeps one row per ticket.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Structured data has a fixed schema of rows and columns and is queried with SQL.</li>
+          <li>JSON and XML are semi-structured: each record names its own fields, and some may be missing.</li>
+          <li>Unstructured data such as screenshots is stored as objects and queried through extracted metadata.</li>
+          <li>A list inside a JSON object is either flattened into rows or kept as a repeated column.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Structured data has a fixed schema, like a SQL table, and I query it with SQL. Semi-structured data, like JSON
+          or XML, carries its own keys, so records can differ; I store it as files or JSON columns and query it knowing
+          fields may be missing.</p>
+          <p>Unstructured data, like screenshots or email bodies, has no model; it goes in object
+          storage and I query metadata extracted from it.</p>
+          <p>JSON isn't structured, even when it looks tidy, because nothing stops the next object having different
+          keys.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="7">
+        <div class="tag">File formats</div>
+        <h2>File formats compared and chosen</h2>
+        <p>A file's format decides its size, whether types survive and how fast it reads. BigQuery loads CSV, JSON lines, Avro, Parquet and ORC,
+        and the format chosen changes how the table's schema is
+        obtained.<sup class="cite"><a href="#src-6">6</a></sup> XML is the sixth format interviewers name.</p>
+        <h3>Text formats: CSV, JSON, JSON lines and XML</h3>
+        <p>CSV is a plain-text row format with no embedded types, so a loader has to detect or be told each column's
+        type.<sup class="cite"><a href="#src-20">20</a></sup> Here are the six tickets, four columns of each:</p>
+<pre><code>ticket_id,title,priority,status
+1,Login page returns 500,high,closed
+2,Invoice PDF is blank,normal,closed
+3,Typo on pricing page,normal,closed
+4,Checkout button frozen,high,assigned
+5,Export is missing rows,normal,assigned
+6,Add dark mode,low,open</code></pre>
+        <p>The header names the columns once, and nothing says <code>ticket_id</code> is a number. A title containing a
+        comma would need quoting. CSV is readable, opens in any spreadsheet and is large for what it holds.<sup class="cite"><a href="#src-20">20</a></sup></p>
+        <p>JSON lines, also called newline-delimited JSON, holds one complete JSON object per line, so a file can be split
+        and read a line at a time.<sup class="cite"><a href="#src-19">19</a></sup> Its objects may hold nested
+        fields.<sup class="cite"><a href="#src-19">19</a></sup></p>
+<pre><code>{"ticket_id": 1, "title": "Login page returns 500", "priority": "high", "status": "closed"}
+{"ticket_id": 2, "title": "Invoice PDF is blank", "priority": "normal", "status": "closed"}
+{"ticket_id": 3, "title": "Typo on pricing page", "priority": "normal", "status": "closed"}
+{"ticket_id": 4, "title": "Checkout button frozen", "priority": "high", "status": "assigned"}
+{"ticket_id": 5, "title": "Export is missing rows", "priority": "normal", "status": "assigned"}
+{"ticket_id": 6, "title": "Add dark mode", "priority": "low", "status": "open"}</code></pre>
+        <p>Plain JSON wraps all six objects in one array, so a reader must take in the whole document first. Both repeat
+        every key in every record.</p>
+        <p>XML is semi-structured like JSON, and names every field with an opening and a closing
+        tag.<sup class="cite"><a href="#src-1">1</a></sup> Two tickets show its shape:</p>
+<pre><code>&lt;tickets&gt;
+  &lt;ticket&gt;
+    &lt;ticket_id&gt;1&lt;/ticket_id&gt;
+    &lt;title&gt;Login page returns 500&lt;/title&gt;
+    &lt;priority&gt;high&lt;/priority&gt;
+    &lt;status&gt;closed&lt;/status&gt;
+  &lt;/ticket&gt;
+  &lt;ticket&gt;
+    &lt;ticket_id&gt;2&lt;/ticket_id&gt;
+    &lt;title&gt;Invoice PDF is blank&lt;/title&gt;
+    &lt;priority&gt;normal&lt;/priority&gt;
+    &lt;status&gt;closed&lt;/status&gt;
+  &lt;/ticket&gt;
+&lt;/tickets&gt;</code></pre>
+        <p>Every field name appears twice per record, so XML is the most verbose of the four, and its tags carry no
+        types. The snippet below measures what repeated keys cost.</p>
+<pre><code class="language-python">import json
+
+tickets = [
+    {"ticket_id": 1, "title": "Login page returns 500", "priority": "high", "status": "closed"},
+    {"ticket_id": 2, "title": "Invoice PDF is blank", "priority": "normal", "status": "closed"},
+    {"ticket_id": 3, "title": "Typo on pricing page", "priority": "normal", "status": "closed"},
+    {"ticket_id": 4, "title": "Checkout button frozen", "priority": "high", "status": "assigned"},
+    {"ticket_id": 5, "title": "Export is missing rows", "priority": "normal", "status": "assigned"},
+    {"ticket_id": 6, "title": "Add dark mode", "priority": "low", "status": "open"},
+]
+
+csv_text = "ticket_id,title,priority,status\n"
+jsonl_text = ""
+for t in tickets:
+    csv_text += f"{t['ticket_id']},{t['title']},{t['priority']},{t['status']}\n"
+    jsonl_text += json.dumps(t) + "\n"
+json_text = json.dumps(tickets)
+
+print("csv  ", len(csv_text))
+print("json ", len(json_text))
+print("jsonl", len(jsonl_text))</code></pre>
+<pre class="out">csv   248
+json  552
+jsonl 546</pre>
+        <p>JSON takes more than twice the characters of CSV for the same data. At six rows that is nothing; at a hundred
+        million rows a day it is the storage bill.</p>
+        <h3>Columnar and binary formats: Parquet, ORC and Avro</h3>
+        <p>All four text formats store rows. A columnar format stores each column's values together, as the snippet
+        shows.</p>
+<pre><code class="language-python">by_row = [
+    {"ticket_id": 1, "priority": "high", "status": "closed"},
+    {"ticket_id": 2, "priority": "normal", "status": "closed"},
+    {"ticket_id": 3, "priority": "normal", "status": "closed"},
+    {"ticket_id": 4, "priority": "high", "status": "assigned"},
+    {"ticket_id": 5, "priority": "normal", "status": "assigned"},
+    {"ticket_id": 6, "priority": "low", "status": "open"},
+]
+
+by_column = {"ticket_id": [], "priority": [], "status": []}
+for row in by_row:
+    for name in by_column:
+        by_column[name].append(row[name])
+
+print(by_column["priority"])
+print(by_column["priority"].count("high"))</code></pre>
+<pre class="out">['high', 'normal', 'normal', 'high', 'normal', 'low']
+2</pre>
+        <p>Counting high-priority tickets now reads one list and never touches the statuses. A column also holds values of
+        one type that often repeat, which compresses well.</p>
+        <ul>
+          <li>Parquet is a columnar format with per-column compression and an embedded schema, suited to analytical
+          reads.<sup class="cite"><a href="#src-21">21</a></sup></li>
+          <li>ORC is a columnar format with built-in indexes and compression, from the Hadoop
+          ecosystem.<sup class="cite"><a href="#src-22">22</a></sup></li>
+          <li>Avro is row-based, and its schema, written in JSON, travels in the file header. It supports schema evolution,
+          so a field can be added without breaking older files.<sup class="cite"><a href="#src-23">23</a></sup></li>
+        </ul>
+        <p>Columnar files read fast for a few columns, but they are slower to write and awkward to append to one row at
+        a time, and row formats suit streaming writes.<sup class="cite"><a href="#src-21">21</a></sup> So Avro is
+        favoured for streams and Parquet for analysts' tables. Parquet files can also be split into pieces that many
+        workers read at once, and they compress with a choice of compression method (a codec), which is another reason
+        analytics prefers them to plain text.</p>
+        <h3>The six formats side by side</h3>
+        <p>The columns are structure, schema handling, compression and typical use.</p>
+        <table>
+          <thead><tr><th>Format</th><th>Structure</th><th>Schema handling</th><th>Compression</th><th>Typical use</th></tr></thead>
+          <tbody>
+            <tr><td>CSV</td><td>text rows</td><td>none; types detected or supplied</td><td>none built in; large</td><td>simple extracts, spreadsheets</td></tr>
+            <tr><td>JSON</td><td>one text document</td><td>keys in every record; may differ</td><td>none built in; keys repeat</td><td>APIs, files like <code>tickets.json</code></td></tr>
+            <tr><td>JSON lines</td><td>one text object per line</td><td>keys in every record; may differ</td><td>none built in; keys repeat</td><td>event extracts, logs, loading line by line</td></tr>
+            <tr><td>XML</td><td>tagged text document</td><td>tags name fields, no types</td><td>none built in; most verbose</td><td>systems that exchange tagged documents</td></tr>
+            <tr><td>Parquet</td><td>binary columns</td><td>embedded and typed</td><td>per column</td><td>analytical reads of a few columns</td></tr>
+            <tr><td>ORC</td><td>binary columns with indexes</td><td>embedded and typed; the loader reads it from the file<sup class="cite"><a href="#src-6">6</a></sup></td><td>built in</td><td>analytics in the Hadoop ecosystem</td></tr>
+            <tr><td>Avro</td><td>binary rows</td><td>JSON schema in the header; evolves</td><td>not per column (row-based)<sup class="cite"><a href="#src-23">23</a></sup></td><td>streams and record-at-a-time writes</td></tr>
+          </tbody>
+        </table>
+        <p>On sight, the format is in the file extension of a load command or a bucket listing. Text files end in
+        <code>.csv</code>, <code>.jsonl</code> or <code>.xml</code>. Binary ones end in <code>.parquet</code>,
+        <code>.orc</code> or <code>.avro</code>.</p>
+        <h3>Choosing a format for a workload</h3>
+        <p>A choice starts from the workload. Four common ones:</p>
+        <ul>
+          <li>A nightly extract of the desk's small tables: CSV for flat tables, JSON lines for events whose notes contain
+          commas, with the types given to the loader.</li>
+          <li>A large nightly extract for analysts who read a few columns at a time: Parquet, because it is columnar, typed
+          and compressed per column.</li>
+          <li>A stream of events whose fields change over time: Avro, which writes a row at a time and lets its schema
+          evolve.</li>
+          <li>A list a manager will open in a spreadsheet: CSV.</li>
+        </ul>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>CSV, JSON, JSON lines and XML are text row formats; only JSON lines reads a line at a time.</li>
+          <li>Parquet and ORC are columnar and compressed; Avro is row-based with its schema in the header.</li>
+          <li>Columnar files read a few columns fast but are slow to append to row by row.</li>
+          <li>Choose by workload: analytics points to Parquet, streams to Avro, simple exchange to CSV.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>CSV, JSON and XML are text row formats. CSV has no types, JSON and XML repeat field names, and JSON lines
+          can be read a line at a time.</p>
+          <p>Parquet is columnar, typed and compressed per column; ORC is columnar with built-in indexes and
+          compression and, like Parquet, carries its typed schema in the file. Both suit analytics. Avro is row-based with its schema in the file header and
+          supports schema evolution, which suits streams.</p>
+          <p>For a nightly analytical extract I'd pick Parquet. Columnar hurts when you append one row at a time or look up
+          single rows, so for a stream I'd pick Avro.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="8">
+        <div class="tag">Check yourself</div>
+        <h2>Check yourself</h2>
+        <p>Answer each question out loud, as you would in an interview, before you open it.</p>
+        <details class="check"><summary>Is the six-ticket desk big data? Which V's would rise first if it served a SaaS company with ten thousand customers?</summary><p>No. The V's are pressures measured against what a team's systems can handle, and one MySQL server copes easily with the desk. At the SaaS company, velocity and variety rise first: a click log arriving a thousand times a second, and emails, chats and screenshots beside the tables.</p></details>
+        <details class="check"><summary>Name the five components of a big data system, the job of each, and a Google Cloud service for each.</summary><p>Ingestion brings data in (Pub/Sub for events), storage keeps it raw (Cloud Storage), processing cleans and reshapes it (Dataflow), analysis queries it in SQL (BigQuery), and visualisation draws the answers (Looker Studio). Something like a scheduler starts each stage in order.</p></details>
+        <details class="check"><summary>What separates a batch path from a streaming path, and why are big data systems distributed?</summary><p>A batch job reads a bounded input, such as last night's events, and ends; a streaming job reads an unbounded input as each event arrives and keeps running, fresher but costlier. Systems are distributed because one machine has a ceiling: scaling out splits data into replicated blocks and work into pieces that many workers run at once.</p></details>
+        <details class="check"><summary>Give one example of each benefit of big data for a support desk.</summary><p>Better decisions: staffing agents by the hour tickets are opened. A new product: a self-service status page built from open and close times. Operational efficiency: routing tickets by tag once the events show billing tickets waiting in a shared queue.</p></details>
+        <details class="check"><summary>List the five challenges of big data. Which desk column is personal data, and what follows?</summary><p>Data quality, integration of sources, storage and processing cost, privacy and governance, and skills. The <code>email</code> column of <code>customers</code> (and of <code>agents</code>) is personal data, so privacy law such as PIPEDA applies: decide who may see it, where it is stored and when it is deleted.</p></details>
+        <details class="check"><summary>List the eight lifecycle stages in order. Why is a closed ticket archived rather than deleted at once?</summary><p>Generation, collection, storage, processing, analysis, sharing, archival, deletion. Archival keeps rarely read data at a lower price because disputes and audits may still need it; deletion follows when the retention period ends.</p></details>
+        <details class="check"><summary>Is JSON structured data? Where would a screenshot attached to a ticket be stored, and how would you query it?</summary><p>JSON is semi-structured: each object names its own keys, and the next object may have different ones. The screenshot is unstructured, so it goes in object storage such as a Cloud Storage bucket, and you query a table row of metadata (file name, ticket id) that points at it.</p></details>
+        <details class="check"><summary>Which file format would you choose for a large nightly analytical extract, and when does columnar hurt?</summary><p>Parquet: columnar, typed and compressed per column, so analysts read only the columns they need. Columnar hurts when you append one row at a time or write a stream, where a row format such as Avro, with its schema in the header, fits better.</p></details>
+      </section>
+
+      <section class="reading-sources" aria-label="Sources and deeper dive">
+        <h2>Sources &amp; deeper dive</h2>
+        <ul>
+          <li id="src-1"><a href="https://cloud.google.com/learn/what-is-big-data" target="_blank" rel="noopener">Google Cloud: What is big data?</a> — the V's, the three kinds of data, and the benefits and challenges in one place.</li>
+          <li id="src-2"><a href="https://dev.mysql.com/doc/refman/9.0/en/" target="_blank" rel="noopener">MySQL reference manual</a> — tables, rows and the date and time functions used in the desk queries.</li>
+          <li id="src-3"><a href="https://cloud.google.com/bigquery/docs/introduction" target="_blank" rel="noopener">BigQuery overview</a> — a serverless analytics warehouse that separates storage from compute.</li>
+          <li id="src-4"><a href="https://cloud.google.com/bigquery/docs/storage_overview" target="_blank" rel="noopener">BigQuery storage overview</a> — why a columnar table lets a query read only the columns it names.</li>
+          <li id="src-5"><a href="https://cloud.google.com/dataflow/docs/overview" target="_blank" rel="noopener">Dataflow overview</a> — Apache Beam pipelines run as a managed service, in batch and streaming mode.</li>
+          <li id="src-6"><a href="https://cloud.google.com/bigquery/docs/loading-data" target="_blank" rel="noopener">BigQuery: Introduction to loading data</a> — the file formats BigQuery loads and how each supplies a schema.</li>
+          <li id="src-7"><a href="https://cloud.google.com/architecture/data-lifecycle-cloud-platform" target="_blank" rel="noopener">Google Cloud Architecture Center: Data lifecycle on Google Cloud</a> — the stages of a data platform with a service for each.</li>
+          <li id="src-8"><a href="https://cloud.google.com/pubsub/docs/overview" target="_blank" rel="noopener">Pub/Sub overview</a> — publishers, topics and subscribers for event streams.</li>
+          <li id="src-9"><a href="https://cloud.google.com/storage/docs/introduction" target="_blank" rel="noopener">Cloud Storage documentation</a> — objects in buckets, the landing place for raw and unstructured files.</li>
+          <li id="src-10"><a href="https://docs.cloud.google.com/data-studio" target="_blank" rel="noopener">Looker Studio help</a> — charts and dashboards drawn from BigQuery tables.</li>
+          <li id="src-11"><a href="https://beam.apache.org/documentation/programming-guide/" target="_blank" rel="noopener">Apache Beam programming guide</a> — bounded and unbounded data, batch and streaming pipelines.</li>
+          <li id="src-12"><a href="https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-hdfs/HdfsDesign.html" target="_blank" rel="noopener">Apache Hadoop: HDFS architecture</a> — scaling out, blocks and replication across machines.</li>
+          <li id="src-13"><a href="https://cloud.google.com/bigquery/pricing" target="_blank" rel="noopener">BigQuery pricing</a> — what storage and scanned bytes cost.</li>
+          <li id="src-14"><a href="https://www.priv.gc.ca/en/privacy-topics/privacy-laws-in-canada/the-personal-information-protection-and-electronic-documents-act-pipeda/" target="_blank" rel="noopener">Office of the Privacy Commissioner of Canada: PIPEDA</a> — Canada's rules for collecting, using and keeping personal information.</li>
+          <li id="src-15"><a href="https://cloud.google.com/bigquery/docs/locations" target="_blank" rel="noopener">BigQuery locations</a> — where a dataset's data is stored, and why that is fixed at creation.</li>
+          <li id="src-16"><a href="https://cloud.google.com/storage/docs/storage-classes" target="_blank" rel="noopener">Cloud Storage: Storage classes</a> — cheaper classes for data that is rarely read.</li>
+          <li id="src-17"><a href="https://cloud.google.com/storage/docs/lifecycle" target="_blank" rel="noopener">Cloud Storage: Object Lifecycle Management</a> — rules that delete or move objects automatically.</li>
+          <li id="src-18"><a href="https://cloud.google.com/bigquery/docs/managing-tables" target="_blank" rel="noopener">BigQuery: Managing tables</a> — table expiration times among the other table settings.</li>
+          <li id="src-19"><a href="https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-json" target="_blank" rel="noopener">BigQuery: Loading JSON data</a> — newline-delimited JSON, nested and repeated fields.</li>
+          <li id="src-20"><a href="https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-csv" target="_blank" rel="noopener">BigQuery: Loading CSV data</a> — CSV's lack of types and how a loader detects or is given them.</li>
+          <li id="src-21"><a href="https://parquet.apache.org/docs/" target="_blank" rel="noopener">Apache Parquet documentation</a> — the columnar format, its schema and per-column compression.</li>
+          <li id="src-22"><a href="https://orc.apache.org/specification/" target="_blank" rel="noopener">Apache ORC specification</a> — columnar storage with built-in indexes from the Hadoop ecosystem.</li>
+          <li id="src-23"><a href="https://avro.apache.org/docs/current/specification/" target="_blank" rel="noopener">Apache Avro specification</a> — row-based files with a JSON schema in the header and schema evolution.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · after you have read the page</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 4 Day 2</footer>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 2 — goals</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Explain the five V's of big data and how each one shapes a data warehouse design</li>
+      <li>Describe the components of a big data system and a batch and streaming architecture, and say why storage and processing are distributed</li>
+      <li>Give an example of each benefit of big data and describe its challenges, from data quality to privacy and skills</li>
+      <li>Follow a record through the eight lifecycle stages and tell structured, semi-structured and unstructured data apart, with how each is stored and queried</li>
+      <li>Compare CSV, JSON, XML, Parquet, Avro and ORC and choose a format for a given workload</li>
+    </ul>
+    <p class="goals-foot">Wednesday builds on the file formats: the desk's tables are written out as files and loaded for analysis.</p>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Day 3 — Data warehousing & BigQuery →", href: "day-3-data-warehousing-and-bigquery.html" };
+window.DIAGRAM = {
+  title: "Day 2 · big data from the V's to the file on disk",
+  width: 500, height: 540,
+  nodes: [
+    { id:"vs", step:0, kind:"example", x:14, y:14, w:472, h:50, label:"FIVE V'S\n  volume · velocity · variety · veracity · value", detail:"Pressures measured against what a team's systems can handle, not a size. Each pushes one design choice: scale-out columnar storage, a streaming path, flexible formats, cleansing, a business question." },
+    { id:"comp", step:1, x:14, y:86, w:472, h:50, label:"COMPONENTS\n  ingest · store · process · analyse · visualise", detail:"Pub/Sub, Cloud Storage, Dataflow, BigQuery and Looker Studio, with orchestration starting each stage in order." },
+    { id:"batch", step:2, x:24, y:162, w:200, h:56, label:"Batch path\n  nightly extract · files\n  bounded, then ends", detail:"High throughput, high latency: the answer is up to a day old. Simpler and cheaper." },
+    { id:"stream", step:2, x:276, y:162, w:200, h:56, label:"Streaming path\n  event · topic · job\n  unbounded, keeps running", detail:"Low latency, more to get right: late, out-of-order and duplicate events. Both paths scale out across many machines." },
+    { id:"benefits", step:3, x:24, y:244, w:200, h:56, label:"Benefits\n  decisions · products\n  efficiency", detail:"Staffing by the hour, a self-service status page, routing by tag. Each counts only against its cost." },
+    { id:"challenges", step:4, x:276, y:244, w:200, h:56, label:"Challenges\n  quality · integration · cost\n  privacy · skills", detail:"Duplicates and impossible dates, sources that disagree on keys and time zones, billed storage and scans, customer emails under PIPEDA." },
+    { id:"lifecycle", step:5, x:14, y:326, w:472, h:50, label:"LIFECYCLE\n  generate · collect · store · process · analyse · share · archive · delete", detail:"One ticket from the form to deletion. A retention policy decides when archival turns into deletion." },
+    { id:"types", step:6, x:24, y:402, w:200, h:56, label:"Types of data\n  structured · semi-structured\n  unstructured", detail:"Tables queried with SQL; JSON and XML with their own keys; screenshots and emails stored as objects and queried through metadata." },
+    { id:"formats", step:7, x:276, y:402, w:200, h:56, label:"File formats\n  CSV · JSON lines · XML\n  Parquet · ORC · Avro", detail:"Text rows, columnar files for analytics, Avro rows with a schema in the header for streams." },
+    { id:"check", step:8, x:24, y:484, w:452, h:40, label:"CHECK YOURSELF\n  answer out loud, then open" }
+  ],
+  edges: [
+    { id:"e1", step:1, from:"vs", to:"comp", label:"pressures shape" },
+    { id:"e2", step:2, from:"comp", to:"batch", label:"bounded" },
+    { id:"e3", step:2, from:"comp", to:"stream", label:"unbounded" },
+    { id:"e4", step:3, from:"batch", to:"benefits", label:"answers" },
+    { id:"e5", step:4, from:"benefits", to:"challenges", label:"weighed against" },
+    { id:"e6", step:5, from:"challenges", to:"lifecycle", label:"retention" },
+    { id:"e7", step:6, from:"lifecycle", to:"types", label:"what is kept" },
+    { id:"e8", step:7, from:"types", to:"formats", label:"how it is written" },
+    { id:"e9", step:8, from:"formats", to:"check", dir:"-" }
+  ],
+  captions: [
+    "The five V's are pressures on a system, and each one pushes a warehouse design in one direction. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "Five components carry data from a ticket form to a manager's chart, with a Google Cloud service at each stage.",
+    "Two paths from one source: a batch job over a bounded input, and a streaming job that never ends, both spread across many machines.",
+    "The answers pay for the system: better decisions, new products and operational efficiency, one desk example each.",
+    "The same system brings five challenges, from duplicated rows to the personal data in an email column.",
+    "One ticket passes through eight lifecycle stages, and a retention policy decides when archival becomes deletion.",
+    "Data comes structured, semi-structured or unstructured, and each kind is stored and queried its own way.",
+    "Six file formats compared by structure, schema, compression and use, and chosen by workload.",
+    "You can now explain the V's, the pipeline, the lifecycle, the three kinds of data and the six formats without looking."
+  ]
+};
+window.QUIZ = {
+  id: "w04-d2",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "A job reads yesterday's ticket events at two in the morning, writes a report and stops. What kind of job is it?",
+      options: ["A streaming job, because it reads events", "A batch job: it processes a bounded input and then ends", "An ingestion service such as Pub/Sub", "An orchestrator"], answer: 1,
+      explain: "Yesterday's events are a bounded input, and the job ends when it has read them. A streaming job reads an unbounded input and keeps running." },
+    { type: "tf", stem: "JSON is structured data, because every value sits under a named key.", answer: false,
+      explain: "JSON is semi-structured. Each object names its own keys, and nothing forces the next object to have the same ones, so a reader has to plan for missing fields." },
+    { type: "mcq", stem: "Which of these file formats are columnar? Select all that apply.",
+      options: ["Parquet", "Avro", "ORC", "JSON lines"], answer: [0, 2],
+      explain: "Parquet and ORC store each column's values together. Avro is row-based with its schema in the file header, and JSON lines is one text object per line." },
+    { type: "match", stem: "Match each component of a big data system to the Google Cloud service that does its job.",
+      pairs: [
+        { l: "Ingestion", r: "Pub/Sub: a publisher sends each event to a topic" },
+        { l: "Storage", r: "Cloud Storage: raw files kept as objects in buckets" },
+        { l: "Processing", r: "Dataflow: pipelines in batch or streaming mode" },
+        { l: "Visualisation", r: "Looker Studio: charts drawn from BigQuery tables" }
+      ],
+      explain: "Analysis, the fifth component, is BigQuery running SQL over the stored tables." },
+    { type: "scq", stem: "In the eight-stage data lifecycle, which stage comes directly before deletion?",
+      options: ["Sharing", "Archival", "Analysis", "Storage"], answer: 1,
+      explain: "Archival keeps rarely read data at a lower price until the retention period ends, and deletion follows. Sharing comes after analysis and before archival." },
+    { type: "open", stem: "In two or three sentences: the desk's customers table has an email column. Which challenge of big data does it raise, and what does a team do about it?",
+      hint: "One law, three decisions.",
+      model: "It raises privacy and governance, because an email address is personal data and in Canada PIPEDA sets rules for collecting, using and keeping it. The team decides who may see the column, where the data is stored (a dataset's location is fixed when it is created) and when it is deleted, and it leaves the column out of copies that do not need it." }
+  ]
+};
+</script>
+
+<script src="../../assets/js/diagram.js?v=20261030"></script>
+<script src="../../assets/js/scrolly.js?v=20261030"></script>
+<script src="../../assets/js/modals.js?v=20261030"></script>
+<script src="../../assets/js/quiz.js?v=20261030"></script>
+<script src="../../assets/js/widgets.js?v=20261030"></script>
+<script src="../../assets/js/glossary.js?v=20261030"></script>
+</body>
+</html>

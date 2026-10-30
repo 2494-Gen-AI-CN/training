@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w04d1">
+<title>W4·D1 — Cloud computing concepts | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261030">
+<script src="../../assets/js/theme.js?v=20261030"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="../../exit-criteria/index.html">Exit criteria</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>Cloud computing concepts: renting the ticket desk's computers from a provider</h1>
+        <div class="meta">
+          <span><b>Week 4</b> · Day 1</span>
+          <span>Mon Nov 2, 2026</span>
+          <span>Data fundamentals, cloud concepts, data warehousing, ETL/ELT</span>
+          <span><b>~42 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span class="verified">Sources checked 2026-10-30 · python 3.15 · google-cloud-sdk 591.0</span>
+          <span class="exit"><a href="../../exit-criteria/qc-3-data-and-gen-ai-fundamentals.html#w04d1">Exit criteria</a></span>
+        </div>
+        <p class="summary">This page assumes week 3's ticket desk, seven MySQL tables in the <code>desk-mysql</code>
+        container on your own laptop reached from Python through <code>db.connect()</code>, and the Google account,
+        sandbox project and Google Cloud SDK set up at home over the weekend. It teaches cloud computing from first
+        principles: the NIST definition and its five characteristics, regions and zones, the IaaS, PaaS and SaaS service
+        models, the deployment models, the challenges of adoption, how pricing works, and the common Google Cloud
+        services matched with those of AWS and Azure. It ends with a setup check and a first query in the BigQuery
+        console. Afterwards you can define the cloud in an interview, place any product on the service and deployment
+        scales, and estimate a small workload's bill.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="0">
+        <div class="tag">Definition</div>
+        <h2>What cloud computing is: one definition and five characteristics</h2>
+        <p>Week 3 ended with the ticket desk running in a Docker container called <code>desk-mysql</code> on your own
+        laptop. You started it, it stores its rows on your disk, and it stops when the laptop sleeps. That setup is the
+        reference point for everything on this page, because cloud computing is the other way of getting the same
+        database.</p>
+        <h3>The definition in one sentence</h3>
+        <p>The definition most teams and exams quote comes from the US National Institute of Standards and Technology
+        (NIST). It calls cloud computing a model for on-demand network access to a shared pool of configurable computing
+        resources that can be rapidly provisioned and released with minimal management effort.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <p>In plain words, you rent computers, storage and software from a provider over a network. You ask for them when
+        you need them, give them back when you are done, and pay for what you used. The provider owns the buildings,
+        the machines and the people who keep them running.</p>
+        <p>The same NIST document names three service models and four deployment models.<sup class="cite"><a href="#src-1">1</a></sup>
+        Step 3 covers the service models (who manages which layer) and step 4 the deployment models (who owns the
+        infrastructure and who shares it). This step covers the five characteristics that make something a cloud at
+        all.</p>
+        <h3>The five essential characteristics</h3>
+        <p>NIST lists five essential characteristics.<sup class="cite"><a href="#src-1">1</a></sup> A service that lacks
+        one of them is hosting, or a server in someone else's room, and not cloud computing in the NIST sense. Each is
+        compared with the desk on your laptop.</p>
+        <ul>
+          <li>On-demand self-service means you get a resource yourself, through a web page or a command, without asking a
+          person at the provider. The desk needed you to install Docker and start a container by hand.</li>
+          <li>Broad network access means the resource is reached over the network from ordinary devices such as laptops
+          and phones. The desk answers only on your own laptop.</li>
+          <li>Resource pooling means the provider serves many customers from one shared pool of machines, a multi-tenant
+          model, and you do not choose the exact machine.<sup class="cite"><a href="#src-1">1</a></sup> The desk has
+          one machine and one tenant.</li>
+          <li>Rapid elasticity means capacity grows and shrinks quickly with the load, sometimes automatically. The
+          desk's CPU, memory and disk are whatever your laptop has.</li>
+          <li>Measured service means usage is metered, monitored and reported, which is what makes paying per use
+          possible.<sup class="cite"><a href="#src-1">1</a></sup> Nothing meters the desk.</li>
+        </ul>
+        <p>The check below writes the same comparison as a Python dictionary. Each key is a characteristic and each value
+        says whether the desk on your laptop has it. The <code>:&lt;24</code> inside the f-string pads the name to 24
+        characters so the answers line up.</p>
+<pre><code>desk_on_laptop = {
+    "on-demand self-service": False,  # you started the container by hand
+    "broad network access": False,    # reachable from this laptop only
+    "resource pooling": False,        # one machine, one tenant
+    "rapid elasticity": False,        # fixed CPU, memory and disk
+    "measured service": False,        # nothing meters or bills its use
+}
+
+met = 0
+for name, has_it in desk_on_laptop.items():
+    if has_it:
+        met = met + 1
+        print(f"{name:&lt;24} yes")
+    else:
+        print(f"{name:&lt;24} no")
+print(f"desk-mysql meets {met} of {len(desk_on_laptop)}")</code></pre>
+<pre class="out">on-demand self-service   no
+broad network access     no
+resource pooling         no
+rapid elasticity         no
+measured service         no
+desk-mysql meets 0 of 5</pre>
+        <p>A database that a provider runs for you flips every value to yes, as the list above already shows for each
+        characteristic.</p>
+        <p>You recognise these characteristics on sight in a provider's console. A "Create instance" button that returns
+        a running machine within a minute is on-demand self-service. A billing page that lists hours, gigabytes and
+        queries by day is measured service.</p>
+        <div class="ix-predict" data-q="A company keeps its own servers in its own building. Staff fill in a web form, get a virtual machine a minute later, and each department is billed for its hours. Is that cloud computing in the NIST sense?" data-a="Mostly yes. The form is on-demand self-service, the hours billed back are measured service, many departments share the same machines (resource pooling) and staff reach them over the company network. Elasticity is limited by how many machines the building holds. NIST calls a cloud that serves one organisation a private cloud, which step 4 covers."></div>
+        <h3>Virtualisation, the trick underneath</h3>
+        <p>Resource pooling rests on virtualisation. Software on one physical server splits it into several virtual
+        machines, each with its own operating system, and the provider hands those out to different tenants. You rent a
+        slice of a machine, and the slice behaves like a whole computer.</p>
+        <p>An interviewer often follows the definition by asking where elasticity stops. Capacity is not unlimited:
+        each account has quotas, and a region has only so much hardware, so a request can still be
+        refused.<sup class="cite"><a href="#src-2">2</a></sup> A team that expects a big spike asks for a higher quota
+        ahead of time.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Cloud computing is renting computing resources over a network, on demand, paid for by measured use.</li>
+          <li>NIST's five characteristics are self-service, network access, pooling, elasticity and measured service.</li>
+          <li>Virtualisation lets one physical server serve many tenants, which makes pooling possible.</li>
+          <li>Elasticity is limited by account quotas and by a region's hardware.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Cloud computing is getting computing resources from a provider over the network when I need them, and giving
+          them back when I don't, paying only for what I used. NIST names five characteristics: on-demand self-service,
+          broad network access, resource pooling, rapid elasticity and measured service.</p>
+          <p>A quick example: a MySQL container on my laptop has none of those five. A database a provider runs for me,
+          created from a console form and billed by the hour, has all five.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">Regions</div>
+        <h2>Regions and zones: where a provider's computers actually sit</h2>
+        <p>"The cloud" sounds placeless, yet every rented machine sits in a building in a named place. Providers group
+        those buildings into regions and zones, and the two words come up in almost every cloud interview.</p>
+        <h3>A region holds zones</h3>
+        <p>In Google Cloud a region is an independent geographic area, and each region is made of zones. A zone is a
+        deployment area inside a region.<sup class="cite"><a href="#src-3">3</a></sup> The region for Toronto is
+        <code>northamerica-northeast2</code>, and this week's BigQuery work stays in it.<sup class="cite"><a href="#src-3">3</a></sup></p>
+        <p>The zones of one region are separate failure domains linked by low-latency
+        networking.<sup class="cite"><a href="#src-3">3</a></sup> Each zone has its own power and networking, so a
+        fault in one does not take down the others. AWS uses the names Region and Availability Zone for the same idea,
+        and Azure says region and availability zone.<sup class="cite"><a href="#src-4">4</a></sup></p>
+        <table>
+          <thead><tr><th></th><th>Region</th><th>Zone (availability zone)</th></tr></thead>
+          <tbody>
+            <tr><td>What it is</td><td>A geographic area such as Toronto</td><td>An isolated deployment area inside one region</td></tr>
+            <tr><td>Contains</td><td>Several zones</td><td>Machines with their own power and networking</td></tr>
+            <tr><td>Chosen for</td><td>Nearness to users and where the data may live</td><td>Surviving one zone's failure, with copies in other zones</td></tr>
+            <tr><td>Named in rules</td><td>Data-residency rules name a region or a country</td><td>Rarely; zones are an availability choice</td></tr>
+          </tbody>
+        </table>
+        <p>A common mix-up treats the two words as the same thing, or calls a zone a country. A region is the place,
+        a zone is one isolated part of that place, and one region always holds several zones.</p>
+        <h3>Why a service spreads over zones</h3>
+        <p>Resources placed in several zones of one region survive the failure of a single zone. That is why managed
+        services spread their copies over zones without being asked.<sup class="cite"><a href="#src-3">3</a></sup> A
+        service kept in one zone goes down with that zone.</p>
+        <p>The sketch below models it. The <code>zones</code> dictionary holds the state of three zones, and
+        <code>serving</code> returns the first zone holding a copy that is still up, or <code>None</code> when every
+        copy is down. Zone 1 then fails.</p>
+<pre><code>zones = {"zone-1": "up", "zone-2": "up", "zone-3": "up"}
+
+
+def serving(copies):
+    """Return the first zone holding a copy that is still up, or None."""
+    for zone in copies:
+        if zones[zone] == "up":
+            return zone
+    return None
+
+
+one_zone = ["zone-1"]
+three_zones = ["zone-1", "zone-2", "zone-3"]
+
+zones["zone-1"] = "down"
+print("one zone:   ", serving(one_zone))
+print("three zones:", serving(three_zones))</code></pre>
+<pre class="out">one zone:    None
+three zones: zone-2</pre>
+        <p>The copy kept in one zone is gone, while the spread copy answers from zone 2. Real services do the same with
+        replicas and automatic failover, and the customer sees at most a short pause. A replica is a copy of the service
+        or its data kept in another zone, and failover is the automatic switch to that copy when the first one stops
+        answering.</p>
+        <p>The limit is that zones share a region. They guard against one building failing, not against a problem
+        that affects the whole region, and they do nothing for users who are far away. Latency grows with the distance
+        between a user and the region, so choosing the region is a design decision.<sup class="cite"><a href="#src-3">3</a></sup></p>
+        <p>You recognise a region on sight as a value in a form, a command or a config file under a name such as
+        <code>region</code> or <code>location</code>. A value like <code>northamerica-northeast2</code> tells you
+        where the data lives and which residency rules it can meet.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A region is a geographic area; a zone is an isolated deployment area inside it.</li>
+          <li>Zones in one region have separate power and networking and fast links between them.</li>
+          <li>Spreading copies over zones survives one zone failing; it does not cover a whole region.</li>
+          <li>Toronto is <code>northamerica-northeast2</code>, the region the desk's warehouse uses this week.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A region is a geographic area where a provider has data centres, like Toronto, and an availability zone is an
+          isolated part of that region with its own power and networking. A region holds several zones linked by fast
+          networks.</p>
+          <p>I'd put copies of a service in more than one zone so that losing one zone doesn't take it down, and I'd pick
+          the region for where the users are and where the data is allowed to live.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">Service types</div>
+        <h2>Service types: IaaS, PaaS and SaaS, and what each one buys you</h2>
+        <p>"As a service" means the provider runs part of the technology stack for you and sells the result as a
+        metered service. The three service models differ in how much of the stack the provider runs. They stack on each
+        other: IaaS gives you machines, PaaS adds a runtime or a managed platform on top, and SaaS delivers a finished
+        application.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <h3>The desk hosted three ways</h3>
+        <p>Picture the ticket desk moved off your laptop in three different ways.</p>
+        <ul>
+          <li>A virtual machine from Compute Engine, Google's IaaS service, with MySQL installed on it by
+          you.<sup class="cite"><a href="#src-5">5</a></sup> In IaaS the customer provisions processing, storage and
+          networks, and controls the operating system and the applications, but not the infrastructure
+          underneath.<sup class="cite"><a href="#src-1">1</a></sup></li>
+          <li>Cloud SQL, a managed relational database service for MySQL, PostgreSQL and SQL Server. Google runs the
+          patching, the backups and the failover.<sup class="cite"><a href="#src-6">6</a></sup> That is the PaaS
+          shape: you bring the schema and the queries.</li>
+          <li>A hosted help-desk product that your support staff open in a browser. In SaaS the customer uses the
+          provider's application and manages nothing beyond a few settings.<sup class="cite"><a href="#src-1">1</a></sup></li>
+        </ul>
+        <p>The script below prints who runs each layer of the desk under each model. <code>PROVIDER_RUNS</code> says how
+        many layers, counted from the bottom, the provider takes over, and <code>enumerate</code> numbers the layers from
+        0 so each one can be compared with that count.</p>
+<pre><code>LAYERS = [
+    "hardware and network",
+    "virtual machine",
+    "operating system",
+    "MySQL engine, patches, backups",
+    "schema and queries",
+    "help-desk application",
+]
+PROVIDER_RUNS = {"on-premises": 0, "IaaS": 2, "PaaS": 4, "SaaS": 6}
+
+for model, count in PROVIDER_RUNS.items():
+    print(model)
+    for position, layer in enumerate(LAYERS):
+        if position &lt; count:
+            who = "provider"
+        else:
+            who = "you"
+        print(f"  {layer:&lt;32}{who}")</code></pre>
+<pre class="out">on-premises
+  hardware and network            you
+  virtual machine                 you
+  operating system                you
+  MySQL engine, patches, backups  you
+  schema and queries              you
+  help-desk application           you
+IaaS
+  hardware and network            provider
+  virtual machine                 provider
+  operating system                you
+  MySQL engine, patches, backups  you
+  schema and queries              you
+  help-desk application           you
+PaaS
+  hardware and network            provider
+  virtual machine                 provider
+  operating system                provider
+  MySQL engine, patches, backups  provider
+  schema and queries              you
+  help-desk application           you
+SaaS
+  hardware and network            provider
+  virtual machine                 provider
+  operating system                provider
+  MySQL engine, patches, backups  provider
+  schema and queries              provider
+  help-desk application           provider</pre>
+        <p>The boundary moves up one model at a time. Architecture diagrams often draw the same thing as a
+        responsibility-stack table, with a column each for on-premises, IaaS, PaaS and SaaS and rows from networking up
+        to data. That table and the script's output show the same boundary.</p>
+        <h3>IaaS, PaaS, SaaS: the benefit each one buys</h3>
+        <p>Each model buys the team something different, and each one gives up some control in return.</p>
+        <table>
+          <thead><tr><th>Model</th><th>Benefit to the team</th><th>The team still manages</th><th>Usually billed</th></tr></thead>
+          <tbody>
+            <tr><td>IaaS (Compute Engine)</td><td>No hardware to buy, machines in minutes</td><td>OS patches, the database, backups</td><td>Per virtual machine hour</td></tr>
+            <tr><td>PaaS (Cloud SQL)</td><td>Patches, backups and failover done for it</td><td>Schema, queries, users</td><td>Per instance, with the engine managed</td></tr>
+            <tr><td>SaaS (hosted help desk)</td><td>Nothing to install or run, updates shipped by the vendor</td><td>Its data and a few settings</td><td>Per user seat</td></tr>
+          </tbody>
+        </table>
+        <p>The IaaS and PaaS rows follow the Compute Engine and Cloud SQL documentation, and the SaaS row follows
+        NIST.<sup class="cite"><a href="#src-5">5</a></sup><sup class="cite"><a href="#src-6">6</a></sup><sup class="cite"><a href="#src-1">1</a></sup>
+        The billing column is how you recognise a model on a pricing page.</p>
+        <p>The more the provider manages, the less control the customer keeps over versions,
+        tuning and placement.<sup class="cite"><a href="#src-1">1</a></sup> SaaS is the fastest to adopt, but the
+        customer cannot change the product's data model or where it is hosted.</p>
+        <p>The usual mistake is calling Cloud SQL IaaS because a MySQL server runs inside it. The test is what the team
+        still manages. Nobody on the team patches Cloud SQL's operating system, so it is not IaaS.</p>
+        <div class="ix-spot" data-snippet="Help-desk Pro · Team plan&#10;billed per agent seat, per month&#10;includes: ticket forms, shared inbox, reports&#10;custom fields: up to 20" data-q="Which service model is this product, and what can a customer not change?" data-a="SaaS. It is a finished application billed per user seat. The customer adjusts settings within limits, such as up to 20 custom fields, but cannot change the product's data model, its version or where it is hosted."></div>
+        <h3>The shared responsibility model</h3>
+        <p>Interviewers often ask "what do I still manage?" as a question about security. AWS's shared responsibility
+        model splits it in two: AWS secures the cloud itself, and the customer secures what they put in
+        it.<sup class="cite"><a href="#src-7">7</a></sup> The line sits lower in IaaS and higher in SaaS, and it never
+        disappears.</p>
+        <p>In every model the customer still decides who may read the data. A storage bucket left open to the public is
+        the customer's error under this model.<sup class="cite"><a href="#src-7">7</a></sup></p>
+        <h3>Serverless: where it sits</h3>
+        <p>Serverless services hide the servers completely and bill by use. Cloud Run, which runs containers, is
+        one.<sup class="cite"><a href="#src-8">8</a></sup> BigQuery, Google's serverless analytics database, is
+        another.<sup class="cite"><a href="#src-9">9</a></sup> Neither asks you to choose a machine size.</p>
+        <p>When an interviewer asks whether BigQuery is IaaS, PaaS or SaaS, the safe answer places it with PaaS at the
+        serverless end. You bring tables and SQL, Google runs everything else, and you never see a server.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>IaaS rents machines, PaaS adds a managed platform, SaaS delivers a finished application.</li>
+          <li>The test for the model is what the team still manages, not what runs inside.</li>
+          <li>More provider management means less control over versions, tuning and placement.</li>
+          <li>Under shared responsibility the customer always owns its data and who can access it.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>IaaS gives me virtual machines, so I skip buying hardware but still patch the OS and run the database. PaaS,
+          like Cloud SQL, runs patches, backups and failover for me, so I only manage the schema and queries. SaaS is a
+          finished application billed per user, with nothing to install at all.</p>
+          <p>The more the provider manages, the faster I move and the less I can tune. Whatever the model, my data and
+          who can access it stay my responsibility.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="3">
+        <div class="tag">Deployment</div>
+        <h2>Deployment models: public, private, hybrid and multi-cloud</h2>
+        <p>Service models answer "who manages which layer". Deployment models answer a different question: who owns the
+        infrastructure, and who else shares it.</p>
+        <h3>The four models</h3>
+        <p>NIST defines public cloud as infrastructure open to the general public and owned by a provider, and private
+        cloud as infrastructure that serves a single organisation.<sup class="cite"><a href="#src-1">1</a></sup> What
+        makes it private is that one organisation uses it.</p>
+        <p>Hybrid cloud, in NIST's words, is two or more distinct infrastructures bound together by technology that lets
+        data and applications move between them.<sup class="cite"><a href="#src-1">1</a></sup> The usual shape is an
+        organisation's own servers joined to a public cloud. NIST's list has a fourth model, the community cloud, but
+        interviews mostly ask about the four in the table below.</p>
+        <p>Multi-cloud is not one of the NIST four. It means using services from more than one provider, so it is
+        defined by usage, not by ownership.<sup class="cite"><a href="#src-10">10</a></sup></p>
+        <table>
+          <thead><tr><th>Model</th><th>Who owns the infrastructure</th><th>Who shares it</th><th>Typical reason</th></tr></thead>
+          <tbody>
+            <tr><td>Public</td><td>A provider</td><td>Any customer who signs up</td><td>Start fast, pay as you grow</td></tr>
+            <tr><td>Private</td><td>One organisation</td><td>That organisation only</td><td>Control and regulation</td></tr>
+            <tr><td>Hybrid</td><td>The organisation for one part, a provider for the other</td><td>Joined so work and data can move</td><td>Keep some data on site, use the cloud for the rest</td></tr>
+            <tr><td>Multi-cloud</td><td>Two or more providers</td><td>Each provider's other customers</td><td>Avoid depending on one provider, or use each one's strengths</td></tr>
+          </tbody>
+        </table>
+        <p>People often confuse hybrid and multi-cloud. Hybrid joins your own or private infrastructure to a public
+        cloud. Multi-cloud uses more than one public provider. An organisation can be both at once.</p>
+        <h3>A situation that suits each</h3>
+        <p>The function below turns three facts about an organisation into a suggested model: whether it keeps its own
+        site, whether it uses a public cloud, and how many providers it uses. It is a teaching sketch. Real decisions
+        also weigh cost, skills and regulation.</p>
+<pre><code>def suggest(keeps_own_site, uses_public_cloud, providers):
+    """Name the deployment model that fits a short description."""
+    if providers &gt; 1:
+        return "multi-cloud"
+    if keeps_own_site and uses_public_cloud:
+        return "hybrid"
+    if keeps_own_site:
+        return "private"
+    return "public"
+
+
+cases = [
+    ("startup with no servers", False, True, 1),
+    ("bank's core ledger", True, False, 0),
+    ("hospital that bursts", True, True, 1),
+    ("firm hedging providers", False, True, 2),
+]
+for who, own, public, providers in cases:
+    print(f"{who:&lt;26}{suggest(own, public, providers)}")</code></pre>
+<pre class="out">startup with no servers   public
+bank's core ledger        private
+hospital that bursts      hybrid
+firm hedging providers    multi-cloud</pre>
+        <p>Each case is a situation an interviewer might give you.</p>
+        <ul>
+          <li>A startup owns no servers and cannot guess its load, so the public cloud lets it pay only for what it
+          uses and grow on demand.</li>
+          <li>A bank's core ledger is the record of every account balance. Regulators and the bank want full control
+          over where it runs and who touches it, so it often stays in a private cloud.</li>
+          <li>A hospital keeps patient records on its own servers but sends extra work to a public cloud at peaks.
+          Running a steady load on site and sending the overflow out is called bursting.<sup class="cite"><a href="#src-10">10</a></sup></li>
+          <li>A firm that runs on two providers can move if one raises prices or has an outage. That hedge is the
+          classic multi-cloud reason.</li>
+        </ul>
+        <p>Hybrid and multi-cloud add integration and skills cost, because every extra environment
+        needs its own tooling and people who know it.<sup class="cite"><a href="#src-10">10</a></sup></p>
+        <p>You recognise the models on sight in architecture diagrams. An on-premises box joined to a provider box by a
+        VPN, an encrypted link over the internet, is hybrid. Two provider logos around one application is
+        multi-cloud.</p>
+        <h3>Data residency and region choice</h3>
+        <p>The follow-up question is usually why the bank or the hospital keeps data where it does. The answer is data
+        residency: a rule, from a law or a contract, that certain data must be stored in a named country or on the
+        organisation's own premises.</p>
+        <p>A public cloud can meet many such rules through region choice. In BigQuery, choosing a location such as
+        Toronto keeps the stored data in that region.<sup class="cite"><a href="#src-11">11</a></sup> When a rule asks
+        for the organisation's own building, only a private or hybrid setup meets it.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Public cloud is a provider's, shared with anyone; private cloud serves one organisation.</li>
+          <li>Hybrid joins your own infrastructure to a public cloud; multi-cloud uses several providers.</li>
+          <li>Hybrid and multi-cloud add integration and skills cost for each extra environment.</li>
+          <li>Data residency rules often decide the model, and region choice meets many of them.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Public cloud is a provider's infrastructure shared by any customer, which suits a startup that wants to pay as
+          it grows. Private cloud serves one organisation, like a bank keeping its core ledger under its own control.</p>
+          <p>Hybrid joins on-site systems to a public cloud, say a hospital that keeps records on site and bursts to the
+          cloud at peaks. Multi-cloud means using more than one provider, often to avoid depending on one. The last two
+          both cost extra in integration and skills.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">Challenges</div>
+        <h2>Challenges of adopting the cloud, and the plan for each</h2>
+        <p>Renting instead of owning removes some problems and creates others. An interviewer who asks about the
+        challenges of cloud adoption wants each problem named together with the plan an organisation makes for it.</p>
+        <h3>Five challenges and five plans</h3>
+        <table>
+          <thead><tr><th>Challenge</th><th>What goes wrong</th><th>The usual plan</th></tr></thead>
+          <tbody>
+            <tr><td>Cost control</td><td>Metered use grows quietly until the monthly bill surprises someone</td><td>Budgets with alerts, labels per project, a regular bill review</td></tr>
+            <tr><td>Security and compliance</td><td>A setting left open exposes data, or data sits in the wrong country</td><td>Clear ownership of access settings, data kept in a named region such as Toronto</td></tr>
+            <tr><td>Vendor lock-in</td><td>Leaving a provider becomes slow and expensive</td><td>Open formats for the data, a written exit plan</td></tr>
+            <tr><td>Latency</td><td>Users far from the region wait for every answer</td><td>Choose the region near the users, measure response times</td></tr>
+            <tr><td>Skills</td><td>The team knows servers but not the provider's services</td><td>Training before the move</td></tr>
+          </tbody>
+        </table>
+        <p>Security and compliance lean on the shared responsibility model from step 3. The provider secures its
+        buildings and machines, but the customer still configures who can access what, so a public bucket is the
+        customer's error.<sup class="cite"><a href="#src-7">7</a></sup></p>
+        <p>Compliance often means data residency. Choosing a BigQuery location such as Toronto keeps the stored data in
+        that region, which supports a rule that Canadian data stays in Canada.<sup class="cite"><a href="#src-11">11</a></sup>
+        Organisations back the choice with a policy that lists the regions resources may use.</p>
+        <p>Latency is the time an answer takes to arrive. It grows with the distance between the user and the region, so
+        region choice is a design decision made early.<sup class="cite"><a href="#src-3">3</a></sup></p>
+        <h3>Cost control: budgets and alerts</h3>
+        <p>A budget in Cloud Billing is an amount you expect to spend, with alert thresholds set as percentages of
+        it. When spending crosses a threshold, the account owner is notified. The budget does not by itself
+        stop the spending.<sup class="cite"><a href="#src-12">12</a></sup></p>
+        <p>The sketch below replays five days of spending against a budget of 100, with three example thresholds. The test
+        <code>before &lt; limit &lt;= spent</code> is a chained comparison, true only on the day the total first reaches
+        the limit, so each alert fires once.</p>
+<pre><code>BUDGET = 100
+THRESHOLDS = [50, 90, 100]   # percent of the budget
+daily_spend = [20, 25, 15, 30, 20]
+
+spent = 0
+day = 0
+for cost in daily_spend:
+    day = day + 1
+    spent = spent + cost
+    for percent in THRESHOLDS:
+        before = spent - cost
+        if before &lt; BUDGET * percent / 100 &lt;= spent:
+            print(f"day {day}: alert, {spent} spent crosses {percent}%")
+print(f"after day {day}: {spent} spent against a budget of {BUDGET}")</code></pre>
+<pre class="out">day 3: alert, 60 spent crosses 50%
+day 4: alert, 90 spent crosses 90%
+day 5: alert, 110 spent crosses 100%
+after day 5: 110 spent against a budget of 100</pre>
+        <p>Three alerts went out and the spending still passed the budget, because an alert
+        only sends a message. A team that wants spending to stop has to act on the alert, by hand or with
+        automation it builds.</p>
+        <p>You recognise cost control on sight as a budget alert email that names a project and a percentage, or a
+        billing report grouped by project.</p>
+        <h3>Lock-in, egress and open formats</h3>
+        <p>Lock-in has a concrete mechanism behind it. Data leaving a provider's network, called egress, is billed
+        separately from compute and storage.<sup class="cite"><a href="#src-13">13</a></sup> Moving a large store of
+        data to another provider therefore costs money as well as time.</p>
+        <p>The plan is to keep data in open file formats that any tool can read, which Tuesday's page names, and to
+        avoid tying every step to one provider's special features. The trade-off is that those features are often what
+        make a service productive. BigQuery's SQL, for instance, is Google's own dialect,
+        GoogleSQL.<sup class="cite"><a href="#src-9">9</a></sup> Teams usually accept some lock-in for the
+        productivity and plan the exit for their data.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>The five challenges are cost, security and compliance, lock-in, latency and skills.</li>
+          <li>Budgets send alerts at thresholds; they do not stop spending by themselves.</li>
+          <li>Region choice serves both data residency and latency.</li>
+          <li>Egress fees make leaving costly; open formats keep the exit possible.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>The main challenges are cost control, security and compliance, vendor lock-in, latency and skills. For cost I'd
+          set budgets with alerts and label resources by project, remembering an alert doesn't stop spending. For
+          compliance I'd pick a Canadian region like Toronto and restrict which regions resources may use, and I'd own the
+          access settings, since the provider doesn't.</p>
+          <p>For lock-in I'd keep data in open formats and know what egress would cost. For latency I'd choose a region
+          near the users, and for skills I'd train the team before the move.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
+        <div class="tag">Pricing</div>
+        <h2>Pricing: how the bill is built, and a worked estimate</h2>
+        <p>Measured service, the fifth characteristic from step 1, is what makes a cloud bill possible. This step covers
+        how the bill is built and how to estimate one before it arrives. Prices change, so the figures here are the ones
+        the sources gave on the date at the top of the page; check the live pricing page before you rely on one.</p>
+        <h3>Pay-as-you-go, committed use and free tiers</h3>
+        <p>Providers sell the same resources under a few pricing models.</p>
+        <ul>
+          <li>Pay-as-you-go bills metered usage with no commitment. You stop using a resource and the charges
+          stop.<sup class="cite"><a href="#src-14">14</a></sup></li>
+          <li>Reserved or committed use trades a one- or three-year commitment for a lower price than on-demand. Google
+          calls these committed use discounts.<sup class="cite"><a href="#src-14">14</a></sup></li>
+          <li>Free tiers give a monthly allowance at no charge. Google's Free Program has two parts: a 90-day free trial
+          with a one-off credit for new accounts, and the Free Tier, monthly allowances on some products that do not
+          expire with the trial.<sup class="cite"><a href="#src-17">17</a></sup></li>
+        </ul>
+        <p>Committed use has a trade-off worth naming in an interview. It is cheaper per unit, but it charges whether or
+        not the capacity is used.<sup class="cite"><a href="#src-14">14</a></sup> It suits a steady load you can
+        predict, and pay-as-you-go suits a load you cannot.</p>
+        <h3>The four meters</h3>
+        <p>Most cloud bills come down to four meters.</p>
+        <ul>
+          <li>Compute: the time a machine runs, so a pricing page for virtual machines bills per hour.</li>
+          <li>Storage: data kept, billed per GiB a month. BigQuery's first 10 GiB a month are
+          free.<sup class="cite"><a href="#src-15">15</a></sup></li>
+          <li>Queries: work done on request. BigQuery's on-demand analysis is billed per TiB of bytes processed, and the
+          first 1 TiB each month is free.<sup class="cite"><a href="#src-15">15</a></sup></li>
+          <li>Egress: data leaving the provider's network, billed separately from the other
+          three.<sup class="cite"><a href="#src-13">13</a></sup></li>
+        </ul>
+        <p>A GiB is 1024 to the power 3 bytes and a TiB is 1024 to the power 4. The units matter because BigQuery bills
+        queries by bytes processed, not by rows returned or time taken.</p>
+        <p>BigQuery's console shows an estimate before a query runs, in a line such as "This query will process 1.2 GB
+        when run".<sup class="cite"><a href="#src-15">15</a></sup> That figure is bytes, not money. Turning it into
+        money means comparing it with the free allowance and multiplying anything above it by the rate on the pricing
+        page.</p>
+        <p>BigQuery stores each column separately, so a query that names fewer columns processes fewer bytes.
+        <code>LIMIT</code> does not reduce the bytes processed, because the columns are read before the rows are
+        cut.<sup class="cite"><a href="#src-16">16</a></sup></p>
+        <div class="ix-predict" data-q="A table has 20 columns. Query A is SELECT * ... LIMIT 10. Query B is SELECT name ... with no LIMIT. Which one does the console estimate as processing more bytes?" data-a="Query A. It reads all 20 columns of every row, and LIMIT only trims what is returned. Query B reads one column. The estimate follows the columns scanned, not the rows returned."></div>
+        <h3>A worked estimate for a small workload</h3>
+        <p>Here is the estimate for a dataset about the size of a small project: 100,000 rows at roughly 200 bytes a row,
+        queried 50 times a day, each query reading the whole table. Both figures are assumptions you would replace
+        with real ones. The <code>:.3f</code> in an f-string prints a number with three decimal places.</p>
+<pre><code>GIB = 1024 ** 3
+TIB = 1024 ** 4
+FREE_STORAGE_GIB = 10
+FREE_QUERY_TIB = 1
+
+rows = 100000
+bytes_per_row = 200
+table_bytes = rows * bytes_per_row
+
+queries_per_day = 50
+scanned_per_month = table_bytes * queries_per_day * 30
+
+storage_gib = table_bytes / GIB
+query_tib = scanned_per_month / TIB
+print(f"storage: {storage_gib:.3f} GiB of {FREE_STORAGE_GIB} free")
+print(f"queries: {query_tib:.4f} TiB of {FREE_QUERY_TIB} free")
+
+
+def billable_tib(used_tib):
+    """TiB a month beyond the free allowance."""
+    if used_tib &lt;= FREE_QUERY_TIB:
+        return 0
+    return used_tib - FREE_QUERY_TIB
+
+
+print("billable TiB this month:", billable_tib(query_tib))
+print("billable TiB at 3 TiB:", billable_tib(3))</code></pre>
+<pre class="out">storage: 0.019 GiB of 10 free
+queries: 0.0273 TiB of 1 free
+billable TiB this month: 0
+billable TiB at 3 TiB: 2</pre>
+        <p>The table takes about 20 MB, under 1% of the free storage. A month of queries reads under 3% of the free
+        query allowance, so this workload costs nothing on these meters. A team scanning 3 TiB a month would pay for 2
+        TiB at the on-demand rate on the pricing page.<sup class="cite"><a href="#src-15">15</a></sup></p>
+        <p>The weak spot of any estimate is the assumptions. Bytes per row is a guess until the data is loaded, and a
+        busy dashboard can run far more than 50 queries a day. The console's byte estimate for a real query is the
+        check that replaces the guess.</p>
+        <h3>Labels: splitting a shared bill</h3>
+        <p>One account often pays for many teams. Teams attach labels to resources so a shared bill can be split by
+        project.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Pay-as-you-go has no commitment; committed use is cheaper but charged whether used or not.</li>
+          <li>The four meters are compute, storage, queries and egress.</li>
+          <li>BigQuery bills queries by bytes processed; fewer columns lower it, LIMIT does not.</li>
+          <li>An estimate multiplies size by frequency, then compares the result with the free allowance.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Cloud services are mostly pay-as-you-go: metered, with no commitment. If the load is steady I can commit for
+          one or three years for a discount, knowing I pay even if I don't use it, and many products have free tiers. The
+          meters are compute time, storage per GiB a month, queries such as BigQuery's bytes processed, and egress.</p>
+          <p>To estimate, I take rows times bytes per row for storage, multiply by queries a month for scanning, subtract
+          the free allowance, and price the rest from the live pricing page.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="6">
+        <div class="tag">Services</div>
+        <h2>Common GCP services, and the data services of AWS, Azure and GCP</h2>
+        <p>Each provider sells hundreds of services, but a junior developer is expected to know a small set by name and
+        to match the data services across the three big providers.</p>
+        <h3>Eight Google Cloud services to know by name</h3>
+        <p>Google's product catalogue lists each of the eight below.<sup class="cite"><a href="#src-18">18</a></sup>
+        The last column places Compute Engine, Cloud SQL, BigQuery and Cloud Run on the service-model scale from step
+        3, and is left blank where the documentation gives no shape.</p>
+        <table>
+          <thead><tr><th>Service</th><th>What it is for</th><th>Shape</th></tr></thead>
+          <tbody>
+            <tr><td>Compute Engine</td><td>Virtual machines you size, start and patch</td><td>IaaS</td></tr>
+            <tr><td>Cloud Storage</td><td>Object storage: whole files kept in buckets</td><td></td></tr>
+            <tr><td>Cloud SQL</td><td>Managed MySQL, PostgreSQL or SQL Server</td><td>PaaS</td></tr>
+            <tr><td>BigQuery</td><td>Google's analytics database, queried with SQL</td><td>Serverless</td></tr>
+            <tr><td>Cloud Run</td><td>Runs containers without servers to manage</td><td>Serverless</td></tr>
+            <tr><td>Pub/Sub</td><td>Messaging: one program sends messages, others receive them</td><td></td></tr>
+            <tr><td>Dataflow</td><td>Runs data pipelines that move and reshape data</td><td></td></tr>
+            <tr><td>IAM</td><td>Who may do what on which resource</td><td>Access control for all of them</td></tr>
+          </tbody>
+        </table>
+        <p>Cloud Storage is object storage, and its objects live in buckets.<sup class="cite"><a href="#src-19">19</a></sup>
+        An object is a whole file, such as an export or an image, read and written as one piece. Cloud SQL holds tables
+        of rows that you query and update with SQL.<sup class="cite"><a href="#src-6">6</a></sup> Storage keeps files
+        cheaply; a database answers questions about the rows inside them.</p>
+        <p>BigQuery is Google's serverless analytics database, queried with GoogleSQL.<sup class="cite"><a href="#src-9">9</a></sup>
+        Wednesday's page explains what kind of database that is.</p>
+        <h3>Matching data services across three providers</h3>
+        <p>Google publishes a comparison of its services with those of AWS and Azure.<sup class="cite"><a href="#src-20">20</a></sup>
+        The five data categories in the table below are the ones interviews ask about. A NoSQL database stores data in
+        shapes other than SQL tables, such as documents or key and value pairs.</p>
+        <table>
+          <thead><tr><th>Category</th><th>AWS</th><th>Azure</th><th>Google Cloud</th></tr></thead>
+          <tbody>
+            <tr><td>Object storage</td><td>Amazon S3</td><td>Azure Blob Storage</td><td>Cloud Storage</td></tr>
+            <tr><td>Relational database</td><td>Amazon RDS</td><td>Azure SQL Database</td><td>Cloud SQL</td></tr>
+            <tr><td>NoSQL database</td><td>Amazon DynamoDB</td><td>Azure Cosmos DB</td><td>Firestore or Bigtable</td></tr>
+            <tr><td>Data warehouse</td><td>Amazon Redshift</td><td>Azure Synapse Analytics</td><td>BigQuery</td></tr>
+            <tr><td>Data pipeline</td><td>AWS Glue</td><td>Azure Data Factory</td><td>Dataflow</td></tr>
+          </tbody>
+        </table>
+        <p>The object storage row matches each provider's own documentation, and so does the warehouse
+        row.<sup class="cite"><a href="#src-21">21</a></sup><sup class="cite"><a href="#src-22">22</a></sup><sup class="cite"><a href="#src-23">23</a></sup><sup class="cite"><a href="#src-24">24</a></sup>
+        A three-column table like this, one column per provider, is how you recognise a service mapping in a migration
+        plan or a design document.</p>
+        <p>The same table works as a Python dictionary. <code>equivalent</code> finds the row that holds a service name
+        and returns the category and the name on another provider, or <code>None</code> for a name it does not
+        know.</p>
+<pre><code>SERVICES = {
+    "object storage": {"AWS": "Amazon S3", "Azure": "Azure Blob Storage", "GCP": "Cloud Storage"},
+    "relational database": {"AWS": "Amazon RDS", "Azure": "Azure SQL Database", "GCP": "Cloud SQL"},
+    "NoSQL database": {"AWS": "Amazon DynamoDB", "Azure": "Azure Cosmos DB", "GCP": "Firestore"},
+    "data warehouse": {"AWS": "Amazon Redshift", "Azure": "Azure Synapse Analytics", "GCP": "BigQuery"},
+    "data pipeline": {"AWS": "AWS Glue", "Azure": "Azure Data Factory", "GCP": "Dataflow"},
+}
+
+
+def equivalent(service, provider):
+    """Return the category and the matching service on another provider."""
+    for category, names in SERVICES.items():
+        for name in names.values():
+            if name == service:
+                return category, names[provider]
+    return None
+
+
+print(equivalent("Amazon Redshift", "GCP"))
+print(equivalent("Azure Data Factory", "AWS"))
+print(equivalent("Cloud SQL", "Azure"))
+print(equivalent("Heroku", "GCP"))</code></pre>
+<pre class="out">('data warehouse', 'BigQuery')
+('data pipeline', 'AWS Glue')
+('relational database', 'Azure SQL Database')
+None</pre>
+        <p>A name match is only a starting point. Equivalent services differ in pricing unit and in
+        features, so a team moving from one to another reads both sets of documentation before it promises
+        anything.<sup class="cite"><a href="#src-20">20</a></sup></p>
+        <h3>Managed against serverless</h3>
+        <p>The usual follow-up asks how two "equivalent" services differ. Often the answer is managed against
+        serverless. A Cloud SQL instance is a managed database that you size, and it is billed by the hour while it
+        runs, busy or idle.<sup class="cite"><a href="#src-6">6</a></sup></p>
+        <p>BigQuery has no instance to size. It is billed per byte a query processes and per GiB stored, so a quiet month
+        costs little.<sup class="cite"><a href="#src-15">15</a></sup> Serverless suits work that comes in bursts, and a
+        managed instance suits a steady stream of small requests such as the desk's own reads and writes.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Know Compute Engine, Cloud Storage, Cloud SQL, BigQuery, Cloud Run, Pub/Sub, Dataflow and IAM by name.</li>
+          <li>Object storage is S3, Blob Storage and Cloud Storage; warehouses are Redshift, Synapse and BigQuery.</li>
+          <li>Matching names is a start; pricing units and features still differ.</li>
+          <li>Managed instances bill while running; serverless services bill per use.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>The common GCP services are Compute Engine for virtual machines, Cloud Storage for files in buckets, Cloud SQL
+          for managed MySQL or PostgreSQL, BigQuery for analytics, Cloud Run for containers, Pub/Sub for messaging between
+          programs, Dataflow for data pipelines, and IAM for who can access what.</p>
+          <p>Across providers, object storage is S3, Blob Storage or Cloud Storage; relational is RDS, Azure SQL Database
+          or Cloud SQL; NoSQL is DynamoDB, Cosmos DB or Firestore; the warehouse is Redshift, Synapse or BigQuery; and
+          pipelines are Glue, Data Factory or Dataflow.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="7">
+        <div class="tag">Sandbox</div>
+        <h2>The BigQuery sandbox and a first console query</h2>
+        <p>The rest of the week puts the desk's history into BigQuery. Before that, two things have to work: the tools
+        on your laptop and the sandbox project in your Google account.</p>
+        <h3>Checking the setup from Git Bash</h3>
+        <p>The weekend setup gave you three things.</p>
+        <ul>
+          <li>A personal Google account.</li>
+          <li>A sandbox project named <code>desk-&lt;firstname&gt;&lt;lastname&gt;</code>, in lower case.</li>
+          <li>The Google Cloud SDK, with <code>gcloud</code> for account and project settings and <code>bq</code> for
+          BigQuery.</li>
+        </ul>
+        <p>These notes were checked against SDK 591.0.</p>
+        <p>Three commands show whether the setup holds. Run them in Git Bash, one at a time.</p>
+<pre><code>gcloud --version
+gcloud auth list
+gcloud config get-value project</code></pre>
+        <p>The first prints the SDK's version. The second should show your personal Google account as the active
+        one. The third should print your project id in the shape <code>desk-&lt;id&gt;</code>.</p>
+        <p>Two gaps turn up most often. The first is no default project, which shows as an empty line from the third
+        command; <code>gcloud config set project desk-&lt;id&gt;</code> fixes it. The second is running
+        <code>gcloud auth login</code> but skipping <code>gcloud auth application-default login</code>. The
+        second login is the one Python programs rely on, and Thursday's Python needs it; there is no key file to keep
+        anywhere.</p>
+        <p>The last check runs a real query through <code>bq</code>. The flag <code>--use_legacy_sql=false</code> asks
+        for GoogleSQL, the dialect these notes use, and the double quotes keep the whole statement as one
+        argument.</p>
+<pre><code>bq query --use_legacy_sql=false "SELECT 1 AS ok"</code></pre>
+<pre class="out">+----+
+| ok |
++----+
+|  1 |
++----+</pre>
+        <p>A table with one column named <code>ok</code> and the value 1 means the tools, the credentials and the
+        project all work together.</p>
+        <h3>The sandbox and its caps</h3>
+        <p>The BigQuery sandbox needs no billing account and no card.<sup class="cite"><a href="#src-25">25</a></sup> It
+        works inside the free allowances from step 6: 10 GiB of storage and 1 TiB of query processing each
+        month.<sup class="cite"><a href="#src-15">15</a></sup> The console shows a sandbox banner while you work in
+        it.</p>
+        <p>The cap that surprises people is the expiration. The sandbox applies a default 60-day expiration to tables and
+        partitions, so anything you create is deleted 60 days later unless you change it.<sup class="cite"><a href="#src-25">25</a></sup>
+        For a course that is plenty; for a project with old data it is a limit to plan around.</p>
+        <h3>A first query in the console</h3>
+        <p>Open BigQuery in the Google Cloud console, signed in with the same personal account and with your sandbox
+        project selected. Google publishes some large tables for anyone to query, and one of them counts baby names
+        registered in the United States. Type this into the query editor.</p>
+<pre><code>SELECT name, SUM(number) AS total
+FROM `bigquery-public-data.usa_names.usa_1910_current`
+GROUP BY name
+ORDER BY total DESC
+LIMIT 10;</code></pre>
+        <p>Before you press Run, the editor's validator shows a line in the shape "This query will process N MB
+        when run".<sup class="cite"><a href="#src-15">15</a></sup> After the run, the results tab lists ten names with
+        their totals, largest first, and the Job information tab shows the bytes the query processed. Nothing is saved
+        to your project.</p>
+        <p>The table name has three parts separated by dots: the project that publishes it, a named group of tables, and
+        the table. The backquotes keep the dashed project name in one piece. Wednesday's page explains the
+        middle part.</p>
+        <p>The estimate covers the two columns the query names, <code>name</code> and <code>number</code>. Removing
+        <code>LIMIT 10</code> would not change it, because the limit trims rows after the columns are
+        read.<sup class="cite"><a href="#src-16">16</a></sup> Reading that line before every Run keeps a real project's
+        bill predictable.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>The auth list, the project value and one bq query prove the setup works.</li>
+          <li>The sandbox needs no card and gives 10 GiB of storage and 1 TiB of queries monthly.</li>
+          <li>Sandbox tables expire after 60 days unless the expiration is changed.</li>
+          <li>Read the validator's byte estimate before running any query.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Before I run a BigQuery query I read the validator line, "This query will process so many bytes". That's the
+          amount on-demand pricing bills, so I narrow the columns if it's large. Adding a LIMIT doesn't lower it.</p>
+          <p>For learning I'd use the sandbox: no card, free storage and query allowances, and tables that expire after 60
+          days unless I change that.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="8">
+        <div class="tag">Check yourself</div>
+        <h2>Check yourself</h2>
+        <p>Answer each question out loud, as you would to an interviewer, before you open it.</p>
+        <details class="check"><summary>Define cloud computing in one sentence and name its five essential characteristics.</summary><p>Cloud computing is on-demand network access to a shared pool of computing resources that a provider can hand out and take back quickly, with little management effort. The five characteristics are on-demand self-service, broad network access, resource pooling, rapid elasticity and measured service.</p></details>
+        <details class="check"><summary>What is the difference between a region and an availability zone, and why spread a service over zones?</summary><p>A region is a geographic area such as Toronto, <code>northamerica-northeast2</code>, and a zone is an isolated deployment area inside it with its own power and networking. Copies in several zones keep the service running when one zone fails; zones do not protect against a whole region's problem.</p></details>
+        <details class="check"><summary>A colleague calls Cloud SQL "IaaS, because there's a MySQL server in it". What do you answer?</summary><p>The test is what the team still manages, not what runs inside. Google patches, backs up and fails over Cloud SQL, and the team manages only schema, users and queries, so it is PaaS. MySQL on a Compute Engine virtual machine that the team patches would be IaaS.</p></details>
+        <details class="check"><summary>What benefit does each of IaaS, PaaS and SaaS buy a team, and what does it give up?</summary><p>IaaS removes buying hardware and gives machines in minutes, but the team still runs the OS and the database. PaaS adds patches, backups and failover done by the provider. SaaS removes installing and running anything. Each step up gives up control over versions, tuning and placement.</p></details>
+        <details class="check"><summary>Name the four deployment models people ask about and a situation that suits each.</summary><p>Public cloud suits a startup that wants to pay as it grows; private cloud suits a bank's core ledger kept under its own control. Hybrid suits a hospital that keeps records on site and bursts to the cloud at peaks. Multi-cloud suits a firm hedging against one provider's prices or outages.</p></details>
+        <details class="check"><summary>A budget is set with an alert at 100%. The month's spending reaches 110%. What happened, and what is the plan for cost control?</summary><p>The alert went out and the spending carried on, because a budget notifies and does not stop anything. Cost control combines budgets and alerts, labels that split the bill by project, a person who acts on the alert, and a regular review.</p></details>
+        <details class="check"><summary>What are the four meters on a cloud bill, and how would you estimate a small BigQuery workload?</summary><p>Compute, storage, queries and egress. Multiply rows by bytes per row for storage, multiply the bytes each query reads by the queries a month for processing, subtract the free 10 GiB of storage and 1 TiB of queries, and price what is left from the live pricing page.</p></details>
+        <details class="check"><summary>List the common GCP services, then name the AWS and Azure equivalents of BigQuery and Cloud Storage.</summary><p>Compute Engine, Cloud Storage, Cloud SQL, BigQuery, Cloud Run, Pub/Sub, Dataflow and IAM. BigQuery matches Amazon Redshift and Azure Synapse Analytics; Cloud Storage matches Amazon S3 and Azure Blob Storage.</p></details>
+        <details class="check"><summary>Adding <code>LIMIT 10</code> to a BigQuery query: does it lower the "This query will process" estimate? What does the sandbox add as a limit?</summary><p>No. The estimate follows the columns read, and LIMIT trims rows after they are read; naming fewer columns lowers it. The sandbox caps storage and queries at the free allowances and deletes tables after 60 days unless the expiration is changed.</p></details>
+      </section>
+
+      <section class="reading-sources" aria-label="Sources and deeper dive">
+        <h2>Sources &amp; deeper dive</h2>
+        <ul>
+          <li id="src-1"><a href="https://csrc.nist.gov/pubs/sp/800/145/final" target="_blank" rel="noopener">NIST SP 800-145: The NIST Definition of Cloud Computing</a> — the definition, the five essential characteristics, three service models and the deployment models.</li>
+          <li id="src-2"><a href="https://cloud.google.com/compute/resource-usage" target="_blank" rel="noopener">Google Cloud: Compute Engine quotas</a> — why elasticity still stops at account quotas and regional capacity.</li>
+          <li id="src-3"><a href="https://cloud.google.com/docs/geography-and-regions" target="_blank" rel="noopener">Google Cloud: Geography and regions</a> — regions, zones as failure domains, Toronto's northamerica-northeast2 and latency.</li>
+          <li id="src-4"><a href="https://aws.amazon.com/about-aws/global-infrastructure/regions_az/" target="_blank" rel="noopener">AWS: Regions and Availability Zones</a> — the same idea under AWS's names.</li>
+          <li id="src-5"><a href="https://cloud.google.com/compute/docs" target="_blank" rel="noopener">Google Cloud: Compute Engine documentation</a> — virtual machines, the IaaS way to host a database yourself.</li>
+          <li id="src-6"><a href="https://cloud.google.com/sql/docs" target="_blank" rel="noopener">Google Cloud: Cloud SQL documentation</a> — managed MySQL, PostgreSQL and SQL Server with patching, backups and failover.</li>
+          <li id="src-7"><a href="https://aws.amazon.com/compliance/shared-responsibility-model/" target="_blank" rel="noopener">AWS: Shared responsibility model</a> — what the provider secures and what the customer still secures.</li>
+          <li id="src-8"><a href="https://cloud.google.com/run/docs" target="_blank" rel="noopener">Google Cloud: Cloud Run documentation</a> — a serverless service that runs containers and bills by use.</li>
+          <li id="src-9"><a href="https://cloud.google.com/bigquery/docs/introduction" target="_blank" rel="noopener">Google Cloud: BigQuery introduction</a> — Google's serverless analytics database and its GoogleSQL dialect.</li>
+          <li id="src-10"><a href="https://cloud.google.com/architecture/hybrid-multicloud-patterns" target="_blank" rel="noopener">Google Cloud: Hybrid and multicloud architecture patterns</a> — multi-cloud defined by usage, cloud bursting, and the integration and skills cost of extra environments.</li>
+          <li id="src-11"><a href="https://cloud.google.com/bigquery/docs/locations" target="_blank" rel="noopener">Google Cloud: BigQuery locations</a> — how a chosen location keeps stored data in one region.</li>
+          <li id="src-12"><a href="https://cloud.google.com/billing/docs/how-to/budgets" target="_blank" rel="noopener">Google Cloud: Cloud Billing budgets</a> — thresholds and alerts, and why a budget does not stop spending.</li>
+          <li id="src-13"><a href="https://cloud.google.com/vpc/network-pricing" target="_blank" rel="noopener">Google Cloud: Network pricing</a> — egress billed apart from compute and storage.</li>
+          <li id="src-14"><a href="https://cloud.google.com/docs/cuds" target="_blank" rel="noopener">Google Cloud: Committed use discounts</a> — one- and three-year commitments against on-demand prices.</li>
+          <li id="src-15"><a href="https://cloud.google.com/bigquery/pricing" target="_blank" rel="noopener">Google Cloud: BigQuery pricing</a> — on-demand bytes processed, storage per GiB and the monthly free allowances.</li>
+          <li id="src-16"><a href="https://cloud.google.com/bigquery/docs/best-practices-costs" target="_blank" rel="noopener">Google Cloud: Estimate and control BigQuery costs</a> — why fewer columns lower the bytes processed and LIMIT does not.</li>
+          <li id="src-17"><a href="https://cloud.google.com/free/docs/free-cloud-features" target="_blank" rel="noopener">Google Cloud: Free Program</a> — the 90-day trial credit and the Free Tier's monthly allowances.</li>
+          <li id="src-18"><a href="https://cloud.google.com/products" target="_blank" rel="noopener">Google Cloud: Products</a> — the catalogue the eight common services come from.</li>
+          <li id="src-19"><a href="https://cloud.google.com/storage/docs" target="_blank" rel="noopener">Google Cloud: Cloud Storage documentation</a> — object storage, with objects kept in buckets.</li>
+          <li id="src-20"><a href="https://cloud.google.com/docs/get-started/aws-azure-gcp-service-comparison" target="_blank" rel="noopener">Google Cloud: Compare AWS and Azure services to Google Cloud</a> — the service-by-service mapping across the three providers.</li>
+          <li id="src-21"><a href="https://docs.aws.amazon.com/s3/" target="_blank" rel="noopener">AWS: Amazon S3 documentation</a> — AWS object storage.</li>
+          <li id="src-22"><a href="https://learn.microsoft.com/azure/storage/blobs/" target="_blank" rel="noopener">Microsoft: Azure Blob Storage documentation</a> — Azure object storage.</li>
+          <li id="src-23"><a href="https://docs.aws.amazon.com/redshift/" target="_blank" rel="noopener">AWS: Amazon Redshift documentation</a> — AWS's data warehouse.</li>
+          <li id="src-24"><a href="https://learn.microsoft.com/azure/synapse-analytics/" target="_blank" rel="noopener">Microsoft: Azure Synapse Analytics documentation</a> — Azure's data warehouse.</li>
+          <li id="src-25"><a href="https://cloud.google.com/bigquery/docs/sandbox" target="_blank" rel="noopener">Google Cloud: BigQuery sandbox</a> — no billing account, free allowances and the 60-day default expiration.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · after you have read the page</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 4 Day 1</footer>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 1 — goals</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Define cloud computing with its five essential characteristics, and explain the difference between a region and an availability zone</li>
+      <li>Explain the benefit each of IaaS, PaaS and SaaS buys a team, and describe the public, private, hybrid and multi-cloud models with a situation that suits each</li>
+      <li>Describe the main challenges of adopting the cloud and the plan for each, explain how cloud services are priced, and estimate the cost of a small workload</li>
+      <li>List the common Google Cloud services and say what each one is for</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Day 2 — Big data fundamentals →", href: "day-2-big-data-fundamentals.html" };
+window.DIAGRAM = {
+  title: "Day 1 · from a laptop database to a provider's cloud",
+  width: 500, height: 510,
+  nodes: [
+    { id:"laptop", step:0, x:24, y:14, w:200, h:56, label:"desk-mysql\n  on your laptop\n  0 of 5 characteristics", detail:"You started the container by hand, only your laptop reaches it, and nothing meters it." },
+    { id:"cloud", step:0, x:276, y:14, w:200, h:56, label:"PROVIDER-RUN DATABASE\n  self-service · network · pooling\n  elasticity · measured", detail:"NIST's five essential characteristics. Virtualisation makes the pooling possible; quotas cap the elasticity." },
+    { id:"region", step:1, x:24, y:100, w:452, h:56, label:"REGION northamerica-northeast2 (Toronto)\n  zone · zone · zone\n  separate power and networking, fast links", detail:"Copies spread over zones survive one zone failing. Region choice decides latency and data residency." },
+    { id:"stack", step:2, x:24, y:186, w:200, h:56, label:"SERVICE MODELS\n  IaaS: Compute Engine VM\n  PaaS: Cloud SQL · SaaS: help desk", detail:"The test is what the team still manages. More provider management, less control over versions and tuning." },
+    { id:"deploy", step:3, x:276, y:186, w:200, h:56, label:"DEPLOYMENT MODELS\n  public · private\n  hybrid · multi-cloud", detail:"Startup, bank ledger, hospital that bursts, firm hedging providers. Hybrid and multi-cloud add integration cost." },
+    { id:"challenges", step:4, x:24, y:272, w:200, h:56, label:"CHALLENGES\n  cost · security · lock-in\n  latency · skills", detail:"Budgets and alerts, a Canadian region, open formats, region near users, training. Alerts do not stop spending." },
+    { id:"pricing", step:5, x:276, y:272, w:200, h:56, label:"PRICING\n  pay-as-you-go · committed · free tier\n  compute · storage · queries · egress", detail:"BigQuery bills bytes processed; 1 TiB of queries and 10 GiB of storage free each month." },
+    { id:"services", step:6, x:24, y:358, w:200, h:56, label:"SERVICES\n  GCP's common eight\n  matched on AWS and Azure", detail:"S3, Blob Storage, Cloud Storage; RDS, Azure SQL Database, Cloud SQL; Redshift, Synapse, BigQuery; Glue, Data Factory, Dataflow." },
+    { id:"sandbox", step:7, x:276, y:358, w:200, h:56, label:"BIGQUERY SANDBOX\n  desk-<id> · no card\n  first console query", detail:"gcloud auth list, gcloud config get-value project and one bq query prove the setup. Tables expire after 60 days." },
+    { id:"check", step:8, x:24, y:450, w:452, h:40, label:"CHECK YOURSELF\n  answer out loud, then open" }
+  ],
+  edges: [
+    { id:"e1", step:0, from:"laptop", to:"cloud", label:"move to a provider" },
+    { id:"e2", step:1, from:"cloud", to:"region", label:"runs in" },
+    { id:"e3", step:2, from:"region", to:"stack", label:"who manages what" },
+    { id:"e4", step:3, from:"region", to:"deploy", label:"who owns it" },
+    { id:"e5", step:4, from:"deploy", to:"challenges", label:"plan for" },
+    { id:"e6", step:5, from:"challenges", to:"pricing", label:"cost control" },
+    { id:"e7", step:6, from:"stack", to:"services", label:"named products" },
+    { id:"e8", step:7, from:"services", to:"sandbox", label:"BigQuery" },
+    { id:"e9", step:7, from:"pricing", to:"sandbox", label:"free allowances" },
+    { id:"e10", step:8, from:"sandbox", to:"check", dir:"-" }
+  ],
+  captions: [
+    "Week 3's desk-mysql on a laptop meets none of NIST's five characteristics; a provider-run database meets all five. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "A region such as Toronto holds several zones with separate power and networking; spreading copies over zones survives one failing.",
+    "IaaS, PaaS and SaaS move the line of who manages what up the stack; shared responsibility keeps your data yours.",
+    "Public, private, hybrid and multi-cloud answer who owns the infrastructure, each with a situation that suits it.",
+    "Cost, security and compliance, lock-in, latency and skills each come with a plan; a budget alert does not stop spending.",
+    "Bills come from four meters; an estimate multiplies size by frequency and compares it with the free allowance.",
+    "Eight Google Cloud services by name, and the data services matched across AWS, Azure and Google Cloud.",
+    "The setup check and a first console query in the sandbox, reading the byte estimate before Run.",
+    "You can now define the cloud, place a product by service and deployment model, plan for its challenges and estimate its bill."
+  ]
+};
+window.QUIZ = {
+  id: "w04-d1",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "Which of NIST's essential characteristics is what makes paying per use possible?",
+      options: ["Broad network access", "Resource pooling", "Measured service", "Rapid elasticity"], answer: 2,
+      explain: "Measured service means usage is metered, monitored and reported, and a bill can only charge for what was measured." },
+    { type: "tf", stem: "A Cloud Billing budget with an alert at 100% stops spending once the budget is reached.", answer: false,
+      explain: "A budget sends notifications when spending crosses its thresholds. It does not stop spending by itself; someone or something has to act on the alert." },
+    { type: "mcq", stem: "Which of these are among NIST's five essential characteristics of cloud computing? Select all that apply.",
+      options: ["On-demand self-service", "Multi-cloud", "Rapid elasticity", "Unlimited capacity", "Resource pooling"], answer: [0, 2, 4],
+      explain: "The five are on-demand self-service, broad network access, resource pooling, rapid elasticity and measured service. Multi-cloud is a way of using providers, and elasticity is still capped by quotas." },
+    { type: "match", stem: "Match each service to its category.",
+      pairs: [
+        { l: "Amazon S3", r: "object storage" },
+        { l: "Cloud SQL", r: "relational database" },
+        { l: "Azure Cosmos DB", r: "NoSQL database" },
+        { l: "Amazon Redshift", r: "data warehouse" },
+        { l: "AWS Glue", r: "data pipeline" }
+      ],
+      explain: "The other providers' equivalents: Blob Storage and Cloud Storage; RDS and Azure SQL Database; DynamoDB and Firestore; Synapse and BigQuery; Data Factory and Dataflow." },
+    { type: "scq", stem: "A team wants a MySQL database for the desk. It will manage the schema and the queries but does not want to patch servers or run backups. Which fits?",
+      options: ["MySQL installed on a Compute Engine virtual machine (IaaS)", "Cloud SQL (PaaS)", "A hosted help-desk product (SaaS)", "MySQL in a container on a laptop"], answer: 1,
+      explain: "Cloud SQL is a managed relational database: Google runs patching, backups and failover, and the team keeps the schema and queries. On a VM the team would patch the OS and run backups itself." },
+    { type: "open", stem: "In two or three sentences: what is the difference between a region and an availability zone, and why would you place a service in more than one zone?",
+      hint: "Toronto is one of them; the other has its own power and networking.",
+      model: "A region is a geographic area, such as Toronto's northamerica-northeast2, and it holds several availability zones. A zone is an isolated deployment area inside the region with its own power and networking, linked to the others by fast networks. Copies in more than one zone keep the service running when one zone fails." }
+  ]
+};
+</script>
+
+<script src="../../assets/js/diagram.js?v=20261030"></script>
+<script src="../../assets/js/scrolly.js?v=20261030"></script>
+<script src="../../assets/js/modals.js?v=20261030"></script>
+<script src="../../assets/js/quiz.js?v=20261030"></script>
+<script src="../../assets/js/widgets.js?v=20261030"></script>
+<script src="../../assets/js/glossary.js?v=20261030"></script>
+</body>
+</html>

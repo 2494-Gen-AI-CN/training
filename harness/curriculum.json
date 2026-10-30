@@ -510,7 +510,7 @@
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "none",
-          "status": "planned",
+          "status": "authored",
           "title": "Cloud computing concepts",
           "subtitle": "model & service types · IaaS/PaaS/SaaS · pricing · AWS/Azure/GCP data services",
           "subtopics": [
@@ -530,7 +530,7 @@
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "none",
-          "status": "planned",
+          "status": "authored",
           "title": "Big data fundamentals",
           "subtitle": "components · architecture · data lifecycle · structured/semi/unstructured · file types",
           "subtopics": [
@@ -551,7 +551,7 @@
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "walkthrough",
-          "status": "planned",
+          "status": "authored",
           "title": "Data warehousing & BigQuery",
           "subtitle": "OLTP vs OLAP · warehouse vs lake · ODS · data mart · BigQuery datasets, tables, queries",
           "subtopics": [
@@ -578,7 +578,7 @@
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "walkthrough",
-          "status": "planned",
+          "status": "authored",
           "title": "Dimensional modeling",
           "subtitle": "conceptual/logical/physical · star & snowflake schema · slowly changing dimensions",
           "subtopics": [
@@ -598,7 +598,7 @@
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "walkthrough",
-          "status": "planned",
+          "status": "authored",
           "title": "ETL & ELT pipelines",
           "subtitle": "ETL overview · BigQuery connections · building ETL/ELT processes · review",
           "subtopics": [

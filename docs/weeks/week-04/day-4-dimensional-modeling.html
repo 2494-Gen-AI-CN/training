@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w04d4">
+<title>W4·D4 — Dimensional modeling: star schemas &amp; slowly changing dimensions | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261030">
+<script src="../../assets/js/theme.js?v=20261030"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="../../exit-criteria/index.html">Exit criteria</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>Dimensional modeling: the desk's star schema and the history of its customers</h1>
+        <div class="meta">
+          <span><b>Week 4</b> · Day 4</span>
+          <span>Thu Nov 5, 2026</span>
+          <span>Data fundamentals, cloud concepts, data warehousing, ETL/ELT</span>
+          <span><b>~44 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span class="verified">Sources checked 2026-10-30 · python 3.15 · google-cloud-bigquery 3.47.0 · db-dtypes 1.9.0 · pyarrow 26.0.0</span>
+          <span class="exit"><a href="../../exit-criteria/qc-3-data-and-gen-ai-fundamentals.html#w04d4">Exit criteria</a></span>
+        </div>
+        <p class="summary">This page assumes Wednesday's page: OLTP against OLAP, what a warehouse and its staging
+        area are, and the desk's tickets and ticket events extracted from MySQL into the BigQuery staging dataset
+        <code>desk_raw</code>. It teaches data modeling from business questions through conceptual, logical and physical
+        models, then dimensional modeling: facts, dimensions, measures and grain, and the star and snowflake schemas built
+        in BigQuery with partitioning, clustering and the query cache. The last sections cover slowly changing dimensions,
+        types 0 to 6, and a tested SCD type 2 in Python. Afterwards you can design a star at a stated grain, compare it
+        with a snowflake, explain what partitioning saves, and choose an SCD type for each attribute.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="0">
+        <div class="tag">Modeling</div>
+        <h2>Data models: from business questions to tables</h2>
+        <p>A warehouse starts as a list of questions somebody wants answered. The model is the plan that turns those
+        questions into tables.</p>
+        <h3>What a data model is</h3>
+        <p>A data model is a blueprint of the data an organisation collects: which datasets exist, how they relate to each
+        other, and how they are stored and analysed.<sup class="cite"><a href="#src-1">1</a></sup><sup class="cite"><a href="#src-2">2</a></sup>
+        It is drawn and agreed before anyone writes a CREATE TABLE, so a mistake costs an eraser instead of a
+        migration.</p>
+        <p>Week 3 used one without naming it. Before the schema file turned the desk into seven MySQL tables, someone
+        decided that tickets belong to customers, that agents take tickets and that a priority sets an SLA. Those
+        decisions were the model, and the file was its last stage.</p>
+        <h3>What a model does in a warehouse</h3>
+        <p>In a warehouse the model settles the three verbs of that definition:</p>
+        <ul>
+          <li>organising: which numbers sit together in one table and which descriptions sit beside them;</li>
+          <li>storing: the column types and the physical layout, such as partitions, that decide what a query must read;</li>
+          <li>retrieving: the joins and groupings an analyst writes, which follow the shape the model gave the tables.</li>
+        </ul>
+        <p>A warehouse model serves a different workload from the desk's MySQL tables. A transactional database takes many
+        small writes, one ticket at a time. A warehouse is loaded in batches and then read many times, mostly by queries
+        that scan and summarise large ranges of rows.<sup class="cite"><a href="#src-3">3</a></sup></p>
+        <p>The model follows the workload. The desk's tables are built so that a change touches one row in one place. The
+        warehouse's tables are built so that a question touches as few tables as possible.</p>
+        <h3>From a requirement to a table</h3>
+        <p>Modeling captures the business rules first. A conceptual model bridges those rules to the database, and the
+        logical and physical models then add types, keys and platform details until the tables can be
+        built.<sup class="cite"><a href="#src-1">1</a></sup> The next section takes each level in turn. The work runs
+        from what the business asks towards the DDL.</p>
+        <p>Suppose the desk's support lead asks three questions of the ticket history:</p>
+        <ol>
+          <li>How many events did each agent's tickets have, and how many sit with no agent?</li>
+          <li>How do the events split by priority, and how many SLA hours does each priority allow?</li>
+          <li>How many events happened on each day, and which of those days were weekends?</li>
+        </ol>
+        <p>Each question names something counted and the ways it is cut. Counted things become measures in a fact table,
+        and the ways they are cut become dimensions. Both words get a proper definition in the dimensional modeling
+        section below.</p>
+        <h3>Questions name the dimensions</h3>
+        <p>A good dimension design starts by asking users what they analyse. A request such as "sales by salesperson, by
+        month" names its own dimensions: a salesperson dimension, and a date dimension with a month
+        attribute.<sup class="cite"><a href="#src-4">4</a></sup> The word "by" is the signal to listen for.</p>
+        <table>
+          <thead><tr><th>Question</th><th>What is counted</th><th>Cut by</th></tr></thead>
+          <tbody>
+            <tr><td>Events per agent</td><td>ticket events</td><td>agent</td></tr>
+            <tr><td>Events and SLA per priority</td><td>ticket events</td><td>priority, reached through the ticket</td></tr>
+            <tr><td>Events per day</td><td>ticket events</td><td>date, with its weekday</td></tr>
+          </tbody>
+        </table>
+        <p>Every row of the table counts the same thing, a ticket event, so the desk needs one fact table. No question cuts
+        by customer yet, but the customer is an obvious next "by", so the model keeps a customer dimension from the
+        start.</p>
+        <p>A model is never finished when it first ships. A warehouse should be designed to adapt as requirements evolve,
+        so a model built for today's questions gains columns and tables later.<sup class="cite"><a href="#src-5">5</a></sup>
+        The limit is what the stored detail allows. If events were never kept one per row, no later column brings the
+        per-event detail back.</p>
+        <p>In someone else's project the model usually shows up first as a diagram: boxes named ticket, customer and agent
+        with lines between them, committed or photographed before any SQL exists.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A data model is the agreed plan of what data exists, how it relates and how it is stored.</li>
+          <li>Warehouse models suit batch loads and many reads; transactional models suit many small writes.</li>
+          <li>Business questions come first, and each "by" in a question names a dimension.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A data model is the blueprint of an organisation's data: what it collects, how the pieces relate and how it's
+          stored and queried. In a warehouse it decides how data is organised into tables and how it's laid out on disk,
+          and that decides how quickly and cheaply people can get answers back out.</p>
+          <p>I start from the business questions. "Events per agent, per month" tells me I'm counting events and cutting
+          them by agent and by date. That becomes a conceptual sketch, then a logical model with keys and a grain, then
+          physical tables in one specific engine.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">Model levels</div>
+        <h2>Conceptual, logical and physical models</h2>
+        <p>The three levels describe one design at three distances from the database. Each adds detail the one before it
+        left out on purpose.</p>
+        <h3>The conceptual model</h3>
+        <p>A conceptual model gives the big picture: the entities and the business rules between them, drawn simply
+        enough that business stakeholders and analysts can agree on it.<sup class="cite"><a href="#src-1">1</a></sup><sup class="cite"><a href="#src-2">2</a></sup>
+        It holds names and lines and nothing else. For the desk's warehouse it holds four entities:</p>
+        <ul>
+          <li>a ticket, raised by one customer, with one priority;</li>
+          <li>a customer, who raises tickets;</li>
+          <li>an agent, who may be assigned a ticket;</li>
+          <li>an event, something that happened to one ticket at one moment: it was opened, assigned or closed.</li>
+        </ul>
+        <p>A support lead can read this picture and say "yes, that is how the desk works" without knowing what a key is.
+        Stakeholders sign off on this level.</p>
+        <h3>The logical model</h3>
+        <p>A logical model adds data types, relationships and key fields, and stays independent of any one database
+        product.<sup class="cite"><a href="#src-1">1</a></sup><sup class="cite"><a href="#src-2">2</a></sup> The desk's
+        logical model says that an event has an identifier, a kind and a time. It points at one ticket, and a ticket
+        points at one customer, one priority and at most one agent.</p>
+        <p>For a warehouse the logical model also states the grain, meaning what one row of the main table stands for. The
+        desk's choice is one row per ticket event. Keys, attributes and grain are enough to argue about whether the
+        design is correct, and nothing in them says MySQL or BigQuery yet.</p>
+        <h3>The physical model</h3>
+        <p>A physical model maps the logical one onto one database system, with its real field types and the tuning that
+        system offers.<sup class="cite"><a href="#src-1">1</a></sup><sup class="cite"><a href="#src-2">2</a></sup> For the
+        desk in BigQuery that means:</p>
+        <ul>
+          <li>dataset-qualified names such as <code>desk_dw.fact_ticket_events</code>;</li>
+          <li>GoogleSQL types such as INT64 and DATE;</li>
+          <li>partitioning and clustering on the fact table, which a later section covers.</li>
+        </ul>
+        <p>The physical model is where cost and speed are decided, so it is tied to one engine's features and prices. In
+        the BigQuery sandbox, for example, a partition older than 60 days
+        expires.<sup class="cite"><a href="#src-6">6</a></sup> A fact table partitioned by an old date can therefore
+        load and still come out empty.</p>
+        <table>
+          <thead><tr><th>Level</th><th>Main reader</th><th>What it holds</th><th>Tied to one engine?</th></tr></thead>
+          <tbody>
+            <tr><td>Conceptual</td><td>business stakeholders and analysts</td><td>entities and the rules between them</td><td>no</td></tr>
+            <tr><td>Logical</td><td>the team designing the warehouse</td><td>attributes, keys, relationships and the grain</td><td>no</td></tr>
+            <tr><td>Physical</td><td>the developers who build it</td><td>types, table names, partitioning and clustering</td><td>yes</td></tr>
+          </tbody>
+        </table>
+        <p>In a repository the three levels look different. A sketch of named boxes is conceptual. The same sketch with keys
+        and attributes listed inside each box is logical. A DDL file with column types, PARTITION BY and CLUSTER BY is
+        physical.</p>
+        <h3>Types change with the engine</h3>
+        <p>The clearest test of the split is a change of engine. The desk's customers keep the same logical attributes in
+        MySQL and in the BigQuery staging table, but the physical types differ:</p>
+        <table>
+          <thead><tr><th>Attribute</th><th>MySQL, week 3</th><th>BigQuery staging</th></tr></thead>
+          <tbody>
+            <tr><td><code>customer_id</code></td><td>INT</td><td>INT64</td></tr>
+            <tr><td><code>name</code></td><td>VARCHAR(100)</td><td>STRING</td></tr>
+            <tr><td><code>country</code></td><td>CHAR(2)</td><td>STRING</td></tr>
+            <tr><td><code>monthly_fee</code></td><td>DECIMAL(8,2)</td><td>NUMERIC</td></tr>
+          </tbody>
+        </table>
+        <p>The logical model survives the move untouched: a customer still has an id, a name, a country and a fee. Only the
+        physical model is rewritten. Teams keep the logical model as a document of its own because the
+        next migration starts from it.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Conceptual models show entities and rules, simple enough for stakeholders to sign off.</li>
+          <li>Logical models add keys, attributes, relationships and the grain, without naming an engine.</li>
+          <li>Physical models use one engine's types, names and tuning, such as partitioning and clustering.</li>
+          <li>A change of engine rewrites the physical model and keeps the logical one.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A conceptual model is the big picture, the entities and how they relate, simple enough for business people to
+          sign off. A logical model adds the attributes, keys, relationships and, in a warehouse, the grain, still without
+          picking a database. The physical model is the logical one written for a specific engine, with real types and
+          features like partitioning.</p>
+          <p>Stakeholders read the conceptual model and developers build from the physical one. The logical model is the
+          one that survives if we ever change databases.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">Dimensional modeling</div>
+        <h2>Dimensional modeling: facts, dimensions, measures and grain</h2>
+        <p>Dimensional modeling is the way most warehouses organise their tables. It sorts every column into one of two
+        kinds of table.</p>
+        <h3>Fact tables and measures</h3>
+        <p>A fact table holds dimension keys and numeric measures. Each row records one event or measurement, and the
+        measures are the numbers that row contributes to a
+        total.<sup class="cite"><a href="#src-7">7</a></sup><sup class="cite"><a href="#src-8">8</a></sup></p>
+        <p>The desk's fact table, <code>fact_ticket_events</code>, has one row per ticket event. Its measures are
+        <code>event_count</code>, which is 1 on every row so that a sum counts events, and
+        <code>hours_since_open</code>, the hours between the ticket opening and that event. Everything else on the row is
+        a key pointing at a dimension, or a short code such as the event's kind.</p>
+        <h3>Dimension tables and surrogate keys</h3>
+        <p>Dimension tables hold the descriptive attributes that queries filter and group by: who, what, where and
+        when.<sup class="cite"><a href="#src-7">7</a></sup><sup class="cite"><a href="#src-8">8</a></sup> The
+        desk has dimensions for the ticket, the customer, the agent and the date. A query takes its numbers from the fact
+        and its words, such as an agent's name or a weekday, from the dimensions.</p>
+        <p>Each dimension row has a surrogate key, an integer the warehouse assigns itself. Surrogate keys insulate the
+        warehouse from the ids of source systems, and they make it possible to keep several versions of one customer,
+        each under its own key.<sup class="cite"><a href="#src-4">4</a></sup> That second use comes back in the
+        history sections at the end of the page.</p>
+        <p>The date dimension is the most common dimension of all. It stores one row per date with attributes such as
+        year, month and weekday, and its key is the date written as a YYYYMMDD integer, so 2026-11-05 has the key
+        20261105.<sup class="cite"><a href="#src-4">4</a></sup></p>
+        <h3>State the grain first</h3>
+        <p>The grain is what exactly one row of the fact table represents. The dimension keys on a fact row set that
+        grain, and a fact table must load at one consistent
+        grain.<sup class="cite"><a href="#src-7">7</a></sup> Teams state the grain in words before choosing any
+        column: "one row per ticket event".</p>
+        <p>Mixing grains gives wrong sums.<sup class="cite"><a href="#src-9">9</a></sup> Suppose someone copies a
+        ticket-level number, the hours each ticket took to close, onto every event row. Tickets 1 and 3 took 3 and 10
+        hours, so the true total is 13. In the loop below, each tuple of three values is unpacked into three names, and
+        the third is added to a running total.</p>
+<pre><code>rows = [
+    ("open", 1, 3),
+    ("closed", 1, 3),
+    ("open", 3, 10),
+    ("closed", 3, 10),
+]
+total = 0
+for kind, ticket_id, hours_to_close in rows:
+    total = total + hours_to_close
+print(total)</code></pre>
+<pre class="out">26</pre>
+        <p>Each ticket has two event rows, so each closing time was counted twice. The fix keeps every measure at the
+        fact's grain. The closing event's own <code>hours_since_open</code> holds 3 or 10, the opening event's holds 0,
+        and a sum over closing events gives 13.</p>
+        <h3>Additive, semi-additive and non-additive measures</h3>
+        <p>Measures differ in where a sum is valid:<sup class="cite"><a href="#src-7">7</a></sup></p>
+        <ul>
+          <li>additive measures sum across every dimension, like <code>event_count</code> per agent, per day or in total;</li>
+          <li>semi-additive measures sum across some dimensions only, like the tickets open at the end of each day, which add up across agents but not across days;</li>
+          <li>non-additive measures sum across none, like a rate or a temperature, so a report recomputes them from their parts.</li>
+        </ul>
+        <div class="ix-predict" data-q="A daily snapshot fact stores open_tickets, the tickets still open at the end of each day. On Monday 5 are open and on Tuesday 4. What does SUM(open_tickets) over the two days tell the support lead?" data-a="Nothing useful. 9 is not a number of tickets: most of Monday's 5 are still in Tuesday's 4. open_tickets is semi-additive. It sums across agents on one day, but across days a report takes the last value or the average instead."></div>
+        <h3>Dimensional modeling against ER modeling</h3>
+        <p>Week 3's desk followed entity-relationship modeling and normalisation, so each fact is stored once and a change
+        touches one row. A dimensional model accepts repeated descriptive data in exchange for fewer joins and faster
+        questions.<sup class="cite"><a href="#src-1">1</a></sup><sup class="cite"><a href="#src-8">8</a></sup></p>
+        <table>
+          <thead><tr><th></th><th>ER model (week 3)</th><th>Dimensional model</th></tr></thead>
+          <tbody>
+            <tr><td>Built for</td><td>many small writes that must stay consistent</td><td>reading and summarising history</td></tr>
+            <tr><td>Shape</td><td>many normalised tables linked by foreign keys</td><td>one fact table surrounded by dimensions</td></tr>
+            <tr><td>Repetition</td><td>avoided</td><td>accepted in the dimensions</td></tr>
+            <tr><td>Typical query</td><td>one ticket by its id</td><td>counts and sums over many events</td></tr>
+          </tbody>
+        </table>
+        <p>The two coexist. The desk keeps its normalised MySQL tables for the day's work and copies their
+        history into the dimensional model for questions.</p>
+        <p>A dimensional model is easy to recognise in someone else's project. Table names start with <code>fact_</code>
+        and <code>dim_</code>, there is a <code>date_key</code> column, and measures carry names like
+        <code>event_count</code> or <code>amount</code>.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Fact tables hold keys and numeric measures; dimension tables hold the words queries filter and group by.</li>
+          <li>State the grain in words before choosing columns, and keep one grain per fact table.</li>
+          <li>Additive, semi-additive and non-additive measures differ in where a sum is valid.</li>
+          <li>ER models keep writes safe; dimensional models trade repetition for fast questions.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>In a dimensional model, a fact table records events or measurements at one stated grain. Its columns are keys
+          to dimensions and numeric measures, like an event count or an amount. Dimension tables hold the descriptive
+          attributes, like an agent's name or a date's month, that you filter and group by.</p>
+          <p>The point is fast, simple analytic queries, with one join from the fact to each dimension. An ER model is
+          normalised so writes stay consistent, while a dimensional model accepts some repetition so questions are cheap.
+          I'd keep the normalised database for the application and build the dimensional one for reporting.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="3">
+        <div class="tag">Star schema</div>
+        <h2>The star schema built for the desk</h2>
+        <p>A star schema has one central fact table of events or measurements, and its dimension tables form the points
+        of the star, each joined to the fact on a key.<sup class="cite"><a href="#src-5">5</a></sup> It suits
+        analytic queries, which filter and group by dimensions and summarise the
+        fact.<sup class="cite"><a href="#src-5">5</a></sup></p>
+        <h3>One fact, five dimensions</h3>
+        <p>The desk's star lives in the BigQuery dataset <code>desk_dw</code> and reads from the staging tables in
+        <code>desk_raw</code>:</p>
+        <table>
+          <thead><tr><th>Table</th><th>One row per</th><th>Key</th></tr></thead>
+          <tbody>
+            <tr><td><code>dim_date</code></td><td>calendar day, 2026-10-01 to 2026-12-31</td><td><code>date_key</code>, YYYYMMDD</td></tr>
+            <tr><td><code>dim_agent</code></td><td>agent, plus one row for no agent</td><td><code>agent_key</code></td></tr>
+            <tr><td><code>dim_customer</code></td><td>customer</td><td><code>customer_key</code></td></tr>
+            <tr><td><code>dim_priority</code></td><td>priority, with its SLA hours</td><td><code>priority</code></td></tr>
+            <tr><td><code>dim_ticket</code></td><td>ticket, with its priority and SLA hours copied in</td><td><code>ticket_key</code></td></tr>
+            <tr><td><code>fact_ticket_events</code></td><td>ticket event</td><td><code>event_id</code>, plus a key per dimension</td></tr>
+          </tbody>
+        </table>
+        <p>The fact points at four dimensions directly: ticket, customer, agent and date. <code>dim_priority</code> comes
+        in the snowflake section. The agent dimension carries one extra row, key 0, named
+        <code>unassigned</code>. A special member row such as key 0 stands in for a missing value, so no fact row needs a
+        null key and every join finds a match.<sup class="cite"><a href="#src-4">4</a></sup></p>
+        <h3>Building a date dimension in one statement</h3>
+        <p><code>GENERATE_DATE_ARRAY</code> builds an array of dates, and <code>UNNEST</code> turns an array into rows, so
+        one statement fills a date dimension.<sup class="cite"><a href="#src-10">10</a></sup>
+        <code>FORMAT_DATE('%Y%m%d', day)</code> writes a date as text, and the cast to INT64 turns that text into the
+        YYYYMMDD key.<sup class="cite"><a href="#src-11">11</a></sup> The <code>is_weekend</code> column is true for
+        Saturday and Sunday.</p>
+<pre><code>-- One row per day for the last quarter of 2026.
+CREATE OR REPLACE TABLE desk_dw.dim_date AS
+SELECT
+  CAST(FORMAT_DATE('%Y%m%d', day) AS INT64) AS date_key,
+  day AS full_date,
+  EXTRACT(YEAR FROM day) AS year,
+  EXTRACT(MONTH FROM day) AS month,
+  FORMAT_DATE('%A', day) AS weekday,
+  EXTRACT(DAYOFWEEK FROM day) IN (1, 7) AS is_weekend
+FROM UNNEST(GENERATE_DATE_ARRAY('2026-10-01', '2026-12-31')) AS day;</code></pre>
+        <p>The new table holds 92 rows, one for each day from October 1 to December 31. Three of them, read back:</p>
+<pre><code>SELECT
+  date_key,
+  full_date,
+  weekday,
+  is_weekend
+FROM desk_dw.dim_date
+WHERE full_date BETWEEN '2026-10-17' AND '2026-10-19'
+ORDER BY date_key;</code></pre>
+<pre class="out">+----------+------------+----------+------------+
+| date_key | full_date  | weekday  | is_weekend |
++----------+------------+----------+------------+
+| 20261017 | 2026-10-17 | Saturday | true       |
+| 20261018 | 2026-10-18 | Sunday   | true       |
+| 20261019 | 2026-10-19 | Monday   | false      |
++----------+------------+----------+------------+</pre>
+        <h3>The fact table at its grain</h3>
+        <p>The fact statement reads the staged events, joins each one to its ticket and customer, and keeps one row per
+        event. <code>ROW_NUMBER() OVER (...)</code> numbers the rows inside each group, and <code>QUALIFY</code> filters on
+        that number after it is computed, so only the first copy of a duplicated event
+        survives.<sup class="cite"><a href="#src-12">12</a></sup><sup class="cite"><a href="#src-13">13</a></sup></p>
+<pre><code>-- One row per ticket event, the fact's grain.
+CREATE OR REPLACE TABLE desk_dw.fact_ticket_events AS
+SELECT
+  e.event_id,
+  t.ticket_id AS ticket_key,
+  c.customer_key,
+  COALESCE(t.agent_id, 0) AS agent_key,
+  CAST(FORMAT_DATE('%Y%m%d', DATE(e.created_at)) AS INT64) AS date_key,
+  DATE(e.created_at) AS event_date,
+  e.kind,
+  DATETIME_DIFF(e.created_at, t.opened_at, HOUR) AS hours_since_open,
+  1 AS event_count
+FROM desk_raw.ticket_events AS e
+JOIN desk_raw.tickets AS t ON t.ticket_id = e.ticket_id
+JOIN desk_dw.dim_customer AS c ON c.customer_id = t.customer_id
+WHERE e.kind IN ('open', 'assigned', 'closed')
+  AND e.created_at &gt;= t.opened_at
+QUALIFY ROW_NUMBER() OVER (PARTITION BY e.ticket_id, e.kind, e.created_at ORDER BY e.event_id) = 1;</code></pre>
+        <p>Counting the new table's rows gives 11. Staging holds 14 events, and three are bad: a misspelt kind, an event
+        dated an hour before its ticket opened, and a second copy of one assignment. The WHERE lines drop the first two
+        and QUALIFY drops the copy.</p>
+        <h3>Querying the star</h3>
+        <p>A star query joins the fact to each dimension it needs, filters with WHERE, groups with GROUP BY and aggregates
+        with COUNT or SUM.<sup class="cite"><a href="#src-13">13</a></sup> The first business question, events per
+        agent, needs one join:</p>
+<pre><code>-- Assignments and closures per agent.
+SELECT
+  a.name AS agent,
+  COUNT(*) AS events
+FROM desk_dw.fact_ticket_events AS f
+JOIN desk_dw.dim_agent AS a ON a.agent_key = f.agent_key
+WHERE f.kind IN ('assigned', 'closed')
+GROUP BY a.name
+ORDER BY events DESC, agent;</code></pre>
+<pre class="out">+------------+--------+
+|   agent    | events |
++------------+--------+
+| unassigned |      3 |
+| Marco      |      1 |
+| Priya      |      1 |
++------------+--------+</pre>
+        <p>The three closed tickets never had an agent in the desk's data, so their closures count under key 0. In someone
+        else's code a star query has the same look: <code>JOIN dim_x AS x ON x.key = f.x_key</code> once per dimension,
+        and a GROUP BY on a dimension attribute.</p>
+        <p>The cost of the star is repetition. Every ticket row carries its priority's SLA hours, so when a descriptive
+        value changes, the model needs a rule for the old copies.<sup class="cite"><a href="#src-9">9</a></sup>
+        Slowly changing dimensions, near the end of the page, are those rules.</p>
+        <h3>Conformed dimensions</h3>
+        <p>A conformed dimension is one dimension table shared by several fact
+        tables.<sup class="cite"><a href="#src-8">8</a></sup> If the desk later adds a fact table of customer
+        invoices, it joins the same <code>dim_date</code> and <code>dim_customer</code>. A report can then put ticket events
+        and invoices side by side for the same days and the same customers.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A star is one fact table joined directly to denormalised dimension tables.</li>
+          <li>A special member row, like agent key 0, keeps every fact row joinable.</li>
+          <li>A star query joins, filters, groups and aggregates in one SELECT.</li>
+          <li>Conformed dimensions let several fact tables share one date or customer table.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A star schema is one fact table in the middle with dimension tables around it, each joined on a key. For a
+          support desk I'd state the grain first, one row per ticket event. Then the fact gets keys to the ticket,
+          customer, agent and date, plus measures like an event count and the hours since the ticket opened.</p>
+          <p>Queries stay simple. I join the fact to the dimensions I need, filter with WHERE, group by a dimension
+          attribute and count or sum. Events per agent is one join to the agent dimension and a GROUP BY on the agent's
+          name.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">Snowflake schema</div>
+        <h2>The snowflake schema and when its joins pay</h2>
+        <p>A snowflake schema is a star whose dimension tables are themselves normalised into linked tables. BigQuery
+        supports both shapes.<sup class="cite"><a href="#src-14">14</a></sup></p>
+        <h3>Normalising the dimensions</h3>
+        <p>In the desk's star, <code>dim_ticket</code> copies each ticket's priority and its <code>sla_hours</code> onto
+        the ticket row. Moving <code>sla_hours</code> out into <code>dim_priority</code>, with <code>dim_ticket</code>
+        keeping only the priority as a key into it, is the snowflaked form. Folding <code>sla_hours</code> back into
+        <code>dim_ticket</code> is the star form.<sup class="cite"><a href="#src-9">9</a></sup></p>
+        <p>This is week 3's normalisation applied to the dimensions only. The fact table is never split: it stays one table
+        at its grain, and only the tables around it branch out.</p>
+        <p>On sight, a snowflake shows itself as a dimension holding a foreign key to another dimension. Its queries reach
+        the fact through a chain of joins, such as <code>dim_priority</code> to <code>dim_ticket</code> to the fact.</p>
+        <h3>One question, two shapes</h3>
+        <p>The second business question asks for events per priority, with each priority's SLA hours. The star form needs
+        one join:</p>
+<pre><code>-- Events per priority, star form.
+SELECT
+  t.priority,
+  t.sla_hours,
+  COUNT(*) AS events
+FROM desk_dw.fact_ticket_events AS f
+JOIN desk_dw.dim_ticket AS t ON t.ticket_key = f.ticket_key
+GROUP BY t.priority, t.sla_hours
+ORDER BY t.sla_hours;</code></pre>
+<pre class="out">+----------+-----------+--------+
+| priority | sla_hours | events |
++----------+-----------+--------+
+| high     |         4 |      4 |
+| normal   |        24 |      6 |
+| low      |        72 |      1 |
++----------+-----------+--------+</pre>
+        <p>The snowflake form reaches the same columns through a second join, from the ticket to its priority:</p>
+<pre><code>-- Events per priority, snowflake form.
+SELECT
+  p.priority,
+  p.sla_hours,
+  COUNT(*) AS events
+FROM desk_dw.fact_ticket_events AS f
+JOIN desk_dw.dim_ticket AS t ON t.ticket_key = f.ticket_key
+JOIN desk_dw.dim_priority AS p ON p.priority = t.priority
+GROUP BY p.priority, p.sla_hours
+ORDER BY p.sla_hours;</code></pre>
+<pre class="out">+----------+-----------+--------+
+| priority | sla_hours | events |
++----------+-----------+--------+
+| high     |         4 |      4 |
+| normal   |        24 |      6 |
+| low      |        72 |      1 |
++----------+-----------+--------+</pre>
+        <p>Both return the same rows. The snowflake version stores each SLA number once, in the three rows of
+        <code>dim_priority</code>, and pays with one more join in every query that needs it.</p>
+        <h3>When snowflaking pays</h3>
+        <p>Snowflaking stores less repeated text but adds joins. BigQuery performs best on denormalised data, because
+        joining large tables on every query is resource
+        intensive.<sup class="cite"><a href="#src-15">15</a></sup> A snowflaked dimension can still be worth it in three
+        cases:<sup class="cite"><a href="#src-4">4</a></sup></p>
+        <ul>
+          <li>the dimension is very large, and storage matters more than query speed;</li>
+          <li>another fact table sits at a higher grain, such as a product subcategory, and needs a dimension at that level;</li>
+          <li>history is tracked at the higher level, such as a priority whose SLA hours change over time.</li>
+        </ul>
+        <p>For the desk, with three priorities and six tickets, the star form wins. The repeated SLA hours cost almost
+        nothing, and every priority question saves a join.</p>
+        <h3>Nested and repeated fields</h3>
+        <p>BigQuery has a third way, and its documentation calls it the native one: nested and repeated
+        fields.<sup class="cite"><a href="#src-14">14</a></sup> A ticket row can hold its events in a repeated
+        field, an array of records inside the row, so related rows stay together without a join on every
+        query.<sup class="cite"><a href="#src-15">15</a></sup></p>
+        <table>
+          <thead><tr><th>Design</th><th>Shape</th><th>Good fit</th></tr></thead>
+          <tbody>
+            <tr><td>Star</td><td>a fact plus flat, denormalised dimensions</td><td>most reporting; the default for a warehouse</td></tr>
+            <tr><td>Snowflake</td><td>dimensions split into linked lookup tables</td><td>very large dimensions, facts at a higher grain, history kept at a higher level</td></tr>
+            <tr><td>Nested and repeated</td><td>child rows stored inside the parent row</td><td>BigQuery data always read together, such as a ticket and its events</td></tr>
+          </tbody>
+        </table>
+        <p>The desk keeps a flat star because its questions cut events by several dimensions at once, and flat tables keep
+        each cut a plain join.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A snowflake normalises the dimensions into lookup tables, and the fact stays whole.</li>
+          <li>Snowflaking saves repeated text and costs a join in every query that needs the detail.</li>
+          <li>BigQuery favours denormalised data and offers nested, repeated fields as its native option.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A snowflake schema is a star whose dimensions are normalised further. The ticket dimension points to a
+          separate priority table instead of carrying the priority's details itself, so it stores less repetition, but
+          every query that needs the detail pays an extra join.</p>
+          <p>I'd use a star by default, especially in BigQuery, which performs best on denormalised data. I'd snowflake a
+          dimension when it's huge and storage matters, when another fact sits at that higher level, or when the higher
+          level keeps its own history. In BigQuery I'd also consider nested, repeated fields for child rows that are
+          always read with their parent.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
+        <div class="tag">Physical model</div>
+        <h2>The physical model in BigQuery: partitions, clusters and the cache</h2>
+        <p>The physical model decides what a query has to read, and in BigQuery what a query reads is what it costs. Three
+        features of the desk's fact table settle that.</p>
+        <h3>Partitioning and pruning</h3>
+        <p>A partitioned table is divided into segments. BigQuery offers three partitioning
+        strategies:<sup class="cite"><a href="#src-16">16</a></sup></p>
+        <ul>
+          <li>a time-unit column: a DATE, DATETIME or TIMESTAMP column of the table;</li>
+          <li>ingestion time: the moment each row was loaded;</li>
+          <li>integer range: a whole-number column cut into ranges, such as customer ids in blocks of a thousand.</li>
+        </ul>
+        <p>A query that filters on the partition column prunes partitions. It skips the segments the filter rules out, so it
+        scans and bills fewer bytes and runs faster.<sup class="cite"><a href="#src-17">17</a></sup> The desk's
+        fact is partitioned by <code>event_date</code>, one partition per day, because most questions ask about a range of
+        days.</p>
+        <p>A <code>CREATE TABLE</code> with <code>PARTITION BY</code> and <code>CLUSTER BY</code> before its <code>AS
+        SELECT</code> creates a partitioned and clustered table from a
+        query.<sup class="cite"><a href="#src-18">18</a></sup> The fact statement from the star section gains two lines,
+        <code>PARTITION BY event_date</code> and <code>CLUSTER BY ticket_key</code>, just before <code>AS</code>. Everything
+        else stays exactly as it was:</p>
+<pre><code>-- One row per ticket event, partitioned by day and clustered by ticket.
+CREATE OR REPLACE TABLE desk_dw.fact_ticket_events
+PARTITION BY event_date
+CLUSTER BY ticket_key
+AS
+SELECT
+  e.event_id,
+  t.ticket_id AS ticket_key,
+  c.customer_key,
+  COALESCE(t.agent_id, 0) AS agent_key,
+  CAST(FORMAT_DATE('%Y%m%d', DATE(e.created_at)) AS INT64) AS date_key,
+  DATE(e.created_at) AS event_date,
+  e.kind,
+  DATETIME_DIFF(e.created_at, t.opened_at, HOUR) AS hours_since_open,
+  1 AS event_count
+FROM desk_raw.ticket_events AS e
+JOIN desk_raw.tickets AS t ON t.ticket_id = e.ticket_id
+JOIN desk_dw.dim_customer AS c ON c.customer_id = t.customer_id
+WHERE e.kind IN ('open', 'assigned', 'closed')
+  AND e.created_at &gt;= t.opened_at
+QUALIFY ROW_NUMBER() OVER (PARTITION BY e.ticket_id, e.kind, e.created_at ORDER BY e.event_id) = 1;</code></pre>
+        <p>Run again, the statement rebuilds the table with the same 11 rows, now in three daily partitions: one event on
+        2026-10-17, six on 2026-10-18 and four on 2026-10-19.</p>
+        <h3>Clustering</h3>
+        <p>Clustering sorts a table's storage by up to four columns, and a filter on those columns reduces the bytes
+        scanned. The gain grows with the size of the table.<sup class="cite"><a href="#src-19">19</a></sup> The desk
+        clusters its fact by <code>ticket_key</code>, so the events of one ticket sit together inside each daily partition.
+        A question about one ticket then reads only the blocks that hold it.</p>
+        <p>The two work together. The partition filter removes whole days, then the cluster order narrows the read inside
+        the days that remain. On 11 rows neither makes a measurable difference, so the desk's example cannot show
+        the gain. It appears when the same fact holds years of events.</p>
+        <div class="ix-spot" data-snippet="SELECT ticket_key, COUNT(*) AS closures&#10;FROM desk_dw.fact_ticket_events&#10;WHERE kind = 'closed'&#10;GROUP BY ticket_key;" data-q="The fact is partitioned by event_date and clustered by ticket_key. Why does this query read every partition?" data-a="kind is neither the partition column nor a cluster column, so nothing lets BigQuery skip a day. Add a range on the partition column, such as WHERE event_date BETWEEN '2026-10-18' AND '2026-10-19' AND kind = 'closed', and only those days are scanned and billed."></div>
+        <h3>The query cache and the dry run</h3>
+        <p>Two tools show what a query costs. A dry run reports the bytes a query would process, without running
+        it:<sup class="cite"><a href="#src-20">20</a></sup></p>
+<pre><code>bq query --dry_run --use_legacy_sql=false 'SELECT kind, COUNT(*) AS events FROM desk_dw.fact_ticket_events GROUP BY kind'</code></pre>
+        <p>The command prints a byte count and runs nothing. On a fact with months of data, the same dry run with a filter
+        on <code>event_date</code> counts only the partitions the filter keeps.</p>
+        <p>Query results are cached for about 24 hours per user and project. A rerun of the same query text over unchanged
+        tables reads the cached result and bills no bytes.<sup class="cite"><a href="#src-21">21</a></sup> The cache is
+        skipped when the query calls a non-deterministic function such as <code>CURRENT_TIMESTAMP</code>, or when a table
+        it reads has changed.<sup class="cite"><a href="#src-21">21</a></sup> A fast, free rerun therefore shows only
+        that the cache answered. The dry run is the reliable measure of cost.</p>
+        <h3>The sandbox's 60-day partition expiration</h3>
+        <p>The BigQuery sandbox applies a 60-day default expiration to tables and partitions, and allows no
+        DML.<sup class="cite"><a href="#src-6">6</a></sup> A partition of <code>fact_ticket_events</code> is aged by its
+        <code>event_date</code>, so a partition more than 60 days old is deleted, and a table partitioned by an old date
+        comes out empty.</p>
+        <p>The desk's events date from mid-October 2026, so its partitions last until mid-December 2026. A project whose
+        data dates from 2019 would load a partitioned fact and find nothing in it. That project partitions by load date
+        instead, or leaves a small fact unpartitioned, and says why in its README.</p>
+        <h3>Design best practices on one page</h3>
+        <p>Warehouse design advice falls into three groups. On the data-quality side, a load should test integrity between
+        related tables and use special member rows instead of null
+        keys.<sup class="cite"><a href="#src-4">4</a></sup></p>
+        <table>
+          <thead><tr><th>Area</th><th>Practice</th><th>On the desk</th></tr></thead>
+          <tbody>
+            <tr><td>Schema design</td><td>state the grain, prefer a star, share conformed dimensions</td><td>one row per ticket event; one <code>dim_date</code></td></tr>
+            <tr><td>Data quality</td><td>check related tables match, use member rows for missing keys</td><td>agent key 0; bad events kept out of the fact</td></tr>
+            <tr><td>Performance</td><td>denormalise, partition on the common filter, cluster on lookups, dry-run first</td><td>daily <code>event_date</code> partitions; <code>ticket_key</code> clusters</td></tr>
+          </tbody>
+        </table>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Partitions by a date column, ingestion time or integer range let a matching filter prune them.</li>
+          <li>Clustering sorts storage by up to four columns, so filters on them scan fewer bytes.</li>
+          <li>A cached rerun bills nothing; a dry run reports the bytes before anything runs.</li>
+          <li>The sandbox expires partitions older than 60 days, so old dates load empty.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>BigQuery can partition a table by a date or timestamp column, by ingestion time, or by an integer range. When
+          a query filters on the partition column, BigQuery skips the partitions the filter rules out, so it scans and
+          bills fewer bytes and runs faster. A filter on any other column still reads every partition.</p>
+          <p>On a fact table I'd partition by the event date and cluster by the column people look up most, like the
+          ticket key. I check the cost with a dry run first. Identical reruns over unchanged tables come from the cache
+          for about a day and bill nothing.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="6">
+        <div class="tag">Slowly changing dimensions</div>
+        <h2>Slowly changing dimensions: types 0 to 6 and how to choose</h2>
+        <p>Dimensions change too, only slowly. Dana Whitfield, customer 1, pays 49.00 a month through October, and on
+        2026-11-05 she moves to the 199.00 plan.</p>
+        <h3>What should last month's report say?</h3>
+        <p>A slowly changing dimension manages values that change slowly and unpredictably, such as a customer's email or
+        plan.<sup class="cite"><a href="#src-9">9</a></sup> The question it raises is what happens to the old value.
+        Suppose a report sums October's ticket events by the customer's monthly fee:</p>
+        <ul>
+          <li>if the dimension overwrites Dana's fee, her October events report under 199.00, a plan she did not have yet;</li>
+          <li>if the dimension keeps both versions, her October events report under 49.00 and November's under 199.00.</li>
+        </ul>
+        <p>Neither answer is wrong in general. The first suits "what are our customers worth today", and the second suits
+        "what did October look like". The rule chosen for each attribute is its SCD type.</p>
+        <h3>Types 0 to 6</h3>
+        <p>Each type is a different rule for the old
+        value:<sup class="cite"><a href="#src-4">4</a></sup><sup class="cite"><a href="#src-8">8</a></sup></p>
+        <table>
+          <thead><tr><th>Type</th><th>On a change</th><th>What it keeps</th></tr></thead>
+          <tbody>
+            <tr><td>0</td><td>nothing happens; the value is fixed</td><td>the original only</td></tr>
+            <tr><td>1</td><td>the value is overwritten</td><td>the current value only</td></tr>
+            <tr><td>2</td><td>the old row is closed and a new row added</td><td>every version, with dates</td></tr>
+            <tr><td>3</td><td>the old value moves to a previous-value column</td><td>the current value and one before it</td></tr>
+            <tr><td>4</td><td>changing attributes live in a separate mini-dimension or history table</td><td>the main row plus a separate history</td></tr>
+            <tr><td>5</td><td>a hybrid that combines simpler types</td><td>what the combined types keep</td></tr>
+            <tr><td>6</td><td>a hybrid of types 1, 2 and 3</td><td>what types 1, 2 and 3 keep, together</td></tr>
+          </tbody>
+        </table>
+        <p>Type 3 keeps only limited history and is rarely used, and types 5 and 6 are harder to
+        maintain.<sup class="cite"><a href="#src-4">4</a></sup><sup class="cite"><a href="#src-8">8</a></sup></p>
+        <h3>Choosing a type</h3>
+        <p>Choose per attribute, from two questions: how does this data change, and what must reports show? Use type 1
+        where no history matters, and type 2 only where a report must show the value in force when the event
+        happened.<sup class="cite"><a href="#src-4">4</a></sup> On the desk:</p>
+        <ul>
+          <li><code>dim_date</code> is type 0, because a date's attributes never
+          change;<sup class="cite"><a href="#src-8">8</a></sup></li>
+          <li><code>dim_ticket</code> is type 1, because its status is current state and the history already sits in the fact;</li>
+          <li><code>dim_customer</code> is type 2, because revenue questions need the fee a customer paid at the time.</li>
+        </ul>
+        <p>An attribute that changes often belongs in the fact table, not in a type 2 dimension, or every change would add
+        a dimension row.<sup class="cite"><a href="#src-4">4</a></sup> Type 2 costs more rows
+        and a date-range join, while type 1 is simple but files every past event under the new
+        value.<sup class="cite"><a href="#src-4">4</a></sup></p>
+        <h3>Effective dates and a current flag</h3>
+        <p>Three columns make type 2 history queryable:</p>
+        <ul>
+          <li><code>effective_from</code> holds the first day the version is valid;</li>
+          <li><code>effective_to</code> holds the first day it no longer is, so the range excludes that day;</li>
+          <li><code>is_current</code> is true for the version in force.</li>
+        </ul>
+        <p>A type 2 change sets the old row's end date and current flag to false, then adds a new current row whose start
+        date is that end date.<sup class="cite"><a href="#src-4">4</a></sup> After Dana's change her rows read:</p>
+<pre><code>SELECT
+  customer_key,
+  effective_from,
+  effective_to,
+  is_current
+FROM desk_dw.dim_customer
+WHERE customer_id = 1
+ORDER BY customer_key;</code></pre>
+<pre class="out">+--------------+----------------+--------------+------------+
+| customer_key | effective_from | effective_to | is_current |
++--------------+----------------+--------------+------------+
+|            1 | 2026-10-01     | 2026-11-05   | false      |
+|            5 | 2026-11-05     | 9999-12-31   | true       |
++--------------+----------------+--------------+------------+</pre>
+        <p>The far-future date 9999-12-31 is the open end of the version still in force. Facts join to a type 2 dimension
+        with a time-based lookup on the event's date.<sup class="cite"><a href="#src-9">9</a></sup> Inside the fact
+        statement, the customer join line stays and gains two conditions below it:
+        <code>AND DATE(e.created_at) &gt;= c.effective_from</code> and <code>AND DATE(e.created_at) &lt;
+        c.effective_to</code>.</p>
+        <p>Each event now matches exactly one of Dana's versions. Without the two date conditions, each of her four
+        October events would match both rows and be counted twice. The end date is exclusive: with <code>&lt;=</code>, an
+        event on 2026-11-05 would match both versions. Once the fact is rebuilt, a query counts which version her events
+        carry:</p>
+<pre><code>-- Dana's events by the version of her customer row they joined.
+SELECT
+  c.customer_key,
+  COUNT(*) AS events
+FROM desk_dw.fact_ticket_events AS f
+JOIN desk_dw.dim_customer AS c ON c.customer_key = f.customer_key
+WHERE c.customer_id = 1
+GROUP BY c.customer_key;</code></pre>
+        <p>It returns one row, customer key 1 with 4 events. All four of Dana's events fall in October, before her
+        199.00 version starts, so key 5 has none yet.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A slowly changing dimension needs a rule for what happens to an attribute's old value.</li>
+          <li>Types 0 to 3 fix, overwrite, version or keep one previous value; 4 to 6 add history and hybrids.</li>
+          <li>Choose per attribute, from how it changes and what reports must show.</li>
+          <li>Type 2 rows carry effective dates and a current flag, and facts join on the event date.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A slowly changing dimension is one whose attributes change now and then, like a customer's plan. Type 0 never
+          changes, type 1 overwrites, type 2 adds a new dated row per version, and type 3 keeps one previous value in an
+          extra column. Type 4 moves the changing attributes to a history table, and 5 and 6 are hybrids, with 6
+          combining 1, 2 and 3.</p>
+          <p>I choose per attribute. If reports must show the value as it was when the event happened, like a customer's
+          fee, it's type 2 with effective dates. If only the current value matters, it's type 1. Anything that changes
+          constantly goes in the fact table instead.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="7">
+        <div class="tag">SCD type 2</div>
+        <h2>SCD type 2 in Python, tested</h2>
+        <p>The type 2 rule is easiest to trust in a plain Python function. A function that takes the current rows, the
+        source rows and a date, and returns the new rows, touches no database, so a test can check it in
+        milliseconds.</p>
+        <h3>A function from old rows to new rows</h3>
+        <p>Five things in it are new to the course: three pieces of syntax and two built-in functions:</p>
+        <ul>
+          <li><code>[dict(row) for row in dimension]</code> is a list comprehension, which builds a new list holding a copy of each row;</li>
+          <li>the braces after <code>current =</code> form a dict comprehension with an <code>if</code>, mapping each customer id to its current row;</li>
+          <li>the parentheses inside <code>max(...)</code> and <code>all(...)</code> hold generator expressions, which hand over one value at a time;</li>
+          <li><code>default=0</code> makes <code>max</code> return 0 when it is handed no values, so an empty dimension starts its keys at 1;</li>
+          <li><code>all(...)</code> returns <code>True</code> only when every value it is handed is true, here every tracked column matching.</li>
+        </ul>
+<pre><code>from datetime import date
+
+TRACKED = ("name", "email", "country", "monthly_fee")
+OPEN_END = date(9999, 12, 31)
+
+
+def apply_scd2(dimension, source, as_of):
+    """Return the customer dimension after applying the source rows as an SCD type 2."""
+    rows = [dict(row) for row in dimension]
+    current = {row["customer_id"]: row for row in rows if row["is_current"]}
+    next_key = max((row["customer_key"] for row in rows), default=0) + 1
+    for src in source:
+        old = current.get(src["customer_id"])
+        if old is not None and all(old[col] == src[col] for col in TRACKED):
+            continue
+        if old is not None:
+            old["effective_to"] = as_of
+            old["is_current"] = False
+        rows.append({
+            "customer_key": next_key,
+            "customer_id": src["customer_id"],
+            "name": src["name"],
+            "email": src["email"],
+            "country": src["country"],
+            "monthly_fee": src["monthly_fee"],
+            "effective_from": as_of,
+            "effective_to": OPEN_END,
+            "is_current": True,
+        })
+        next_key += 1
+    return rows</code></pre>
+        <p>Saved as <code>transform.py</code>, the module prints nothing. A customer whose tracked values all match the
+        current row is skipped. A changed customer has the current row closed, and a changed or new customer gets a new
+        current row with the next surrogate key. <code>as_of</code> is always passed in, so the same call gives the same
+        rows on any day.</p>
+        <p>The comparisons are safe for two reasons. A <code>date</code> compares with <code>&lt;</code> and
+        <code>&gt;=</code>, which is how an effective-date range picks a
+        version.<sup class="cite"><a href="#src-22">22</a></sup> The fee is a <code>Decimal</code>, which compares
+        exactly where a float may not.<sup class="cite"><a href="#src-23">23</a></sup></p>
+<pre><code>from datetime import date
+from decimal import Decimal
+
+from transform import OPEN_END, apply_scd2
+
+dana = {"customer_key": 1, "customer_id": 1, "name": "Dana Whitfield",
+        "email": "dana@example.com", "country": "CA", "monthly_fee": Decimal("49.00"),
+        "effective_from": date(2026, 10, 1), "effective_to": OPEN_END, "is_current": True}
+source = [{"customer_id": 1, "name": "Dana Whitfield", "email": "dana@example.com",
+           "country": "CA", "monthly_fee": Decimal("199.00")}]
+for row in apply_scd2([dana], source, date(2026, 11, 5)):
+    print(row["customer_key"], row["monthly_fee"], row["effective_from"],
+          row["effective_to"], row["is_current"])</code></pre>
+<pre class="out">1 49.00 2026-10-01 2026-11-05 False
+2 199.00 2026-11-05 9999-12-31 True</pre>
+        <h3>Testing it with pytest</h3>
+        <p>The tests build their rows inline in a fixture, so they need no MySQL, no BigQuery and no environment
+        variable. Each test gets a fresh copy of the fixture's rows.</p>
+<pre><code>"""Tests for the SCD type 2 transform."""
+from datetime import date
+from decimal import Decimal
+
+import pytest
+
+from transform import OPEN_END, apply_scd2
+
+AS_OF = date(2026, 11, 5)
+
+
+@pytest.fixture
+def dimension():
+    """One current row for Dana at 49.00."""
+    return [{"customer_key": 1, "customer_id": 1, "name": "Dana Whitfield",
+             "email": "dana@example.com", "country": "CA", "monthly_fee": Decimal("49.00"),
+             "effective_from": date(2026, 10, 1), "effective_to": OPEN_END, "is_current": True}]
+
+
+def source_row(fee):
+    """Dana as the source system holds her, at the given fee."""
+    return {"customer_id": 1, "name": "Dana Whitfield", "email": "dana@example.com",
+            "country": "CA", "monthly_fee": Decimal(fee)}
+
+
+def test_unchanged_customer_changes_nothing(dimension):
+    """Equal tracked values leave the dimension as it was."""
+    assert apply_scd2(dimension, [source_row("49.00")], AS_OF) == dimension
+
+
+def test_changed_customer_closes_old_row_and_adds_new(dimension):
+    """A new fee closes the current row and appends a current one."""
+    old, new = apply_scd2(dimension, [source_row("199.00")], AS_OF)
+    assert (old["effective_to"], old["is_current"]) == (AS_OF, False)
+    assert (new["customer_key"], new["monthly_fee"], new["is_current"]) == (2, Decimal("199.00"), True)
+
+
+def test_input_rows_are_not_changed(dimension):
+    """The function copies its input instead of editing it."""
+    apply_scd2(dimension, [source_row("199.00")], AS_OF)
+    assert dimension[0]["is_current"] is True</code></pre>
+        <p>Saved as <code>test_transform.py</code> beside the module, the file is collected by pytest, which runs each
+        <code>test_</code> function:</p>
+<pre><code>pytest -q test_transform.py</code></pre>
+<pre class="out">...                                                                      [100%]
+3 passed in 0.01s</pre>
+        <h3>Loading the result without DML</h3>
+        <p>The sandbox allows no DML, so no UPDATE can close Dana's old row in
+        place.<sup class="cite"><a href="#src-6">6</a></sup> A type 2 change becomes a whole-table load instead: read
+        the dimension, apply the function, and replace the table with
+        <code>WRITE_TRUNCATE</code>.<sup class="cite"><a href="#src-6">6</a></sup></p>
+        <p>The client finds its credentials through Application Default Credentials, written once by
+        <code>gcloud auth application-default login</code>, so no key file sits in the
+        repository.<sup class="cite"><a href="#src-24">24</a></sup> <code>query(sql).result()</code> waits for the job and
+        returns its rows.<sup class="cite"><a href="#src-25">25</a></sup> Passing the table's own schema to the load
+        keeps BigQuery from guessing the column types.<sup class="cite"><a href="#src-25">25</a></sup></p>
+<pre><code>import os
+from datetime import date
+from decimal import Decimal
+
+from google.cloud import bigquery
+
+from transform import apply_scd2
+
+bq = bigquery.Client(project=os.environ["DESK_GCP_PROJECT"])
+table = "desk_dw.dim_customer"
+dimension = [dict(row) for row in bq.query(f"SELECT * FROM {table}").result()]
+source = [{"customer_id": 1, "name": "Dana Whitfield", "email": "dana@example.com",
+           "country": "CA", "monthly_fee": Decimal("199.00")}]
+rows = apply_scd2(dimension, source, date(2026, 11, 5))
+payload = [
+    {key: str(value) if isinstance(value, (date, Decimal)) else value for key, value in row.items()}
+    for row in rows
+]
+config = bigquery.LoadJobConfig(schema=bq.get_table(table).schema,
+                                write_disposition="WRITE_TRUNCATE")
+job = bq.load_table_from_json(payload, table, job_config=config)
+job.result()
+print(job.output_rows)</code></pre>
+        <p>It prints 5: the four customers' rows, with Dana's closed, plus her new current row under key 5. Only Dana
+        is in <code>source</code>, and <code>apply_scd2</code> leaves every customer it is not given exactly as it was. The
+        <code>payload</code> step writes dates and Decimals as text, because a load from JSON takes plain values.</p>
+        <p>Inside the <code>payload</code> step,
+        <code>isinstance(value, (date, Decimal))</code> asks whether a value is a date or a Decimal. The conditional
+        expression <code>x if c else y</code> gives <code>x</code> when <code>c</code> is true and <code>y</code>
+        otherwise, so those values become <code>str(value)</code> and every other value passes through unchanged.</p>
+        <h3>Keeping the history on a rerun</h3>
+        <p>Once the dimension keeps history, its SQL statement must stop rebuilding it. <code>CREATE OR REPLACE</code> on
+        every run would wipe Dana's closed row, so the customer statement becomes <code>CREATE TABLE IF NOT
+        EXISTS</code>:</p>
+<pre><code>-- Customers, kept as an SCD type 2 after the first build.
+CREATE TABLE IF NOT EXISTS desk_dw.dim_customer AS
+SELECT
+  ROW_NUMBER() OVER (ORDER BY customer_id) AS customer_key,
+  customer_id,
+  name,
+  email,
+  country,
+  monthly_fee,
+  DATE '2026-10-01' AS effective_from,
+  DATE '9999-12-31' AS effective_to,
+  TRUE AS is_current
+FROM desk_raw.customers;</code></pre>
+        <p>A first run builds four current rows, with keys 1 to 4 from
+        <code>ROW_NUMBER()</code>.<sup class="cite"><a href="#src-12">12</a></sup> Once the table exists, the statement
+        does nothing.<sup class="cite"><a href="#src-18">18</a></sup> In someone else's code, type 2 looks
+        like this: a function taking current rows, source rows and an as-of date, and <code>9999-12-31</code> as the open
+        end.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Type 2 fits a pure function: current rows, source rows and a date in, new rows out.</li>
+          <li>Its tests build rows inline and need no database.</li>
+          <li>Without DML, the new dimension replaces the old in one load that uses the table's schema.</li>
+          <li>A history-keeping dimension is created only when missing, never replaced.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I write type 2 as a pure function. It takes the current dimension rows, the source rows and an as-of date,
+          and returns the new rows: each changed customer's current row is closed on the as-of date, and a new current row
+          gets the next surrogate key. Because it never touches a database, I can test it with pytest on a few inline
+          rows.</p>
+          <p>Then I load the result. A BigQuery sandbox has no UPDATE, so I replace the whole table with WRITE_TRUNCATE and
+          pass the table's own schema so nothing is autodetected.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="8">
+        <div class="tag">Check yourself</div>
+        <h2>Check yourself</h2>
+        <p>Answer each question out loud before you open it. Each one matches a section above.</p>
+        <details class="check"><summary>What is a data model, and how does "events per agent, per month" turn into tables?</summary><p>A data model is the blueprint of what data an organisation keeps, how the pieces relate and how they are stored and queried. The thing counted, events, becomes a fact table at one row per event. Each "per" names a dimension: an agent dimension, and a date dimension with a month attribute.</p></details>
+        <details class="check"><summary>Which of the three model levels does a business stakeholder sign off, and which one is rewritten when the desk moves from MySQL to BigQuery?</summary><p>The conceptual model, with its entities and rules, is the one stakeholders agree on. A change of engine rewrites the physical model, for example DECIMAL(8,2) becoming NUMERIC. The logical model, with its attributes, keys and grain, survives the move.</p></details>
+        <details class="check"><summary>What are facts, dimensions and measures, and why is the grain stated before any column?</summary><p>A fact table records events at one grain and holds keys plus numeric measures, such as <code>event_count</code>. Dimension tables hold the descriptive attributes that queries filter and group by. Stating the grain first keeps every measure at one level; a ticket-level number copied onto event rows is summed twice.</p></details>
+        <details class="check"><summary>How does dimensional modeling differ from the entity-relationship model behind the desk's MySQL tables?</summary><p>The ER model is normalised so each fact is stored once and writes stay consistent. A dimensional model accepts repeated descriptive data so analytic questions need only one join per dimension. The application keeps the first and reporting reads the second.</p></details>
+        <details class="check"><summary>Design a star schema for an online shop's orders: grain, fact, dimensions and measures.</summary><p>Grain: one row per order line. The fact <code>fact_order_lines</code> holds keys to product, customer and date dimensions, with quantity and amount as additive measures. The date dimension can be shared with any other fact table as a conformed dimension.</p></details>
+        <details class="check"><summary>When is a snowflake's extra join worth paying, and which design would you start with in BigQuery?</summary><p>When a dimension is very large and storage matters more than speed, when another fact sits at the higher level, or when the higher level keeps its own history. Otherwise start with a star, because BigQuery performs best on denormalised data, and consider nested, repeated fields for rows always read with their parent.</p></details>
+        <details class="check"><summary>The fact is partitioned by <code>event_date</code>. A query filters only on <code>kind</code>, and its second run is free. Is it cheap?</summary><p>No. A filter on a column other than the partition column prunes nothing, so every partition is read. The free second run came from the cache, which serves identical queries over unchanged tables for about 24 hours; a dry run shows the real byte count.</p></details>
+        <details class="check"><summary>Dana moves from the 49.00 plan to the 199.00 plan. Which SCD type suits <code>dim_customer</code>, and what would types 1 and 3 keep instead?</summary><p>Type 2, because revenue reports must show the fee in force when each event happened: her old row is closed on the change date and a new current row is added. Type 1 would overwrite 49.00 and file October under 199.00. Type 3 would keep 49.00 in a previous-value column and lose anything older.</p></details>
+        <details class="check"><summary>Why does the customer dimension's SQL say <code>CREATE TABLE IF NOT EXISTS</code>, and why is the date join <code>&lt; effective_to</code>, not <code>&lt;=</code>?</summary><p><code>CREATE OR REPLACE</code> would rebuild the table from staging on every run and wipe the closed versions. The end date is exclusive, so an event on the change day matches only the new version; with <code>&lt;=</code> it would match both and count twice.</p></details>
+      </section>
+
+      <section class="reading-sources" aria-label="Sources and deeper dive">
+        <h2>Sources &amp; deeper dive</h2>
+        <ul>
+          <li id="src-1"><a href="https://aws.amazon.com/what-is/data-modeling/" target="_blank" rel="noopener">What is data modeling? (AWS)</a> — what a data model is and the conceptual, logical and physical levels.</li>
+          <li id="src-2"><a href="https://www.ibm.com/think/topics/data-modeling" target="_blank" rel="noopener">What is data modeling? (IBM)</a> — a second account of the three model levels and who reads each.</li>
+          <li id="src-3"><a href="https://cloud.google.com/bigquery/docs/introduction" target="_blank" rel="noopener">BigQuery overview</a> — the analytic workload a warehouse such as BigQuery is built for.</li>
+          <li id="src-4"><a href="https://learn.microsoft.com/en-us/fabric/data-warehouse/dimensional-modeling-dimension-tables" target="_blank" rel="noopener">Modeling dimension tables (Microsoft Fabric)</a> — surrogate keys, date dimensions, member rows, snowflaking and SCD types 1 to 3.</li>
+          <li id="src-5"><a href="https://learn.microsoft.com/en-us/fabric/data-warehouse/dimensional-modeling-overview" target="_blank" rel="noopener">Dimensional modeling in Microsoft Fabric Warehouse</a> — the star schema and why a warehouse design must adapt.</li>
+          <li id="src-6"><a href="https://cloud.google.com/bigquery/docs/sandbox" target="_blank" rel="noopener">BigQuery sandbox</a> — the sandbox's 60-day expiration and its missing DML.</li>
+          <li id="src-7"><a href="https://learn.microsoft.com/en-us/fabric/data-warehouse/dimensional-modeling-fact-tables" target="_blank" rel="noopener">Modeling fact tables (Microsoft Fabric)</a> — fact tables, grain and additive, semi-additive and non-additive measures.</li>
+          <li id="src-8"><a href="https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/" target="_blank" rel="noopener">Dimensional modeling techniques (Kimball Group)</a> — the catalogue of techniques, including conformed dimensions and SCD types 0, 4, 5 and 6.</li>
+          <li id="src-9"><a href="https://learn.microsoft.com/en-us/power-bi/guidance/star-schema" target="_blank" rel="noopener">Understand star schema (Power BI)</a> — star schema design, mixed grains, snowflaking and slowly changing dimensions.</li>
+          <li id="src-10"><a href="https://cloud.google.com/bigquery/docs/reference/standard-sql/array_functions" target="_blank" rel="noopener">Array functions (BigQuery)</a> — GENERATE_DATE_ARRAY for a date dimension.</li>
+          <li id="src-11"><a href="https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions" target="_blank" rel="noopener">Date functions (BigQuery)</a> — FORMAT_DATE and EXTRACT for date keys and attributes.</li>
+          <li id="src-12"><a href="https://cloud.google.com/bigquery/docs/reference/standard-sql/numbering_functions" target="_blank" rel="noopener">Numbering functions (BigQuery)</a> — ROW_NUMBER for de-duplication and surrogate keys.</li>
+          <li id="src-13"><a href="https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax" target="_blank" rel="noopener">Query syntax (BigQuery)</a> — joins, GROUP BY and the QUALIFY clause.</li>
+          <li id="src-14"><a href="https://cloud.google.com/bigquery/docs/migration/schema-data-overview" target="_blank" rel="noopener">Schema and data transfer overview (BigQuery)</a> — star, snowflake and nested designs in BigQuery.</li>
+          <li id="src-15"><a href="https://cloud.google.com/bigquery/docs/nested-repeated" target="_blank" rel="noopener">Specify nested and repeated columns (BigQuery)</a> — why BigQuery favours denormalised data, and repeated fields.</li>
+          <li id="src-16"><a href="https://cloud.google.com/bigquery/docs/partitioned-tables" target="_blank" rel="noopener">Introduction to partitioned tables (BigQuery)</a> — the three partitioning strategies.</li>
+          <li id="src-17"><a href="https://cloud.google.com/bigquery/docs/best-practices-performance-compute" target="_blank" rel="noopener">Optimize query computation (BigQuery)</a> — partition pruning and its effect on bytes and speed.</li>
+          <li id="src-18"><a href="https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_table_statement" target="_blank" rel="noopener">CREATE TABLE statement (BigQuery)</a> — PARTITION BY and CLUSTER BY on a table created from a query.</li>
+          <li id="src-19"><a href="https://cloud.google.com/bigquery/docs/clustered-tables" target="_blank" rel="noopener">Introduction to clustered tables (BigQuery)</a> — clustering by up to four columns.</li>
+          <li id="src-20"><a href="https://cloud.google.com/bigquery/docs/best-practices-costs" target="_blank" rel="noopener">Estimate and control costs (BigQuery)</a> — the dry run and other ways to see a query's cost first.</li>
+          <li id="src-21"><a href="https://cloud.google.com/bigquery/docs/cached-results" target="_blank" rel="noopener">Using cached query results (BigQuery)</a> — how long results are cached and when the cache is skipped.</li>
+          <li id="src-22"><a href="https://docs.python.org/3/library/datetime.html" target="_blank" rel="noopener">datetime (Python)</a> — date objects and their comparisons.</li>
+          <li id="src-23"><a href="https://docs.python.org/3/library/decimal.html" target="_blank" rel="noopener">decimal (Python)</a> — exact decimal arithmetic for money.</li>
+          <li id="src-24"><a href="https://cloud.google.com/docs/authentication/provide-credentials-adc" target="_blank" rel="noopener">Set up Application Default Credentials</a> — how client libraries find credentials without a key file.</li>
+          <li id="src-25"><a href="https://cloud.google.com/python/docs/reference/bigquery/latest" target="_blank" rel="noopener">BigQuery Python client library</a> — Client, query results and load jobs.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · after you have read the page</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 4 Day 4</footer>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 4 — goals</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Define a data model and explain how business questions become conceptual, logical and physical models and then tables</li>
+      <li>Explain fact tables, dimension tables, measures and grain, and how dimensional modeling differs from entity-relationship modeling</li>
+      <li>Design a star schema for a business process at a stated grain, and query it in BigQuery with joins, filters and aggregates</li>
+      <li>Compare star, snowflake and nested designs, and say when a snowflake's extra joins are worth their cost</li>
+      <li>Explain BigQuery's partitioning strategies and how filtering on the partition column cuts the bytes a query scans and bills</li>
+    </ul>
+    <p class="goals-foot">Friday's page assumes the desk's star schema and its customer history. Finish the check before you close the page.</p>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Day 5 — ETL & ELT pipelines →", href: "day-5-etl-and-elt-pipelines.html" };
+window.DIAGRAM = {
+  title: "Day 4 · from business questions to a star with history",
+  width: 500, height: 520,
+  nodes: [
+    { id:"questions", step:0, kind:"example", x:24, y:14, w:452, h:44, label:"BUSINESS QUESTIONS\n  events by agent · by priority · by day", detail:"Each thing counted becomes a measure; each 'by' names a dimension. The model is agreed before any CREATE TABLE." },
+    { id:"conceptual", step:1, x:24, y:80, w:140, h:48, label:"Conceptual\n  ticket · customer\n  agent · event", detail:"Entities and the rules between them, simple enough for stakeholders to sign off." },
+    { id:"logical", step:1, x:180, y:80, w:140, h:48, label:"Logical\n  keys · attributes\n  grain", detail:"Adds attributes, keys, relationships and the grain, and names no engine." },
+    { id:"physical", step:1, x:336, y:80, w:140, h:48, label:"Physical\n  INT64 · NUMERIC\n  desk_dw.*", detail:"One engine's types, names and tuning. A change of engine rewrites this level only." },
+    { id:"date", step:3, x:24, y:154, w:140, h:44, label:"dim_date\n  92 days · type 0", detail:"date_key is YYYYMMDD, built with GENERATE_DATE_ARRAY and FORMAT_DATE. A date's attributes never change." },
+    { id:"agent", step:3, x:336, y:154, w:140, h:44, label:"dim_agent\n  key 0 = unassigned", detail:"A special member row instead of a null key, so every fact row finds its agent." },
+    { id:"fact", step:2, x:180, y:196, w:140, h:68, label:"fact_ticket_events\n  one row per event\n  event_count\n  hours_since_open", detail:"Keys to four dimensions plus numeric measures. 11 rows: 14 staged events minus three bad ones." },
+    { id:"customer", step:3, x:24, y:252, w:140, h:44, label:"dim_customer\n  customer_key", detail:"A surrogate key per version, which is what makes type 2 history possible." },
+    { id:"ticket", step:3, x:336, y:252, w:140, h:44, label:"dim_ticket\n  priority · sla_hours", detail:"Star form: the priority's SLA hours are copied onto every ticket. Type 1: status is current state." },
+    { id:"partition", step:5, x:180, y:290, w:140, h:56, label:"PARTITION BY event_date\n  CLUSTER BY ticket_key\n  cache · dry run", detail:"A filter on event_date prunes whole days; clustering narrows the read inside them. Sandbox partitions expire after 60 days." },
+    { id:"priority", step:4, x:336, y:318, w:140, h:40, label:"dim_priority\n  snowflaked", detail:"Normalising sla_hours out of dim_ticket costs one more join in every priority query." },
+    { id:"scd", step:6, x:24, y:318, w:140, h:56, label:"SCD type 2\n  effective_from · _to\n  is_current", detail:"Dana's 49.00 row closes on 2026-11-05 and a 199.00 row opens. Facts join on the event's date, end exclusive." },
+    { id:"python", step:7, kind:"example", x:24, y:396, w:452, h:50, label:"apply_scd2(dimension, source, as_of)\n  pure function · pytest · WRITE_TRUNCATE load with the table's schema", detail:"No DML in the sandbox: the whole dimension is replaced in one load. The SQL creates it only if it does not exist." },
+    { id:"check", step:8, x:24, y:470, w:452, h:40, label:"CHECK YOURSELF\n  answer out loud, then open" }
+  ],
+  edges: [
+    { id:"e1", step:1, from:"questions", to:"conceptual", label:"names entities" },
+    { id:"e2", step:1, from:"conceptual", to:"logical", label:"+ keys" },
+    { id:"e3", step:1, from:"logical", to:"physical", label:"+ types" },
+    { id:"e4", step:2, from:"logical", to:"fact", label:"grain" },
+    { id:"e5", step:3, from:"fact", to:"date", label:"date_key" },
+    { id:"e6", step:3, from:"fact", to:"agent", label:"agent_key" },
+    { id:"e7", step:3, from:"fact", to:"customer", label:"customer_key" },
+    { id:"e8", step:3, from:"fact", to:"ticket", label:"ticket_key" },
+    { id:"e9", step:4, from:"ticket", to:"priority", label:"priority" },
+    { id:"e10", step:5, from:"partition", to:"fact", dir:"-" },
+    { id:"e11", step:6, from:"scd", to:"customer", label:"type 2" },
+    { id:"e12", step:7, from:"python", to:"scd", label:"closes · appends" },
+    { id:"e13", step:8, from:"python", to:"check", dir:"-" }
+  ],
+  captions: [
+    "Modeling starts from the business questions: what is counted, and each 'by' it is cut by. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "One design at three levels: conceptual for stakeholders, logical with keys and grain, physical in one engine.",
+    "The fact table records one row per ticket event, with keys and numeric measures.",
+    "The star: the fact joined directly to its date, agent, customer and ticket dimensions.",
+    "The snowflake splits the priority out of the ticket dimension and pays with one more join.",
+    "The physical model in BigQuery: daily partitions, clustering by ticket, the cache and the dry run.",
+    "Slowly changing dimensions: types 0 to 6, with type 2 keeping every customer version under its own dates.",
+    "Type 2 in Python: a pure, tested function whose result replaces the dimension in one load.",
+    "You can now take business questions to a star schema, tune it in BigQuery and keep its history."
+  ]
+};
+window.QUIZ = {
+  id: "w04-d4",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "What is the grain of the desk's fact_ticket_events table?",
+      options: ["One row per ticket", "One row per ticket event", "One row per agent per day", "One row per customer version"], answer: 1,
+      explain: "The grain is stated in words before any column: one row per ticket event. A ticket-level number on those rows would be counted once per event." },
+    { type: "scq", stem: "fact_ticket_events is partitioned by event_date. A query filters only on kind = 'closed'. What happens?",
+      options: ["Only the partitions holding closed events are read", "Every partition is read, because kind is not the partition column", "The query bills nothing because of the cache", "The query fails without a filter on event_date"], answer: 1,
+      explain: "Pruning needs a filter on the partition column. Add a range on event_date and only those days are scanned and billed." },
+    { type: "tf", stem: "In a snowflake schema the fact table is split into several normalised tables.", answer: false,
+      explain: "A snowflake normalises the dimensions only, such as moving sla_hours from dim_ticket into dim_priority. The fact stays one table at its grain." },
+    { type: "mcq", stem: "Which statements about an SCD type 2 dimension are true? Select all that apply.",
+      options: ["A change closes the current row and adds a new current row", "A change overwrites the old value in place", "Facts join to it with a lookup on the event's date", "It keeps only one previous value per attribute"], answer: [0, 2],
+      explain: "Type 2 keeps every version with effective dates and a current flag, and facts pick the version valid on their date. Overwriting is type 1; one previous value is type 3." },
+    { type: "match", stem: "Match each SCD type to what happens on a change.",
+      pairs: [
+        { l: "type 0", r: "nothing: the original value is kept, as for a date's weekday" },
+        { l: "type 1", r: "the value is overwritten and the old one is lost" },
+        { l: "type 2", r: "the old row is closed and a new dated row is added" },
+        { l: "type 3", r: "the old value moves to a previous-value column" }
+      ],
+      explain: "Types 4 to 6 build on these: 4 keeps a separate history table, and 5 and 6 are hybrids, with 6 combining types 1, 2 and 3." },
+    { type: "open", stem: "In two or three sentences: design a star schema for an online shop's orders. State the grain, the fact table and its measures, and the dimensions.",
+      hint: "Grain first, then keys, then numbers.",
+      model: "The grain is one row per order line. The fact table fact_order_lines holds keys to dim_product, dim_customer and dim_date, with quantity and amount as additive measures. The dimensions hold the descriptions reports group by, such as a product's category, the customer's country and the order date's month." }
+  ]
+};
+</script>
+
+<script src="../../assets/js/diagram.js?v=20261030"></script>
+<script src="../../assets/js/scrolly.js?v=20261030"></script>
+<script src="../../assets/js/modals.js?v=20261030"></script>
+<script src="../../assets/js/quiz.js?v=20261030"></script>
+<script src="../../assets/js/widgets.js?v=20261030"></script>
+<script src="../../assets/js/glossary.js?v=20261030"></script>
+</body>
+</html>

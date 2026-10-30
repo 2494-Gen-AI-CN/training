@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w04d5">
+<title>W4·D5 — ETL &amp; ELT pipelines | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261030">
+<script src="../../assets/js/theme.js?v=20261030"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="../../exit-criteria/index.html">Exit criteria</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>ETL &amp; ELT pipelines: moving the desk's history into a star that reloads safely</h1>
+        <div class="meta">
+          <span><b>Week 4</b> · Day 5</span>
+          <span>Fri Nov 6, 2026</span>
+          <span>Data fundamentals, cloud concepts, data warehousing, ETL/ELT</span>
+          <span><b>~41 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span class="verified">Sources checked 2026-10-30 · python 3.15 · google-cloud-bigquery 3.47.0 · db-dtypes 1.9.0 · pyarrow 26.0.0 · pandas 3.1.0 · pytest 9.2.0</span>
+          <span class="exit"><a href="../../exit-criteria/qc-3-data-and-gen-ai-fundamentals.html#w04d5">Exit criteria</a></span>
+        </div>
+        <p class="summary">This page assumes Thursday's star schema in the <code>desk_dw</code> dataset, with its fact
+        table of ticket events and its customer dimension that keeps history, and the Python module that runs BigQuery
+        work for the desk. It teaches ETL and ELT and where each runs its transform, the steps of a pipeline from extract
+        to log, and how a job survives bad records, reruns and incremental loads. It then covers BigQuery's ways of
+        reaching data it does not store, parameterized queries, a job written in Python with tests on its transforms,
+        and a review of the week. Afterwards you can explain how a source reaches a warehouse and defend each design
+        choice along the way.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="0">
+        <div class="tag">ETL overview</div>
+        <h2>ETL and ELT: where the transform runs</h2>
+        <p>Wednesday's staging tables and Thursday's star were each built by hand, one command at a time. A data team
+        wants the same result from one job it can run every night, and the name for that job is a pipeline.</p>
+        <h3>What extract, transform and load each do</h3>
+        <p>ETL stands for extract, transform, load. It describes the work of copying data out of the systems a business
+        runs on and into the warehouse its analysts query.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <ul>
+          <li>Extract reads rows out of a source, such as the desk's MySQL tables, without changing the source.</li>
+          <li>Transform cleans and reshapes those rows: it drops or flags bad records, converts types, joins tables and
+          computes keys and measures.</li>
+          <li>Load writes the result into warehouse tables, such as a fact table and its dimensions.</li>
+        </ul>
+        <p>In classic ETL the transform runs on a separate processing system, a server or a script between the source
+        and the warehouse, and only finished rows reach the warehouse.<sup class="cite"><a href="#src-1">1</a></sup>
+        No raw row is ever loaded.</p>
+        <p>The smallest version of that shape fits in a few lines of Python. Three functions, called in order from one
+        <code>main</code>, with a list standing in for the warehouse:</p>
+<pre><code>def extract():
+    return [{"event_id": 1, "kind": "open"}, {"event_id": 2, "kind": "closd"}]
+
+def transform(rows):
+    return [r for r in rows if r["kind"] in ("open", "assigned", "closed")]
+
+def load(rows, target):
+    target.extend(rows)
+
+def main():
+    warehouse = []
+    load(transform(extract()), warehouse)
+    print(warehouse)
+
+main()</code></pre>
+<pre class="out">[{'event_id': 1, 'kind': 'open'}]</pre>
+        <p>The misspelt <code>closd</code> row never reaches the list, because the transform ran before the load. That
+        is also how you recognise an ETL job in someone else's repository: a file with <code>extract()</code>,
+        <code>transform()</code> and <code>load()</code> functions called in that order from <code>main()</code>.</p>
+        <h3>ETL's role in a data warehouse</h3>
+        <p>A warehouse is only as useful as the data that reaches it. The operational database is shaped for one ticket
+        at a time, while the star is shaped for questions across thousands of tickets. ETL is the bridge between the two.
+        It decides which rows arrive, in what shape, how often, and what happens to the ones that do not fit.</p>
+        <p>Nobody types that bridge by hand every day. It runs on a schedule, and the warehouse's numbers can be trusted
+        only as far as the job's rules can be read and checked.</p>
+        <h3>ELT, and why cloud warehouses favour it</h3>
+        <p>ELT swaps the last two letters. The raw data is loaded into the warehouse first, usually into staging tables,
+        and transformed there with SQL.<sup class="cite"><a href="#src-1">1</a></sup> In BigQuery the transform is a
+        statement such as this one, run after the load:</p>
+<pre><code>CREATE OR REPLACE TABLE desk_dw.events_ok AS
+SELECT
+  event_id,
+  ticket_id,
+  kind
+FROM desk_raw.ticket_events
+WHERE kind IN ('open', 'assigned', 'closed');</code></pre>
+        <p>The statement returns no rows of its own; afterwards <code>desk_dw.events_ok</code> holds every staged event
+        whose kind is one of the three, and <code>desk_raw.ticket_events</code> still holds all of them. A SQL file of
+        <code>CREATE OR REPLACE TABLE ... AS SELECT</code> statements run after a load step is the sign of ELT.</p>
+        <p>Cloud warehouses favour ELT because BigQuery separates storage from compute.<sup class="cite"><a href="#src-2">2</a></sup>
+        Keeping raw data costs little, and the SQL that transforms it runs where the data already
+        sits, so nothing is copied out to a separate server and back.<sup class="cite"><a href="#src-2">2</a></sup>
+        Thursday's star was built this way: the dimensions and the fact were <code>SELECT</code> statements over the
+        staging tables.</p>
+        <table>
+          <thead><tr><th></th><th>ETL</th><th>ELT</th></tr></thead>
+          <tbody>
+            <tr><td>Where the transform runs</td><td>a separate engine, before the load</td><td>inside the warehouse, after the load</td></tr>
+            <tr><td>What the warehouse holds</td><td>only cleaned rows</td><td>raw rows and the cleaned tables built from them</td></tr>
+            <tr><td>Main cost</td><td>the engine's own compute</td><td>raw data stored, and the queries that reshape it</td></tr>
+          </tbody>
+        </table>
+        <h3>The trade-off: raw data in the warehouse</h3>
+        <p>ELT lands raw data first, so unvalidated and sensitive columns sit in the warehouse until a transform cleans
+        or drops them.<sup class="cite"><a href="#src-1">1</a></sup> Anyone with read access to the staging dataset can
+        see them. ETL cleans before loading, so the warehouse never holds a bad row, but it needs compute of its own to do
+        that.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <p>Real pipelines mix the two. The desk's job cleans events in Python before they reach the star, then rebuilds
+        the star with SQL inside BigQuery. Either way, a load into a warehouse should be safe to repeat, and the job's
+        design (its write dispositions and its watermark) is what makes it so.<sup class="cite"><a href="#src-3">3</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>ETL transforms on a separate engine before loading; ELT loads raw data and transforms it inside the warehouse.</li>
+          <li>Separate storage and compute make ELT cheap in BigQuery, because SQL runs next to the data.</li>
+          <li>ELT leaves raw, possibly sensitive columns in staging until a transform handles them.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>ETL is extract, transform, load. You read rows out of an operational source, clean and reshape them, and
+          write them into the warehouse's tables, so it's the process that feeds the warehouse and decides what shape and
+          quality the data has when analysts query it.</p>
+          <p>The difference with ELT is where the transform runs. In ETL it runs on a separate engine before the load; in
+          ELT I load the raw data into staging first and transform it with SQL inside the warehouse.</p>
+          <p>Cloud warehouses like BigQuery favour ELT because storage and compute are separate, so keeping raw data is cheap and the SQL runs
+          right next to it. The cost is that raw and possibly sensitive columns sit in the warehouse until they're
+          cleaned.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">ETL overview</div>
+        <h2>The steps of a pipeline: stage, validate, log</h2>
+        <p>ETL names three steps, but a pipeline has more. In an interview, "what is ETL" is usually followed by
+        "walk me through the steps", and the answer has six.</p>
+        <h3>Six steps from source to warehouse</h3>
+        <table>
+          <thead><tr><th>Step</th><th>What it does</th><th>On the ticket desk</th></tr></thead>
+          <tbody>
+            <tr><td>Extract</td><td>reads rows out of the source</td><td>events and tickets read from MySQL</td></tr>
+            <tr><td>Stage</td><td>lands the raw extract in the warehouse, unchanged</td><td>tables in <code>desk_raw</code></td></tr>
+            <tr><td>Transform</td><td>cleans, joins and reshapes</td><td>bad events set aside, keys looked up</td></tr>
+            <tr><td>Load</td><td>writes the modelled tables</td><td>the dimensions and the fact in <code>desk_dw</code></td></tr>
+            <tr><td>Validate</td><td>checks the rows against rules and counts</td><td>every rejected event kept with its reason</td></tr>
+            <tr><td>Log</td><td>records what the run did</td><td>one row per run with rows read, loaded and rejected</td></tr>
+          </tbody>
+        </table>
+        <p>Validation is drawn after the load here, but in practice it runs wherever a rule can be checked. A row-level
+        rule, such as "the kind must be one of three", runs inside the transform. A run-level rule, such as "loaded plus
+        rejected must equal read", runs at the end, just before the log row is written.</p>
+        <h3>Staging areas, and what they buy at scale</h3>
+        <p>A staging area is a set of tables that hold the raw extract exactly as it arrived. A load job writes each
+        staging table with its own write disposition, independent of the tables built from
+        it.<sup class="cite"><a href="#src-3">3</a></sup></p>
+        <p>Landing raw extracts first lets a job re-run its transform and validation without extracting from the source
+        again.<sup class="cite"><a href="#src-3">3</a></sup> On a desk with a few hundred rows that saves seconds. At
+        scale it pays off in other ways:</p>
+        <ul>
+          <li>A bug in the transform is fixed and re-run against staging, while the source is left alone.</li>
+          <li>The source is read once per run, in a short window, instead of once per downstream table.</li>
+          <li>Staging is a record of what the source said at load time, which settles arguments about whose number is right.</li>
+        </ul>
+        <p>The price is storage and a second copy of possibly sensitive data, the same trade-off ELT carries. Staging
+        tables usually get a short expiration for that reason, as <code>desk_raw</code> did on Wednesday.</p>
+        <h3>Extracting from an ODS instead of production</h3>
+        <p>Wednesday named the operational data store, or ODS: an integrated, current copy of operational data, kept for
+        reporting and for feeding the warehouse. At scale a job extracts from an ODS, or a read replica, rather than from
+        the production database, so the extract's reads never compete with production.<sup class="cite"><a href="#src-4">4</a></sup>
+        Cloud SQL's read replicas exist for exactly that purpose: to offload read and analytics traffic from the primary
+        instance.<sup class="cite"><a href="#src-4">4</a></sup></p>
+        <p>That choice has three benefits for a large company:</p>
+        <ul>
+          <li>No extract load on the database customers are using, so a heavy nightly read cannot slow the desk down.</li>
+          <li>One reconciled source instead of many, because the ODS has already combined the operational systems.</li>
+          <li>One place where operational fixes land, so a corrected record reaches every downstream job.</li>
+        </ul>
+        <p>The cost is another system to run and data that is a little behind production. For a nightly warehouse load
+        that lag rarely matters.</p>
+        <h3>Rejects with a reason, and the load log</h3>
+        <p>A BigQuery load job can skip invalid rows, up to a limit set by <code>max_bad_records</code>, but it reports
+        them only as job errors.<sup class="cite"><a href="#src-5">5</a></sup> A job that must keep each bad row and say
+        why writes it to a rejects table itself. The pattern in plain Python:</p>
+<pre><code>EVENT_KINDS = ("open", "assigned", "closed")
+rows = [
+    {"event_id": 12, "ticket_id": 2, "kind": "closed"},
+    {"event_id": 13, "ticket_id": 2, "kind": "closd"},
+]
+clean, rejects = [], []
+for row in rows:
+    if row["kind"] in EVENT_KINDS:
+        clean.append(row)
+    else:
+        rejects.append({**row, "reason": "unknown kind"})
+log = {"rows_read": len(rows), "rows_loaded": len(clean), "rows_rejected": len(rejects)}
+print(rejects)
+print(log)</code></pre>
+<pre class="out">[{'event_id': 13, 'ticket_id': 2, 'kind': 'closd', 'reason': 'unknown kind'}]
+{'rows_read': 2, 'rows_loaded': 1, 'rows_rejected': 1}</pre>
+        <p><code>{**row, "reason": ...}</code> builds a new dict with every key of <code>row</code> plus one more. The
+        log dict is the load log's row for this run. A silent drop would leave read at 2 and loaded at 1 with nobody
+        able to say why; the rejects table answers that question with the row and its reason.</p>
+        <p>You recognise both on sight in a warehouse: a table with the source's columns plus a <code>reason</code>
+        column, and a small table with one row per run holding a timestamp and three counts.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A pipeline extracts, stages, transforms, loads, validates and logs, in that order.</li>
+          <li>Staging lets a job re-run its transform without reading the source again.</li>
+          <li>An ODS or replica takes the extract's reads off the production database.</li>
+          <li>Rejects keep each bad row with a reason; the load log keeps one row of counts per run.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A pipeline that loads a source into a warehouse has six steps: extract from the source, stage the raw rows
+          unchanged, transform them, load the modelled tables, validate against rules and counts, and log the run. The
+          staging step is what lets me fix a transform and re-run it without hitting the source again.</p>
+          <p>At scale I'd extract from an ODS or a read replica rather than production, so the job's reads never compete
+          with customers, and the warehouse gets one reconciled source where operational fixes already landed.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">ETL overview</div>
+        <h2>Reruns and incremental loads</h2>
+        <p>Every job gets run twice sooner or later: a scheduler retries after a timeout, or someone re-runs it to check
+        a fix. A job is idempotent when that second run leaves the data exactly as one run did. Repeating a load safely
+        is a design choice of the job, made through its write dispositions and its watermark; no tool does it for
+        you.<sup class="cite"><a href="#src-3">3</a></sup></p>
+        <h3>Write dispositions: replace, append or refuse</h3>
+        <p>Every BigQuery load job writes with a write disposition, which says what happens to rows already in the
+        destination table.<sup class="cite"><a href="#src-3">3</a></sup></p>
+        <table>
+          <thead><tr><th>Disposition</th><th>What it does</th><th>Same load run twice</th></tr></thead>
+          <tbody>
+            <tr><td><code>WRITE_TRUNCATE</code></td><td>replaces the table's rows</td><td>same data as one run</td></tr>
+            <tr><td><code>WRITE_APPEND</code></td><td>adds rows to the table</td><td>every row twice</td></tr>
+            <tr><td><code>WRITE_EMPTY</code></td><td>fails if the table already has data</td><td>the second run fails</td></tr>
+          </tbody>
+        </table>
+        <p><code>WRITE_TRUNCATE</code> is idempotent by itself: repeating the same load leaves the same
+        data.<sup class="cite"><a href="#src-3">3</a></sup> <code>WRITE_APPEND</code> repeated with the same rows
+        duplicates them, which is why an append load needs a guard.<sup class="cite"><a href="#src-3">3</a></sup> The
+        common slip is appending to a table the job refills from scratch each run, so the second run doubles every
+        row.</p>
+        <p>So the desk's job replaces most of its tables on every run:</p>
+        <ul>
+          <li>the small staging tables</li>
+          <li>the clean events</li>
+          <li>the rejects</li>
+          <li>the star</li>
+        </ul>
+        <p>Only the event history, which grows forever, is appended.</p>
+        <h3>Incremental loads by watermark</h3>
+        <p>Replacing a table means re-reading the whole source. That is fine for a handful of agents and too slow for a billion
+        events. An incremental load extracts only the rows added since the last run. To know where the last run stopped,
+        the job reads a watermark: the highest id or timestamp already loaded.</p>
+        <p>Here is the idea with lists standing in for the source and the staging table. <code>max(..., default=0)</code>
+        returns 0 when the list is empty, so the very first run loads everything.</p>
+<pre><code>source = [1, 2, 3, 4, 5]
+staged = [1, 2, 3]
+
+watermark = max(staged, default=0)
+new = [e for e in source if e &gt; watermark]
+staged = staged + new
+print(watermark, new)
+
+watermark = max(staged, default=0)
+new = [e for e in source if e &gt; watermark]
+print(watermark, new)</code></pre>
+<pre class="out">3 [4, 5]
+5 []</pre>
+        <p>The first run finds 3 already staged and appends 4 and 5. The second run finds 5, extracts nothing, and
+        appends nothing, so the append load is safe to repeat. In SQL the watermark
+        is one query at the top of the job, <code>SELECT MAX(event_id)</code> over the staged events, which you will spot
+        at the start of most incremental jobs.</p>
+        <div class="ix-predict" data-q="A job reads its watermark, extracts 40 new events, appends them to staging, and then crashes before writing its load-log row. Someone runs it again. How many events does the second run append?" data-a="None. The watermark is read from the staged events themselves, so it already includes the 40 that landed. The second run extracts nothing new. The only trace of the crash is a missing log row for the first run, which is why the log is written last and checked."></div>
+        <h3>What a MAX(id) watermark misses</h3>
+        <p>An incremental load by <code>MAX(id)</code> has two blind spots.<sup class="cite"><a href="#src-3">3</a></sup></p>
+        <ul>
+          <li>A row updated after it was loaded keeps its old id, so the job never sees the change.</li>
+          <li>A row that arrives with a lower id than the watermark, because ids were handed out out of order, is skipped for good.</li>
+        </ul>
+        <p>Event tables suit an id watermark because events are only ever added, never edited. Tables whose rows
+        change need one of three other answers:</p>
+        <table>
+          <thead><tr><th>Option</th><th>What it catches</th><th>Cost</th></tr></thead>
+          <tbody>
+            <tr><td><code>updated_at</code> watermark</td><td>rows edited after loading</td><td>needs a reliable timestamp column</td></tr>
+            <tr><td>change data capture</td><td>every insert, update and delete, read from the database's change log</td><td>another system to run</td></tr>
+            <tr><td>periodic full reload</td><td>everything, always correct</td><td>re-reads the whole source, so it costs more at scale<sup class="cite"><a href="#src-3">3</a></sup></td></tr>
+          </tbody>
+        </table>
+        <p>The desk's job uses both ideas. Events are appended above a watermark. Customers, which change, are read in
+        full every run, compared with the history dimension and replaced.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>WRITE_TRUNCATE replaces, WRITE_APPEND adds, WRITE_EMPTY refuses a table that has data.</li>
+          <li>An append load is safe to repeat only behind a watermark read from what is already loaded.</li>
+          <li>An id watermark misses updated rows and late low ids; timestamps, CDC or full reloads cover them.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I make a pipeline safe to rerun in three ways. Tables the job rebuilds are written with WRITE_TRUNCATE, so a
+          second run replaces rather than adds. Tables that only grow are appended above a watermark, the max id already
+          loaded, so a rerun finds nothing new.</p>
+          <p>Bad records go to a rejects table with a reason, which is replaced
+          each run, so nothing is lost silently and nothing doubles.</p>
+          <p>If the watermark is a max id, I'd watch for rows updated after loading and ids arriving out of order. For
+          those I'd switch to an updated-at timestamp, change data capture, or a periodic full reload.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="3">
+        <div class="tag">BigQuery connections</div>
+        <h2>External data, connections and transfers</h2>
+        <p>So far every table BigQuery queried was one it stored, filled by a load job. Not all data is worth loading.
+        A list of which agent sits on which team lives in a spreadsheet a manager edits, and copying it nightly would
+        always be a day stale. BigQuery has several ways to reach data it does not hold.</p>
+        <h3>External tables: data that stays at the source</h3>
+        <p>An external table reads data that stays in Google Drive, as a Sheet, or in Cloud Storage. BigQuery stores only
+        the table's definition, so each query reads the source as it is at that moment.<sup class="cite"><a href="#src-6">6</a></sup>
+        The definition is one DDL statement:</p>
+<pre><code>CREATE OR REPLACE EXTERNAL TABLE desk_raw.agent_teams (
+  name STRING,
+  team STRING
+)
+OPTIONS (
+  format = 'GOOGLE_SHEETS',
+  uris = ['https://docs.google.com/spreadsheets/d/&lt;sheet-id&gt;'],
+  skip_leading_rows = 1
+);</code></pre>
+        <p>Afterwards <code>bq show desk_raw.agent_teams</code> prints the table's type as <code>EXTERNAL</code> where a
+        loaded table says <code>TABLE</code>. <code>skip_leading_rows = 1</code> tells BigQuery the first row is a header.
+        The table joins to the star like any other, so a query can count events per team. When someone edits a cell in
+        the Sheet, the next run of the same query shows the new totals with no load in between.</p>
+        <p>Reading a Sheet needs Drive access on the credentials. The console asks for it and grants it, but
+        <code>bq</code> and Python's Application Default Credentials carry no Drive scope by default, so they cannot query
+        a Sheet-backed table.<sup class="cite"><a href="#src-7">7</a></sup> Query it from the console, or import it as a
+        native table first.</p>
+        <h3>Federated queries and connections</h3>
+        <p>A federated query goes one step further: BigQuery sends a query to an outside database, such as Cloud SQL,
+        Spanner or AlloyDB, and joins the answer with its own tables.<sup class="cite"><a href="#src-8">8</a></sup> It is
+        written with <code>EXTERNAL_QUERY</code>, whose inner SQL runs on the outside database:</p>
+<pre><code>SELECT
+  t.ticket_id,
+  t.status
+FROM EXTERNAL_QUERY(
+  'connection_id',
+  'SELECT ticket_id, status FROM tickets;'
+) AS t;</code></pre>
+        <p>The result is the live <code>tickets</code> rows from the outside MySQL server, read at query time; nothing
+        lands in BigQuery. The first argument names a connection. A BigQuery connection is a stored resource that holds
+        the access details for one outside source, so a query names it instead of carrying a password.<sup class="cite"><a href="#src-8">8</a></sup></p>
+        <p>Connections exist for these sources:<sup class="cite"><a href="#src-8">8</a></sup></p>
+        <ul>
+          <li>Cloud SQL, Spanner and AlloyDB, for federated queries with <code>EXTERNAL_QUERY</code></li>
+          <li>Cloud Storage</li>
+          <li>AWS and Azure storage such as Amazon S3, through BigQuery Omni</li>
+        </ul>
+        <p>The free sandbox has none of these to point at, so the desk's one external source is a public Sheet. In code
+        review you recognise both forms on sight: <code>CREATE OR REPLACE EXTERNAL TABLE ... OPTIONS (format = ..., uris
+        = [...])</code>, and <code>FROM EXTERNAL_QUERY('connection_id', '...')</code>.</p>
+        <h3>Native copy or external table</h3>
+        <p>An external table is always current, but it is slower and gets fewer optimisations than a native table, so
+        a source that is read often is better imported.<sup class="cite"><a href="#src-6">6</a></sup> The import is one
+        statement, run in the console where the Drive access lives:</p>
+<pre><code>CREATE OR REPLACE TABLE desk_raw.agent_teams_copy AS
+SELECT
+  name,
+  team
+FROM desk_raw.agent_teams;</code></pre>
+        <p><code>bq show desk_raw.agent_teams_copy</code> then prints the type <code>TABLE</code> and a row count, one
+        row per row of the Sheet. The copy is fast and readable from <code>bq</code> and Python, but it is only as fresh as the
+        moment the statement ran, so you trade freshness for speed and cost.</p>
+        <h3>Exports and imports: Sheets, Drive and Cloud Storage</h3>
+        <table>
+          <thead><tr><th>Direction</th><th>Path</th><th>Formats</th></tr></thead>
+          <tbody>
+            <tr><td>Export a query result</td><td>Save results to Google Sheets</td><td>a new Sheet, with a size limit<sup class="cite"><a href="#src-9">9</a></sup></td></tr>
+            <tr><td>Export a query result</td><td>Save results to Google Drive</td><td>CSV or JSONL<sup class="cite"><a href="#src-9">9</a></sup></td></tr>
+            <tr><td>Export a query result</td><td>Local download</td><td>CSV or JSON<sup class="cite"><a href="#src-9">9</a></sup></td></tr>
+            <tr><td>Export a whole table</td><td>Extract job to Cloud Storage</td><td>CSV, newline-delimited JSON, Avro or Parquet<sup class="cite"><a href="#src-10">10</a></sup></td></tr>
+            <tr><td>Import from a Sheet</td><td>External table, then a native copy</td><td>Google Sheets</td></tr>
+            <tr><td>Import from Cloud Storage</td><td>Load job reading a <code>gs://</code> URI</td><td>CSV and the other load formats<sup class="cite"><a href="#src-5">5</a></sup></td></tr>
+          </tbody>
+        </table>
+        <p>A query result can also be saved straight to another BigQuery table.<sup class="cite"><a href="#src-9">9</a></sup>
+        The sandbox has no Cloud Storage bucket, so the two Cloud Storage paths are ones to name rather than
+        run there.<sup class="cite"><a href="#src-11">11</a></sup> Tuesday's file formats apply here.</p>
+        <h3>Scheduled loads with the Data Transfer Service</h3>
+        <p>Everything above is run by hand or by your own job. The BigQuery Data Transfer Service is Google's managed
+        answer for recurring loads: it schedules transfers from sources such as Cloud Storage, Amazon S3 and SaaS
+        applications into BigQuery.<sup class="cite"><a href="#src-12">12</a></sup> Asked "how would you automate a nightly
+        load from S3", this is the first answer to give, before writing a job of your own. The sandbox does not offer
+        it.<sup class="cite"><a href="#src-11">11</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>An external table keeps the data at its source and reads it fresh on every query.</li>
+          <li>A federated query uses EXTERNAL_QUERY and a connection to reach Cloud SQL, Spanner or AlloyDB.</li>
+          <li>A native copy trades freshness for speed and cost when a source is read often.</li>
+          <li>The Data Transfer Service schedules recurring loads from Cloud Storage, S3 and SaaS sources.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>To export, I can save a query result to a Google Sheet, to Drive as CSV or JSONL, or download it as CSV or
+          JSON, and I can export a whole table to Cloud Storage with an extract job as CSV, JSON, Avro or Parquet.</p>
+          <p>To import, I load files from a gs:// path, or I define an external table over a Sheet and copy it into a native
+          table with CREATE TABLE AS SELECT.</p>
+          <p>An external table leaves the data where it is and reads it at query time, so it's always current but slower.
+          A federated query goes to a live database like Cloud SQL through EXTERNAL_QUERY and a connection, which stores
+          the access details. For a recurring load from S3 or a SaaS app I'd use the Data Transfer Service.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">BigQuery connections</div>
+        <h2>Parameterized queries</h2>
+        <p>A report that counts closed tickets per agent is useful. The same report for opened tickets, or assigned
+        ones, is the same query with one word changed. Copying the file three times invites the copies to drift apart,
+        and pasting the word into the SQL by hand invites worse.</p>
+        <h3>A named parameter in the SQL</h3>
+        <p>A query parameter is a named placeholder in the SQL, written with an <code>@</code> in front, whose value is
+        sent separately from the statement text.<sup class="cite"><a href="#src-13">13</a></sup> One file serves every
+        kind of event:</p>
+<pre><code>-- events of one kind per agent, from the star
+SELECT
+  a.name AS agent,
+  COUNT(*) AS events
+FROM desk_dw.fact_ticket_events AS f
+JOIN desk_dw.dim_agent AS a ON a.agent_key = f.agent_key
+WHERE f.kind = @kind
+GROUP BY a.name
+ORDER BY events DESC;</code></pre>
+        <p>On its own this file is incomplete, because <code>@kind</code> has no value until the caller supplies one.
+        The comment on its first line says what it reports, so a reader knows which value to pass.</p>
+        <p>From the command line, <code>bq query</code> supplies the value with <code>--parameter=name:TYPE:value</code>.
+        An empty type, two colons side by side, means STRING.<sup class="cite"><a href="#src-13">13</a></sup> The same
+        file then runs once per kind, read in through <code>&lt;</code> as Thursday's star file was:</p>
+<pre><code>bq query --use_legacy_sql=false --parameter=kind::closed &lt; kind_report.sql
+bq query --use_legacy_sql=false --parameter=kind::open &lt; kind_report.sql</code></pre>
+        <p>Each line prints a table of agents and counts, the first for closed events and the second for opened ones,
+        from one file that never changed. The same idea scales to dates, ids and numbers by naming a type, such as
+        <code>--parameter=day:DATE:2026-10-18</code>.<sup class="cite"><a href="#src-13">13</a></sup></p>
+        <p>You recognise a parameterized query on sight by <code>WHERE kind = @kind</code> in BigQuery SQL, or by a
+        query string and a separate list of values passed to a client library.</p>
+        <h3>Why the value never goes in the text</h3>
+        <p>Because the value travels beside the SQL rather than inside it, a value cannot change the statement's
+        structure.<sup class="cite"><a href="#src-13">13</a></sup> This is the BigQuery counterpart of week 3's
+        <code>%s</code> placeholders in Python's MySQL connector, and it buys the same two things:</p>
+        <ul>
+          <li>One tested query file serves every value, so the report logic lives in one place.</li>
+          <li>A value is only ever a value, so text such as a quote followed by <code>OR 1=1</code> is compared
+          as a string and matches nothing, instead of becoming part of the WHERE clause.</li>
+        </ul>
+        <div class="ix-spot" data-snippet="kind = input(&quot;Kind: &quot;)&#10;sql = f&quot;SELECT COUNT(*) AS n FROM desk_dw.fact_ticket_events WHERE kind = '{kind}'&quot;&#10;rows = bq.query(sql).result()" data-q="This works for open, assigned and closed. What is wrong with it?" data-a="The value is pasted into the SQL text with an f-string, so whatever the user types becomes part of the statement. Typing closed' OR '1'='1 turns the filter into one that is always true. Write WHERE kind = @kind and send the value as a query parameter instead."></div>
+        <p>Two small pitfalls come up often. Pasting a value into the SQL with an f-string undoes the protection, even
+        when the query also contains an <code>@</code> elsewhere. And the two colons in <code>kind::closed</code> are
+        not a typo: the empty space between them is the type, and empty means STRING.<sup class="cite"><a href="#src-13">13</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A named parameter such as @kind keeps the value out of the SQL text.</li>
+          <li>bq query --parameter=name:TYPE:value supplies it, and an empty type means STRING.</li>
+          <li>Parameters make one query file reusable and stop a value from rewriting the statement.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I write the varying part of a query as a named parameter, like at-kind, and pass the value separately, for
+          example with bq query and the parameter flag, where an empty type means string.</p>
+          <p>That makes one query reusable
+          for every value, and it's safer, because the value is sent beside the SQL and can never change the statement's
+          structure the way a pasted string can. It's the same idea as placeholders in a database connector.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
+        <div class="tag">Building ETL/ELT processes</div>
+        <h2>Building the ETL job</h2>
+        <p>The pieces of the week so far were run one at a time. This step joins them into one Python program that a
+        scheduler could start every night, using the ideas of the last three steps.</p>
+        <h3>One run, in order</h3>
+        <p>A run of the desk's job does these things, each a function call from one <code>run</code> function:</p>
+        <ol>
+          <li>Create the job's own tables if they are missing: clean events, rejects and the load log.</li>
+          <li>Read the watermark, <code>MAX(event_id)</code> of the staged events, or 0 when there are none.</li>
+          <li>Extract the small tables in full from MySQL, and only the events above the watermark.</li>
+          <li>Stage them: replace the small tables, append the new events.</li>
+          <li>Clean all staged events in Python, splitting them into clean rows and rejects with a reason.</li>
+          <li>Update the customer dimension's history, then rebuild the star with its SQL file.</li>
+          <li>Write one load-log row with the run's time and counts.</li>
+        </ol>
+        <p>The program authenticates through Application Default Credentials, written once by <code>gcloud auth
+        application-default login</code>, so no key file sits beside the code.<sup class="cite"><a href="#src-14">14</a></sup>
+        The only per-person value is the project id, read from an environment variable. A rerun with no new events
+        reads 0 events, re-cleans the same staged rows, and leaves every table but the load log as it was.</p>
+        <h3>Cleansing with pandas: a reason for every reject</h3>
+        <p>The transform is one function from frames to frames. It uses a few pandas tools that are new here:</p>
+        <ul>
+          <li><code>DataFrame.merge</code> joins two frames on a column, like a SQL join.<sup class="cite"><a href="#src-15">15</a></sup></li>
+          <li><code>DataFrame.duplicated</code> marks every repeat after the first, by default.<sup class="cite"><a href="#src-16">16</a></sup></li>
+          <li><code>pd.Series("", index=rows.index)</code> is a column of empty strings, one per row, that the rules then overwrite with a reason.</li>
+          <li>The unknown-kind line uses <code>Series.isin</code> with <code>~</code> in front; in the output below it catches event 13, whose kind is not in <code>EVENT_KINDS</code>.</li>
+          <li><code>~</code> flips every True to False and every False to True, so <code>~rows["kind"].isin(EVENT_KINDS)</code> is True for kinds outside the tuple.</li>
+          <li>The rejects line uses <code>DataFrame.assign</code> to attach the <code>reason</code> column, which shows in the second printed table.</li>
+        </ul>
+<pre><code>import pandas as pd
+
+EVENT_KINDS = ("open", "assigned", "closed")
+EVENT_COLUMNS = ["event_id", "ticket_id", "kind", "created_at"]
+
+
+def clean_events(events, tickets):
+    """Split events into clean rows and rejects that carry a reason."""
+    events = events.sort_values("event_id")
+    rows = events.merge(tickets, on="ticket_id")
+    reason = pd.Series("", index=rows.index)
+    reason[rows.duplicated(["ticket_id", "kind", "created_at"])] = "duplicate"
+    reason[~rows["kind"].isin(EVENT_KINDS)] = "unknown kind"
+    reason[rows["created_at"] &lt; rows["opened_at"]] = "before ticket opened"
+    clean = rows[reason == ""][EVENT_COLUMNS]
+    rejects = rows[reason != ""].assign(reason=reason)[EVENT_COLUMNS + ["reason"]]
+    return clean, rejects</code></pre>
+        <p>Defining the function prints nothing. Each rule writes its reason over the rows it catches, so a row that
+        broke two rules keeps the last one. Calling it on five events, three of them bad, shows the split:</p>
+<pre><code>tickets = pd.DataFrame({
+    "ticket_id": [2, 4, 6],
+    "opened_at": pd.to_datetime(["2026-10-17 10:00", "2026-10-17 11:00", "2026-10-19 12:00"]),
+})
+events = pd.DataFrame({
+    "event_id": [9, 3, 8, 13, 14],
+    "ticket_id": [4, 2, 4, 2, 6],
+    "kind": ["assigned", "open", "assigned", "closd", "assigned"],
+    "created_at": pd.to_datetime(["2026-10-17 12:00", "2026-10-17 10:00", "2026-10-17 12:00",
+                                  "2026-10-18 09:00", "2026-10-19 11:00"]),
+})
+clean, rejects = clean_events(events, tickets)
+print(clean)
+print(rejects[["event_id", "reason"]])</code></pre>
+<pre class="out">   event_id  ticket_id      kind          created_at
+0         3          2      open 2026-10-17 10:00:00
+1         8          4  assigned 2026-10-17 12:00:00
+   event_id                reason
+2         9             duplicate
+3        13          unknown kind
+4        14  before ticket opened</pre>
+        <p>Events 8 and 9 are the same assignment twice. Because <code>duplicated</code> keeps the first copy in frame
+        order, row order decides which survives.<sup class="cite"><a href="#src-16">16</a></sup> BigQuery returns rows
+        in no fixed order, so without the sort a different copy could be kept on different runs. Sorting by
+        <code>event_id</code> first means event 8 is kept and event 9 rejected every time.</p>
+        <h3>Loading with the table's own schema</h3>
+        <p>Python reaches BigQuery through the <code>google-cloud-bigquery</code> client. A load from a DataFrame takes a
+        <code>LoadJobConfig</code> whose <code>schema</code> and <code>write_disposition</code> control the load, and
+        <code>.result()</code> waits for the job and raises if it failed.<sup class="cite"><a href="#src-17">17</a></sup></p>
+<pre><code>from google.cloud import bigquery
+
+
+def load_frame(bq, frame, table, mode="WRITE_TRUNCATE"):
+    """Load a DataFrame into an existing table, keeping that table's schema."""
+    config = bigquery.LoadJobConfig(
+        schema=bq.get_table(table).schema,
+        write_disposition=mode,
+    )
+    bq.load_table_from_dataframe(frame, table, job_config=config).result()</code></pre>
+        <p>Called as <code>load_frame(bq, rejects, "desk_dw.load_rejects")</code>, it replaces the rejects table and
+        returns once the job has finished. Passing <code>schema=bq.get_table(table).schema</code> keeps the destination's
+        types instead of a guess.<sup class="cite"><a href="#src-17">17</a></sup> An autodetected load with
+        <code>WRITE_TRUNCATE</code> could swap a NUMERIC or DATE column for whatever type it guessed.</p>
+        <p>The other direction, a query result into a DataFrame, uses <code>to_dataframe()</code>, which needs
+        <code>db-dtypes</code> and <code>pyarrow</code> installed so BigQuery's DATE and TIME types map to pandas
+        types.<sup class="cite"><a href="#src-18">18</a></sup></p>
+        <p>The last line of a run writes the load log. Its timestamp comes from <code>datetime.now(timezone.utc)</code>,
+        which is timezone-aware and loads into a TIMESTAMP column.<sup class="cite"><a href="#src-19">19</a></sup></p>
+<pre><code>from datetime import datetime, timezone
+
+run_at = datetime.now(timezone.utc)
+print(run_at.tzinfo)</code></pre>
+        <p>It prints <code>UTC</code>, the time zone the value carries, so the log row means the same moment wherever
+        the job ran.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>One run creates its tables, reads the watermark, extracts, stages, cleans, rebuilds and logs.</li>
+          <li>Sort by the key before marking duplicates, or a different copy may survive each run.</li>
+          <li>Every load passes the destination table's own schema and a chosen write disposition.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>My job reads a watermark, extracts only new events plus the small tables in full, stages them, cleans the
+          events in a pure pandas function that returns clean rows and rejects with a reason, rebuilds the star with SQL,
+          and writes one log row. Small tables are replaced, events are appended above the watermark, and rejects are
+          replaced, so running it twice adds nothing.</p>
+          <p>Each load passes the destination table's own schema and an explicit write disposition, so a rerun never
+          changes a column's type, and I sort by id before marking duplicates so the same copy survives every time.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="6">
+        <div class="tag">Building ETL/ELT processes</div>
+        <h2>Testing the transforms with pytest</h2>
+        <p>A job that loads wrong numbers every night is worse than one that fails loudly. Tests are how a team trusts
+        the rules in the middle of the job, and the way the job is split up decides how easy they are to write.</p>
+        <h3>Why a pure transform is testable</h3>
+        <p>A pure function takes inputs and returns outputs without reading or writing anything else. The cleansing
+        function above is one: frames in, frames out. Every BigQuery call lives in a separate module, so the transform
+        can be tested with no database, no network and no credentials.<sup class="cite"><a href="#src-20">20</a></sup></p>
+        <p>That split shapes the whole code base:</p>
+        <table>
+          <thead><tr><th>Module</th><th>Holds</th><th>Tested by</th></tr></thead>
+          <tbody>
+            <tr><td>transform</td><td>cleansing and history rules, pure functions</td><td>pytest, with frames built in the test</td></tr>
+            <tr><td>warehouse client</td><td>every BigQuery query and load</td><td>running the job against a sandbox</td></tr>
+            <tr><td>job</td><td>the order of the steps and the log row</td><td>two runs and a look at the log</td></tr>
+          </tbody>
+        </table>
+        <p>You recognise a testable pipeline on sight by a <code>transform.py</code> that imports pandas and nothing from
+        the cloud, beside a test file for it that never sets a password or a project.</p>
+        <h3>Fixtures and frames built inline</h3>
+        <p>A pytest fixture is a function marked <code>@pytest.fixture</code> whose return value pytest passes to any
+        test that names it as a parameter.<sup class="cite"><a href="#src-20">20</a></sup> Here the fixture supplies the
+        tickets table, and a small helper builds events:</p>
+<pre><code>import pandas as pd
+import pytest
+
+from transform import clean_events
+
+
+@pytest.fixture
+def tickets():
+    """One ticket, opened at nine on 17 October."""
+    return pd.DataFrame({"ticket_id": [1], "opened_at": pd.to_datetime(["2026-10-17 09:00"])})
+
+
+def events_frame(ids, kinds):
+    """Events on ticket 1, all at ten on 17 October."""
+    return pd.DataFrame({
+        "event_id": ids,
+        "ticket_id": [1] * len(ids),
+        "kind": kinds,
+        "created_at": pd.to_datetime(["2026-10-17 10:00"] * len(ids)),
+    })
+
+
+def test_unknown_kind_is_rejected(tickets):
+    """A kind outside EVENT_KINDS is rejected with its reason."""
+    clean, rejects = clean_events(events_frame([1], ["closd"]), tickets)
+    assert clean.empty
+    assert rejects["reason"].tolist() == ["unknown kind"]
+
+
+def test_clean_keeps_first_copy_of_a_duplicate(tickets):
+    """Of two identical events, the lower event_id is kept."""
+    clean, rejects = clean_events(events_frame([2, 1], ["open", "open"]), tickets)
+    assert clean["event_id"].tolist() == [1]
+    assert rejects["event_id"].tolist() == [2]</code></pre>
+        <p>Saved beside the transform module and run with <code>pytest -q</code>, it ends with a line reading
+        <code>2 passed</code> and the time taken. Each assertion compares a column, through <code>.tolist()</code>, with
+        a short list written in the test. <code>clean.empty</code> is True when the frame has no rows.</p>
+        <p>The second test hands the frame over in the wrong order on purpose, id 2 before id 1. It would pass by luck
+        without the sort, if the rows happened to arrive in id order. Because <code>duplicated</code> keeps the first copy
+        it meets, the test pins down which copy that is.<sup class="cite"><a href="#src-16">16</a></sup> One test per
+        rule, each with a docstring saying what it proves, gives a reviewer a list of the job's rules in plain English.</p>
+        <p>These tests cover the rules and nothing else. A wrong table name, a missing column in the warehouse, or a
+        permission error only shows up when the job runs against BigQuery. That is why the job is also run twice end to
+        end, and why the load log is read after each run.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Keeping transforms pure lets them be tested with no database or credentials.</li>
+          <li>A fixture supplies shared inputs to every test that names it as a parameter.</li>
+          <li>Unit tests prove the rules; two end-to-end runs and the log prove the plumbing.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I keep the transforms as pure functions in their own module, frames in and frames out, and all the
+          warehouse calls somewhere else. That way pytest can test every cleansing rule with small frames built in the
+          test or in a fixture, with no database and no credentials.</p>
+          <p>I'd have one test per rule, including the one that
+          checks which copy of a duplicate is kept, and then run the whole job twice against the warehouse to check the
+          plumbing.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="7">
+        <div class="tag">Review</div>
+        <h2>Review: the week as one pipeline</h2>
+        <p>Each day of the week added one stage. Read together, they are the answer to the interview question "walk me
+        through how data gets from an operational database to a report".</p>
+        <h3>From the desk's MySQL tables to the star</h3>
+        <ol>
+          <li>The desk's MySQL tables hold tickets one at a time, and a trigger writes an event row for every status change.</li>
+          <li>The extract writes the small tables as CSV files and the events as JSON lines, one object per line.</li>
+          <li>Load jobs land the files unchanged in the staging dataset, <code>desk_raw</code>.</li>
+          <li>The transform sets bad events aside with a reason and keeps customer history as SCD type 2.</li>
+          <li>SQL inside BigQuery builds the star in <code>desk_dw</code>: date, agent, customer and ticket dimensions around one fact table.</li>
+          <li>Reports query the star, join a Sheet through an external table, and take parameters.</li>
+        </ol>
+        <p>The fact table's grain is one row per ticket event, and it is partitioned by the event's date, which limits
+        the data a query that filters on that date has to scan.<sup class="cite"><a href="#src-21">21</a></sup> The
+        star exists because the source tables answer "what is ticket 4 doing" while the star answers "how many tickets
+        did each team close per week" with few joins and no risk to the live desk.</p>
+        <p>Two practical limits frame the design. Sandbox tables expire after 60 days unless the expiration is
+        changed,<sup class="cite"><a href="#src-11">11</a></sup> so the warehouse is rebuildable from the code and the
+        source alone. And Application Default Credentials from one <code>gcloud auth application-default login</code>
+        serve every Python run without a key file,<sup class="cite"><a href="#src-14">14</a></sup> which keeps a public
+        repository free of secrets.</p>
+        <h3>Where cleansing runs</h3>
+        <p>On Thursday the star's SQL dropped bad events silently with a WHERE clause. Moving that rule into Python has
+        costs as well as gains.<sup class="cite"><a href="#src-2">2</a></sup></p>
+        <table>
+          <thead><tr><th></th><th>Cleansing in Python</th><th>Cleansing in SQL</th></tr></thead>
+          <tbody>
+            <tr><td>Testing</td><td>unit tests on small frames</td><td>harder to unit test; needs the warehouse</td></tr>
+            <tr><td>Bad rows</td><td>kept with a reason in a rejects table</td><td>usually filtered out unseen</td></tr>
+            <tr><td>Data movement</td><td>rows leave the warehouse and come back</td><td>runs next to the data</td></tr>
+          </tbody>
+        </table>
+        <p>For a desk with a few dozen events, testable rules and kept reasons win easily. For billions of rows, the
+        same rules would move into SQL, with a rejects table written by a query instead of by pandas.</p>
+        <h3>Comparing warehouse architectures</h3>
+        <p>An interviewer at the next level asks you to choose an architecture for a business, and a good answer names
+        what each option costs.</p>
+        <table>
+          <thead><tr><th>Architecture</th><th>Suits</th><th>Costs</th></tr></thead>
+          <tbody>
+            <tr><td>Warehouse fed by ETL</td><td>structured sources, a fixed set of reports, strict data quality</td><td>a transform engine to run; new questions wait for the pipeline</td></tr>
+            <tr><td>Warehouse fed by ELT</td><td>a cloud warehouse with SQL skills on the team</td><td>raw data stored and governed; transforms in SQL</td></tr>
+            <tr><td>Data lake with ELT on read</td><td>large volumes, semi-structured and unstructured data, exploration</td><td>quality and meaning are worked out later, by every reader</td></tr>
+          </tbody>
+        </table>
+        <p>Size, latency and skills decide it. A small support team with a MySQL database, daily reports and SQL
+        skills is served by a cloud warehouse with ELT, a star at the grain of one event, and a nightly job like the
+        desk's. A company with clickstreams, logs and images, and data scientists who want raw files, needs a lake
+        first, with a warehouse built on top for the reports that must agree.</p>
+        <div class="ix-predict" data-q="A clinic wants daily reports from its booking database. Patient names and health notes must never be readable by analysts. ETL or ELT, and why?" data-a="ETL, or ELT with the sensitive columns dropped before the load. Plain ELT would land the raw rows, names and notes included, in a staging dataset analysts can read until a transform removes them. Cleaning before the load keeps them out of the warehouse entirely."></div>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>The week runs MySQL, extract files, staging, transform, star, then reports.</li>
+          <li>Cleansing in Python is testable and keeps reasons; cleansing in SQL scales and stays near the data.</li>
+          <li>Size, latency, data types and team skills decide between warehouse, ELT and lake designs.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Data starts in the operational database, gets extracted to files, lands unchanged in staging, is cleaned
+          with bad rows kept and their reasons recorded, and is loaded into a star schema with one fact row per event and
+          dimensions around it. Reports query the star because it's shaped for questions across many rows and doesn't
+          load the live system.</p>
+          <p>To pick an architecture I look at volume, latency, the kinds of data and the team's skills. Structured
+          sources and SQL skills point to a cloud warehouse with ELT; lots of semi-structured data and exploration point
+          to a lake, with a warehouse on top for the numbers that must agree.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="8">
+        <div class="tag">Check yourself</div>
+        <h2>Check yourself</h2>
+        <p>Eight retrieval questions, at least one per section. Answer each out loud before you open it.</p>
+        <details class="check"><summary>What do extract, transform and load each do, and what role does ETL play for a data warehouse?</summary><p>Extract reads rows out of an operational source, transform cleans and reshapes them, and load writes them into the warehouse's tables. ETL is the bridge that decides which data reaches the warehouse, in what shape and quality, and how often.</p></details>
+        <details class="check"><summary>Where does the transform run in ETL and in ELT, and why do cloud warehouses such as BigQuery favour ELT?</summary><p>In ETL it runs on a separate engine before the load; in ELT the raw data is loaded first and transformed inside the warehouse with SQL. BigQuery separates storage from compute, so keeping raw data is cheap and the SQL runs where the data already is. The cost is raw, possibly sensitive columns sitting in staging until a transform handles them.</p></details>
+        <details class="check"><summary>Name the six steps of a pipeline that loads a source into a warehouse, and say what staging buys at scale.</summary><p>Extract, stage, transform, load, validate, log. Staging keeps the raw extract unchanged, so a fixed transform can be re-run without reading the source again, and the source is read once per run.</p></details>
+        <details class="check"><summary>Why would a large company's job extract from an ODS or a read replica instead of the production database?</summary><p>The extract's heavy reads then never compete with the customers using production. The ODS is also one reconciled source where operational fixes already landed, so every downstream job reads the same corrected data.</p></details>
+        <details class="check"><summary>A job appends staged events with <code>WRITE_APPEND</code> and has no watermark. What happens on the second run, and what are two fixes?</summary><p>Every event is appended again, so each one appears twice. Either replace the table with <code>WRITE_TRUNCATE</code> on every run, or read <code>MAX(event_id)</code> from the staged rows first and append only events above it.</p></details>
+        <details class="check"><summary>What is the difference between an external table, a native copy and a federated query?</summary><p>An external table stores only a definition and reads a Sheet or Cloud Storage file at query time, so it is always current but slower. A native copy, made with <code>CREATE TABLE ... AS SELECT</code>, is fast but as old as the moment it ran. A federated query sends SQL to a live database such as Cloud SQL through <code>EXTERNAL_QUERY</code> and a connection.</p></details>
+        <details class="check"><summary>How do you get a query result out of BigQuery into a Sheet, and a whole table into Cloud Storage, and in which formats?</summary><p>Save the query result to Google Sheets from the console, or to Drive as CSV or JSONL, or download it as CSV or JSON. A whole table goes to Cloud Storage through an extract job as CSV, newline-delimited JSON, Avro or Parquet.</p></details>
+        <details class="check"><summary>Why should a report filter on <code>@kind</code> instead of an f-string, and why does a cleansing test hand over its rows out of order?</summary><p>A parameter's value travels beside the SQL, so it can never change the statement, and one file serves every value. The test reverses the rows because <code>duplicated</code> keeps the first copy in frame order, so only out-of-order input proves the transform sorts by id before choosing.</p></details>
+      </section>
+
+      <section class="reading-sources" aria-label="Sources and deeper dive">
+        <h2>Sources &amp; deeper dive</h2>
+        <ul>
+          <li id="src-1"><a href="https://cloud.google.com/bigquery/docs/loading-data" target="_blank" rel="noopener">Introduction to loading data</a> — ETL against ELT, and the ways data gets into BigQuery.</li>
+          <li id="src-2"><a href="https://cloud.google.com/bigquery/docs/introduction" target="_blank" rel="noopener">BigQuery overview</a> — separate storage and compute, the reason ELT is cheap here.</li>
+          <li id="src-3"><a href="https://cloud.google.com/bigquery/docs/batch-loading-data" target="_blank" rel="noopener">Batch loading data</a> — load jobs and the <code>WRITE_TRUNCATE</code>, <code>WRITE_APPEND</code> and <code>WRITE_EMPTY</code> dispositions.</li>
+          <li id="src-4"><a href="https://cloud.google.com/sql/docs/mysql/replication" target="_blank" rel="noopener">About replication in Cloud SQL</a> — read replicas that take read and analytics traffic off the primary.</li>
+          <li id="src-5"><a href="https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-csv" target="_blank" rel="noopener">Loading CSV data from Cloud Storage</a> — loading from a <code>gs://</code> URI, and <code>max_bad_records</code>.</li>
+          <li id="src-6"><a href="https://cloud.google.com/bigquery/docs/external-tables" target="_blank" rel="noopener">Introduction to external tables</a> — data that stays at the source, and its limits against native tables.</li>
+          <li id="src-7"><a href="https://cloud.google.com/bigquery/docs/external-data-drive" target="_blank" rel="noopener">Create Google Drive external tables</a> — Sheets-backed tables and the Drive access they need.</li>
+          <li id="src-8"><a href="https://cloud.google.com/bigquery/docs/connections-api-intro" target="_blank" rel="noopener">Introduction to connections</a> — connection resources, <code>EXTERNAL_QUERY</code> and the sources they reach.</li>
+          <li id="src-9"><a href="https://cloud.google.com/bigquery/docs/writing-results" target="_blank" rel="noopener">Writing query results</a> — saving results to Sheets, Drive, a local file or a table.</li>
+          <li id="src-10"><a href="https://cloud.google.com/bigquery/docs/exporting-data" target="_blank" rel="noopener">Export table data to Cloud Storage</a> — extract jobs and their file formats.</li>
+          <li id="src-11"><a href="https://cloud.google.com/bigquery/docs/sandbox" target="_blank" rel="noopener">BigQuery sandbox</a> — what the free sandbox gives and what it leaves out.</li>
+          <li id="src-12"><a href="https://cloud.google.com/bigquery/docs/dts-introduction" target="_blank" rel="noopener">What is the BigQuery Data Transfer Service?</a> — scheduled loads from Cloud Storage, S3 and SaaS sources.</li>
+          <li id="src-13"><a href="https://cloud.google.com/bigquery/docs/parameterized-queries" target="_blank" rel="noopener">Running parameterized queries</a> — named parameters and <code>bq query --parameter</code>.</li>
+          <li id="src-14"><a href="https://cloud.google.com/docs/authentication/provide-credentials-adc" target="_blank" rel="noopener">Set up Application Default Credentials</a> — how client libraries find credentials with no key file.</li>
+          <li id="src-15"><a href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.merge.html" target="_blank" rel="noopener">pandas.DataFrame.merge</a> — joining two frames on a column.</li>
+          <li id="src-16"><a href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.duplicated.html" target="_blank" rel="noopener">pandas.DataFrame.duplicated</a> — which copy <code>keep="first"</code> marks, and why order matters.</li>
+          <li id="src-17"><a href="https://cloud.google.com/python/docs/reference/bigquery/latest" target="_blank" rel="noopener">Python client for Google BigQuery</a> — <code>LoadJobConfig</code>, <code>load_table_from_dataframe</code> and <code>.result()</code>.</li>
+          <li id="src-18"><a href="https://pypi.org/project/db-dtypes/" target="_blank" rel="noopener">db-dtypes on PyPI</a> — the pandas types <code>to_dataframe()</code> needs for DATE and TIME.</li>
+          <li id="src-19"><a href="https://docs.python.org/3/library/datetime.html" target="_blank" rel="noopener">datetime</a> — timezone-aware timestamps with <code>datetime.now(timezone.utc)</code>.</li>
+          <li id="src-20"><a href="https://docs.pytest.org/en/stable/how-to/fixtures.html" target="_blank" rel="noopener">pytest fixtures</a> — how fixtures supply test inputs.</li>
+          <li id="src-21"><a href="https://cloud.google.com/bigquery/docs/partitioned-tables" target="_blank" rel="noopener">Introduction to partitioned tables</a> — how partitioning limits the data a query scans.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · after you have read the page</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 4 Day 5</footer>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 5 — goals</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Describe the ETL process, what extract, transform and load each do, and the role ETL plays in feeding a data warehouse</li>
+      <li>Compare ETL and ELT, say where the transform runs in each and explain why cloud warehouses such as BigQuery favour ELT</li>
+      <li>Walk through the steps of a pipeline that loads a source into a warehouse: extract, stage, transform, load, validate and log</li>
+      <li>Export BigQuery data to Google Sheets, Google Drive, a local file or Cloud Storage, and import data from a Sheet or Cloud Storage, naming the file formats each path takes</li>
+    </ul>
+    <p class="goals-foot">This closes week 4. Finish the check to unlock the next page.</p>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Back to program →", href: "../../index.html" };
+window.DIAGRAM = {
+  title: "Day 5 · from the desk's MySQL tables to a star that reloads safely",
+  width: 500, height: 540,
+  nodes: [
+    { id:"src", step:0, kind:"example", x:24, y:14, w:150, h:48, label:"Desk MySQL\n  tickets · events", detail:"The operational source: one ticket at a time, with a trigger writing an event per status change." },
+    { id:"etl", step:0, x:200, y:14, w:276, h:48, label:"ETL vs ELT\n  transform before or after the load", detail:"ETL transforms on a separate engine, then loads. ELT loads raw rows and transforms them with SQL inside the warehouse, which separate storage and compute make cheap." },
+    { id:"stage", step:1, x:24, y:90, w:150, h:56, label:"Stage\n  desk_raw\n  raw extract", detail:"Raw rows land unchanged, so a fixed transform re-runs without reading the source again. At scale the extract reads an ODS or replica, not production." },
+    { id:"rejects", step:1, x:200, y:90, w:134, h:56, label:"Validate\n  rejects\n  with a reason", detail:"A bad row is kept with the rule it broke instead of vanishing, so the counts still add up." },
+    { id:"log", step:1, x:352, y:90, w:124, h:56, label:"Log\n  one row\n  per run", detail:"When the run happened and how many rows were read, loaded and rejected." },
+    { id:"rerun", step:2, x:24, y:172, w:452, h:48, label:"Reruns & incremental loads\n  WRITE_TRUNCATE · WRITE_APPEND above a watermark", detail:"Replace what the job rebuilds; append what only grows, above MAX(event_id). A MAX(id) watermark misses updated rows and late low ids." },
+    { id:"ext", step:3, x:24, y:246, w:210, h:58, label:"External data\n  Sheet table · EXTERNAL_QUERY\n  connections", detail:"An external table reads the source at query time. A federated query reaches Cloud SQL, Spanner or AlloyDB through a connection. A native copy trades freshness for speed." },
+    { id:"io", step:3, x:266, y:246, w:210, h:58, label:"Export · import\n  Sheets · Drive · gs://\n  Data Transfer Service", detail:"Results save to Sheets, Drive (CSV, JSONL), a local CSV or JSON, or a table; tables export to Cloud Storage as CSV, JSON, Avro or Parquet. The Transfer Service schedules recurring loads." },
+    { id:"param", step:4, x:266, y:330, w:210, h:48, label:"Parameters\n  WHERE kind = @kind", detail:"The value travels beside the SQL: one reusable file, and no value can rewrite the statement. bq query --parameter=kind::closed (empty type = STRING)." },
+    { id:"job", step:5, x:24, y:330, w:210, h:56, label:"The ETL job\n  watermark · clean · load\n  rebuild · log", detail:"One run: create tables, read the watermark, extract, stage, clean in pandas, rebuild the star with SQL, write the log row. Every load passes the table's own schema." },
+    { id:"tests", step:6, x:24, y:412, w:210, h:48, label:"pytest\n  pure transforms, no warehouse", detail:"Frames in, frames out: each cleansing rule gets a test with frames built inline or in a fixture." },
+    { id:"star", step:7, x:266, y:412, w:210, h:48, label:"Star in desk_dw\n  fact per event · SCD2 customer", detail:"The week's end state: dimensions around one fact table at the grain of one ticket event, partitioned by event date." },
+    { id:"check", step:8, x:24, y:484, w:452, h:40, label:"CHECK YOURSELF\n  answer out loud, then open" }
+  ],
+  edges: [
+    { id:"e1", step:0, from:"src", to:"etl", label:"extract" },
+    { id:"e2", step:1, from:"src", to:"stage", label:"land raw" },
+    { id:"e3", step:1, from:"stage", to:"rejects", label:"validate" },
+    { id:"e4", step:1, from:"rejects", to:"log", label:"count" },
+    { id:"e5", step:2, from:"stage", to:"rerun", dir:"-" },
+    { id:"e6", step:3, from:"ext", to:"io", label:"copy · save" },
+    { id:"e7", step:4, from:"io", to:"param", label:"reuse queries" },
+    { id:"e8", step:5, from:"rerun", to:"job", label:"one program" },
+    { id:"e9", step:6, from:"job", to:"tests", label:"rules tested" },
+    { id:"e10", step:7, from:"job", to:"star", label:"rebuilds" },
+    { id:"e11", step:7, from:"param", to:"star", label:"reports" },
+    { id:"e12", step:8, from:"tests", to:"check", dir:"-" },
+    { id:"e13", step:8, from:"star", to:"check", dir:"-" }
+  ],
+  captions: [
+    "ETL transforms before the load on its own engine; ELT loads raw rows and transforms them inside the warehouse. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "A pipeline extracts, stages, transforms, loads, validates and logs; staging and an ODS protect the source at scale.",
+    "Write dispositions and a watermark make a rerun add nothing and an incremental load read only new rows.",
+    "BigQuery reaches data it does not store through external tables, federated queries and connections, and moves data in and out through Sheets, Drive and Cloud Storage.",
+    "A named parameter keeps the value beside the SQL, so one query serves every value safely.",
+    "The ETL job joins the steps into one run: watermark, extract, stage, clean with reasons, rebuild, log.",
+    "Pure transforms are tested with pytest and small frames, with no warehouse and no credentials.",
+    "The week is one pipeline from the desk's MySQL tables to a star, with cleansing placed by trade-off.",
+    "You can now explain how a source reaches a warehouse, how BigQuery reaches outside data, and how a job stays safe to rerun."
+  ]
+};
+window.QUIZ = {
+  id: "w04-d5",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "In an ELT pipeline, where does the transform run?",
+      options: ["On a separate server, before anything reaches the warehouse", "Inside the warehouse, with SQL, after the raw data is loaded", "In the source database, before the extract", "In a spreadsheet after the report is exported"], answer: 1,
+      explain: "ELT loads raw rows into staging first and transforms them inside the warehouse. ETL is the one that transforms on a separate engine before the load." },
+    { type: "tf", stem: "Running the same BigQuery load job twice with WRITE_APPEND leaves the table as one run did.", answer: false,
+      explain: "WRITE_APPEND adds the rows again, so every row appears twice. WRITE_TRUNCATE replaces the table, and an append load needs a watermark to be safe to repeat." },
+    { type: "mcq", stem: "Which of these get data out of BigQuery? Select all that apply.",
+      options: ["Saving a query result to Google Sheets", "An extract job writing a table to Cloud Storage as Parquet", "Saving a query result to Google Drive as JSONL", "Defining an external table over a Google Sheet"], answer: [0, 1, 2],
+      explain: "Sheets, Drive and extract jobs are export paths. An external table reads a Sheet into queries, so it brings data in and sends none out." },
+    { type: "match", stem: "Match each BigQuery feature to what it does.",
+      pairs: [
+        { l: "external table", r: "keeps the data at the source and reads it at query time" },
+        { l: "federated query", r: "sends SQL to a live database such as Cloud SQL with EXTERNAL_QUERY" },
+        { l: "connection", r: "a stored resource holding the access details for one outside source" },
+        { l: "Data Transfer Service", r: "schedules recurring loads from sources such as S3 or SaaS apps" }
+      ],
+      explain: "External tables and federated queries both leave data outside BigQuery; a connection is what a federated query names; the Transfer Service loads data in on a schedule." },
+    { type: "scq", stem: "A cleansing function marks duplicates with DataFrame.duplicated on rows read from BigQuery. Different runs keep different copies of the same duplicate. What fixes it?",
+      options: ["Pass keep=False so every copy is kept", "Sort the frame by event_id before calling duplicated", "Load the rows with WRITE_APPEND", "Add a parameter @kind to the query"], answer: 1,
+      explain: "duplicated keeps the first copy in frame order, and BigQuery returns rows in no fixed order. Sorting by the key first makes the same copy survive every run." },
+    { type: "open", stem: "In two or three sentences: how does a pipeline handle a bad record, a rerun and an incremental load so it never duplicates or loses data?",
+      hint: "A table with a reason, a write disposition, a watermark.",
+      model: "Bad records go to a rejects table with the rule they broke, so nothing disappears silently. Tables the job rebuilds are written with WRITE_TRUNCATE so a rerun replaces them, and tables that only grow are appended above a watermark, the highest id already loaded, so a rerun finds nothing new to add." }
+  ]
+};
+</script>
+
+<script src="../../assets/js/diagram.js?v=20261030"></script>
+<script src="../../assets/js/scrolly.js?v=20261030"></script>
+<script src="../../assets/js/modals.js?v=20261030"></script>
+<script src="../../assets/js/quiz.js?v=20261030"></script>
+<script src="../../assets/js/widgets.js?v=20261030"></script>
+<script src="../../assets/js/glossary.js?v=20261030"></script>
+</body>
+</html>
