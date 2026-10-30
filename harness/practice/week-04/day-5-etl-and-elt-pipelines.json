@@ -1,0 +1,128 @@
+{
+  "day": "w04d5",
+  "page": "docs/weeks/week-04/day-5-etl-and-elt-pipelines.html",
+  "assessed": "2026-10-30",
+  "verdict": "partial",
+  "summary": "The day lends itself to three checkable tasks on plain Python lists and dicts (ELT's raw stage beside its clean table, rejects with a reason and a load-log dict, an append behind a watermark) and one SQL statement with a named @ parameter; its BigQuery DDL, connections, pandas and google-cloud-bigquery job, pytest and review steps need a cloud project, packages or a test runner, or teach a concept a check cannot see.",
+  "steps": [
+    {
+      "step": 0,
+      "title": "ETL and ELT: where the transform runs",
+      "suitable": true,
+      "reason": "The page's three-function job on lists makes where the transform runs visible: in ELT the staging list keeps every raw row and the clean list is built from it, while the source list is left unchanged. Filtering before the stage (ETL by mistake) or removing bad rows from the source both leave lists a check can read.",
+      "task": "t1"
+    },
+    {
+      "step": 1,
+      "title": "The steps of a pipeline: stage, validate, log",
+      "suitable": true,
+      "reason": "The rejects-with-a-reason loop and the load-log dict are plain Python whose results a check reads, and the page names the silent drop and the counts that must add up. A sibling with a second row rule stays off the 06 rung, which does the same split in pandas.",
+      "task": "t2"
+    },
+    {
+      "step": 2,
+      "title": "Reruns and incremental loads",
+      "suitable": true,
+      "reason": "The watermark on lists is runnable as shown: max(..., default=0), a comprehension above the watermark and an append, and a second call that adds nothing is the idempotence the page teaches. Leaving out default=0 raises on the first run and appending without the watermark doubles every row, both page-named.",
+      "task": "t3"
+    },
+    {
+      "step": 3,
+      "title": "External data, connections and transfers",
+      "suitable": false,
+      "reason": "External tables, EXTERNAL_QUERY, connections, Sheet exports and the Data Transfer Service exist only in BigQuery and the console; SQLite has none of them, and a view standing in for an external table would fake the point of the step.",
+      "task": null
+    },
+    {
+      "step": 4,
+      "title": "Parameterized queries",
+      "suitable": true,
+      "reason": "Python's sqlite3 binds an @kind placeholder from a dict the way BigQuery does (confirmed under CPython 3.15; the browser pass is the proof for Pyodide), so one SQL statement can be run with two values and an injection string. A literal pasted in place of @kind, or @kind written inside quotes, gives rows a check can tell apart; the bq --parameter flag itself stays out, since it is typed at a shell.",
+      "task": "t4"
+    },
+    {
+      "step": 5,
+      "title": "Building the ETL job",
+      "suitable": false,
+      "reason": "The step's code is pandas (merge, duplicated, isin, assign) and google-cloud-bigquery load jobs, none of which the runtime has. A standard-library rewrite of the sort-then-drop-duplicates rule would need sorting with a key, which the page does not teach, and it is the 06-etl-job clean_events rung itself.",
+      "task": null
+    },
+    {
+      "step": 6,
+      "title": "Testing the transforms with pytest",
+      "suitable": false,
+      "reason": "The step teaches pytest, fixtures and a module split across files: a tool and a layout, with no pytest and only one file in the runtime.",
+      "task": null
+    },
+    {
+      "step": 7,
+      "title": "Review: the week as one pipeline",
+      "suitable": false,
+      "reason": "The review retells the week's pipeline and compares architectures (ETL warehouse, ELT warehouse, lake): concepts and trade-offs with no behaviour a check can see.",
+      "task": null
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "title": "ETL and ELT",
+      "step": 0,
+      "idea": "The reader writes elt(source, staging, clean), the ELT order on lists: it copies every source row into staging unchanged, then appends to clean only the staged rows whose kind is in EVENT_KINDS = (\"open\", \"assigned\", \"closed\"). Called with source = [{\"event_id\": 1, \"kind\": \"open\"}, {\"event_id\": 2, \"kind\": \"closd\"}] and two empty lists, staging ends with both rows and clean with only event 1.",
+      "checks": [
+        "staging holds every source row, the misspelt closd row included; filtering before the stage, as an ETL job does, leaves it out.",
+        "clean holds only the rows whose kind is one of the three, built from staging after the load.",
+        "source still holds all of its rows after the call; removing bad rows from the source breaks the rule that extract reads without changing it."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t2",
+      "title": "Rejects and the load log",
+      "step": 1,
+      "idea": "The reader writes validate(rows) returning (clean, rejects, log). A row whose kind is not in EVENT_KINDS is rejected with reason \"unknown kind\", and a row whose ticket_id is None with reason \"no ticket\"; log is {\"rows_read\": ..., \"rows_loaded\": ..., \"rows_rejected\": ...}. For one good row, one closd row and one row with ticket_id None, rejects carries two rows with their reasons and log is {\"rows_read\": 3, \"rows_loaded\": 1, \"rows_rejected\": 2}.",
+      "checks": [
+        "Each bad row appears in rejects with every source key plus its reason; dropping it silently leaves rejects empty.",
+        "The ticket_id None row carries \"no ticket\" and the closd row \"unknown kind\", so each reject says why.",
+        "log's rows_loaded plus rows_rejected equals rows_read, with all three counts right.",
+        "The dicts in the input list carry no reason key afterwards; writing row[\"reason\"] in place changes the source rows, where {**row, \"reason\": ...} builds a new dict."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t3",
+      "title": "Incremental loads",
+      "step": 2,
+      "idea": "The reader writes append_new(source, staged), an append load behind a watermark on event dicts: it reads the highest event_id in staged (0 when staged is empty), appends to staged every source event above it, and returns the list of new events. With source events 1 to 5 and staged holding 1 to 3, it appends and returns events 4 and 5; a second call returns [] and leaves staged at five rows.",
+      "checks": [
+        "On an empty staged list it loads every source event; max without default=0 raises ValueError on that first run.",
+        "With 1 to 3 staged it appends only events 4 and 5, not event 3 again; a >= comparison duplicates the watermark row.",
+        "A second call returns [] and staged still holds five events, so the append is safe to repeat; appending the whole source each run doubles every row."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t4",
+      "title": "Parameterized queries",
+      "step": 4,
+      "idea": "The reader writes one SQL statement in QUERY that counts the events of one kind per ticket from a fact_ticket_events table, with the kind as the named parameter @kind: columns ticket_id and events, most events first. The checks run the same QUERY with {\"kind\": \"closed\"}, then {\"kind\": \"open\"}, then a value carrying a quote and OR 1=1.",
+      "checks": [
+        "Run with kind closed, QUERY returns the closed counts per ticket, most first; writing '@kind' inside quotes compares against the text @kind and returns nothing.",
+        "Run again with kind open, the same QUERY returns the open counts; a statement with 'closed' pasted in place of @kind returns the closed rows both times.",
+        "Run with the value x' OR '1'='1, QUERY returns no rows, because a bound value is compared as a string and never becomes part of the WHERE clause."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    }
+  ]
+}

@@ -1,0 +1,112 @@
+{
+  "day": "w04d4",
+  "page": "docs/weeks/week-04/day-4-dimensional-modeling.html",
+  "assessed": "2026-10-30",
+  "verdict": "partial",
+  "summary": "The day lends itself to three Python tasks on rules a function can show, keeping a sum at the fact's grain, picking the type 2 version in force on a date and overwriting a dimension as a type 1 on copies; its modeling levels, star and snowflake queries and BigQuery physical design are concepts, BigQuery-only SQL or the demo's own rungs.",
+  "steps": [
+    {
+      "step": 0,
+      "title": "Data models: from business questions to tables",
+      "suitable": false,
+      "reason": "The step teaches a concept: a model is the agreed plan, and each \"by\" in a business question names a dimension. Nothing in it returns a value a check can read.",
+      "task": null
+    },
+    {
+      "step": 1,
+      "title": "Conceptual, logical and physical models",
+      "suitable": false,
+      "reason": "The three levels are a way of describing a design, and the one table a function could hold (MySQL types against BigQuery types) is a lookup whose only wrong answer is a mistyped entry, not a mistake the page names.",
+      "task": null
+    },
+    {
+      "step": 2,
+      "title": "Dimensional modeling: facts, dimensions, measures and grain",
+      "suitable": true,
+      "reason": "The page's own loop shows the grain mistake as a wrong number: a ticket-level value summed over every event row gives 26 where 13 is right. A function over event-row tuples, which the page unpacks in a for loop, returns that number, and both checks are failed by summing or counting every row instead of the closing events.",
+      "task": "t1"
+    },
+    {
+      "step": 3,
+      "title": "The star schema built for the desk",
+      "suitable": false,
+      "reason": "Its checkable pieces (the YYYYMMDD date key, agent key 0, the WHERE lines that drop bad events) are rungs the 03-star-schema demo types into star.sql, and GENERATE_DATE_ARRAY and QUALIFY do not run on the page's SQLite 3.39.0. A plain star query on sqlite3 has no wrong answer the page names beyond not writing it, and the demo's questions.sql already takes the per-agent and per-weekday queries.",
+      "task": null
+    },
+    {
+      "step": 4,
+      "title": "The snowflake schema and when its joins pay",
+      "suitable": false,
+      "reason": "The page's point is that the star and snowflake forms return the same rows and differ in joins and repeated text, a design trade-off; a snowflake query on sqlite3 would only be wrong by not being written, and nested, repeated fields are BigQuery-only.",
+      "task": null
+    },
+    {
+      "step": 5,
+      "title": "The physical model in BigQuery: partitions, clusters and the cache",
+      "suitable": false,
+      "reason": "Partitioning, clustering, the query cache, the dry run and the sandbox's 60-day expiry are BigQuery features and costs, reached through bq or a project; the runtime has no BigQuery and a check cannot see bytes billed.",
+      "task": null
+    },
+    {
+      "step": 6,
+      "title": "Slowly changing dimensions: types 0 to 6 and how to choose",
+      "suitable": true,
+      "reason": "The effective-date rule (from inclusive, to exclusive) is the same comparison in Python on date objects, which the next step says compare with < and >=. A lookup of the version in force on a day is failed by the three mistakes the page and brief name: reading is_current, matching on the customer id alone, and treating effective_to as inclusive.",
+      "task": "t2"
+    },
+    {
+      "step": 7,
+      "title": "SCD type 2 in Python, tested",
+      "suitable": true,
+      "reason": "The pure-function shape the page teaches (copy the rows with a list comprehension, map ids with a dict comprehension, next key from max with default=0) shows up as returned rows and an untouched input. apply_scd2 is the 04-customer-history demo rung, so the task is its type 1 sibling from the previous step's table; pytest, the BigQuery load and CREATE TABLE IF NOT EXISTS stay out.",
+      "task": "t3"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "title": "Facts and grain",
+      "step": 2,
+      "idea": "The reader writes close_summary(rows), where each row is an event tuple (kind, ticket_id, hours_since_open) at the fact's grain, and returns a tuple (tickets_closed, total_hours) taken from the closing events only. For [(\"open\", 1, 0), (\"assigned\", 1, 1), (\"closed\", 1, 3), (\"open\", 3, 0), (\"closed\", 3, 10), (\"open\", 4, 0)] it returns (2, 13).",
+      "checks": [
+        "total_hours is 13 for the example rows; summing hours_since_open over every event row adds the assignment's hour and mixes the grain.",
+        "tickets_closed is 2; counting every row, or every row of a ticket that has a closing event, counts each ticket more than once.",
+        "A ticket with only open and assigned events, such as ticket 4, adds to neither number."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t2",
+      "title": "Slowly changing dimensions",
+      "step": 6,
+      "idea": "The reader writes fee_on(dimension, customer_id, day), where dimension is a list of type 2 customer rows as dicts with customer_id, monthly_fee, effective_from, effective_to and is_current (dates as date objects), and returns the monthly_fee of the version in force on day: effective_from <= day < effective_to. With Dana's two rows (49.00 from 2026-10-01 to 2026-11-05, 199.00 from 2026-11-05 to 9999-12-31) and another customer's row, fee_on(rows, 1, date(2026, 10, 20)) returns Decimal(\"49.00\").",
+      "checks": [
+        "An October day returns 49.00; returning the row whose is_current is True gives 199.00, the overwrite the page warns about.",
+        "The change day 2026-11-05 returns 199.00; treating effective_to as inclusive with <= picks the closed 49.00 row.",
+        "A day in late November returns 199.00 when the closed row comes first in the list; matching on customer_id alone returns the first version found."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t3",
+      "title": "SCD in Python",
+      "step": 7,
+      "idea": "The reader writes apply_scd1(dimension, source), the type 1 sibling of the page's apply_scd2: it returns new rows in which each source customer's row has name, email, country and monthly_fee overwritten under its existing customer_key, and a customer not yet in the dimension is appended with the next surrogate key. Given Dana at key 1 and fee 49.00 and a source row with fee 199.00, it returns one row, key 1, fee 199.00.",
+      "checks": [
+        "A changed customer keeps one row under its old customer_key with the new fee; adding a second row is type 2, not type 1.",
+        "The dimension passed in is left as it was; writing into its dicts instead of copies changes the caller's rows.",
+        "A new customer gets the next key after the highest one, and an empty dimension starts at key 1; max without default=0 raises on an empty dimension."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    }
+  ]
+}

@@ -1,0 +1,141 @@
+{
+  "day": "w04d2",
+  "page": "docs/weeks/week-04/day-2-big-data-fundamentals.html",
+  "assessed": "2026-10-30",
+  "verdict": "partial",
+  "summary": "The day lends itself to five small Python tasks on the desk's records (running counts that skip a redelivered event, matching a CRM record to a desk ticket, a retention stage from two dates, flattening optional tags, reading JSON lines), and not to its vocabulary steps on the five V's, the components and the benefits, which a check cannot see.",
+  "steps": [
+    {
+      "step": 0,
+      "title": "Big data and the five V's",
+      "suitable": false,
+      "reason": "The step teaches vocabulary and design pressures (the five V's, a data profile table, how each V shapes a warehouse), and its one computation, events a day divided into events a second, is arithmetic whose only wrong answer is not writing it. The page's named mistake, treating big data as a size threshold, is a judgement no return value shows, and a size-test function would teach the very threshold the page rejects.",
+      "task": null
+    },
+    {
+      "step": 1,
+      "title": "The components of a big data system",
+      "suitable": false,
+      "reason": "The step names five components, a Google Cloud service for each and orchestration, which are concepts a check cannot see. Its one snippet is a json.dumps of one event from week 2, so a round-trip task has no wrong answer beyond not writing it.",
+      "task": null
+    },
+    {
+      "step": 2,
+      "title": "Batch and streaming paths, and why they are distributed",
+      "suitable": true,
+      "reason": "The streaming loop leaves a value a check can read: one count after each event instead of one count at the end, and the page names a retried sender delivering the same event twice. The page names the duplicate hazard but shows no fix, so the trainer should confirm that skipping a seen event id with a set or list from earlier weeks is fair here.",
+      "task": "t1"
+    },
+    {
+      "step": 3,
+      "title": "What big data is worth to an organisation",
+      "suitable": false,
+      "reason": "The three benefits, return on investment and before-and-after measurement are arguments for a pitch, not behaviour, and the step's one query uses MySQL's HOUR(), which the in-page SQLite lacks. Averaging two months of waits would be arithmetic with no mistake the page names.",
+      "task": null
+    },
+    {
+      "step": 4,
+      "title": "The challenges of big data",
+      "suitable": true,
+      "reason": "The integration snippet turns into a return value: a CRM record matches a desk ticket only after the TCK- prefix is sliced off, the rest converted to int and the four-hour shift taken back, and the page shows the raw comparison giving False. The task stays on integration so it does not pre-empt the week's load_rejects cleaning of bad rows.",
+      "task": "t2"
+    },
+    {
+      "step": 5,
+      "title": "The data lifecycle: one ticket from form to deletion",
+      "suitable": true,
+      "reason": "The retention snippet's datetime and timedelta arithmetic gives a stage a function can return for a closing date and a day, and the page names the mistakes: deleting a ticket at once instead of archiving it, and deletion coming before the retention period ends. datetime is standard library and present in Pyodide.",
+      "task": "t3"
+    },
+    {
+      "step": 6,
+      "title": "Structured, semi-structured and unstructured data",
+      "suitable": true,
+      "reason": "Flattening tags into one row per tag, with get and a default for a ticket that has no tags key, leaves a list a check can read, and the page names the KeyError that ticket[\"tags\"] raises on ticket 5. The structured, semi-structured and unstructured labels themselves are vocabulary and stay out of the checks.",
+      "task": "t4"
+    },
+    {
+      "step": 7,
+      "title": "File formats compared and chosen",
+      "suitable": true,
+      "reason": "Reading JSON lines text one line at a time returns a list a check can read, and the brief's pitfall, treating JSON lines as one JSON document, raises on json.loads of the whole text; the page also names the comma in a title that CSV splitting breaks. The task reads text already in memory and writes no file, so it keeps clear of Wednesday's extract, which writes the CSV and JSON-lines files.",
+      "task": "t5"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "title": "Batch and streaming",
+      "step": 2,
+      "idea": "The reader writes stream_counts(events), where each event is a dict with event_id, ticket_id and kind, and returns a list with one counts dict per event processed, the counts by kind as they stand after that event. A redelivered event, one whose event_id was already seen, changes nothing and adds no snapshot. For the page's four events the list ends with {'open': 2, 'closed': 1, 'assigned': 1}.",
+      "checks": [
+        "For four distinct events the function returns four snapshots, the first {'open': 1}; a batch-shaped answer that returns only the final counts fails.",
+        "The last snapshot equals the batch count of the same events, {'open': 2, 'closed': 1, 'assigned': 1}.",
+        "An event delivered twice with the same event_id is counted once; a loop that ignores retries counts the kind twice."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t2",
+      "title": "Integration of sources",
+      "step": 4,
+      "idea": "The reader writes same_ticket(desk, crm), where desk is like {\"ticket_id\": 4, \"opened_hour\": 8} and crm like {\"ref\": \"TCK-0004\", \"opened_hour\": 12}, and returns True when the two records describe one ticket once the CRM's prefix is sliced off, its digits converted to int and its hour moved back four hours. same_ticket for the page's pair is True.",
+      "checks": [
+        "The page's pair returns True; comparing ticket_id to the raw ref string returns False.",
+        "A CRM ref of TCK-0004 with the same hour as the desk, 8, returns False; an answer that matches ids and forgets the four-hour shift returns True.",
+        "A CRM record for TCK-0005 at the shifted hour returns False against desk ticket 4; an answer that compares only the hours returns True."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t3",
+      "title": "Retention policy",
+      "step": 5,
+      "idea": "The reader writes retention_stage(closed_at, today), two datetime values, and returns \"storage\" before 90 days have passed since closing, \"archival\" from 90 days until 730 days, and \"deletion\" from 730 days, using timedelta as the page does. For ticket 1, closed 2026-10-18 11:00, the day 2027-03-01 gives \"archival\".",
+      "checks": [
+        "A day 30 days after closing gives \"storage\"; an answer that archives or deletes from the moment a ticket closes fails.",
+        "A day 100 days after closing gives \"archival\"; an answer that deletes once the 90 days pass, skipping archival, gives \"deletion\".",
+        "A day 800 days after closing gives \"deletion\"; testing the 90-day rule first, so the 730-day branch is never reached, gives \"archival\"."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t4",
+      "title": "Semi-structured data",
+      "step": 6,
+      "idea": "The reader writes tag_rows(text), where text is a JSON array of tickets like the page's, and returns a list of (id, tag) pairs, one per tag, the flattening the desk's ticket_tags table does. For the page's two tickets it returns [(4, \"billing\"), (4, \"ui\")].",
+      "checks": [
+        "Ticket 4 with two tags gives two pairs, (4, \"billing\") and (4, \"ui\"); appending the whole list as one row gives (4, [\"billing\", \"ui\"]).",
+        "Ticket 5, which has no tags key, adds no pair and raises nothing; reading ticket[\"tags\"] raises KeyError."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t5",
+      "title": "JSON lines",
+      "step": 7,
+      "idea": "The reader writes read_jsonl(text), where text holds one JSON object per line as on the page, and returns the list of dicts in line order, skipping blank lines. For the page's six-line text it returns six dicts, the first {\"ticket_id\": 1, \"title\": \"Login page returns 500\", \"priority\": \"high\", \"status\": \"closed\"}.",
+      "checks": [
+        "Six lines give six dicts in order; calling json.loads on the whole text, as if it were one JSON document, raises.",
+        "ticket_id comes back as the int 1; splitting each line on commas, as with CSV, keeps strings.",
+        "A record whose title contains a comma comes back with the whole title; splitting on commas cuts it in two."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    }
+  ]
+}

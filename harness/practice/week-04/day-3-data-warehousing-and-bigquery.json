@@ -1,0 +1,97 @@
+{
+  "day": "w04d3",
+  "page": "docs/weeks/week-04/day-3-data-warehousing-and-bigquery.html",
+  "assessed": "2026-10-30",
+  "verdict": "partial",
+  "summary": "The day lends itself to two SQL tasks that run on sqlite3 in memory, a finding query for duplicates on a business key and a LAG window over each ticket's events; its warehousing, architecture, vendor, BigQuery-loading and nesting steps are concepts, cloud tools or GoogleSQL that SQLite lacks, and the extract's two file writers are demo 01's rung.",
+  "steps": [
+    {
+      "step": 0,
+      "title": "What a data warehouse is, and OLTP against OLAP",
+      "suitable": false,
+      "reason": "The step teaches concepts (what a warehouse is, OLTP against OLAP, row against column storage), and its two queries are week 3's lookup and GROUP BY used as illustrations. A task here would practise week 3's SQL, not the step's point, and a check cannot see why a workload is OLAP.",
+      "task": null
+    },
+    {
+      "step": 1,
+      "title": "Warehouse architecture, data lakes, the ODS and data marts",
+      "suitable": false,
+      "reason": "Layers, lakes against warehouses, the ODS and dependent or independent marts are concepts with no code on the page; the only wrong answer a check could see is not writing anything.",
+      "task": null
+    },
+    {
+      "step": 2,
+      "title": "Data store vendors: cloud against on-premises",
+      "suitable": false,
+      "reason": "Vendor names, cost, scaling and maintenance trade-offs and serverless are concepts for an interview answer; nothing on the page runs, so there is no behaviour to check.",
+      "task": null
+    },
+    {
+      "step": 3,
+      "title": "Data quality problems and cleansing",
+      "suitable": true,
+      "reason": "The finding queries (NOT IN, GROUP BY on a business key with HAVING, a join comparing timestamps) run unchanged on sqlite3 in memory and return rows a check reads, and the page names the surrogate-key mistake (event_id differs between copies). Demo 02's explore.sql takes the three event queries, so the task is a sibling on customers: duplicates on email as the business key, found and never removed (removal is Thursday's).",
+      "task": "t1"
+    },
+    {
+      "step": 4,
+      "title": "Extracting a transactional database into files",
+      "suitable": false,
+      "reason": "The checkable behaviour here, a CSV with a header and empty fields for None and one JSON object per line with default=str, is exactly demo 01's write_csv and write_jsonl, the second with its own test, so any task would hand over the rung. The rest (parents before children, .gitignore, files before loads) is convention.",
+      "task": null
+    },
+    {
+      "step": 5,
+      "title": "BigQuery: architecture, datasets, tables and loads",
+      "suitable": false,
+      "reason": "Datasets, bq mk, bq load, schema files, ALTER TABLE options and IAM shares need BigQuery and the bq tool, neither of which the runtime has; rebuilding a schema list or a seconds conversion in Python would practise a stand-in, not the step.",
+      "task": null
+    },
+    {
+      "step": 6,
+      "title": "BigQuery queries and advanced queries",
+      "suitable": true,
+      "reason": "Window functions (ROW_NUMBER, LAG with PARTITION BY and ORDER BY) and WITH RECURSIVE run on SQLite 3.39.0, and the page names the mistake a check catches: GROUP BY collapses rows where a window keeps them. QUALIFY and DATETIME_DIFF are not in SQLite, so the task avoids both; setup can ATTACH an in-memory database as desk_raw so desk_raw.ticket_events runs unchanged. Demo 02 takes LAG(created_at), so the task reads LAG(kind).",
+      "task": "t2"
+    },
+    {
+      "step": 7,
+      "title": "Denormalisation and nested fields",
+      "suitable": false,
+      "reason": "The step's code is ARRAY_AGG(STRUCT(...)), which SQLite does not have; json_group_array would fake it. Without nesting, the wide board join is week 3's JOIN, and the trade-off itself is a concept.",
+      "task": null
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "title": "Data quality",
+      "step": 3,
+      "idea": "The reader writes one finding query over customers (customer_id, name, email, country, monthly_fee) that lists each email held by more than one customer row, with columns email and copies, ordered by email. With two rows for ana@example.com and one each for the others, it returns one row: ana@example.com, 2. It finds the duplicates and removes nothing.",
+      "checks": [
+        "The duplicated email comes back with copies 2; grouping on customer_id, the surrogate key that differs between the two copies, returns no rows.",
+        "An email held by one customer row does not appear; leaving out HAVING COUNT(*) > 1 returns every email.",
+        "The result columns are email and copies in that order, and the customers table still holds every row afterwards; a DELETE of the extra copy, removal the page leaves to a later step, changes the count."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t2",
+      "title": "GoogleSQL",
+      "step": 6,
+      "idea": "The reader writes one query over desk_raw.ticket_events (event_id, ticket_id, kind, note, created_at) returning event_id, ticket_id, kind and previous_kind, where previous_kind is LAG(kind) OVER (PARTITION BY ticket_id ORDER BY event_id), ordered by event_id. On ticket 4 (open, assigned, assigned) it gives NULL, open, assigned.",
+      "checks": [
+        "Every event comes back as its own row, one per event; GROUP BY ticket_id collapses each ticket to one row.",
+        "The first event of each ticket has previous_kind NULL; leaving out PARTITION BY gives it the last kind of the ticket before.",
+        "Inside a ticket, previous_kind is the kind of the event with the next lower event_id; ordering the window by kind instead gives a different previous_kind."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    }
+  ]
+}
