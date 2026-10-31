@@ -128,6 +128,27 @@ def metrics() -> dict:
     return json.loads(METRICS.read_text(encoding="utf-8"))["notes"]
 
 
+def day_for(page: Path, cur: dict | None = None) -> dict | None:
+    """The curriculum day whose page this is (docs/weeks/<dir>/<slug>.html), or None when the page is not one."""
+    try:
+        rel = page.resolve().relative_to((ROOT / "docs" / "weeks").resolve())
+    except ValueError:
+        return None
+    if cur is None:
+        cur = json.loads((ROOT / "harness" / "curriculum.json").read_text(encoding="utf-8"))
+    for w in cur["weeks"]:
+        if w["dir"] == rel.parts[0]:
+            for d in w["days"]:
+                if f"{d.get('slug')}.html" == rel.name:
+                    return d
+    return None
+
+
+def concept_day(page: Path, cur: dict | None = None) -> bool:
+    """D-0079: a demoFormat none day teaches concepts; its code floor is codeBlocksMinConcept."""
+    return (day_for(page, cur) or {}).get("demoFormat") == "none"
+
+
 def brief_for(page: Path) -> Path | None:
     """docs/weeks/<rel>.html -> harness/research/<rel>.md (None when the page is not under docs/weeks)."""
     try:
@@ -198,9 +219,10 @@ def _ancestors(scope: Element, target: Element) -> list[Element]:
     return path if walk(scope) else []
 
 
-def count_findings(c: dict, m: dict, tolerance: int = 0) -> list[str]:
+def count_findings(c: dict, m: dict, tolerance: int = 0, concept: bool = False) -> list[str]:
     """Findings against metrics.notes. tolerance widens the word band (the tests allow metrics.wordTolerance;
-    the author, the humanizer and the critic use the hard band)."""
+    the author, the humanizer and the critic use the hard band). concept (D-0079): the page belongs to a demoFormat
+    none day, so the code floor is codeBlocksMinConcept."""
     f: list[str] = []
     if not (m["stepsMin"] <= c["steps"] <= m["stepsMax"]):
         f.append(f"steps {c['steps']} outside {m['stepsMin']}..{m['stepsMax']}")
@@ -222,8 +244,9 @@ def count_findings(c: dict, m: dict, tolerance: int = 0) -> list[str]:
     for i, n in enumerate(c["citations"]):
         if n < m["citationsPerStepMin"]:
             f.append(f"step {i} has {n} citations, expected >= {m['citationsPerStepMin']}")
-    if c["codeBlocks"] < m["codeBlocksMin"]:
-        f.append(f"{c['codeBlocks']} <pre> code blocks, expected >= {m['codeBlocksMin']}")
+    code_min = m.get("codeBlocksMinConcept", m["codeBlocksMin"]) if concept else m["codeBlocksMin"]
+    if c["codeBlocks"] < code_min:
+        f.append(f"{c['codeBlocks']} <pre> code blocks, expected >= {code_min}" + (" (concept day, D-0079)" if concept else ""))
     if c["quizQ"] != m["quizQuestions"]:
         f.append(f"quiz has {c['quizQ']} questions, expected {m['quizQuestions']}")
     if c["sources"] < m["sourcesMin"]:
@@ -631,11 +654,11 @@ def check_page(page: Path, phases: set[str], m: dict | None = None, tolerance: i
     text = page.read_text(encoding="utf-8")
     brief = brief_for(page)
     brief_text = brief.read_text(encoding="utf-8") if brief and brief.is_file() else None
-    rep: dict = {"page": page.as_posix(), "findings": []}
+    rep: dict = {"page": page.as_posix(), "findings": [], "conceptDay": concept_day(page)}
     try:
         if "counts" in phases:
             rep["counts"] = counts(text)
-            rep["findings"] += count_findings(rep["counts"], m, tolerance)
+            rep["findings"] += count_findings(rep["counts"], m, tolerance, concept=rep["conceptDay"])
         if "phrases" in phases:
             rep["phrases"] = phrase_hits(text, m.get("deliveryPhrases", []))
             rep["findings"] += [f"delivery phrase {h['phrase']!r} in {h['where']}: {h['sentence']}" for h in rep["phrases"]]
@@ -679,7 +702,7 @@ def main(argv: list[str]) -> int:
             if "counts" in r:
                 c = r["counts"]
                 print(f"  steps {c['steps']} captions {c['captions']} words {c['words']} h3 {c['h3']} interview {c['interview']} "
-                      f"check {c['checkDetails']} code {c['codeBlocks']} cites {c['citations']} quizQ {c['quizQ']} sources {c['sources']} ~{c['declaredMinutes']} min")
+                      f"check {c['checkDetails']} code {c['codeBlocks']} cites {c['citations']} quizQ {c['quizQ']} sources {c['sources']} ~{c['declaredMinutes']} min" + (" (concept day)" if r.get("conceptDay") else ""))
             if "style" in r:
                 s = r["style"]
                 print(f"  style: paragraphs {s['paragraphs']} (long {s['longParagraphs']}) sentences {s['sentences']} (long {s['longSentences']}, code-heavy {s['codeHeavy']}) "

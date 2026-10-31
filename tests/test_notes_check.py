@@ -68,6 +68,22 @@ class CountTests(unittest.TestCase):
             with self.subTest(bar=key):
                 self.assertTrue(any(needle in x for x in notes_check.count_findings(dict(ok, **{key: bad}), m)), key)
 
+    def test_concept_day_code_floor(self):
+        """D-0079: a demoFormat none day is held to codeBlocksMinConcept; every other day to codeBlocksMin."""
+        m = metrics()["notes"]
+        self.assertIn("codeBlocksMinConcept", m)
+        ok = dict(self.c, words=5000, declaredMinutes=33, codeBlocks=1)
+        self.assertTrue(any("code blocks" in x for x in notes_check.count_findings(ok, m)))
+        self.assertEqual([], notes_check.count_findings(ok, m, concept=True))
+        hit = notes_check.count_findings(ok, dict(m, codeBlocksMinConcept=2), concept=True)
+        self.assertTrue(any("code blocks" in x and "concept day" in x for x in hit), hit)
+        self.assertIsNone(notes_check.day_for(EXEMPLAR))
+        self.assertFalse(notes_check.concept_day(EXEMPLAR))
+        cur = {"weeks": [{"dir": "week-00", "days": [{"slug": "day-1-x", "demoFormat": "none"}, {"slug": "day-2-y", "demoFormat": "walkthrough"}]}]}
+        self.assertTrue(notes_check.concept_day(ROOT / "docs" / "weeks" / "week-00" / "day-1-x.html", cur))
+        self.assertFalse(notes_check.concept_day(ROOT / "docs" / "weeks" / "week-00" / "day-2-y.html", cur))
+        self.assertFalse(notes_check.concept_day(ROOT / "docs" / "weeks" / "week-00" / "day-3-z.html", cur))
+
     def test_truncated_page_is_a_parse_error(self):
         with self.assertRaises(ValueError):
             notes_check.counts(self.text[: len(self.text) // 2])

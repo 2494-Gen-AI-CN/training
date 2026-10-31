@@ -1,7 +1,7 @@
 {
   "_comment": "Quality bars for every generated day. Tests and critics read this file; the workflow passes wordMin/wordMax as args overrides.",
   "notes": {
-    "_comment": "D-0040: a notes page is reference/study material at junior-interview depth. Per-step bars apply to TEACHING steps (every step but the last 'Check yourself' step). deliveryPhrases are forbidden in .reading-col prose, quiz strings and diagram captions (harness/notes_check.py --phrases). assumptionPhrases (D-0048, notes pages only per D-0049) are forbidden in the same places: the page never claims the reader knows something from outside the course.",
+    "_comment": "D-0040: a notes page is reference/study material at junior-interview depth. Per-step bars apply to TEACHING steps (every step but the last 'Check yourself' step). deliveryPhrases are forbidden in .reading-col prose, quiz strings and diagram captions (harness/notes_check.py --phrases). assumptionPhrases (D-0048, notes pages only per D-0049) are forbidden in the same places: the page never claims the reader knows something from outside the course. codeBlocksMinConcept (D-0079) replaces codeBlocksMin on a demoFormat none day (a concept day): code appears only where a subtopic is code-shaped, never as the prose restated as data.",
     "wordMin": 4500, "wordMax": 7000, "wordTolerance": 250,
     "readingWpm": 150,
     "stepsMin": 6, "stepsMax": 10,
@@ -9,6 +9,7 @@
     "interviewPerStep": 1,
     "checkYourselfMin": 5, "checkYourselfMax": 10,
     "codeBlocksMin": 6,
+    "codeBlocksMinConcept": 0,
     "citationsPerStepMin": 2,
     "quizQuestions": 6,
     "quizTypeMix": { "scq": 1, "tf": 1, "mcqOrMatch": 1, "openMax": 1 },

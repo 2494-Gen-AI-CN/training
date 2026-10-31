@@ -86,33 +86,9 @@
           <li>Measured service means usage is metered, monitored and reported, which is what makes paying per use
           possible.<sup class="cite"><a href="#src-1">1</a></sup> Nothing meters the desk.</li>
         </ul>
-        <p>The check below writes the same comparison as a Python dictionary. Each key is a characteristic and each value
-        says whether the desk on your laptop has it. The <code>:&lt;24</code> inside the f-string pads the name to 24
-        characters so the answers line up.</p>
-<pre><code>desk_on_laptop = {
-    "on-demand self-service": False,  # you started the container by hand
-    "broad network access": False,    # reachable from this laptop only
-    "resource pooling": False,        # one machine, one tenant
-    "rapid elasticity": False,        # fixed CPU, memory and disk
-    "measured service": False,        # nothing meters or bills its use
-}
-
-met = 0
-for name, has_it in desk_on_laptop.items():
-    if has_it:
-        met = met + 1
-        print(f"{name:&lt;24} yes")
-    else:
-        print(f"{name:&lt;24} no")
-print(f"desk-mysql meets {met} of {len(desk_on_laptop)}")</code></pre>
-<pre class="out">on-demand self-service   no
-broad network access     no
-resource pooling         no
-rapid elasticity         no
-measured service         no
-desk-mysql meets 0 of 5</pre>
-        <p>A database that a provider runs for you flips every value to yes, as the list above already shows for each
-        characteristic.</p>
+        <p>Count them up and the desk on your laptop meets none of the five. A database that a provider runs for you
+        meets all five: you create it from a form, reach it over the network, share the provider's pooled machines,
+        resize it on request and see its use itemised on a bill.</p>
         <p>You recognise these characteristics on sight in a provider's console. A "Create instance" button that returns
         a running machine within a minute is on-demand self-service. A billing page that lists hours, gigabytes and
         queries by day is measured service.</p>
@@ -169,32 +145,12 @@ desk-mysql meets 0 of 5</pre>
         <p>Resources placed in several zones of one region survive the failure of a single zone. That is why managed
         services spread their copies over zones without being asked.<sup class="cite"><a href="#src-3">3</a></sup> A
         service kept in one zone goes down with that zone.</p>
-        <p>The sketch below models it. The <code>zones</code> dictionary holds the state of three zones, and
-        <code>serving</code> returns the first zone holding a copy that is still up, or <code>None</code> when every
-        copy is down. Zone 1 then fails.</p>
-<pre><code>zones = {"zone-1": "up", "zone-2": "up", "zone-3": "up"}
-
-
-def serving(copies):
-    """Return the first zone holding a copy that is still up, or None."""
-    for zone in copies:
-        if zones[zone] == "up":
-            return zone
-    return None
-
-
-one_zone = ["zone-1"]
-three_zones = ["zone-1", "zone-2", "zone-3"]
-
-zones["zone-1"] = "down"
-print("one zone:   ", serving(one_zone))
-print("three zones:", serving(three_zones))</code></pre>
-<pre class="out">one zone:    None
-three zones: zone-2</pre>
-        <p>The copy kept in one zone is gone, while the spread copy answers from zone 2. Real services do the same with
-        replicas and automatic failover, and the customer sees at most a short pause. A replica is a copy of the service
-        or its data kept in another zone, and failover is the automatic switch to that copy when the first one stops
-        answering.</p>
+        <p>Picture three zones in one region, each holding a copy of a service, and zone 1 losing power. A service kept
+        only in zone 1 is gone until the power returns. A service with copies in all three zones answers from zone 2
+        while zone 1 is down, and most users never notice.</p>
+        <p>Real services do this with replicas and automatic failover, and the customer sees at most a short pause. A
+        replica is a copy of the service or its data kept in another zone, and failover is the automatic switch to that
+        copy when the first one stops answering.</p>
         <p>The limit is that zones share a region. They guard against one building failing, not against a problem
         that affects the whole region, and they do nothing for users who are far away. Latency grows with the distance
         between a user and the region, so choosing the region is a design decision.<sup class="cite"><a href="#src-3">3</a></sup></p>
@@ -237,58 +193,22 @@ three zones: zone-2</pre>
           <li>A hosted help-desk product that your support staff open in a browser. In SaaS the customer uses the
           provider's application and manages nothing beyond a few settings.<sup class="cite"><a href="#src-1">1</a></sup></li>
         </ul>
-        <p>The script below prints who runs each layer of the desk under each model. <code>PROVIDER_RUNS</code> says how
-        many layers, counted from the bottom, the provider takes over, and <code>enumerate</code> numbers the layers from
-        0 so each one can be compared with that count.</p>
-<pre><code>LAYERS = [
-    "hardware and network",
-    "virtual machine",
-    "operating system",
-    "MySQL engine, patches, backups",
-    "schema and queries",
-    "help-desk application",
-]
-PROVIDER_RUNS = {"on-premises": 0, "IaaS": 2, "PaaS": 4, "SaaS": 6}
-
-for model, count in PROVIDER_RUNS.items():
-    print(model)
-    for position, layer in enumerate(LAYERS):
-        if position &lt; count:
-            who = "provider"
-        else:
-            who = "you"
-        print(f"  {layer:&lt;32}{who}")</code></pre>
-<pre class="out">on-premises
-  hardware and network            you
-  virtual machine                 you
-  operating system                you
-  MySQL engine, patches, backups  you
-  schema and queries              you
-  help-desk application           you
-IaaS
-  hardware and network            provider
-  virtual machine                 provider
-  operating system                you
-  MySQL engine, patches, backups  you
-  schema and queries              you
-  help-desk application           you
-PaaS
-  hardware and network            provider
-  virtual machine                 provider
-  operating system                provider
-  MySQL engine, patches, backups  provider
-  schema and queries              you
-  help-desk application           you
-SaaS
-  hardware and network            provider
-  virtual machine                 provider
-  operating system                provider
-  MySQL engine, patches, backups  provider
-  schema and queries              provider
-  help-desk application           provider</pre>
-        <p>The boundary moves up one model at a time. Architecture diagrams often draw the same thing as a
-        responsibility-stack table, with a column each for on-premises, IaaS, PaaS and SaaS and rows from networking up
-        to data. That table and the script's output show the same boundary.</p>
+        <p>Draw the desk as a stack of six layers and mark who runs each one under each model. The boundary between
+        the provider and you climbs two layers per model.</p>
+        <table>
+          <thead><tr><th>Layer, from the bottom</th><th>On-premises</th><th>IaaS</th><th>PaaS</th><th>SaaS</th></tr></thead>
+          <tbody>
+            <tr><td>Hardware and network</td><td>you</td><td>provider</td><td>provider</td><td>provider</td></tr>
+            <tr><td>Virtual machine</td><td>you</td><td>provider</td><td>provider</td><td>provider</td></tr>
+            <tr><td>Operating system</td><td>you</td><td>you</td><td>provider</td><td>provider</td></tr>
+            <tr><td>MySQL engine, patches, backups</td><td>you</td><td>you</td><td>provider</td><td>provider</td></tr>
+            <tr><td>Schema and queries</td><td>you</td><td>you</td><td>you</td><td>provider</td></tr>
+            <tr><td>Help-desk application</td><td>you</td><td>you</td><td>you</td><td>provider</td></tr>
+          </tbody>
+        </table>
+        <p>Architecture diagrams draw the same thing as a responsibility-stack table, with a column each for
+        on-premises, IaaS, PaaS and SaaS and rows from networking up to data. Wherever you meet one, read it by
+        finding the row where "provider" turns into "you".</p>
         <h3>IaaS, PaaS, SaaS: the benefit each one buys</h3>
         <p>Each model buys the team something different, and each one gives up some control in return.</p>
         <table>
@@ -364,33 +284,9 @@ SaaS
         <p>People often confuse hybrid and multi-cloud. Hybrid joins your own or private infrastructure to a public
         cloud. Multi-cloud uses more than one public provider. An organisation can be both at once.</p>
         <h3>A situation that suits each</h3>
-        <p>The function below turns three facts about an organisation into a suggested model: whether it keeps its own
-        site, whether it uses a public cloud, and how many providers it uses. It is a teaching sketch. Real decisions
-        also weigh cost, skills and regulation.</p>
-<pre><code>def suggest(keeps_own_site, uses_public_cloud, providers):
-    """Name the deployment model that fits a short description."""
-    if providers &gt; 1:
-        return "multi-cloud"
-    if keeps_own_site and uses_public_cloud:
-        return "hybrid"
-    if keeps_own_site:
-        return "private"
-    return "public"
-
-
-cases = [
-    ("startup with no servers", False, True, 1),
-    ("bank's core ledger", True, False, 0),
-    ("hospital that bursts", True, True, 1),
-    ("firm hedging providers", False, True, 2),
-]
-for who, own, public, providers in cases:
-    print(f"{who:&lt;26}{suggest(own, public, providers)}")</code></pre>
-<pre class="out">startup with no servers   public
-bank's core ledger        private
-hospital that bursts      hybrid
-firm hedging providers    multi-cloud</pre>
-        <p>Each case is a situation an interviewer might give you.</p>
+        <p>Three facts about an organisation usually settle the model: whether it keeps its own site, whether it uses a
+        public cloud, and how many providers it uses. Real decisions also weigh cost, skills and regulation. Each case
+        below is a situation an interviewer might give you.</p>
         <ul>
           <li>A startup owns no servers and cannot guess its load, so the public cloud lets it pay only for what it
           uses and grow on demand.</li>
@@ -656,35 +552,6 @@ billable TiB at 3 TiB: 2</pre>
         row.<sup class="cite"><a href="#src-21">21</a></sup><sup class="cite"><a href="#src-22">22</a></sup><sup class="cite"><a href="#src-23">23</a></sup><sup class="cite"><a href="#src-24">24</a></sup>
         A three-column table like this, one column per provider, is how you recognise a service mapping in a migration
         plan or a design document.</p>
-        <p>The same table works as a Python dictionary. <code>equivalent</code> finds the row that holds a service name
-        and returns the category and the name on another provider, or <code>None</code> for a name it does not
-        know.</p>
-<pre><code>SERVICES = {
-    "object storage": {"AWS": "Amazon S3", "Azure": "Azure Blob Storage", "GCP": "Cloud Storage"},
-    "relational database": {"AWS": "Amazon RDS", "Azure": "Azure SQL Database", "GCP": "Cloud SQL"},
-    "NoSQL database": {"AWS": "Amazon DynamoDB", "Azure": "Azure Cosmos DB", "GCP": "Firestore"},
-    "data warehouse": {"AWS": "Amazon Redshift", "Azure": "Azure Synapse Analytics", "GCP": "BigQuery"},
-    "data pipeline": {"AWS": "AWS Glue", "Azure": "Azure Data Factory", "GCP": "Dataflow"},
-}
-
-
-def equivalent(service, provider):
-    """Return the category and the matching service on another provider."""
-    for category, names in SERVICES.items():
-        for name in names.values():
-            if name == service:
-                return category, names[provider]
-    return None
-
-
-print(equivalent("Amazon Redshift", "GCP"))
-print(equivalent("Azure Data Factory", "AWS"))
-print(equivalent("Cloud SQL", "Azure"))
-print(equivalent("Heroku", "GCP"))</code></pre>
-<pre class="out">('data warehouse', 'BigQuery')
-('data pipeline', 'AWS Glue')
-('relational database', 'Azure SQL Database')
-None</pre>
         <p>A name match is only a starting point. Equivalent services differ in pricing unit and in
         features, so a team moving from one to another reads both sets of documentation before it promises
         anything.<sup class="cite"><a href="#src-20">20</a></sup></p>

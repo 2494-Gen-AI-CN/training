@@ -3,55 +3,55 @@
   "page": "docs/weeks/week-04/day-1-cloud-computing-concepts.html",
   "assessed": "2026-10-30",
   "verdict": "partial",
-  "summary": "The day lends itself to four checkable tasks where a concept turns into a rule a function applies (who manages which layer, which deployment model a set of sites makes, when a budget alert fires, what part of a query bill is billable), and it does not lend itself to tasks on the definition, regions and zones, the service catalogue or the sandbox, which are vocabulary, recall or console and terminal work.",
+  "summary": "The day lends itself to two checkable tasks where the page computes something, when a budget alert fires and what part of a query bill is billable, and it does not lend itself to tasks on the definition, regions and zones, service types, deployment models, the service catalogue or the sandbox, which are concepts, vocabulary or console and terminal work.",
   "steps": [
     {
       "step": 0,
       "title": "What cloud computing is: one definition and five characteristics",
       "suitable": false,
-      "reason": "The step teaches a definition and five named characteristics, which a reader says in an interview. Its sketch is a dictionary of five booleans counted in a loop; a task built on it comes down to all() over five values, and no mistake the page names fails a check on that.",
+      "reason": "The step teaches a definition and five named characteristics, which a reader says in an interview and a check cannot see. The page carries no code here after D-0079, and a task would restate the list as five booleans, the padding shape D-0079 removed.",
       "task": null
     },
     {
       "step": 1,
       "title": "Regions and zones: where a provider's computers actually sit",
       "suitable": false,
-      "reason": "The mistakes the step names (a zone taken for a region or a country, copies kept in one zone) are wrong words and wrong design choices, which a check cannot see. Its sketch is a search for the first zone that is up, so a task on it would practise a list loop, not regions and zones.",
+      "reason": "The mistakes the step names (a zone taken for a region or a country, copies kept in one zone) are wrong words and wrong design choices, which a check cannot see. A task would practise a list search, not regions and zones.",
       "task": null
     },
     {
       "step": 2,
       "title": "Service types: IaaS, PaaS and SaaS, and what each one buys you",
-      "suitable": true,
-      "reason": "The step's test for a model, what the team still manages, becomes a function that maps the layers a team runs to on-premises, IaaS, PaaS or SaaS. The page's named mistake, calling Cloud SQL IaaS because MySQL runs inside, shows up as a wrong return value.",
-      "task": "t1"
+      "suitable": false,
+      "reason": "The step teaches a concept through prose and a responsibility table, with no code since D-0079. A function that maps managed layers to \"IaaS\", \"PaaS\" or \"SaaS\" returns the word the paragraph just defined, which is the shape D-0079 rules out; the Cloud SQL mix-up belongs in the quiz.",
+      "task": null
     },
     {
       "step": 3,
       "title": "Deployment models: public, private, hybrid and multi-cloud",
-      "suitable": true,
-      "reason": "The page's suggest() sketch shows the rule as code, and a sibling that reads a list of where the desk's workloads run gives back the model. The hybrid against multi-cloud confusion the page and the brief name fails a check directly.",
-      "task": "t2"
+      "suitable": false,
+      "reason": "The step teaches who owns and shares the infrastructure, in prose, a table and four situations, and its suggest() sketch is gone under D-0079. A task returning \"hybrid\" or \"multi-cloud\" from a list of sites restates the table as code; the hybrid against multi-cloud confusion is a quiz item.",
+      "task": null
     },
     {
       "step": 4,
       "title": "Challenges of adopting the cloud, and the plan for each",
       "suitable": true,
-      "reason": "Most of the step is a table of challenges and plans to talk through, but the budget sketch is behaviour: which thresholds fire on which day. The page names two mistakes a check can catch, an alert that fires again every day above its threshold and the belief that the budget stops spending at 100%.",
-      "task": "t3"
+      "reason": "Most of the step is a table to talk through, but the budget sketch computes: which thresholds fire on which day as spending is replayed. The page names two mistakes a check catches, an alert that fires again every day above its threshold and the belief that the budget stops spending at 100%.",
+      "task": "t1"
     },
     {
       "step": 5,
       "title": "Pricing: how the bill is built, and a worked estimate",
       "suitable": true,
-      "reason": "The worked estimate and billable_tib() turn bytes processed into a billable amount and then money, which a function returns. The mistakes the page names (reading bytes as the price, going below zero under the free allowance, GiB and TiB as powers of 1024) each change the return value.",
-      "task": "t4"
+      "reason": "The worked estimate and billable_tib() turn bytes processed into a billable amount, which a function returns. The mistakes the page names (reading bytes as the price, going below zero under the free allowance, a TiB as 1024 to the power 4) each change the return value.",
+      "task": "t2"
     },
     {
       "step": 6,
       "title": "Common GCP services, and the data services of AWS, Azure and GCP",
       "suitable": false,
-      "reason": "The step is recall: eight service names and a five-row mapping across providers. Its equivalent() sketch is a nested dictionary lookup the page already writes in full, and a task on it would test whether the reader copied the table, not a mistake the page names.",
+      "reason": "The step is recall: eight service names and a five-row mapping across providers. A task would test whether the reader copied the table into a dictionary, not a mistake the page names.",
       "task": null
     },
     {
@@ -65,38 +65,6 @@
   "tasks": [
     {
       "id": "t1",
-      "title": "Service types",
-      "step": 2,
-      "idea": "The reader writes service_model(team_runs), where team_runs is a list of the desk's layers the team still manages, named as in the page's LAYERS list. It returns \"on-premises\", \"IaaS\", \"PaaS\" or \"SaaS\" by what the team still manages. For example service_model([\"schema and queries\", \"help-desk application\"]) returns \"PaaS\".",
-      "checks": [
-        "A team that runs only the schema, the queries and the application gets \"PaaS\", the Cloud SQL case; answering \"IaaS\" because a MySQL engine sits in the stack fails.",
-        "A team that still runs the operating system and everything above it gets \"IaaS\".",
-        "A team that runs nothing gets \"SaaS\", the hosted help desk; answering \"PaaS\" for it fails.",
-        "A team that runs all six layers, hardware included, gets \"on-premises\"."
-      ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
-    },
-    {
-      "id": "t2",
-      "title": "Deployment models",
-      "step": 3,
-      "idea": "The reader writes deployment_model(sites), where sites is a list of where the desk's workloads run: \"on-premises\" or a provider name such as \"GCP\" or \"AWS\". It returns \"private\", \"public\", \"hybrid\" or \"multi-cloud\". For example deployment_model([\"on-premises\", \"GCP\"]) returns \"hybrid\".",
-      "checks": [
-        "Own servers joined to one provider give \"hybrid\"; counting \"on-premises\" as a second provider and answering \"multi-cloud\" fails.",
-        "Two providers and no own servers give \"multi-cloud\"; answering \"hybrid\" fails.",
-        "Own servers alone give \"private\".",
-        "One provider alone gives \"public\"."
-      ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
-    },
-    {
-      "id": "t3",
       "title": "Budgets and alerts",
       "step": 4,
       "idea": "The reader writes budget_alerts(budget, thresholds, daily_spend), which replays the days and returns a list of (day, percent) pairs, days counted from 1, one pair for each threshold on the day the running total first reaches it. With a budget of 100, thresholds [50, 90, 100] and spending [20, 25, 15, 30, 20] it returns [(3, 50), (4, 90), (5, 100)].",
@@ -111,14 +79,14 @@
       "tests": ""
     },
     {
-      "id": "t4",
+      "id": "t2",
       "title": "Pricing",
       "step": 5,
-      "idea": "The reader writes query_cost(bytes_processed, rate_per_tib), which turns a month of BigQuery bytes processed into money: TiB is 1024 ** 4 bytes, the first 1 TiB is free, and the rest is multiplied by the rate. For example query_cost(3 * 1024 ** 4, 6.25) returns 12.5.",
+      "idea": "The reader writes query_cost(bytes_processed, rate_per_tib), which turns a month of BigQuery bytes processed into money: a TiB is 1024 ** 4 bytes, the first 1 TiB is free, and the rest is multiplied by the rate. For example query_cost(3 * 1024 ** 4, 6.25) returns 12.5.",
       "checks": [
         "A month under the free 1 TiB costs 0, never a negative amount.",
         "Three TiB of bytes at a given rate costs two TiB times the rate; multiplying the bytes themselves by the rate, or forgetting the free allowance, fails.",
-        "The TiB is 1024 ** 4 bytes; dividing by 10 ** 12 gives a larger bill and fails."
+        "A TiB is 1024 ** 4 bytes; dividing by 10 ** 12 gives a larger bill and fails."
       ],
       "approved": null,
       "q": "",
