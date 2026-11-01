@@ -787,6 +787,74 @@ ORDER BY t.ticket_id;</code></pre>
         </div>
       </section>
 
+      <section class="practice" id="practice" hidden>
+        <div class="tag">Practice</div>
+        <h2>Practice</h2>
+        <div class="ix-task" data-id="t1" data-title="Data quality" data-q="Inside the quotes of &lt;code&gt;DUPLICATE_EMAILS_QUERY&lt;/code&gt;, write one SELECT on &lt;code&gt;customers&lt;/code&gt; (&lt;code&gt;customer_id&lt;/code&gt;, &lt;code&gt;name&lt;/code&gt;, &lt;code&gt;email&lt;/code&gt;, &lt;code&gt;country&lt;/code&gt;, &lt;code&gt;monthly_fee&lt;/code&gt;) that finds the emails held by more than one customer row. Treat &lt;code&gt;email&lt;/code&gt; as the business key: the copies of one customer have different &lt;code&gt;customer_id&lt;/code&gt; values. It returns two columns, &lt;code&gt;email&lt;/code&gt; and &lt;code&gt;copies&lt;/code&gt; (how many rows hold that email), one row per such email, and it removes nothing from the table. The checks run it on five customers in which &lt;code&gt;ana@example.com&lt;/code&gt; sits on two rows, so the one row that comes back is &lt;code&gt;(&#x27;ana@example.com&#x27;, 2)&lt;/code&gt;.">
+<pre class="task-starter"><code>DUPLICATE_EMAILS_QUERY = """
+-- each email held by more than one customer row, and its number of copies
+"""</code></pre>
+<pre class="task-tests" hidden><code>import sqlite3
+conn = sqlite3.connect(":memory:")
+conn.execute("PRAGMA foreign_keys = ON")
+conn.executescript("""
+CREATE TABLE customers (
+    customer_id INT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    country VARCHAR(2),
+    monthly_fee DECIMAL(8,2) NOT NULL
+);
+INSERT INTO customers VALUES
+    (1, 'Dana Whitfield', 'dana@example.com', 'CA', 49.00),
+    (2, 'Ana Souza', 'ana@example.com', 'BR', 29.00),
+    (3, 'Ravi Patel', 'ravi@example.com', 'IN', 49.00),
+    (4, 'Ana Souza', 'ana@example.com', 'BR', 29.00),
+    (5, 'Mei Chen', 'mei@example.com', NULL, 99.00);
+""")
+cur = conn.execute(DUPLICATE_EMAILS_QUERY)
+rows = cur.fetchall()
+cols = [c[0] for c in cur.description or ()]
+left = conn.execute("SELECT COUNT(*) FROM customers").fetchone()[0]
+assert dict(rows).get("ana@example.com") == 2, "reports ana@example.com with 2 copies, grouping on the email"
+assert sorted(r[0] for r in rows) == ["ana@example.com"], "leaves out every email that only one customer row holds"
+assert cols == ["email", "copies"], "names the two columns email and copies, in that order"
+assert left == 5, "finds the duplicates and leaves all five customer rows in the table"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t2" data-title="GoogleSQL" data-q="Inside the quotes of &lt;code&gt;PREVIOUS_KIND_QUERY&lt;/code&gt;, write one SELECT on &lt;code&gt;desk_raw.ticket_events&lt;/code&gt; (&lt;code&gt;event_id&lt;/code&gt;, &lt;code&gt;ticket_id&lt;/code&gt;, &lt;code&gt;kind&lt;/code&gt;, &lt;code&gt;note&lt;/code&gt;, &lt;code&gt;created_at&lt;/code&gt;) that returns every event as its own row, with four columns: &lt;code&gt;event_id&lt;/code&gt;, &lt;code&gt;ticket_id&lt;/code&gt;, &lt;code&gt;kind&lt;/code&gt; and &lt;code&gt;previous_kind&lt;/code&gt;. &lt;code&gt;previous_kind&lt;/code&gt; is the kind of the event just before it on the same ticket, taking the events in &lt;code&gt;event_id&lt;/code&gt; order, and it is NULL for a ticket&#x27;s first event. Put the rows in &lt;code&gt;event_id&lt;/code&gt; order. On ticket 4, whose events are &lt;code&gt;open&lt;/code&gt;, &lt;code&gt;assigned&lt;/code&gt; and &lt;code&gt;assigned&lt;/code&gt;, &lt;code&gt;previous_kind&lt;/code&gt; reads NULL, &lt;code&gt;&#x27;open&#x27;&lt;/code&gt;, &lt;code&gt;&#x27;assigned&#x27;&lt;/code&gt;.">
+<pre class="task-starter"><code>PREVIOUS_KIND_QUERY = """
+-- every event, with the kind of the event before it on the same ticket
+"""</code></pre>
+<pre class="task-tests" hidden><code>import sqlite3
+conn = sqlite3.connect(":memory:")
+conn.execute("PRAGMA foreign_keys = ON")
+conn.execute("ATTACH DATABASE ':memory:' AS desk_raw")
+conn.executescript("""
+CREATE TABLE desk_raw.ticket_events (
+    event_id INT PRIMARY KEY,
+    ticket_id INT NOT NULL,
+    kind VARCHAR(10) NOT NULL,
+    note VARCHAR(200),
+    created_at DATETIME NOT NULL
+);
+INSERT INTO desk_raw.ticket_events VALUES
+    (1, 3, 'open', 'filed by customer', '2026-10-18 18:00:00'),
+    (2, 4, 'open', 'filed by customer', '2026-10-19 08:00:00'),
+    (3, 3, 'closed', NULL, '2026-10-19 08:30:00'),
+    (4, 4, 'assigned', 'to agent 1', '2026-10-19 09:00:00'),
+    (5, 4, 'assigned', 'to agent 1', '2026-10-19 09:00:00'),
+    (6, 6, 'open', 'filed by customer', '2026-10-19 12:00:00');
+""")
+cur = conn.execute(PREVIOUS_KIND_QUERY)
+rows = cur.fetchall()
+cols = [c[0] for c in cur.description or ()]
+assert [r[:3] for r in rows] == [(1, 3, "open"), (2, 4, "open"), (3, 3, "closed"), (4, 4, "assigned"), (5, 4, "assigned"), (6, 6, "open")], "returns every event as its own row, in event_id order"
+assert [r[3] for r in rows if r[0] in (1, 2, 6)] == [None, None, None], "gives each ticket's first event a previous_kind of NULL"
+assert sorted((r[0], r[3]) for r in rows if r[0] in (3, 4, 5)) == [(3, "open"), (4, "open"), (5, "assigned")], "takes previous_kind from the event with the next lower event_id on the same ticket"
+assert cols == ["event_id", "ticket_id", "kind", "previous_kind"], "names the columns event_id, ticket_id, kind and previous_kind, in that order"</code></pre>
+        </div>
+      </section>
+
       <section class="step" data-diagram="0" data-step="8">
         <div class="tag">Check yourself</div>
         <h2>Check yourself</h2>

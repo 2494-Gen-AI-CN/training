@@ -73,10 +73,10 @@
         "An email held by one customer row does not appear; leaving out HAVING COUNT(*) > 1 returns every email.",
         "The result columns are email and copies in that order, and the customers table still holds every row afterwards; a DELETE of the extra copy, removal the page leaves to a later step, changes the count."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Inside the quotes of <code>DUPLICATE_EMAILS_QUERY</code>, write one SELECT on <code>customers</code> (<code>customer_id</code>, <code>name</code>, <code>email</code>, <code>country</code>, <code>monthly_fee</code>) that finds the emails held by more than one customer row. Treat <code>email</code> as the business key: the copies of one customer have different <code>customer_id</code> values. It returns two columns, <code>email</code> and <code>copies</code> (how many rows hold that email), one row per such email, and it removes nothing from the table. The checks run it on five customers in which <code>ana@example.com</code> sits on two rows, so the one row that comes back is <code>('ana@example.com', 2)</code>.",
+      "starter": "DUPLICATE_EMAILS_QUERY = \"\"\"\n-- each email held by more than one customer row, and its number of copies\n\"\"\"",
+      "tests": "import sqlite3\nconn = sqlite3.connect(\":memory:\")\nconn.execute(\"PRAGMA foreign_keys = ON\")\nconn.executescript(\"\"\"\nCREATE TABLE customers (\n    customer_id INT PRIMARY KEY,\n    name VARCHAR(100) NOT NULL,\n    email VARCHAR(255) NOT NULL,\n    country VARCHAR(2),\n    monthly_fee DECIMAL(8,2) NOT NULL\n);\nINSERT INTO customers VALUES\n    (1, 'Dana Whitfield', 'dana@example.com', 'CA', 49.00),\n    (2, 'Ana Souza', 'ana@example.com', 'BR', 29.00),\n    (3, 'Ravi Patel', 'ravi@example.com', 'IN', 49.00),\n    (4, 'Ana Souza', 'ana@example.com', 'BR', 29.00),\n    (5, 'Mei Chen', 'mei@example.com', NULL, 99.00);\n\"\"\")\ncur = conn.execute(DUPLICATE_EMAILS_QUERY)\nrows = cur.fetchall()\ncols = [c[0] for c in cur.description or ()]\nleft = conn.execute(\"SELECT COUNT(*) FROM customers\").fetchone()[0]\nassert dict(rows).get(\"ana@example.com\") == 2, \"reports ana@example.com with 2 copies, grouping on the email\"\nassert sorted(r[0] for r in rows) == [\"ana@example.com\"], \"leaves out every email that only one customer row holds\"\nassert cols == [\"email\", \"copies\"], \"names the two columns email and copies, in that order\"\nassert left == 5, \"finds the duplicates and leaves all five customer rows in the table\""
     },
     {
       "id": "t2",
@@ -88,10 +88,10 @@
         "The first event of each ticket has previous_kind NULL; leaving out PARTITION BY gives it the last kind of the ticket before.",
         "Inside a ticket, previous_kind is the kind of the event with the next lower event_id; ordering the window by kind instead gives a different previous_kind."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Inside the quotes of <code>PREVIOUS_KIND_QUERY</code>, write one SELECT on <code>desk_raw.ticket_events</code> (<code>event_id</code>, <code>ticket_id</code>, <code>kind</code>, <code>note</code>, <code>created_at</code>) that returns every event as its own row, with four columns: <code>event_id</code>, <code>ticket_id</code>, <code>kind</code> and <code>previous_kind</code>. <code>previous_kind</code> is the kind of the event just before it on the same ticket, taking the events in <code>event_id</code> order, and it is NULL for a ticket's first event. Put the rows in <code>event_id</code> order. On ticket 4, whose events are <code>open</code>, <code>assigned</code> and <code>assigned</code>, <code>previous_kind</code> reads NULL, <code>'open'</code>, <code>'assigned'</code>.",
+      "starter": "PREVIOUS_KIND_QUERY = \"\"\"\n-- every event, with the kind of the event before it on the same ticket\n\"\"\"",
+      "tests": "import sqlite3\nconn = sqlite3.connect(\":memory:\")\nconn.execute(\"PRAGMA foreign_keys = ON\")\nconn.execute(\"ATTACH DATABASE ':memory:' AS desk_raw\")\nconn.executescript(\"\"\"\nCREATE TABLE desk_raw.ticket_events (\n    event_id INT PRIMARY KEY,\n    ticket_id INT NOT NULL,\n    kind VARCHAR(10) NOT NULL,\n    note VARCHAR(200),\n    created_at DATETIME NOT NULL\n);\nINSERT INTO desk_raw.ticket_events VALUES\n    (1, 3, 'open', 'filed by customer', '2026-10-18 18:00:00'),\n    (2, 4, 'open', 'filed by customer', '2026-10-19 08:00:00'),\n    (3, 3, 'closed', NULL, '2026-10-19 08:30:00'),\n    (4, 4, 'assigned', 'to agent 1', '2026-10-19 09:00:00'),\n    (5, 4, 'assigned', 'to agent 1', '2026-10-19 09:00:00'),\n    (6, 6, 'open', 'filed by customer', '2026-10-19 12:00:00');\n\"\"\")\ncur = conn.execute(PREVIOUS_KIND_QUERY)\nrows = cur.fetchall()\ncols = [c[0] for c in cur.description or ()]\nassert [r[:3] for r in rows] == [(1, 3, \"open\"), (2, 4, \"open\"), (3, 3, \"closed\"), (4, 4, \"assigned\"), (5, 4, \"assigned\"), (6, 6, \"open\")], \"returns every event as its own row, in event_id order\"\nassert [r[3] for r in rows if r[0] in (1, 2, 6)] == [None, None, None], \"gives each ticket's first event a previous_kind of NULL\"\nassert sorted((r[0], r[3]) for r in rows if r[0] in (3, 4, 5)) == [(3, \"open\"), (4, \"open\"), (5, \"assigned\")], \"takes previous_kind from the event with the next lower event_id on the same ticket\"\nassert cols == [\"event_id\", \"ticket_id\", \"kind\", \"previous_kind\"], \"names the columns event_id, ticket_id, kind and previous_kind, in that order\""
     }
   ]
 }

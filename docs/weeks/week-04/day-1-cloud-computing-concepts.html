@@ -658,6 +658,26 @@ LIMIT 10;</code></pre>
         </div>
       </section>
 
+      <section class="practice" id="practice" hidden>
+        <div class="tag">Practice</div>
+        <h2>Practice</h2>
+        <div class="ix-task" data-id="t1" data-title="Budgets and alerts" data-q="Write &lt;code&gt;budget_alerts(budget, thresholds, daily_spend)&lt;/code&gt;, which replays a run of daily spending against a budget, as the budget sketch under Challenges does. &lt;code&gt;thresholds&lt;/code&gt; is a list of percentages of the budget, lowest first, and it can go past 100. &lt;code&gt;daily_spend&lt;/code&gt; is the amount spent on each day. Return a list of &lt;code&gt;(day, percent)&lt;/code&gt; pairs, with days counted from 1: one pair for each threshold, on the day the running total first reaches it (is equal to or more than that share of the budget). Put the pairs in day order and, within one day, in the order of &lt;code&gt;thresholds&lt;/code&gt;. The budget does not stop the spending, so keep adding every day&#x27;s amount after the total passes it. For example, &lt;code&gt;budget_alerts(100, [50, 90, 100], [20, 25, 15, 30, 20])&lt;/code&gt; returns &lt;code&gt;[(3, 50), (4, 90), (5, 100)]&lt;/code&gt;.">
+<pre class="task-starter"><code>def budget_alerts(budget, thresholds, daily_spend):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert budget_alerts(100, [50, 90, 100], [20, 25, 15, 30, 20]) == [(3, 50), (4, 90), (5, 100)], "each threshold gives one pair, on the day the total first reaches it"
+assert budget_alerts(200, [25, 50, 75], [60, 100, 50]) == [(1, 25), (2, 50), (2, 75)], "a day that crosses two thresholds gives a pair for each"
+assert budget_alerts(100, [50, 100, 120], [60, 50, 30, 10]) == [(1, 50), (2, 100), (3, 120)], "spending keeps counting after the total passes the budget"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t2" data-title="Pricing" data-q="Write &lt;code&gt;query_cost(bytes_processed, rate_per_tib)&lt;/code&gt;, which turns a month of BigQuery bytes processed into money. A TiB is &lt;code&gt;1024 ** 4&lt;/code&gt; bytes, the first 1 TiB of the month is free, and the bytes above it are billed at &lt;code&gt;rate_per_tib&lt;/code&gt; per TiB, so half a TiB costs half the rate. Return the cost; a month inside the free 1 TiB costs &lt;code&gt;0&lt;/code&gt;. For example, &lt;code&gt;query_cost(3 * 1024 ** 4, 6.25)&lt;/code&gt; returns &lt;code&gt;12.5&lt;/code&gt;, since 2 of the 3 TiB are billed.">
+<pre class="task-starter"><code>def query_cost(bytes_processed, rate_per_tib):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert query_cost(500 * 1024 ** 3, 6.25) == 0, "a month inside the free 1 TiB costs 0, not a negative amount"
+assert query_cost(3 * 1024 ** 4, 6.25) == 12.5, "3 TiB costs the 2 TiB above the free one times the rate"
+assert round(query_cost(5 * 10 ** 12, 6.25), 2) == 22.17, "a TiB is 1024 ** 4 bytes, not 10 ** 12, and part of a TiB costs that part of the rate"
+assert query_cost(1024 ** 4 + 1024 ** 4 // 2, 6.25) == 3.125, "half a TiB above the free one costs half the rate"</code></pre>
+        </div>
+      </section>
+
       <section class="step" data-diagram="0" data-step="8">
         <div class="tag">Check yourself</div>
         <h2>Check yourself</h2>

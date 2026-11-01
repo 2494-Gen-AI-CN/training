@@ -758,6 +758,78 @@ def test_clean_keeps_first_copy_of_a_duplicate(tickets):
         </div>
       </section>
 
+      <section class="practice" id="practice" hidden>
+        <div class="tag">Practice</div>
+        <h2>Practice</h2>
+        <div class="ix-task" data-id="t1" data-title="ETL and ELT" data-q="&lt;code&gt;EVENT_KINDS&lt;/code&gt; holds the three kinds an event may have. Write &lt;code&gt;elt(source, staging, clean)&lt;/code&gt;, which runs the ELT order on three lists of event dicts. First it copies every row of &lt;code&gt;source&lt;/code&gt; into &lt;code&gt;staging&lt;/code&gt; unchanged, bad rows included. Then it appends to &lt;code&gt;clean&lt;/code&gt; each row of &lt;code&gt;staging&lt;/code&gt; whose &lt;code&gt;&quot;kind&quot;&lt;/code&gt; is in &lt;code&gt;EVENT_KINDS&lt;/code&gt;. It fills the two lists it is given and leaves &lt;code&gt;source&lt;/code&gt; holding all of its rows. Called with &lt;code&gt;source = [{&quot;event_id&quot;: 1, &quot;kind&quot;: &quot;open&quot;}, {&quot;event_id&quot;: 2, &quot;kind&quot;: &quot;closd&quot;}]&lt;/code&gt; and two empty lists, &lt;code&gt;staging&lt;/code&gt; ends with both rows and &lt;code&gt;clean&lt;/code&gt; with only event 1.">
+<pre class="task-starter"><code>EVENT_KINDS = ("open", "assigned", "closed")
+
+
+def elt(source, staging, clean):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>source = [{"event_id": 1, "kind": "open"}, {"event_id": 2, "kind": "closd"}, {"event_id": 3, "kind": "closed"}]
+staging, clean = [], []
+elt(source, staging, clean)
+assert staging == [{"event_id": 1, "kind": "open"}, {"event_id": 2, "kind": "closd"}, {"event_id": 3, "kind": "closed"}], "staging holds every source row, the misspelt closd row included"
+assert clean == [{"event_id": 1, "kind": "open"}, {"event_id": 3, "kind": "closed"}], "clean holds only the staged rows whose kind is in EVENT_KINDS"
+assert source == [{"event_id": 1, "kind": "open"}, {"event_id": 2, "kind": "closd"}, {"event_id": 3, "kind": "closed"}], "source still holds all of its rows after the call"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t2" data-title="Rejects and the load log" data-q="Write &lt;code&gt;validate(rows)&lt;/code&gt;, which checks a list of event dicts and returns three things: &lt;code&gt;clean, rejects, log&lt;/code&gt;. A row whose &lt;code&gt;&quot;kind&quot;&lt;/code&gt; is not in &lt;code&gt;EVENT_KINDS&lt;/code&gt; is rejected with the reason &lt;code&gt;&quot;unknown kind&quot;&lt;/code&gt;, a row whose &lt;code&gt;&quot;ticket_id&quot;&lt;/code&gt; is &lt;code&gt;None&lt;/code&gt; is rejected with the reason &lt;code&gt;&quot;no ticket&quot;&lt;/code&gt;, and every other row goes to &lt;code&gt;clean&lt;/code&gt;. Each reject is a new dict holding all of the row&#x27;s keys plus &lt;code&gt;&quot;reason&quot;&lt;/code&gt;, in the order the rows came, and the dicts in &lt;code&gt;rows&lt;/code&gt; are left with no &lt;code&gt;&quot;reason&quot;&lt;/code&gt; key. &lt;code&gt;log&lt;/code&gt; is &lt;code&gt;{&quot;rows_read&quot;: ..., &quot;rows_loaded&quot;: ..., &quot;rows_rejected&quot;: ...}&lt;/code&gt; with the three counts. For one good row, one row of kind &lt;code&gt;&quot;closd&quot;&lt;/code&gt; and one row whose &lt;code&gt;&quot;ticket_id&quot;&lt;/code&gt; is &lt;code&gt;None&lt;/code&gt;, &lt;code&gt;rejects&lt;/code&gt; holds the two bad rows with their reasons and &lt;code&gt;log&lt;/code&gt; is &lt;code&gt;{&quot;rows_read&quot;: 3, &quot;rows_loaded&quot;: 1, &quot;rows_rejected&quot;: 2}&lt;/code&gt;.">
+<pre class="task-starter"><code>EVENT_KINDS = ("open", "assigned", "closed")
+
+
+def validate(rows):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>rows = [
+    {"event_id": 12, "ticket_id": 2, "kind": "closed"},
+    {"event_id": 13, "ticket_id": 2, "kind": "closd"},
+    {"event_id": 14, "ticket_id": None, "kind": "open"},
+]
+clean, rejects, log = validate(rows)
+assert [clean, [{k: v for k, v in r.items() if k != "reason"} for r in rejects]] == [[{"event_id": 12, "ticket_id": 2, "kind": "closed"}], [{"event_id": 13, "ticket_id": 2, "kind": "closd"}, {"event_id": 14, "ticket_id": None, "kind": "open"}]], "clean keeps the good row, and each bad row is in rejects with every one of its own keys"
+assert [r.get("reason") for r in rejects] == ["unknown kind", "no ticket"], "each reject carries the reason for the rule it broke"
+assert log == {"rows_read": 3, "rows_loaded": 1, "rows_rejected": 2}, "log counts the rows read, loaded and rejected, and loaded plus rejected equals read"
+assert ["reason" in r for r in rows] == [False, False, False], "the dicts in rows gain no reason key"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t3" data-title="Incremental loads" data-q="Each event is a dict with an &lt;code&gt;&quot;event_id&quot;&lt;/code&gt;. &lt;code&gt;source&lt;/code&gt; is the list of events the source holds now, and &lt;code&gt;staged&lt;/code&gt; the list of events already loaded. Write &lt;code&gt;append_new(source, staged)&lt;/code&gt;, an append load behind a watermark. It reads the watermark, the highest &lt;code&gt;&quot;event_id&quot;&lt;/code&gt; in &lt;code&gt;staged&lt;/code&gt;, or 0 when &lt;code&gt;staged&lt;/code&gt; is empty. It appends to the list &lt;code&gt;staged&lt;/code&gt; itself every source event whose &lt;code&gt;&quot;event_id&quot;&lt;/code&gt; is above the watermark, and returns the list of those new events. With source events 1 to 5 and events 1 to 3 staged, it appends and returns events 4 and 5; a second call returns &lt;code&gt;[]&lt;/code&gt; and leaves &lt;code&gt;staged&lt;/code&gt; at five events.">
+<pre class="task-starter"><code>def append_new(source, staged):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>source = [{"event_id": n, "kind": "open"} for n in [1, 2, 3, 4, 5]]
+first = []
+assert [e["event_id"] for e in append_new(source, first)] == [1, 2, 3, 4, 5], "on an empty staged list, the first run loads every source event"
+staged = source[:3]
+new = append_new(source, staged)
+assert [[e["event_id"] for e in new], [e["event_id"] for e in staged]] == [[4, 5], [1, 2, 3, 4, 5]], "with events 1 to 3 staged, it returns and appends only events 4 and 5"
+again = append_new(source, staged)
+assert [again, len(staged)] == [[], 5], "a second call returns [] and staged still holds five events"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t4" data-title="Parameterized queries" data-q="The checks build a &lt;code&gt;fact_ticket_events&lt;/code&gt; table with the columns &lt;code&gt;event_id&lt;/code&gt;, &lt;code&gt;ticket_id&lt;/code&gt; and &lt;code&gt;kind&lt;/code&gt;, one row per ticket event. Write one SQL statement that counts the events of one kind for each ticket, with the kind given as the named parameter &lt;code&gt;@kind&lt;/code&gt;. It returns two columns, &lt;code&gt;ticket_id&lt;/code&gt; and &lt;code&gt;events&lt;/code&gt; (the count), one row per ticket that has events of that kind, most events first. Type the statement between the triple quotes. The checks run the same &lt;code&gt;QUERY&lt;/code&gt; three times, with the kind &lt;code&gt;closed&lt;/code&gt;, then &lt;code&gt;open&lt;/code&gt;, then the value &lt;code&gt;x&#x27; OR &#x27;1&#x27;=&#x27;1&lt;/code&gt;. Run with &lt;code&gt;closed&lt;/code&gt; it returns &lt;code&gt;(4, 2)&lt;/code&gt; then &lt;code&gt;(2, 1)&lt;/code&gt;; run with the third value it returns no rows.">
+<pre class="task-starter"><code>QUERY = """
+-- events of one kind per ticket, most first
+"""</code></pre>
+<pre class="task-tests" hidden><code>import sqlite3
+conn = sqlite3.connect(":memory:")
+conn.executescript("""
+CREATE TABLE fact_ticket_events (
+    event_id INT,
+    ticket_id INT,
+    kind VARCHAR(10)
+);
+INSERT INTO fact_ticket_events (event_id, ticket_id, kind)
+VALUES (1, 2, 'open'), (2, 2, 'closed'),
+       (3, 4, 'open'), (4, 4, 'closed'), (5, 4, 'open'), (6, 4, 'closed'),
+       (7, 6, 'open'), (8, 6, 'assigned'), (9, 6, 'open'), (10, 6, 'assigned'), (11, 6, 'open');
+""")
+cur = conn.execute(QUERY, {"kind": "closed"})
+closed_rows = [[c[0] for c in cur.description], cur.fetchall()]
+assert closed_rows == [["ticket_id", "events"], [(4, 2), (2, 1)]], "run with kind closed, it returns ticket_id and events, the closed counts per ticket, most first"
+open_rows = conn.execute(QUERY, {"kind": "open"}).fetchall()
+assert open_rows == [(6, 3), (4, 2), (2, 1)], "run again with kind open, the same QUERY returns the open counts"
+injected = conn.execute(QUERY, {"kind": "x' OR '1'='1"}).fetchall()
+assert injected == [], "run with the value x' OR '1'='1, it returns no rows"</code></pre>
+        </div>
+      </section>
+
       <section class="step" data-diagram="0" data-step="8">
         <div class="tag">Check yourself</div>
         <h2>Check yourself</h2>

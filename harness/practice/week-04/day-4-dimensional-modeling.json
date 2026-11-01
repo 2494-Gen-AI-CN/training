@@ -73,10 +73,10 @@
         "tickets_closed is 2; counting every row, or every row of a ticket that has a closing event, counts each ticket more than once.",
         "A ticket with only open and assigned events, such as ticket 4, adds to neither number."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>close_summary(rows)</code>. Each row is one ticket event at the fact's grain, a tuple <code>(kind, ticket_id, hours_since_open)</code>, where <code>kind</code> is <code>\"open\"</code>, <code>\"assigned\"</code> or <code>\"closed\"</code>, and a ticket closes at most once. Return a tuple <code>(tickets_closed, total_hours)</code>: the number of closing events, and the sum of <code>hours_since_open</code> over those closing events. Events of the other kinds add to neither number. For <code>[(\"open\", 1, 0), (\"assigned\", 1, 1), (\"closed\", 1, 3), (\"open\", 3, 0), (\"closed\", 3, 10), (\"open\", 4, 0)]</code> it returns <code>(2, 13)</code>.",
+      "starter": "def close_summary(rows):\n    ...",
+      "tests": "ROWS = [(\"open\", 1, 0), (\"assigned\", 1, 1), (\"closed\", 1, 3), (\"open\", 3, 0), (\"closed\", 3, 10), (\"open\", 4, 0)]\nassert close_summary(ROWS)[1] == 13, \"total_hours adds up hours_since_open on the closing events only\"\nassert close_summary(ROWS)[0] == 2, \"tickets_closed counts each closed ticket once\"\nassert close_summary([(\"open\", 4, 0), (\"assigned\", 4, 2)]) == (0, 0), \"a ticket that has not closed adds to neither number\""
     },
     {
       "id": "t2",
@@ -88,10 +88,10 @@
         "The change day 2026-11-05 returns 199.00; treating effective_to as inclusive with <= picks the closed 49.00 row.",
         "A day in late November returns 199.00 when the closed row comes first in the list; matching on customer_id alone returns the first version found."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>fee_on(dimension, customer_id, day)</code>. <code>dimension</code> is a list of type 2 customer rows, each a dict with the keys <code>customer_key</code>, <code>customer_id</code>, <code>monthly_fee</code> (a <code>Decimal</code>), <code>effective_from</code> and <code>effective_to</code> (both <code>date</code> objects) and <code>is_current</code>. Return the <code>monthly_fee</code> of that customer's version in force on <code>day</code>: its <code>effective_from</code> is on or before <code>day</code>, and its <code>effective_to</code>, the first day the version no longer holds, is after <code>day</code>. The rows can come in any order, and exactly one version of the customer is in force on any day you are asked about. Dana, customer 1, has a 49.00 row from <code>date(2026, 10, 1)</code> to <code>date(2026, 11, 5)</code> and a 199.00 row from <code>date(2026, 11, 5)</code> to <code>date(9999, 12, 31)</code>. With her rows and another customer's in the list, <code>fee_on(rows, 1, date(2026, 10, 20))</code> returns <code>Decimal(\"49.00\")</code>.",
+      "starter": "def fee_on(dimension, customer_id, day):\n    ...",
+      "tests": "from datetime import date\nfrom decimal import Decimal\nROWS = [\n    {\"customer_key\": 1, \"customer_id\": 1, \"monthly_fee\": Decimal(\"49.00\"), \"effective_from\": date(2026, 10, 1), \"effective_to\": date(2026, 11, 5), \"is_current\": False},\n    {\"customer_key\": 2, \"customer_id\": 2, \"monthly_fee\": Decimal(\"99.00\"), \"effective_from\": date(2026, 10, 1), \"effective_to\": date(9999, 12, 31), \"is_current\": True},\n    {\"customer_key\": 5, \"customer_id\": 1, \"monthly_fee\": Decimal(\"199.00\"), \"effective_from\": date(2026, 11, 5), \"effective_to\": date(9999, 12, 31), \"is_current\": True},\n]\nassert fee_on(ROWS, 1, date(2026, 10, 20)) == Decimal(\"49.00\"), \"an October day gives the fee in force in October, not the current row's fee\"\nassert fee_on(ROWS, 1, date(2026, 11, 5)) == Decimal(\"199.00\"), \"the change day 2026-11-05 gives the new fee\"\nassert fee_on(ROWS, 1, date(2026, 11, 25)) == Decimal(\"199.00\"), \"a late-November day gives the new fee, though the closed row comes first\""
     },
     {
       "id": "t3",
@@ -103,10 +103,10 @@
         "The dimension passed in is left as it was; writing into its dicts instead of copies changes the caller's rows.",
         "A new customer gets the next key after the highest one, and an empty dimension starts at key 1; max without default=0 raises on an empty dimension."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>apply_scd1(dimension, source)</code>, the type 1 sibling of <code>apply_scd2</code>. Each row of <code>dimension</code> is a dict with the keys <code>customer_key</code>, <code>customer_id</code>, <code>name</code>, <code>email</code>, <code>country</code> and <code>monthly_fee</code>; a <code>source</code> row has the same keys except <code>customer_key</code>. Return a new list holding every row of the dimension, with two changes. A source customer already in the dimension keeps its one row and its <code>customer_key</code>, and that row's <code>name</code>, <code>email</code>, <code>country</code> and <code>monthly_fee</code> are overwritten from the source. A source customer not yet in the dimension is appended as a new row with the next surrogate key after the highest one so far, so an empty dimension starts at 1. The list passed in as <code>dimension</code>, and every dict in it, is left as it was. Given Dana at <code>customer_key</code> 1 with a <code>monthly_fee</code> of <code>Decimal(\"49.00\")</code>, and a source row for her at <code>Decimal(\"199.00\")</code>, it returns one row: key 1, fee <code>Decimal(\"199.00\")</code>.",
+      "starter": "def apply_scd1(dimension, source):\n    ...",
+      "tests": "from decimal import Decimal\nDANA = {\"customer_key\": 1, \"customer_id\": 1, \"name\": \"Dana Whitfield\", \"email\": \"dana@example.com\", \"country\": \"CA\", \"monthly_fee\": Decimal(\"49.00\")}\nSAM = {\"customer_key\": 3, \"customer_id\": 3, \"name\": \"Sam Ortiz\", \"email\": \"sam@example.com\", \"country\": \"US\", \"monthly_fee\": Decimal(\"99.00\")}\nDANA_NOW = {\"customer_id\": 1, \"name\": \"Dana Whitfield\", \"email\": \"dana@whitfield.example\", \"country\": \"CA\", \"monthly_fee\": Decimal(\"199.00\")}\nLEE = {\"customer_id\": 4, \"name\": \"Lee Chen\", \"email\": \"lee@example.com\", \"country\": \"CA\", \"monthly_fee\": Decimal(\"49.00\")}\nKIM = {\"customer_id\": 5, \"name\": \"Kim Patel\", \"email\": \"kim@example.com\", \"country\": \"GB\", \"monthly_fee\": Decimal(\"99.00\")}\ncaller = [dict(DANA)]\napply_scd1(caller, [DANA_NOW])\nassert apply_scd1([dict(DANA)], [DANA_NOW]) == [{\"customer_key\": 1, \"customer_id\": 1, \"name\": \"Dana Whitfield\", \"email\": \"dana@whitfield.example\", \"country\": \"CA\", \"monthly_fee\": Decimal(\"199.00\")}], \"a changed customer keeps one row under its old key, with the source's values\"\nassert caller == [DANA], \"the dimension passed in is left as it was\"\nassert [row[\"customer_key\"] for row in apply_scd1([dict(DANA), dict(SAM)], [LEE, KIM])] == [1, 3, 4, 5], \"new customers get the next keys after the highest one, one each\"\nassert [row[\"customer_key\"] for row in apply_scd1([], [LEE])] == [1], \"an empty dimension starts its keys at 1\""
     }
   ]
 }

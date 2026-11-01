@@ -931,6 +931,49 @@ FROM desk_raw.customers;</code></pre>
         </div>
       </section>
 
+      <section class="practice" id="practice" hidden>
+        <div class="tag">Practice</div>
+        <h2>Practice</h2>
+        <div class="ix-task" data-id="t1" data-title="Facts and grain" data-q="Write &lt;code&gt;close_summary(rows)&lt;/code&gt;. Each row is one ticket event at the fact&#x27;s grain, a tuple &lt;code&gt;(kind, ticket_id, hours_since_open)&lt;/code&gt;, where &lt;code&gt;kind&lt;/code&gt; is &lt;code&gt;&quot;open&quot;&lt;/code&gt;, &lt;code&gt;&quot;assigned&quot;&lt;/code&gt; or &lt;code&gt;&quot;closed&quot;&lt;/code&gt;, and a ticket closes at most once. Return a tuple &lt;code&gt;(tickets_closed, total_hours)&lt;/code&gt;: the number of closing events, and the sum of &lt;code&gt;hours_since_open&lt;/code&gt; over those closing events. Events of the other kinds add to neither number. For &lt;code&gt;[(&quot;open&quot;, 1, 0), (&quot;assigned&quot;, 1, 1), (&quot;closed&quot;, 1, 3), (&quot;open&quot;, 3, 0), (&quot;closed&quot;, 3, 10), (&quot;open&quot;, 4, 0)]&lt;/code&gt; it returns &lt;code&gt;(2, 13)&lt;/code&gt;.">
+<pre class="task-starter"><code>def close_summary(rows):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>ROWS = [("open", 1, 0), ("assigned", 1, 1), ("closed", 1, 3), ("open", 3, 0), ("closed", 3, 10), ("open", 4, 0)]
+assert close_summary(ROWS)[1] == 13, "total_hours adds up hours_since_open on the closing events only"
+assert close_summary(ROWS)[0] == 2, "tickets_closed counts each closed ticket once"
+assert close_summary([("open", 4, 0), ("assigned", 4, 2)]) == (0, 0), "a ticket that has not closed adds to neither number"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t2" data-title="Slowly changing dimensions" data-q="Write &lt;code&gt;fee_on(dimension, customer_id, day)&lt;/code&gt;. &lt;code&gt;dimension&lt;/code&gt; is a list of type 2 customer rows, each a dict with the keys &lt;code&gt;customer_key&lt;/code&gt;, &lt;code&gt;customer_id&lt;/code&gt;, &lt;code&gt;monthly_fee&lt;/code&gt; (a &lt;code&gt;Decimal&lt;/code&gt;), &lt;code&gt;effective_from&lt;/code&gt; and &lt;code&gt;effective_to&lt;/code&gt; (both &lt;code&gt;date&lt;/code&gt; objects) and &lt;code&gt;is_current&lt;/code&gt;. Return the &lt;code&gt;monthly_fee&lt;/code&gt; of that customer&#x27;s version in force on &lt;code&gt;day&lt;/code&gt;: its &lt;code&gt;effective_from&lt;/code&gt; is on or before &lt;code&gt;day&lt;/code&gt;, and its &lt;code&gt;effective_to&lt;/code&gt;, the first day the version no longer holds, is after &lt;code&gt;day&lt;/code&gt;. The rows can come in any order, and exactly one version of the customer is in force on any day you are asked about. Dana, customer 1, has a 49.00 row from &lt;code&gt;date(2026, 10, 1)&lt;/code&gt; to &lt;code&gt;date(2026, 11, 5)&lt;/code&gt; and a 199.00 row from &lt;code&gt;date(2026, 11, 5)&lt;/code&gt; to &lt;code&gt;date(9999, 12, 31)&lt;/code&gt;. With her rows and another customer&#x27;s in the list, &lt;code&gt;fee_on(rows, 1, date(2026, 10, 20))&lt;/code&gt; returns &lt;code&gt;Decimal(&quot;49.00&quot;)&lt;/code&gt;.">
+<pre class="task-starter"><code>def fee_on(dimension, customer_id, day):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>from datetime import date
+from decimal import Decimal
+ROWS = [
+    {"customer_key": 1, "customer_id": 1, "monthly_fee": Decimal("49.00"), "effective_from": date(2026, 10, 1), "effective_to": date(2026, 11, 5), "is_current": False},
+    {"customer_key": 2, "customer_id": 2, "monthly_fee": Decimal("99.00"), "effective_from": date(2026, 10, 1), "effective_to": date(9999, 12, 31), "is_current": True},
+    {"customer_key": 5, "customer_id": 1, "monthly_fee": Decimal("199.00"), "effective_from": date(2026, 11, 5), "effective_to": date(9999, 12, 31), "is_current": True},
+]
+assert fee_on(ROWS, 1, date(2026, 10, 20)) == Decimal("49.00"), "an October day gives the fee in force in October, not the current row's fee"
+assert fee_on(ROWS, 1, date(2026, 11, 5)) == Decimal("199.00"), "the change day 2026-11-05 gives the new fee"
+assert fee_on(ROWS, 1, date(2026, 11, 25)) == Decimal("199.00"), "a late-November day gives the new fee, though the closed row comes first"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t3" data-title="SCD in Python" data-q="Write &lt;code&gt;apply_scd1(dimension, source)&lt;/code&gt;, the type 1 sibling of &lt;code&gt;apply_scd2&lt;/code&gt;. Each row of &lt;code&gt;dimension&lt;/code&gt; is a dict with the keys &lt;code&gt;customer_key&lt;/code&gt;, &lt;code&gt;customer_id&lt;/code&gt;, &lt;code&gt;name&lt;/code&gt;, &lt;code&gt;email&lt;/code&gt;, &lt;code&gt;country&lt;/code&gt; and &lt;code&gt;monthly_fee&lt;/code&gt;; a &lt;code&gt;source&lt;/code&gt; row has the same keys except &lt;code&gt;customer_key&lt;/code&gt;. Return a new list holding every row of the dimension, with two changes. A source customer already in the dimension keeps its one row and its &lt;code&gt;customer_key&lt;/code&gt;, and that row&#x27;s &lt;code&gt;name&lt;/code&gt;, &lt;code&gt;email&lt;/code&gt;, &lt;code&gt;country&lt;/code&gt; and &lt;code&gt;monthly_fee&lt;/code&gt; are overwritten from the source. A source customer not yet in the dimension is appended as a new row with the next surrogate key after the highest one so far, so an empty dimension starts at 1. The list passed in as &lt;code&gt;dimension&lt;/code&gt;, and every dict in it, is left as it was. Given Dana at &lt;code&gt;customer_key&lt;/code&gt; 1 with a &lt;code&gt;monthly_fee&lt;/code&gt; of &lt;code&gt;Decimal(&quot;49.00&quot;)&lt;/code&gt;, and a source row for her at &lt;code&gt;Decimal(&quot;199.00&quot;)&lt;/code&gt;, it returns one row: key 1, fee &lt;code&gt;Decimal(&quot;199.00&quot;)&lt;/code&gt;.">
+<pre class="task-starter"><code>def apply_scd1(dimension, source):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>from decimal import Decimal
+DANA = {"customer_key": 1, "customer_id": 1, "name": "Dana Whitfield", "email": "dana@example.com", "country": "CA", "monthly_fee": Decimal("49.00")}
+SAM = {"customer_key": 3, "customer_id": 3, "name": "Sam Ortiz", "email": "sam@example.com", "country": "US", "monthly_fee": Decimal("99.00")}
+DANA_NOW = {"customer_id": 1, "name": "Dana Whitfield", "email": "dana@whitfield.example", "country": "CA", "monthly_fee": Decimal("199.00")}
+LEE = {"customer_id": 4, "name": "Lee Chen", "email": "lee@example.com", "country": "CA", "monthly_fee": Decimal("49.00")}
+KIM = {"customer_id": 5, "name": "Kim Patel", "email": "kim@example.com", "country": "GB", "monthly_fee": Decimal("99.00")}
+caller = [dict(DANA)]
+apply_scd1(caller, [DANA_NOW])
+assert apply_scd1([dict(DANA)], [DANA_NOW]) == [{"customer_key": 1, "customer_id": 1, "name": "Dana Whitfield", "email": "dana@whitfield.example", "country": "CA", "monthly_fee": Decimal("199.00")}], "a changed customer keeps one row under its old key, with the source's values"
+assert caller == [DANA], "the dimension passed in is left as it was"
+assert [row["customer_key"] for row in apply_scd1([dict(DANA), dict(SAM)], [LEE, KIM])] == [1, 3, 4, 5], "new customers get the next keys after the highest one, one each"
+assert [row["customer_key"] for row in apply_scd1([], [LEE])] == [1], "an empty dimension starts its keys at 1"</code></pre>
+        </div>
+      </section>
+
       <section class="step" data-diagram="0" data-step="8">
         <div class="tag">Check yourself</div>
         <h2>Check yourself</h2>

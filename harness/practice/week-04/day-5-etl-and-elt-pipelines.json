@@ -73,10 +73,10 @@
         "clean holds only the rows whose kind is one of the three, built from staging after the load.",
         "source still holds all of its rows after the call; removing bad rows from the source breaks the rule that extract reads without changing it."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "<code>EVENT_KINDS</code> holds the three kinds an event may have. Write <code>elt(source, staging, clean)</code>, which runs the ELT order on three lists of event dicts. First it copies every row of <code>source</code> into <code>staging</code> unchanged, bad rows included. Then it appends to <code>clean</code> each row of <code>staging</code> whose <code>\"kind\"</code> is in <code>EVENT_KINDS</code>. It fills the two lists it is given and leaves <code>source</code> holding all of its rows. Called with <code>source = [{\"event_id\": 1, \"kind\": \"open\"}, {\"event_id\": 2, \"kind\": \"closd\"}]</code> and two empty lists, <code>staging</code> ends with both rows and <code>clean</code> with only event 1.",
+      "starter": "EVENT_KINDS = (\"open\", \"assigned\", \"closed\")\n\n\ndef elt(source, staging, clean):\n    ...",
+      "tests": "source = [{\"event_id\": 1, \"kind\": \"open\"}, {\"event_id\": 2, \"kind\": \"closd\"}, {\"event_id\": 3, \"kind\": \"closed\"}]\nstaging, clean = [], []\nelt(source, staging, clean)\nassert staging == [{\"event_id\": 1, \"kind\": \"open\"}, {\"event_id\": 2, \"kind\": \"closd\"}, {\"event_id\": 3, \"kind\": \"closed\"}], \"staging holds every source row, the misspelt closd row included\"\nassert clean == [{\"event_id\": 1, \"kind\": \"open\"}, {\"event_id\": 3, \"kind\": \"closed\"}], \"clean holds only the staged rows whose kind is in EVENT_KINDS\"\nassert source == [{\"event_id\": 1, \"kind\": \"open\"}, {\"event_id\": 2, \"kind\": \"closd\"}, {\"event_id\": 3, \"kind\": \"closed\"}], \"source still holds all of its rows after the call\""
     },
     {
       "id": "t2",
@@ -89,10 +89,10 @@
         "log's rows_loaded plus rows_rejected equals rows_read, with all three counts right.",
         "The dicts in the input list carry no reason key afterwards; writing row[\"reason\"] in place changes the source rows, where {**row, \"reason\": ...} builds a new dict."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>validate(rows)</code>, which checks a list of event dicts and returns three things: <code>clean, rejects, log</code>. A row whose <code>\"kind\"</code> is not in <code>EVENT_KINDS</code> is rejected with the reason <code>\"unknown kind\"</code>, a row whose <code>\"ticket_id\"</code> is <code>None</code> is rejected with the reason <code>\"no ticket\"</code>, and every other row goes to <code>clean</code>. Each reject is a new dict holding all of the row's keys plus <code>\"reason\"</code>, in the order the rows came, and the dicts in <code>rows</code> are left with no <code>\"reason\"</code> key. <code>log</code> is <code>{\"rows_read\": ..., \"rows_loaded\": ..., \"rows_rejected\": ...}</code> with the three counts. For one good row, one row of kind <code>\"closd\"</code> and one row whose <code>\"ticket_id\"</code> is <code>None</code>, <code>rejects</code> holds the two bad rows with their reasons and <code>log</code> is <code>{\"rows_read\": 3, \"rows_loaded\": 1, \"rows_rejected\": 2}</code>.",
+      "starter": "EVENT_KINDS = (\"open\", \"assigned\", \"closed\")\n\n\ndef validate(rows):\n    ...",
+      "tests": "rows = [\n    {\"event_id\": 12, \"ticket_id\": 2, \"kind\": \"closed\"},\n    {\"event_id\": 13, \"ticket_id\": 2, \"kind\": \"closd\"},\n    {\"event_id\": 14, \"ticket_id\": None, \"kind\": \"open\"},\n]\nclean, rejects, log = validate(rows)\nassert [clean, [{k: v for k, v in r.items() if k != \"reason\"} for r in rejects]] == [[{\"event_id\": 12, \"ticket_id\": 2, \"kind\": \"closed\"}], [{\"event_id\": 13, \"ticket_id\": 2, \"kind\": \"closd\"}, {\"event_id\": 14, \"ticket_id\": None, \"kind\": \"open\"}]], \"clean keeps the good row, and each bad row is in rejects with every one of its own keys\"\nassert [r.get(\"reason\") for r in rejects] == [\"unknown kind\", \"no ticket\"], \"each reject carries the reason for the rule it broke\"\nassert log == {\"rows_read\": 3, \"rows_loaded\": 1, \"rows_rejected\": 2}, \"log counts the rows read, loaded and rejected, and loaded plus rejected equals read\"\nassert [\"reason\" in r for r in rows] == [False, False, False], \"the dicts in rows gain no reason key\""
     },
     {
       "id": "t3",
@@ -104,10 +104,10 @@
         "With 1 to 3 staged it appends only events 4 and 5, not event 3 again; a >= comparison duplicates the watermark row.",
         "A second call returns [] and staged still holds five events, so the append is safe to repeat; appending the whole source each run doubles every row."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Each event is a dict with an <code>\"event_id\"</code>. <code>source</code> is the list of events the source holds now, and <code>staged</code> the list of events already loaded. Write <code>append_new(source, staged)</code>, an append load behind a watermark. It reads the watermark, the highest <code>\"event_id\"</code> in <code>staged</code>, or 0 when <code>staged</code> is empty. It appends to the list <code>staged</code> itself every source event whose <code>\"event_id\"</code> is above the watermark, and returns the list of those new events. With source events 1 to 5 and events 1 to 3 staged, it appends and returns events 4 and 5; a second call returns <code>[]</code> and leaves <code>staged</code> at five events.",
+      "starter": "def append_new(source, staged):\n    ...",
+      "tests": "source = [{\"event_id\": n, \"kind\": \"open\"} for n in [1, 2, 3, 4, 5]]\nfirst = []\nassert [e[\"event_id\"] for e in append_new(source, first)] == [1, 2, 3, 4, 5], \"on an empty staged list, the first run loads every source event\"\nstaged = source[:3]\nnew = append_new(source, staged)\nassert [[e[\"event_id\"] for e in new], [e[\"event_id\"] for e in staged]] == [[4, 5], [1, 2, 3, 4, 5]], \"with events 1 to 3 staged, it returns and appends only events 4 and 5\"\nagain = append_new(source, staged)\nassert [again, len(staged)] == [[], 5], \"a second call returns [] and staged still holds five events\""
     },
     {
       "id": "t4",
@@ -119,10 +119,10 @@
         "Run again with kind open, the same QUERY returns the open counts; a statement with 'closed' pasted in place of @kind returns the closed rows both times.",
         "Run with the value x' OR '1'='1, QUERY returns no rows, because a bound value is compared as a string and never becomes part of the WHERE clause."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "The checks build a <code>fact_ticket_events</code> table with the columns <code>event_id</code>, <code>ticket_id</code> and <code>kind</code>, one row per ticket event. Write one SQL statement that counts the events of one kind for each ticket, with the kind given as the named parameter <code>@kind</code>. It returns two columns, <code>ticket_id</code> and <code>events</code> (the count), one row per ticket that has events of that kind, most events first. Type the statement between the triple quotes. The checks run the same <code>QUERY</code> three times, with the kind <code>closed</code>, then <code>open</code>, then the value <code>x' OR '1'='1</code>. Run with <code>closed</code> it returns <code>(4, 2)</code> then <code>(2, 1)</code>; run with the third value it returns no rows.",
+      "starter": "QUERY = \"\"\"\n-- events of one kind per ticket, most first\n\"\"\"",
+      "tests": "import sqlite3\nconn = sqlite3.connect(\":memory:\")\nconn.executescript(\"\"\"\nCREATE TABLE fact_ticket_events (\n    event_id INT,\n    ticket_id INT,\n    kind VARCHAR(10)\n);\nINSERT INTO fact_ticket_events (event_id, ticket_id, kind)\nVALUES (1, 2, 'open'), (2, 2, 'closed'),\n       (3, 4, 'open'), (4, 4, 'closed'), (5, 4, 'open'), (6, 4, 'closed'),\n       (7, 6, 'open'), (8, 6, 'assigned'), (9, 6, 'open'), (10, 6, 'assigned'), (11, 6, 'open');\n\"\"\")\ncur = conn.execute(QUERY, {\"kind\": \"closed\"})\nclosed_rows = [[c[0] for c in cur.description], cur.fetchall()]\nassert closed_rows == [[\"ticket_id\", \"events\"], [(4, 2), (2, 1)]], \"run with kind closed, it returns ticket_id and events, the closed counts per ticket, most first\"\nopen_rows = conn.execute(QUERY, {\"kind\": \"open\"}).fetchall()\nassert open_rows == [(6, 3), (4, 2), (2, 1)], \"run again with kind open, the same QUERY returns the open counts\"\ninjected = conn.execute(QUERY, {\"kind\": \"x' OR '1'='1\"}).fetchall()\nassert injected == [], \"run with the value x' OR '1'='1, it returns no rows\""
     }
   ]
 }

@@ -822,6 +822,78 @@ print(by_column["priority"].count("high"))</code></pre>
         </div>
       </section>
 
+      <section class="practice" id="practice" hidden>
+        <div class="tag">Practice</div>
+        <h2>Practice</h2>
+        <div class="ix-task" data-id="t1" data-title="Batch and streaming" data-q="Write &lt;code&gt;stream_counts(events)&lt;/code&gt;, the streaming loop in Batch and streaming paths as a function. Each event is a dict with &lt;code&gt;event_id&lt;/code&gt;, &lt;code&gt;ticket_id&lt;/code&gt; and &lt;code&gt;kind&lt;/code&gt;. Count the events by kind as they arrive, and after each one append a copy of the counts, made with &lt;code&gt;dict(counts)&lt;/code&gt;, to a list, so a later event cannot change an earlier snapshot. Return that list. A sender that retries can deliver an event twice: an event whose &lt;code&gt;event_id&lt;/code&gt; was already seen changes nothing and adds no snapshot. For the four events there, given the ids 101 to 104, the list holds four snapshots, from &lt;code&gt;{&#x27;open&#x27;: 1}&lt;/code&gt; to &lt;code&gt;{&#x27;open&#x27;: 2, &#x27;closed&#x27;: 1, &#x27;assigned&#x27;: 1}&lt;/code&gt;, the batch count of the same events.">
+<pre class="task-starter"><code>def stream_counts(events):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>events = [
+    {"event_id": 101, "ticket_id": 1, "kind": "open"},
+    {"event_id": 102, "ticket_id": 1, "kind": "closed"},
+    {"event_id": 103, "ticket_id": 4, "kind": "open"},
+    {"event_id": 104, "ticket_id": 4, "kind": "assigned"},
+]
+retried = events[:2] + [events[1]] + events[2:]
+assert len(stream_counts(events)) == 4, "returns one snapshot per event, not one count at the end"
+assert stream_counts(events)[0] == {"open": 1}, "the first snapshot holds the first event only"
+assert stream_counts(events)[-1] == {"open": 2, "closed": 1, "assigned": 1}, "the last snapshot equals the batch count of the same events"
+assert stream_counts(retried) == stream_counts(events), "an event delivered twice is counted once and adds no snapshot"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t2" data-title="Integration of sources" data-q="Write &lt;code&gt;same_ticket(desk, crm)&lt;/code&gt;. &lt;code&gt;desk&lt;/code&gt; is a desk record such as &lt;code&gt;{&quot;ticket_id&quot;: 4, &quot;opened_hour&quot;: 8}&lt;/code&gt;, and &lt;code&gt;crm&lt;/code&gt; is the sales system&#x27;s record such as &lt;code&gt;{&quot;ref&quot;: &quot;TCK-0004&quot;, &quot;opened_hour&quot;: 12}&lt;/code&gt;, whose hours run four hours ahead of the desk. Return &lt;code&gt;True&lt;/code&gt; when the two describe one ticket: the ref with its &lt;code&gt;TCK-&lt;/code&gt; prefix sliced off and converted to an int equals &lt;code&gt;ticket_id&lt;/code&gt;, and the CRM hour moved back four hours equals the desk&#x27;s &lt;code&gt;opened_hour&lt;/code&gt;. Return &lt;code&gt;False&lt;/code&gt; otherwise. For the pair above, &lt;code&gt;same_ticket&lt;/code&gt; returns &lt;code&gt;True&lt;/code&gt;.">
+<pre class="task-starter"><code>def same_ticket(desk, crm):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>desk = {"ticket_id": 4, "opened_hour": 8}
+assert same_ticket(desk, {"ref": "TCK-0004", "opened_hour": 12}) == True, "the pair in the task is one ticket once the ref and the hour are converted"
+assert same_ticket(desk, {"ref": "TCK-0004", "opened_hour": 8}) == False, "a CRM hour equal to the desk's is four hours too early"
+assert same_ticket(desk, {"ref": "TCK-0005", "opened_hour": 12}) == False, "another ticket number does not match, even at the right hour"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t3" data-title="Retention policy" data-q="Write &lt;code&gt;retention_stage(closed_at, today)&lt;/code&gt;, where both are &lt;code&gt;datetime&lt;/code&gt; values, for the desk&#x27;s retention policy in The data lifecycle: archive a ticket 90 days after it closes and delete it 730 days after it closes. Return &lt;code&gt;&quot;storage&quot;&lt;/code&gt; while fewer than 90 days have passed since &lt;code&gt;closed_at&lt;/code&gt;, &lt;code&gt;&quot;archival&quot;&lt;/code&gt; from 90 days until 730 days, and &lt;code&gt;&quot;deletion&quot;&lt;/code&gt; from 730 days on. As the page does, you can add &lt;code&gt;timedelta(days=90)&lt;/code&gt; and &lt;code&gt;timedelta(days=730)&lt;/code&gt; to &lt;code&gt;closed_at&lt;/code&gt; and compare the results with &lt;code&gt;today&lt;/code&gt; using &lt;code&gt;&amp;gt;=&lt;/code&gt;. For ticket 1, closed at &lt;code&gt;datetime(2026, 10, 18, 11, 0)&lt;/code&gt;, the day &lt;code&gt;datetime(2027, 3, 1)&lt;/code&gt; gives &lt;code&gt;&quot;archival&quot;&lt;/code&gt;.">
+<pre class="task-starter"><code>from datetime import datetime, timedelta
+
+
+def retention_stage(closed_at, today):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>from datetime import datetime, timedelta
+closed = datetime(2026, 10, 18, 11, 0)
+assert retention_stage(closed, closed + timedelta(days=30)) == "storage", "30 days after closing the ticket is still in storage"
+assert retention_stage(closed, closed + timedelta(days=90)) == "archival", "on the 90th day after closing the ticket is archived, not still in storage"
+assert retention_stage(closed, closed + timedelta(days=100)) == "archival", "100 days after closing the ticket is archived, not yet deleted"
+assert retention_stage(closed, closed + timedelta(days=730)) == "deletion", "on the 730th day after closing the ticket is due for deletion"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t4" data-title="Semi-structured data" data-q="Write &lt;code&gt;tag_rows(text)&lt;/code&gt;, where &lt;code&gt;text&lt;/code&gt; is a JSON array of tickets like the one under Semi-structured data. Return a list of &lt;code&gt;(id, tag)&lt;/code&gt; pairs, one pair per tag, in the order the tickets and their tags appear: the flattening the desk&#x27;s &lt;code&gt;ticket_tags&lt;/code&gt; table does. A ticket with no &lt;code&gt;tags&lt;/code&gt; key adds no pair. For its two tickets, &lt;code&gt;tag_rows(text)&lt;/code&gt; returns &lt;code&gt;[(4, &quot;billing&quot;), (4, &quot;ui&quot;)]&lt;/code&gt;.">
+<pre class="task-starter"><code>import json
+
+
+def tag_rows(text):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>text = '[{"id": 4, "tags": ["billing", "ui"], "note": null}, {"id": 5, "note": "rows missing"}, {"id": 6, "tags": ["ui"]}]'
+assert tag_rows('[{"id": 4, "tags": ["billing", "ui"], "note": null}]') == [(4, "billing"), (4, "ui")], "a ticket with two tags gives two (id, tag) pairs"
+assert tag_rows('[{"id": 5, "note": "rows missing"}]') == [], "a ticket with no tags key adds no pair and raises nothing"
+assert tag_rows(text) == [(4, "billing"), (4, "ui"), (6, "ui")], "pairs come in the order the tickets and their tags appear"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t5" data-title="JSON lines" data-q="Write &lt;code&gt;read_jsonl(text)&lt;/code&gt;, where &lt;code&gt;text&lt;/code&gt; holds one JSON object per line, like the six tickets under File formats. Read each line with &lt;code&gt;json.loads&lt;/code&gt; and return the list of dicts in line order, skipping blank lines; &lt;code&gt;text.splitlines()&lt;/code&gt; gives the lines. A title can contain a comma. For those six lines it returns six dicts, the first &lt;code&gt;{&quot;ticket_id&quot;: 1, &quot;title&quot;: &quot;Login page returns 500&quot;, &quot;priority&quot;: &quot;high&quot;, &quot;status&quot;: &quot;closed&quot;}&lt;/code&gt;.">
+<pre class="task-starter"><code>import json
+
+
+def read_jsonl(text):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>lines = [
+    '{"ticket_id": 1, "title": "Login page returns 500", "priority": "high", "status": "closed"}',
+    '{"ticket_id": 2, "title": "Invoice PDF is blank", "priority": "normal", "status": "closed"}',
+    '{"ticket_id": 3, "title": "Typo on pricing page", "priority": "normal", "status": "closed"}',
+    '{"ticket_id": 4, "title": "Checkout button frozen", "priority": "high", "status": "assigned"}',
+    '{"ticket_id": 5, "title": "Export is missing rows", "priority": "normal", "status": "assigned"}',
+    '{"ticket_id": 6, "title": "Add dark mode", "priority": "low", "status": "open"}',
+]
+text = "\n".join(lines[:3]) + "\n\n" + "\n".join(lines[3:]) + "\n"
+comma = '{"ticket_id": 7, "title": "Export fails, then retries", "priority": "normal", "status": "open"}\n'
+assert [r["ticket_id"] for r in read_jsonl(text)] == [1, 2, 3, 4, 5, 6], "six lines give six records in line order, blank lines skipped"
+assert read_jsonl(text)[0] == {"ticket_id": 1, "title": "Login page returns 500", "priority": "high", "status": "closed"}, "each line comes back as a dict, its ticket_id an int"
+assert read_jsonl(comma)[0]["title"] == "Export fails, then retries", "a title with a comma in it comes back whole"</code></pre>
+        </div>
+      </section>
+
       <section class="step" data-diagram="0" data-step="8">
         <div class="tag">Check yourself</div>
         <h2>Check yourself</h2>
