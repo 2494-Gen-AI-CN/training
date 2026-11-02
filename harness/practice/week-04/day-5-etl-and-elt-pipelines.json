@@ -56,6 +56,13 @@
     },
     {
       "step": 7,
+      "title": "Telling the client from the star",
+      "suitable": false,
+      "reason": "The step moves a client-facing question onto a star schema with a CASE WHEN band, then hands the result to pandas and matplotlib for a correlation and a chart; the runtime has neither, and the framing of the question is judgment a check cannot see.",
+      "task": null
+    },
+    {
+      "step": 8,
       "title": "Review: the week as one pipeline",
       "suitable": false,
       "reason": "The review retells the week's pipeline and compares architectures (ETL warehouse, ELT warehouse, lake): concepts and trade-offs with no behaviour a check can see.",

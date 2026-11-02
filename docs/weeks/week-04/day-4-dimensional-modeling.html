@@ -311,7 +311,7 @@ print(total)</code></pre>
         <table>
           <thead><tr><th>Table</th><th>One row per</th><th>Key</th></tr></thead>
           <tbody>
-            <tr><td><code>dim_date</code></td><td>calendar day, 2026-10-01 to 2026-12-31</td><td><code>date_key</code>, YYYYMMDD</td></tr>
+            <tr><td><code>dim_date</code></td><td>calendar day, from the first ticket's day to 90 days past the last event</td><td><code>date_key</code>, YYYYMMDD</td></tr>
             <tr><td><code>dim_agent</code></td><td>agent, plus one row for no agent</td><td><code>agent_key</code></td></tr>
             <tr><td><code>dim_customer</code></td><td>customer</td><td><code>customer_key</code></td></tr>
             <tr><td><code>dim_priority</code></td><td>priority, with its SLA hours</td><td><code>priority</code></td></tr>
@@ -329,8 +329,13 @@ print(total)</code></pre>
         <code>FORMAT_DATE('%Y%m%d', day)</code> writes a date as text, and the cast to INT64 turns that text into the
         YYYYMMDD key.<sup class="cite"><a href="#src-11">11</a></sup> The <code>is_weekend</code> column is true for
         Saturday and Sunday.</p>
-<pre><code>-- One row per day for the last quarter of 2026.
+<pre><code>-- One row per day from the first ticket to 90 days past the last event.
 CREATE OR REPLACE TABLE desk_dw.dim_date AS
+WITH span AS (
+  SELECT
+    (SELECT DATE(MIN(opened_at)) FROM desk_raw.tickets) AS first_day,
+    (SELECT DATE_ADD(DATE(MAX(created_at)), INTERVAL 90 DAY) FROM desk_raw.ticket_events) AS last_day
+)
 SELECT
   CAST(FORMAT_DATE('%Y%m%d', day) AS INT64) AS date_key,
   day AS full_date,
@@ -338,8 +343,11 @@ SELECT
   EXTRACT(MONTH FROM day) AS month,
   FORMAT_DATE('%A', day) AS weekday,
   EXTRACT(DAYOFWEEK FROM day) IN (1, 7) AS is_weekend
-FROM UNNEST(GENERATE_DATE_ARRAY('2026-10-01', '2026-12-31')) AS day;</code></pre>
-        <p>The new table holds 92 rows, one for each day from October 1 to December 31. Three of them, read back:</p>
+FROM span, UNNEST(GENERATE_DATE_ARRAY(span.first_day, span.last_day)) AS day;</code></pre>
+        <p>The two subqueries in <code>span</code> read the range from the data. The desk's first ticket opened on
+        2026-10-17 and its last event is on 2026-10-19, so the table holds 93 rows, through 2027-01-17. A literal
+        range written for one dataset is a trap: a pair loading 2019 data into a dimension that starts in 2026 gets
+        an empty fact, silently, because no event finds a date row. Three rows, read back:</p>
 <pre><code>SELECT
   date_key,
   full_date,
@@ -694,7 +702,7 @@ ORDER BY customer_key;</code></pre>
 <pre class="out">+--------------+----------------+--------------+------------+
 | customer_key | effective_from | effective_to | is_current |
 +--------------+----------------+--------------+------------+
-|            1 | 2026-10-01     | 2026-11-05   | false      |
+|            1 | 2026-10-17     | 2026-11-05   | false      |
 |            5 | 2026-11-05     | 9999-12-31   | true       |
 +--------------+----------------+--------------+------------+</pre>
         <p>The far-future date 9999-12-31 is the open end of the version still in force. Facts join to a type 2 dimension
@@ -795,13 +803,13 @@ from transform import OPEN_END, apply_scd2
 
 dana = {"customer_key": 1, "customer_id": 1, "name": "Dana Whitfield",
         "email": "dana@example.com", "country": "CA", "monthly_fee": Decimal("49.00"),
-        "effective_from": date(2026, 10, 1), "effective_to": OPEN_END, "is_current": True}
+        "effective_from": date(2026, 10, 17), "effective_to": OPEN_END, "is_current": True}
 source = [{"customer_id": 1, "name": "Dana Whitfield", "email": "dana@example.com",
            "country": "CA", "monthly_fee": Decimal("199.00")}]
 for row in apply_scd2([dana], source, date(2026, 11, 5)):
     print(row["customer_key"], row["monthly_fee"], row["effective_from"],
           row["effective_to"], row["is_current"])</code></pre>
-<pre class="out">1 49.00 2026-10-01 2026-11-05 False
+<pre class="out">1 49.00 2026-10-17 2026-11-05 False
 2 199.00 2026-11-05 9999-12-31 True</pre>
         <h3>Testing it with pytest</h3>
         <p>The tests build their rows inline in a fixture, so they need no MySQL, no BigQuery and no environment
@@ -822,7 +830,7 @@ def dimension():
     """One current row for Dana at 49.00."""
     return [{"customer_key": 1, "customer_id": 1, "name": "Dana Whitfield",
              "email": "dana@example.com", "country": "CA", "monthly_fee": Decimal("49.00"),
-             "effective_from": date(2026, 10, 1), "effective_to": OPEN_END, "is_current": True}]
+             "effective_from": date(2026, 10, 17), "effective_to": OPEN_END, "is_current": True}]
 
 
 def source_row(fee):
@@ -905,7 +913,7 @@ SELECT
   email,
   country,
   monthly_fee,
-  DATE '2026-10-01' AS effective_from,
+  (SELECT DATE(MIN(opened_at)) FROM desk_raw.tickets) AS effective_from,
   DATE '9999-12-31' AS effective_to,
   TRUE AS is_current
 FROM desk_raw.customers;</code></pre>
@@ -914,6 +922,9 @@ FROM desk_raw.customers;</code></pre>
         does nothing.<sup class="cite"><a href="#src-18">18</a></sup> In someone else's code, type 2 looks
         like this: a function taking current rows, source rows and an as-of date, and <code>9999-12-31</code> as the open
         end.</p>
+        <p>Each first version starts on the desk's first day, read from the data the way the date dimension's first
+        day was. Written as a literal, that date would be the page's second trap: a pair whose events predate it
+        would join to no version, and its fact would be empty.</p>
         <div class="recap"><div class="k">Takeaways</div><ul>
           <li>Type 2 fits a pure function: current rows, source rows and a date in, new rows out.</li>
           <li>Its tests build rows inline and need no database.</li>
@@ -1085,7 +1096,7 @@ window.DIAGRAM = {
     { id:"conceptual", step:1, x:24, y:80, w:140, h:48, label:"Conceptual\n  ticket · customer\n  agent · event", detail:"Entities and the rules between them, simple enough for stakeholders to sign off." },
     { id:"logical", step:1, x:180, y:80, w:140, h:48, label:"Logical\n  keys · attributes\n  grain", detail:"Adds attributes, keys, relationships and the grain, and names no engine." },
     { id:"physical", step:1, x:336, y:80, w:140, h:48, label:"Physical\n  INT64 · NUMERIC\n  desk_dw.*", detail:"One engine's types, names and tuning. A change of engine rewrites this level only." },
-    { id:"date", step:3, x:24, y:154, w:140, h:44, label:"dim_date\n  92 days · type 0", detail:"date_key is YYYYMMDD, built with GENERATE_DATE_ARRAY and FORMAT_DATE. A date's attributes never change." },
+    { id:"date", step:3, x:24, y:154, w:140, h:44, label:"dim_date\n  93 days · type 0", detail:"date_key is YYYYMMDD, built with GENERATE_DATE_ARRAY and FORMAT_DATE. A date's attributes never change." },
     { id:"agent", step:3, x:336, y:154, w:140, h:44, label:"dim_agent\n  key 0 = unassigned", detail:"A special member row instead of a null key, so every fact row finds its agent." },
     { id:"fact", step:2, x:180, y:196, w:140, h:68, label:"fact_ticket_events\n  one row per event\n  event_count\n  hours_since_open", detail:"Keys to four dimensions plus numeric measures. 11 rows: 14 staged events minus three bad ones." },
     { id:"customer", step:3, x:24, y:252, w:140, h:44, label:"dim_customer\n  customer_key", detail:"A surrogate key per version, which is what makes type 2 history possible." },

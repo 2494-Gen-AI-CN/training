@@ -32,6 +32,11 @@ version-stamps:
 - Application Default Credentials are found by client libraries from `gcloud auth application-default login` without a key file — [Set up ADC](https://cloud.google.com/docs/authentication/provide-credentials-adc)
 - `DataFrame.duplicated()` marks every repeat after the first by default (`keep="first"`), so row order decides which copy survives — [pandas.DataFrame.duplicated](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.duplicated.html)
 - pytest fixtures supply test inputs; tests of pure transform functions need no database — [pytest fixtures](https://docs.pytest.org/en/stable/how-to/fixtures.html)
+- `Series.corr(other, method="pearson")` computes the correlation with another Series, excluding missing values; the default method is Pearson, the standard correlation coefficient — [pandas.Series.corr](https://pandas.pydata.org/docs/reference/api/pandas.Series.corr.html) (added 2026-11-02, D-0080)
+- The Pearson correlation coefficient measures the strength of a (usually linear) relationship between two variables and ranges from -1 to 1; +1 (-1) means a perfect linear increasing (decreasing) relationship — [NIST/SEMATECH e-Handbook glossary](https://www.itl.nist.gov/div898/handbook/glossary.htm) (added 2026-11-02, D-0080)
+- Association does not imply causality: a scatter plot or correlation can never prove cause and effect; subject knowledge has to establish it — [NIST/SEMATECH e-Handbook: Scatter plot](https://www.itl.nist.gov/div898/handbook/eda/section3/eda33q.htm) (added 2026-11-02, D-0080)
+- `Axes.set_title` sets a title for the Axes — [matplotlib.axes.Axes.set_title](https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.set_title.html) (added 2026-11-02, D-0080)
+- `Figure.savefig` saves the figure as an image or vector graphic to a file, the format inferred from the file extension when none is given — [matplotlib.figure.Figure.savefig](https://matplotlib.org/stable/api/_as_gen/matplotlib.figure.Figure.savefig.html) (added 2026-11-02, D-0080)
 
 ## Notes depth (D-0040; one block per curriculum subtopic, sized for a 4500–7000-word study page; every claim-bearing line carries [title](official url))
 
@@ -72,6 +77,10 @@ version-stamps:
   - `datetime.now(timezone.utc)` gives a timezone-aware timestamp that loads into a TIMESTAMP column — [datetime](https://docs.python.org/3/library/datetime.html)
   - `DataFrame.merge` joins two frames on a column, like a SQL join — [pandas.DataFrame.merge](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.merge.html)
   - Design statement: a load job can skip invalid rows up to `max_bad_records` and report them only as job errors, so a job that must keep each bad row and its reason writes it to a rejects table itself — [Loading CSV data from Cloud Storage](https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-csv)
+  - Design statement (D-0080, P0's analyse-and-tell layer): an engineered feature is a column the source never had, computed from columns it had, in a common shape such as a flag (TRUE or FALSE), a bucket (a range sorted into named groups) or a rate (one quantity per unit of another); the desk's are `dim_date.is_weekend`, `questions.sql`'s `sla_band` and `fact_ticket_events.hours_since_open` (added 2026-11-02)
+  - `Series.corr` defaults to Pearson; the Pearson coefficient runs from -1 to 1 and measures a straight-line relationship, so any two points give 1.0 or -1.0 — [pandas.Series.corr](https://pandas.pydata.org/docs/reference/api/pandas.Series.corr.html), [NIST/SEMATECH e-Handbook glossary](https://www.itl.nist.gov/div898/handbook/glossary.htm) (added 2026-11-02)
+  - A correlation is an association and never proves a cause by itself — [NIST/SEMATECH e-Handbook: Scatter plot](https://www.itl.nist.gov/div898/handbook/eda/section3/eda33q.htm) (added 2026-11-02)
+  - A client chart is drawn with `plt.subplots`, titled with `set_title` and written with `savefig` — [matplotlib.axes.Axes.set_title](https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.set_title.html), [matplotlib.figure.Figure.savefig](https://matplotlib.org/stable/api/_as_gen/matplotlib.figure.Figure.savefig.html) (added 2026-11-02)
 
 ### Review
 - Interview questions: Walk me through how data gets from an operational database to a report. Why a star schema and not the source tables? Where would you put cleansing, and why? Compare two warehouse architectures for a given business. (qc3.data-warehousing.S01); Follow-up (a level beyond): the desk grows to millions of events a day, with a second source arriving as Parquet files. Would you keep ETL in Python or move to ELT in SQL, and what would change in staging, the watermark and the rejects table? (qc3.data-warehousing.S01)
@@ -103,6 +112,11 @@ version-stamps:
 - datetime — https://docs.python.org/3/library/datetime.html
 - About replication in Cloud SQL — https://cloud.google.com/sql/docs/mysql/replication
 - Loading CSV data from Cloud Storage — https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-csv
+- pandas.Series.corr — https://pandas.pydata.org/docs/reference/api/pandas.Series.corr.html (added 2026-11-02, D-0080)
+- NIST/SEMATECH e-Handbook of Statistical Methods: glossary — https://www.itl.nist.gov/div898/handbook/glossary.htm (added 2026-11-02, D-0080)
+- NIST/SEMATECH e-Handbook of Statistical Methods: Scatter plot — https://www.itl.nist.gov/div898/handbook/eda/section3/eda33q.htm (added 2026-11-02, D-0080)
+- matplotlib.axes.Axes.set_title — https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.set_title.html (added 2026-11-02, D-0080)
+- matplotlib.figure.Figure.savefig — https://matplotlib.org/stable/api/_as_gen/matplotlib.figure.Figure.savefig.html (added 2026-11-02, D-0080)
 
 ## Glossary terms (3–8; one-sentence plain-language definitions; aka = alternate surface forms)
 
