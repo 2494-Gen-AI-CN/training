@@ -175,6 +175,12 @@ class CalendarMarkTests(unittest.TestCase):
         self.assertEqual([], _sprints(block), "an official spec draws no sprint bar")
 
     def test_draft_official_yields_no_mark(self):
+        # a draft may not keep a checkpoint on a live day, so the copy of the curriculum has w05d5 still authored
+        # (week 5 went live 2026-11-03)
+        for w in self.cur["weeks"]:
+            for d in w["days"]:
+                if (d.get("id") == "w05d5" or (w.get("week") == 5 and d.get("day") == 5)) and d.get("status") == "live":
+                    d["status"] = "authored"
         self._write("official/P0-ticket-desk.md", OFFICIAL_MD.format(status="draft"))
         self.assertEqual([], self.bp.validate(self.root, self.cur), "fixture is a valid draft")
         block, _ = self._render()
