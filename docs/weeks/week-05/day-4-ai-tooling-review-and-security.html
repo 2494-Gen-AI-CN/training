@@ -771,6 +771,73 @@ for hours in (3, 4, 24, 25):
         </div>
       </section>
 
+      <section class="practice" id="practice" hidden>
+        <div class="tag">Practice</div>
+        <h2>Practice</h2>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t1" data-title="Code analysis" data-q="An assistant reviews &lt;code&gt;clean_events&lt;/code&gt; and returns three findings, all stated with the same confidence: the &lt;code&gt;how=&quot;left&quot;&lt;/code&gt; merge lets an event with no ticket pass as clean, &lt;code&gt;duplicated&lt;/code&gt; rejects both copies of a duplicate, and the one-line docstring should go because the name says it all. The team&#x27;s lint config requires a docstring on every function. Which finding do you act on, and how?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t1" value="0"> Act on all three, since each is stated as surely.</label></li>
+            <li><label><input type="radio" name="t1" value="1"> Guard the merge with a missing-ticket reason and an orphan test.</label></li>
+            <li><label><input type="radio" name="t1" value="2"> Rework the <code>duplicated</code> check so that one copy survives.</label></li>
+            <li><label><input type="radio" name="t1" value="3"> Drop the docstring, since the function's name says it all.</label></li>
+            <li><label><input type="radio" name="t1" value="4"> Skip the merge finding, since MySQL's foreign key forbids orphans.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 1, "explain": "Each finding is a claim settled with the docs or a test: &lt;code&gt;duplicated&lt;/code&gt; keeps the first copy by default and dropping the docstring brings back pylint's C0116, while an orphan can still arrive through staging, so the true merge finding earns a cheap guard and a test."}</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t2" data-title="Code optimization" data-q="Asked for a faster &lt;code&gt;apply_scd2&lt;/code&gt;, an assistant returns a version that marks a customer changed by comparing the &lt;code&gt;_x&lt;/code&gt; and &lt;code&gt;_y&lt;/code&gt; columns of a pandas merge, and says it is faster. Week 4&#x27;s three tests pass against it unedited. What do you do before accepting it?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t2" value="0"> Accept it, since week 4's three tests pass unedited.</label></li>
+            <li><label><input type="radio" name="t2" value="1"> Edit week 4's tests in the same commit to fit the rewrite.</label></li>
+            <li><label><input type="radio" name="t2" value="2"> Accept it, since the reply says it is faster.</label></li>
+            <li><label><input type="radio" name="t2" value="3"> Add a test with a country missing on both sides, then time both.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 3, "explain": "Existing tests guard only their fixtures, which hold no missing value, and pandas compares a missing value as unequal to itself, so the rewrite needs a test for that edge. A measurement then decides whether it is worth having, since \"this is faster\" with no timing is a claim like any other."}</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t3" data-title="Code injection" data-q="In &lt;code&gt;export_tickets.py&lt;/code&gt;, &lt;code&gt;status = sys.argv[1]&lt;/code&gt; and the query ends with &lt;code&gt;f&quot;WHERE t.status = &#x27;{status}&#x27;&quot;&lt;/code&gt;, so a status of &lt;code&gt;closed&#x27; OR &#x27;1&#x27;=&#x27;1&lt;/code&gt; exports every ticket. Which change fixes the injection?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t3" value="0"> Put a <code>%s</code> marker in the SQL and pass <code>(status,)</code> as its parameters.</label></li>
+            <li><label><input type="radio" name="t3" value="1"> Keep the f-string and escape every quote in <code>status</code> by hand.</label></li>
+            <li><label><input type="radio" name="t3" value="2"> Put a <code>%s</code> marker in the SQL and pass <code>(status)</code>, no comma.</label></li>
+            <li><label><input type="radio" name="t3" value="3"> Keep the f-string, as <code>extract.read_table</code> does with its table name.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 0, "explain": "A &lt;code&gt;%s&lt;/code&gt; marker with a tuple of parameters keeps the SQL structure apart from its data, so the hostile status becomes one odd value that no ticket has. &lt;code&gt;(status)&lt;/code&gt; with no comma is a plain string and no tuple, and &lt;code&gt;read_table&lt;/code&gt;'s f-string is safe only because its table name comes from the &lt;code&gt;TABLES&lt;/code&gt; constant, while &lt;code&gt;status&lt;/code&gt; comes from the command line."}</code></pre>
+        </div>
+        <div class="ix-task" data-id="t4" data-title="Insecure defaults" data-q="Write &lt;code&gt;db_password(environ)&lt;/code&gt;. It takes a mapping of environment variable names to values, such as &lt;code&gt;os.environ&lt;/code&gt; or a plain dict, and returns the value of &lt;code&gt;DESK_DB_PASSWORD&lt;/code&gt; with no fallback, so a missing variable raises &lt;code&gt;KeyError&lt;/code&gt; and stops the program. &lt;code&gt;db_password({&quot;DESK_DB_PASSWORD&quot;: &quot;s3cret&quot;})&lt;/code&gt; returns &lt;code&gt;&quot;s3cret&quot;&lt;/code&gt;, and &lt;code&gt;db_password({})&lt;/code&gt; raises &lt;code&gt;KeyError&lt;/code&gt;.">
+<pre class="task-starter"><code>def db_password(environ):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert db_password({"DESK_DB_PASSWORD": "s3cret"}) == "s3cret", "returns the password the mapping holds"
+assert raises(KeyError, db_password, {}), "raises KeyError when DESK_DB_PASSWORD is missing"
+assert db_password({"DESK_DB_PASSWORD": ""}) == "", "returns the value even when it is empty, with no fallback"</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t5" data-title="Responsible use" data-q="The client&#x27;s contract forbids sending its data out of the company, the client has approved one assistant, and a staged row holding &lt;code&gt;dana@example.com&lt;/code&gt; makes &lt;code&gt;clean_events&lt;/code&gt; misbehave. What do you send to get help, and to which assistant?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t5" value="0"> Paste the one real row into a public chat.</label></li>
+            <li><label><input type="radio" name="t5" value="1"> Paste the code and the row, email removed, into a public chat.</label></li>
+            <li><label><input type="radio" name="t5" value="2"> Send the code and an invented, labelled row to the approved assistant.</label></li>
+            <li><label><input type="radio" name="t5" value="3"> Send the code and the real row to the approved assistant.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 2, "explain": "The client's code goes only to an assistant the client approved, and a pasted row is data sent out, so the row holding &lt;code&gt;dana@example.com&lt;/code&gt; goes nowhere. An invented row shows the shape of the problem and keeps the prompt to the context the model needs."}</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t6" data-title="Licensing and copyright" data-q="An editor assistant suggests a long function for the client&#x27;s closed-source product, and it matches a file in a public repository licensed under GPLv3. What do you do with it?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t6" value="0"> Rely on the provider's terms, which assign the output to you.</label></li>
+            <li><label><input type="radio" name="t6" value="1"> Check the match, then rewrite or remove it before it ships.</label></li>
+            <li><label><input type="radio" name="t6" value="2"> Add the repository's copyright and licence notice, as MIT asks.</label></li>
+            <li><label><input type="radio" name="t6" value="3"> Claim it, since writing the prompt makes you its author.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 1, "explain": "GPLv3 is copyleft: code that matches it, shipped in the client's product, requires the whole work under the GPL with its source, which a closed product cannot do. The provider assigns its rights only \"if any\" exist, and keeping the notice is all a permissive licence such as MIT asks."}</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t7" data-title="AI tooling review" data-q="An assistant wrote &lt;code&gt;ticket_age_band(hours)&lt;/code&gt; and its tests in a minute, the generated tests pass, and Bandit reports nothing. A teammate says the assisted way was cheaper than writing it by hand. What decides the comparison?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t7" value="0"> The writing time: the assisted version took one minute.</label></li>
+            <li><label><input type="radio" name="t7" value="1"> The generated tests: they pass, so it meets the requirement.</label></li>
+            <li><label><input type="radio" name="t7" value="2"> The scanner: Bandit reports nothing, so it needs no review.</label></li>
+            <li><label><input type="radio" name="t7" value="3"> The total cost, against the requirement's four expected outputs.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 3, "explain": "A change's total cost counts review, defects found later, what the developer learned and who can maintain it, and both ways answer to the same four expected outputs. Wednesday's first reply came with a generated test that asserted the off-by-one at 24 hours, and Bandit's narrow B608 caught one problem of five in &lt;code&gt;export_tickets.py&lt;/code&gt;."}</code></pre>
+        </div>
+      </section>
+
       <section class="step" data-diagram="0" data-step="7">
         <div class="tag">Check yourself</div>
         <h2>Check yourself</h2>

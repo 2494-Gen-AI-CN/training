@@ -770,6 +770,81 @@ mysql://desk_app:[email]:3306/ticket_desk</pre>
         </div>
       </section>
 
+      <section class="practice" id="practice" hidden>
+        <div class="tag">Practice</div>
+        <h2>Practice</h2>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t1" data-title="Rule or model" data-q="The desk has its six labelled seed tickets and the hand-written &lt;code&gt;triage(title)&lt;/code&gt; rule, and the team wants every new ticket&#x27;s priority set automatically. Which plan matches the page?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t1" value="0"> Train a model on the six tickets: learned rules beat written ones.</label></li>
+            <li><label><input type="radio" name="t1" value="1"> Ship the <code>if</code> rule, calling it machine learning since it predicts.</label></li>
+            <li><label><input type="radio" name="t1" value="2"> Ship the written rule; train a model once it grows unmaintainable.</label></li>
+            <li><label><input type="radio" name="t1" value="3"> Train on last year's tickets: learned rules never repeat old mistakes.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 2, "explain": "Google's first rule says not to be afraid to launch without machine learning, because machine learning requires data, and six tickets is not data. The &lt;code&gt;if&lt;/code&gt; rule is AI in the broad sense but not machine learning, and a team trains a model once the heuristic grows unmaintainable."}</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t2" data-title="Two replies to one prompt" data-q="A teammate sends the same triage prompt twice and gets &lt;code&gt;high&lt;/code&gt; the first time and &lt;code&gt;normal&lt;/code&gt; the second for the same title, &lt;code&gt;Checkout button frozen&lt;/code&gt;. Which explanation holds?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t2" value="0"> Each token is sampled, so replies vary even at temperature 0.</label></li>
+            <li><label><input type="radio" name="t2" value="1"> The model looked the ticket up again, and its row changed.</label></li>
+            <li><label><input type="radio" name="t2" value="2"> Temperature 0 gives identical replies, so one run had a bug.</label></li>
+            <li><label><input type="radio" name="t2" value="3"> The first reply is right and the second broken; keep the first.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 0, "explain": "A model writes by picking each next token from a probability distribution, and nothing in that loop looks a fact up, since the model sees only its context window. The docs say that even with temperature set to 0 the results will not be fully deterministic, so each reply is one sample, never a promise."}</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t3" data-title="Fixing a zero-shot prompt" data-q="The prompt &lt;code&gt;Write a triage rule for our support tickets.&lt;/code&gt; came back with tiers &lt;code&gt;P1&lt;/code&gt; to &lt;code&gt;P4&lt;/code&gt; and made-up response times. What is your next move?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t3" value="0"> Add three labelled example tickets, one per priority, first.</label></li>
+            <li><label><input type="radio" name="t3" value="1"> Keep the reply: it reads well and covers every case.</label></li>
+            <li><label><input type="radio" name="t3" value="2"> Resend the same prompt until the tiers come back right.</label></li>
+            <li><label><input type="radio" name="t3" value="3"> Add context first: the desk's priorities, SLA hours and output.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 3, "explain": "The model saw one sentence, so it answered for a generic help desk, and the first fix to a zero-shot prompt is usually context, before examples. Examples alone would still leave it guessing the SLA hours and the shape of the answer."}</code></pre>
+        </div>
+        <div class="ix-task" data-id="t4" data-title="Constraints" data-q="Round 3&#x27;s constraint allows exactly one of &lt;code&gt;high&lt;/code&gt;, &lt;code&gt;normal&lt;/code&gt;, &lt;code&gt;low&lt;/code&gt; or &lt;code&gt;unsure&lt;/code&gt; on each answer line. Write &lt;code&gt;broken_answers(lines)&lt;/code&gt;, which takes the answer lines of a reply as a list of strings and returns a list of the lines that are not exactly one of those four words, one entry per broken line, in the order the lines came. For example, &lt;code&gt;broken_answers([&quot;This is probably high.&quot;, &quot;normal&quot;, &quot;unsure&quot;])&lt;/code&gt; returns &lt;code&gt;[&quot;This is probably high.&quot;]&lt;/code&gt;.">
+<pre class="task-starter"><code>def broken_answers(lines):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert broken_answers(["This is probably high.", "normal"]) == ["This is probably high."], "a sentence that only contains an allowed word is reported"
+assert broken_answers(["unsure", "low", "high", "normal"]) == [], "unsure and the three priorities are not reported"
+assert broken_answers(["P2", "high", "P1", "P2"]) == ["P2", "P1", "P2"], "every broken line is reported, in the order the lines came"</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t5" data-title="Dialog state" data-q="Yesterday&#x27;s long chat ended with round 4&#x27;s good reply. Today you open a new chat and type &lt;code&gt;Triage these three tickets the same way as before.&lt;/code&gt; followed by three new titles. What happens, and what do you send instead?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t5" value="0"> It remembers yesterday, so the short message is enough.</label></li>
+            <li><label><input type="radio" name="t5" value="1"> The chat starts empty, so send the complete round-4 prompt.</label></li>
+            <li><label><input type="radio" name="t5" value="2"> Return to yesterday's chat, whose first instructions stay for good.</label></li>
+            <li><label><input type="radio" name="t5" value="3"> Follow up with <code>Use the rules from round 4.</code> as after round 3.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 1, "explain": "Every turn re-sends the whole conversation and a new chat holds only its own messages, so the priorities and rules have to be in its prompt again. A follow-up works only because the earlier reply is in the window, and a long chat drifts as old turns roll out of it."}</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t6" data-title="Prompt or fine-tune" data-q="A teammate wants the model to use the desk&#x27;s three priorities on every request and proposes fine-tuning it. The triage needs three labels, six titles and one team decision. What does the page advise?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t6" value="0"> Rely on the prompt's examples: they already changed the model's parameters.</label></li>
+            <li><label><input type="radio" name="t6" value="1"> Fine-tune first: a prompt lasts one conversation, a fine-tune every request.</label></li>
+            <li><label><input type="radio" name="t6" value="2"> Prompt first: all of it fits the window and takes minutes to try.</label></li>
+            <li><label><input type="radio" name="t6" value="3"> Pick freely: few-shot prompting is a small fine-tune, equally cheap.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 2, "explain": "OpenAI's guide says prompt engineering may be all you need, and fine-tuning earns its place when there are more examples than fit in one request's context window and the team accepts a training job and its evaluation. Examples in a prompt condition the model for that conversation only, and its parameters never change."}</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t7" data-title="Checking a suggested method" data-q="A reply says &lt;code&gt;DataFrame.count_by(&quot;priority&quot;)&lt;/code&gt; groups and counts in one call, and the desk pins pandas 3.0.6. What do you do before the line goes in?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t7" value="0"> Use it: pandas has <code>count</code> and grouping, so it fits.</label></li>
+            <li><label><input type="radio" name="t7" value="1"> Ask again with <code>Say I don't know if unsure</code> and trust a repeat.</label></li>
+            <li><label><input type="radio" name="t7" value="2"> Check the newest pandas reference, where new methods appear first.</label></li>
+            <li><label><input type="radio" name="t7" value="3"> Check the pandas 3.0 reference and run the line first.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 3, "explain": "A hallucination is stated confidently and reads like the real thing, so a claim about a library is checked in the docs for the version the desk pins and then run: the 3.0 reference lists no &lt;code&gt;count_by&lt;/code&gt;, the run raises &lt;code&gt;AttributeError&lt;/code&gt;, and &lt;code&gt;df[\"priority\"].value_counts()&lt;/code&gt; is the fix. Prompting techniques reduce hallucinations but do not eliminate them."}</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t8" data-title="What goes into a public chat" data-q="A stack trace from the desk holds &lt;code&gt;mysql://desk_app:s3cret@db.internal:3306/ticket_desk&lt;/code&gt; and a customer&#x27;s name and email, and you want help from a public chat assistant. What do you paste?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t8" value="0"> The trace after <code>desk.redact</code>, which cleans the connection string and email.</label></li>
+            <li><label><input type="radio" name="t8" value="1"> The trace after removing host, user, password, name and email by hand.</label></li>
+            <li><label><input type="radio" name="t8" value="2"> The trace as it is: the assistant needs the exact error.</label></li>
+            <li><label><input type="radio" name="t8" value="3"> The redacted trace, plus <code>transform.clean_events</code> so it sees the code.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 1, "explain": "Credentials and personal information never go into a public chat, and &lt;code&gt;desk.redact&lt;/code&gt; hides email addresses only: it leaves the name and the user, and the line looks clean only because its pattern happens to match &lt;code&gt;s3cret@db.internal&lt;/code&gt;. Names and connection strings are removed by hand, and the result is read before it is pasted."}</code></pre>
+        </div>
+      </section>
+
       <section class="step" data-diagram="0" data-step="8">
         <div class="tag">Check yourself</div>
         <h2>Check yourself</h2>

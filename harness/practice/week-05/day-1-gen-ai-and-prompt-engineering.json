@@ -74,10 +74,18 @@
         "Call the if rule machine learning because it predicts a priority catches the marketing reading the page warns about: nothing was trained, so it is AI in the broad sense only.",
         "Train on last year's tickets because a learned rule cannot repeat a past mistake catches the trade-off the page's table names: a learned rule copies whatever the old labels got wrong."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "The desk has its six labelled seed tickets and the hand-written <code>triage(title)</code> rule, and the team wants every new ticket's priority set automatically. Which plan matches the page?",
       "starter": "",
-      "tests": ""
+      "tests": "",
+      "options": [
+        "Train a model on the six tickets: learned rules beat written ones.",
+        "Ship the <code>if</code> rule, calling it machine learning since it predicts.",
+        "Ship the written rule; train a model once it grows unmaintainable.",
+        "Train on last year's tickets: learned rules never repeat old mistakes."
+      ],
+      "answer": 2,
+      "explain": "Google's first rule says not to be afraid to launch without machine learning, because machine learning requires data, and six tickets is not data. The <code>if</code> rule is AI in the broad sense but not machine learning, and a team trains a model once the heuristic grows unmaintainable."
     },
     {
       "id": "t2",
@@ -90,10 +98,18 @@
         "Setting temperature to 0 makes every reply identical, so the first run had a bug catches reading temperature 0 as a guarantee; the docs say a small amount of variation is still possible.",
         "The first reply was right and the second is broken, so the first is the answer to keep catches treating a printed reply as a promise; each reply is one sample, and a fluent one can still be false."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "A teammate sends the same triage prompt twice and gets <code>high</code> the first time and <code>normal</code> the second for the same title, <code>Checkout button frozen</code>. Which explanation holds?",
       "starter": "",
-      "tests": ""
+      "tests": "",
+      "options": [
+        "Each token is sampled, so replies vary even at temperature 0.",
+        "The model looked the ticket up again, and its row changed.",
+        "Temperature 0 gives identical replies, so one run had a bug.",
+        "The first reply is right and the second broken; keep the first."
+      ],
+      "answer": 0,
+      "explain": "A model writes by picking each next token from a probability distribution, and nothing in that loop looks a fact up, since the model sees only its context window. The docs say that even with temperature set to 0 the results will not be fully deterministic, so each reply is one sample, never a promise."
     },
     {
       "id": "t3",
@@ -106,10 +122,18 @@
         "Keep the reply because it is well written and covers every case catches judging a reply by how it reads; round 1 reads well and fails all three success criteria.",
         "Send the same one-line prompt again until the tiers come back right catches hoping sampling fixes a prompt; the model saw one sentence and answered for a generic help desk, and it will again."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "The prompt <code>Write a triage rule for our support tickets.</code> came back with tiers <code>P1</code> to <code>P4</code> and made-up response times. What is your next move?",
       "starter": "",
-      "tests": ""
+      "tests": "",
+      "options": [
+        "Add three labelled example tickets, one per priority, first.",
+        "Keep the reply: it reads well and covers every case.",
+        "Resend the same prompt until the tiers come back right.",
+        "Add context first: the desk's priorities, SLA hours and output."
+      ],
+      "answer": 3,
+      "explain": "The model saw one sentence, so it answered for a generic help desk, and the first fix to a zero-shot prompt is usually context, before examples. Examples alone would still leave it guessing the SLA hours and the shape of the answer."
     },
     {
       "id": "t4",
@@ -122,10 +146,10 @@
         "\"unsure\" is not reported; an allowed list of only the three priorities forgets the escape hatch the constraint adds.",
         "A tier the desk does not have, such as \"P1\" from round 1, is reported along with the others, in the order the lines came."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Round 3's constraint allows exactly one of <code>high</code>, <code>normal</code>, <code>low</code> or <code>unsure</code> on each answer line. Write <code>broken_answers(lines)</code>, which takes the answer lines of a reply as a list of strings and returns a list of the lines that are not exactly one of those four words, one entry per broken line, in the order the lines came. For example, <code>broken_answers([\"This is probably high.\", \"normal\", \"unsure\"])</code> returns <code>[\"This is probably high.\"]</code>.",
+      "starter": "def broken_answers(lines):\n    ...",
+      "tests": "assert broken_answers([\"This is probably high.\", \"normal\"]) == [\"This is probably high.\"], \"a sentence that only contains an allowed word is reported\"\nassert broken_answers([\"unsure\", \"low\", \"high\", \"normal\"]) == [], \"unsure and the three priorities are not reported\"\nassert broken_answers([\"P2\", \"high\", \"P1\", \"P2\"]) == [\"P2\", \"P1\", \"P2\"], \"every broken line is reported, in the order the lines came\""
     },
     {
       "id": "t5",
@@ -138,10 +162,18 @@
         "Go back to yesterday's chat and keep adding follow-ups there instead catches ignoring drift; old turns can roll out of the window and long contexts lose accuracy, so a fresh chat with a complete prompt often beats a long patched one.",
         "Send a follow-up turn naming the broken rule, as with round 3 catches using a follow-up where nothing is in the window to fix; a follow-up works only because the previous reply is in the context window."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "Yesterday's long chat ended with round 4's good reply. Today you open a new chat and type <code>Triage these three tickets the same way as before.</code> followed by three new titles. What happens, and what do you send instead?",
       "starter": "",
-      "tests": ""
+      "tests": "",
+      "options": [
+        "It remembers yesterday, so the short message is enough.",
+        "The chat starts empty, so send the complete round-4 prompt.",
+        "Return to yesterday's chat, whose first instructions stay for good.",
+        "Follow up with <code>Use the rules from round 4.</code> as after round 3."
+      ],
+      "answer": 1,
+      "explain": "Every turn re-sends the whole conversation and a new chat holds only its own messages, so the priorities and rules have to be in its prompt again. A follow-up works only because the earlier reply is in the window, and a long chat drifts as old turns roll out of it."
     },
     {
       "id": "t6",
@@ -154,10 +186,18 @@
         "Fine-tune first, because a prompt lasts only one conversation and so is never the right tool catches skipping the order OpenAI's guide gives: prompting may be all you need, and fine-tuning is slow to try.",
         "Few-shot prompting is a small fine-tune, so the two cost the same to try catches the confusion the page opens with; fine-tuning is a second training pass with a training file, conditioning is text in a prompt."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "A teammate wants the model to use the desk's three priorities on every request and proposes fine-tuning it. The triage needs three labels, six titles and one team decision. What does the page advise?",
       "starter": "",
-      "tests": ""
+      "tests": "",
+      "options": [
+        "Rely on the prompt's examples: they already changed the model's parameters.",
+        "Fine-tune first: a prompt lasts one conversation, a fine-tune every request.",
+        "Prompt first: all of it fits the window and takes minutes to try.",
+        "Pick freely: few-shot prompting is a small fine-tune, equally cheap."
+      ],
+      "answer": 2,
+      "explain": "OpenAI's guide says prompt engineering may be all you need, and fine-tuning earns its place when there are more examples than fit in one request's context window and the team accepts a training job and its evaluation. Examples in a prompt condition the model for that conversation only, and its parameters never change."
     },
     {
       "id": "t7",
@@ -170,10 +210,18 @@
         "Ask again with \"say I don't know if unsure\" and use the method if it comes back the same catches treating a prompting technique as proof; the docs say these techniques reduce hallucinations but do not eliminate them.",
         "Check the reference for the newest pandas release, where any new method would appear catches skipping the version; the check goes to the docs for the version the desk pins."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "A reply says <code>DataFrame.count_by(\"priority\")</code> groups and counts in one call, and the desk pins pandas 3.0.6. What do you do before the line goes in?",
       "starter": "",
-      "tests": ""
+      "tests": "",
+      "options": [
+        "Use it: pandas has <code>count</code> and grouping, so it fits.",
+        "Ask again with <code>Say I don't know if unsure</code> and trust a repeat.",
+        "Check the newest pandas reference, where new methods appear first.",
+        "Check the pandas 3.0 reference and run the line first."
+      ],
+      "answer": 3,
+      "explain": "A hallucination is stated confidently and reads like the real thing, so a claim about a library is checked in the docs for the version the desk pins and then run: the 3.0 reference lists no <code>count_by</code>, the run raises <code>AttributeError</code>, and <code>df[\"priority\"].value_counts()</code> is the fix. Prompting techniques reduce hallucinations but do not eliminate them."
     },
     {
       "id": "t8",
@@ -186,10 +234,18 @@
         "The trace as it is, since the assistant needs the exact error catches pasting credentials and personal information, which never go into a public chat.",
         "The redacted trace together with transform.clean_events so the assistant sees the code catches pasting the employer's code, which goes only to an assistant the employer has approved."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "A stack trace from the desk holds <code>mysql://desk_app:s3cret@db.internal:3306/ticket_desk</code> and a customer's name and email, and you want help from a public chat assistant. What do you paste?",
       "starter": "",
-      "tests": ""
+      "tests": "",
+      "options": [
+        "The trace after <code>desk.redact</code>, which cleans the connection string and email.",
+        "The trace after removing host, user, password, name and email by hand.",
+        "The trace as it is: the assistant needs the exact error.",
+        "The redacted trace, plus <code>transform.clean_events</code> so it sees the code."
+      ],
+      "answer": 1,
+      "explain": "Credentials and personal information never go into a public chat, and <code>desk.redact</code> hides email addresses only: it leaves the name and the user, and the line looks clean only because its pattern happens to match <code>s3cret@db.internal</code>. Names and connection strings are removed by hand, and the result is read before it is pasted."
     }
   ]
 }

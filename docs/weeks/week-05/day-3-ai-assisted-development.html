@@ -732,6 +732,104 @@ print(config.query_parameters)</code></pre>
         </div>
       </section>
 
+      <section class="practice" id="practice" hidden>
+        <div class="tag">Practice</div>
+        <h2>Practice</h2>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t1" data-title="AI pair programming" data-q="A developer is writing &lt;code&gt;assign_agent(ticket)&lt;/code&gt;, and the ticket on the tracker says every ticket from the customer Acme goes to the agent Lee. The rule is written nowhere in the code or the open files, and the inline suggestion that appears gives each ticket to whichever agent has the fewest open tickets. What explains this, and what comes next?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t1" value="0"> It saw the ticket but chose a common pattern; add the rule by hand.</label></li>
+            <li><label><input type="radio" name="t1" value="1"> It ran the code, the rule failed; fix the sample and ask again.</label></li>
+            <li><label><input type="radio" name="t1" value="2"> It never saw the ticket; write the rule in the docstring and reread.</label></li>
+            <li><label><input type="radio" name="t1" value="3"> It never saw the ticket; accept it and let the tests catch the gap.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 2, "explain": "An editor assistant builds its suggestion from the surrounding code, open tabs and recent edits, and it never runs the code, so a rule that lives only in a ticket never reaches it. State the intent where it can see it, in the docstring, and read the next suggestion before Tab accepts it."}</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t2" data-title="Integration with IDE" data-q="A team keeps customer exports holding &lt;code&gt;customers.email&lt;/code&gt; values in an &lt;code&gt;exports/&lt;/code&gt; folder of its repository. It wants those files kept out of every request its editor assistant sends, including when a developer works in the agent mode of Copilot Chat. Which plan does that?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t2" value="0"> Move the exports out of the repository, so the editor never has them open.</label></li>
+            <li><label><input type="radio" name="t2" value="1"> Set <code>telemetry.telemetryLevel</code> to <code>off</code> so the editor stops sending the exports.</label></li>
+            <li><label><input type="radio" name="t2" value="2"> Add <code>exports/</code> to content exclusion, which hides those files in every mode.</label></li>
+            <li><label><input type="radio" name="t2" value="3"> Open the exports only in another tab, never in the file being edited.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 0, "explain": "Content exclusion has a stated gap in the Edit and Agent modes of Copilot Chat, and &lt;code&gt;telemetry.telemetryLevel&lt;/code&gt; covers only VS Code's own usage data, so the plan that holds in every mode is that the files are never in the folder the editor opens. A file open in another tab can still inform a suggestion."}</code></pre>
+        </div>
+        <div class="ix-task" data-id="t3" data-title="Code generation" data-q="The starter is an illustrative reply an assistant gave for &lt;code&gt;reopen_band(days)&lt;/code&gt;, a sibling of &lt;code&gt;ticket_age_band&lt;/code&gt; that sorts the days since a ticket was reopened. The requirement: fewer than 2 days returns &lt;code&gt;&quot;under 2&quot;&lt;/code&gt;, from 2 to 7 days with both edges included returns &lt;code&gt;&quot;2 to 7&quot;&lt;/code&gt;, and more than 7 days returns &lt;code&gt;&quot;over 7&quot;&lt;/code&gt;. Fix the function so it returns the right band on and beside each edge; for example, &lt;code&gt;reopen_band(7)&lt;/code&gt; returns &lt;code&gt;&quot;2 to 7&quot;&lt;/code&gt; and &lt;code&gt;reopen_band(8)&lt;/code&gt; returns &lt;code&gt;&quot;over 7&quot;&lt;/code&gt;.">
+<pre class="task-starter"><code>def reopen_band(days):
+    """Return the band for a ticket reopened days ago."""
+    if days &lt; 2:
+        return "under 2"
+    elif days &lt; 7:
+        return "2 to 7"
+    else:
+        return "over 7"</code></pre>
+<pre class="task-tests" hidden><code>assert reopen_band(7) == "2 to 7", "7 days, on the upper edge, is in the middle band"
+assert reopen_band(2) == "2 to 7", "2 days, on the lower edge, is in the middle band"
+assert (reopen_band(1), reopen_band(8)) == ("under 2", "over 7"), "1 day and 8 days, beside the edges, fall outside the middle band"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t4" data-title="Unit tests" data-q="Write &lt;code&gt;test_age_band_edges(band)&lt;/code&gt;, a plain test function that takes a band function and asserts what &lt;code&gt;band&lt;/code&gt; returns on and beside each edge of the &lt;code&gt;ticket_age_band&lt;/code&gt; requirement: fewer than 4 hours returns &lt;code&gt;&quot;under 4&quot;&lt;/code&gt;, from 4 to 24 hours with both edges included returns &lt;code&gt;&quot;4 to 24&quot;&lt;/code&gt;, and more than 24 hours returns &lt;code&gt;&quot;over 24&quot;&lt;/code&gt;. Take every expected value from the requirement. Called with a band function that meets the requirement, it returns without an error; called with the round-1 function, which returns &lt;code&gt;&quot;over 24&quot;&lt;/code&gt; at 24, it raises &lt;code&gt;AssertionError&lt;/code&gt;.">
+<pre class="task-starter"><code>def test_age_band_edges(band):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>def _band_right(hours):
+    if hours &lt; 4:
+        return "under 4"
+    if hours &lt;= 24:
+        return "4 to 24"
+    return "over 24"
+
+def _band_round_1(hours):
+    if hours &lt; 4:
+        return "under 4"
+    elif hours &lt; 24:
+        return "4 to 24"
+    else:
+        return "over 24"
+
+def _band_lower_edge(hours):
+    if hours &lt;= 4:
+        return "under 4"
+    if hours &lt;= 24:
+        return "4 to 24"
+    return "over 24"
+
+def _band_below_edge(hours):
+    if hours &lt; 3:
+        return "under 4"
+    if hours &lt;= 24:
+        return "4 to 24"
+    return "over 24"
+
+def _band_past_edge(hours):
+    if hours &lt; 4:
+        return "under 4"
+    if hours &lt;= 25:
+        return "4 to 24"
+    return "over 24"
+
+assert not raises(AssertionError, test_age_band_edges, _band_right), "called with a band function that meets the requirement, the test raises nothing"
+assert raises(AssertionError, test_age_band_edges, _band_round_1), "called with the round-1 function, which gives \"over 24\" at 24, the test raises AssertionError"
+assert (raises(AssertionError, test_age_band_edges, _band_lower_edge), raises(AssertionError, test_age_band_edges, _band_below_edge)) == (True, True), "called with a function wrong at 3 or at 4, the test raises AssertionError"
+assert raises(AssertionError, test_age_band_edges, _band_past_edge), "called with a function that gives \"4 to 24\" at 25, the test raises AssertionError"</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t5" data-title="Documentation" data-q="The desk function &lt;code&gt;read_changes(conn, since)&lt;/code&gt; runs &lt;code&gt;SELECT * FROM ticket_events WHERE event_id &amp;gt; %s ORDER BY event_id&lt;/code&gt; with &lt;code&gt;since&lt;/code&gt; as its one parameter and returns the rows, and its file neither imports &lt;code&gt;argparse&lt;/code&gt; nor reads &lt;code&gt;sys.argv&lt;/code&gt;. An assistant drafts four docstrings for it. Which draft matches the code?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t5" value="0"> Return <code>ticket_events</code> rows created after the timestamp <code>since</code>, oldest first.</label></li>
+            <li><label><input type="radio" name="t5" value="1"> Return <code>ticket_events</code> rows with an <code>event_id</code> above <code>since</code>; set it with <code>--since-date</code>.</label></li>
+            <li><label><input type="radio" name="t5" value="2"> Return <code>ticket_events</code> rows with an <code>event_id</code> above the watermark <code>since</code>, in any order.</label></li>
+            <li><label><input type="radio" name="t5" value="3"> Return <code>ticket_events</code> rows with an <code>event_id</code> above the watermark <code>since</code>, oldest first.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 3, "explain": "The query compares &lt;code&gt;since&lt;/code&gt; with &lt;code&gt;event_id&lt;/code&gt; and orders by &lt;code&gt;event_id&lt;/code&gt;, so &lt;code&gt;since&lt;/code&gt; is an event id used as a watermark and the rows come back oldest first. A parameter's meaning comes from the code that uses it, and a flag exists only when something in the code reads it."}</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t6" data-title="Learning a library" data-q="An assistant&#x27;s reply builds &lt;code&gt;bigquery.QueryJobConfig(max_bytes=10_000_000)&lt;/code&gt;, with a keyword you have never seen, and ends with a doc link and a note that it applies to version 3.47.0. The project pins google-cloud-bigquery 3.47.0, and the &#x27;latest&#x27; reference page for the class renders as 3.42.1. What do you do before that line goes in a commit?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t6" value="0"> Keep <code>max_bytes</code>: many libraries use the name and the reply sounds sure.</label></li>
+            <li><label><input type="radio" name="t6" value="1"> Find <code>max_bytes</code> in the class's reference, then run the line against the installed 3.47.0.</label></li>
+            <li><label><input type="radio" name="t6" value="2"> Find <code>max_bytes</code> on the 'latest' reference page and commit once it appears.</label></li>
+            <li><label><input type="radio" name="t6" value="3"> Trust the doc link and version 3.47.0 the reply gave and commit the line.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 1, "explain": "The class's reference is the authority on its keywords, and a reference page has its own version, here 3.42.1 against a pin of 3.47.0, so a one-line run against the installed 3.47.0 settles it. A keyword the reference page does not list is the warning sign, whatever doc link and version the reply gives."}</code></pre>
+        </div>
+      </section>
+
       <section class="step" data-diagram="0" data-step="8">
         <div class="tag">Check yourself</div>
         <h2>Check yourself</h2>

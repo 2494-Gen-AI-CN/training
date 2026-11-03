@@ -60,8 +60,16 @@
         "A title made of the column names, such as \"hours_to_close by priority\", catches the query-name title the page and the brief's pitfalls name.",
         "A title that describes the pipeline behind the chart, such as the fact table and the join it came from, catches opening with how the project was built instead of what the data says."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "Your pair's slide shows a bar chart of the desk's average hours to close a ticket, one bar per priority, and the numbers on it are illustrative. Which title should go above the chart?",
+      "options": [
+        "Results",
+        "<code>hours_to_close</code> by priority",
+        "Normal tickets average past their 24-hour SLA; high ones close within theirs",
+        "Average <code>hours_since_open</code> from <code>fact_ticket_events</code> joined to <code>dim_ticket</code>"
+      ],
+      "answer": 2,
+      "explain": "A slide title is a sentence that states the finding, with a direction or a number in it, so a manager who reads only the titles still gets the argument. A single noun or a column name only says what the chart is about, and the fact table and its join are the method, which waits until someone asks.",
       "starter": "",
       "tests": ""
     },
@@ -76,8 +84,16 @@
         "A close that restates the finding and stops catches a finding with no recommendation, which leaves the manager nothing to act on.",
         "A close that gives the recommendation and moves every limitation to a list on the last slide catches the small-print limitation the page says to state beside the claim it affects."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "Your pair's correlation slide shows that stations near transit see more short trips (illustrative). Those stations are also downtown, where trips are short anyway. Which close should the talk end on?",
+      "options": [
+        "Trial two transit-station docks for a month (slide 4); downtown may explain it.",
+        "Transit causes short trips, so add docks at every transit stop (slide 4).",
+        "Stations near transit see more short trips than elsewhere, as slide 4 shows.",
+        "Trial two transit-station docks for a month (slide 4); limits go on the last slide."
+      ],
+      "answer": 0,
+      "explain": "A manager keeps the finding, the recommendation and the risk, so the close gives an action backed by a slide, states the limit beside the recommendation it affects and names the cheap test that would settle it. A correlation can never prove a cause, and a limitation saved for the last slide reads like small print.",
       "starter": "",
       "tests": ""
     },
@@ -92,8 +108,16 @@
         "A reply that guesses an answer from a nearby column with no limit stated catches overstated certainty, which the page says risks an inappropriate decision.",
         "A reply that says the data cannot answer it and stops catches leaving out the second sentence, the data that would answer it."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "After your talk a non-technical manager asks which of two dock locations is cheaper to run. Your pair's dataset has no cost column. Which reply should you give?",
+      "options": [
+        "So, basically, the way we built it, files load into staging, then get cleaned.",
+        "Downtown: it has fewer trips in our data, so it likely costs less.",
+        "We can't say which location is cheaper, because our data has no cost column.",
+        "We can't say: no cost column. Finance's dock costs would add one in a day."
+      ],
+      "answer": 3,
+      "explain": "When the data cannot answer, say so in the first sentence and, in the second, name the data that would answer it and how long adding it would take. A guess from a nearby column overstates certainty, which risks an inappropriate decision.",
       "starter": "",
       "tests": ""
     },
@@ -108,8 +132,16 @@
         "Editing the query text on stage and running it again catches the move the page warns runs it fresh and spends bytes from the sandbox's 1 TiB a month.",
         "Reloading the tables there and then catches spending sandbox storage on the day, which the page says never comes back."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "Halfway through your talk you press Run on a saved query from <code>questions.sql</code>, and the job sits there with nothing in the Results tab. What do you do?",
+      "options": [
+        "Wait quietly at the console until the rows appear, then carry on.",
+        "Say what it asks and shows, go to the chart slide, then come back.",
+        "Edit the query on stage to make it lighter, then press Run again.",
+        "Reload the tables there and then in case one is missing, then rerun."
+      ],
+      "answer": 1,
+      "explain": "Do not wait in silence: say what the query asks and what it will show, move on and come back, because the deck already carries the chart. Editing the text runs it fresh and spends bytes from the sandbox's 1 TiB a month, and reloading tables spends storage that never comes back.",
       "starter": "",
       "tests": ""
     },
@@ -124,8 +156,16 @@
         "An answer that tells the same story as \"we\" throughout catches the \"we did everything\" habit the page says to replace with \"I\" for your own part.",
         "An answer that ends on \"I owned the ingestion job\" catches stating the task as if it were the result, which gives an interviewer nothing to score."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "An interviewer says \"Tell me about a time you handled bad data.\" Which of these Project 0 answers would score highest? The counts in them are illustrative.",
+      "options": [
+        "Our client was a city bike-share scheme with hundreds of stations and monthly files.",
+        "We cleaned the bad data together, adding validation rules, a rejects table and tests.",
+        "My partner and I split the work by stage, and I owned ingestion and rejects.",
+        "I wrote validation rules and tests; 412 rows went to rejects and a rerun added zero."
+      ],
+      "answer": 3,
+      "explain": "A STAR answer spends about 60% of its time on the Action, the steps you personally took, said with \"I\", and ends on a Result with a figure in it. Owning the ingestion job is the task, and on its own it gives an interviewer nothing to score.",
       "starter": "",
       "tests": ""
     },
@@ -140,8 +180,16 @@
         "Dropping every live query for screenshots catches losing the minutes in which \"the warehouse is real\" is judged.",
         "Keeping every slide and having one partner present all of it faster catches the pitfall of one partner speaking while the other clicks, and a talk with no slack left for the question."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "On the day, your pair's fifteen-minute slot shrinks to ten. Which plan for the shorter talk should you follow?",
+      "options": [
+        "Keep every finding, the recommendation and one live query; drop the risk slide.",
+        "Keep the first slide, a finding, the recommendation and the risk; screenshot the queries.",
+        "Keep the first slide, the recommendation, the risk and one live query; drop a finding.",
+        "Keep every slide; one partner presents it all faster while the other clicks."
+      ],
+      "answer": 2,
+      "explain": "A shorter talk keeps what a manager takes away, so the ten-minute version keeps the first slide, the recommendation, the risk and one live query, and drops a finding. A screenshot proves only that a query once worked, while the live run is where \"the warehouse is real\" is judged.",
       "starter": "",
       "tests": ""
     }

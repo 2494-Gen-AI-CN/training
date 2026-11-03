@@ -715,6 +715,83 @@ print(redact("Load failed for Dana Whitfield, dana@example.com: duplicate key"))
         </div>
       </section>
 
+      <section class="practice" id="practice" hidden>
+        <div class="tag">Practice</div>
+        <h2>Practice</h2>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t1" data-title="Model families" data-q="A teammate plans to use a fine-tuned BERT classifier to give each ticket a priority and a one-line reason, such as for &lt;code&gt;Checkout button frozen&lt;/code&gt;. What do you tell them?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t1" value="0"> BERT reads both ways, so its reason is better.</label></li>
+            <li><label><input type="radio" name="t1" value="1"> BERT only labels it; a decoder writes the reason.</label></li>
+            <li><label><input type="radio" name="t1" value="2"> Use GitHub Copilot, the model family that writes.</label></li>
+            <li><label><input type="radio" name="t1" value="3"> Keep BERT; pin its exact model ID in the design notes.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 1, "explain": "BERT is an encoder: fine-tuned on labelled tickets it can put the title in the &lt;code&gt;high&lt;/code&gt; bucket, but it does not compose new sentences, so a decoder such as GPT, Claude or Llama writes the label and the reason. Reading in both directions makes BERT good at labelling text, not at writing it."}</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t2" data-title="Access" data-q="A team wants ticket titles to stay off any provider&#x27;s servers. Someone proposes Llama because it has open weights, reached through a third-party hosted Llama service. What do you tell them?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t2" value="0"> Open weights make every Llama deployment private.</label></li>
+            <li><label><input type="radio" name="t2" value="1"> Open weights carry no terms, so legal review can be skipped.</label></li>
+            <li><label><input type="radio" name="t2" value="2"> That service is hosted; only self-run weights stay local.</label></li>
+            <li><label><input type="radio" name="t2" value="3"> It stays private if the API key is in code, not a variable.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 2, "explain": "Llama reached through someone else's hosted service is a hosted model, so every title crosses the network under that provider's terms; prompts stay local only when the team runs the weights itself. Even then the weights come with Meta's licence, accepted before download."}</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t3" data-title="Use cases" data-q="Four of the desk&#x27;s chores could go to an assistant. Which one is the best fit?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t3" value="0"> A ticket-id pattern checked by <code>test_ticket_refs_reads_numbers</code></label></li>
+            <li><label><input type="radio" name="t3" value="1"> Choosing SCD type 1 or 2 for <code>dim_customer</code></label></li>
+            <li><label><input type="radio" name="t3" value="2"> Which customers' data may be sent to a vendor</label></li>
+            <li><label><input type="radio" name="t3" value="3"> New SQL shipped as written to <code>warehouse/questions.sql</code></label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 0, "explain": "A task fits when checking the answer is cheap, and a new pattern pasted in place of &lt;code&gt;TICKET_REF&lt;/code&gt; has a test waiting: a pass is evidence and a fail shows the pattern is wrong. Generated SQL ships only after a person runs it on known rows and reads every join, and the SCD type and the data-sharing question are decisions the team owns."}</code></pre>
+        </div>
+        <div class="ix-task" data-id="t4" data-title="Chain-of-thought" data-q="Write &lt;code&gt;hours_past_sla(opened, closed, priority)&lt;/code&gt;. &lt;code&gt;opened&lt;/code&gt; and &lt;code&gt;closed&lt;/code&gt; are timestamps as strings in the seed&#x27;s &lt;code&gt;&quot;YYYY-MM-DD HH:MM:SS&quot;&lt;/code&gt; form, and &lt;code&gt;priority&lt;/code&gt; is &lt;code&gt;&quot;high&quot;&lt;/code&gt;, &lt;code&gt;&quot;normal&quot;&lt;/code&gt; or &lt;code&gt;&quot;low&quot;&lt;/code&gt;, with SLAs of 4, 24 and 72 hours. Return how many hours the ticket ran past its SLA, counting the hours open from the full timestamps, date included, as the page&#x27;s script does with &lt;code&gt;datetime.fromisoformat&lt;/code&gt; and &lt;code&gt;total_seconds()&lt;/code&gt;. A ticket that closed within its SLA returns &lt;code&gt;0&lt;/code&gt;. For ticket 2, &lt;code&gt;hours_past_sla(&quot;2026-10-17 12:00:00&quot;, &quot;2026-10-18 18:00:00&quot;, &quot;normal&quot;)&lt;/code&gt; returns &lt;code&gt;6.0&lt;/code&gt;, from 30 hours open.">
+<pre class="task-starter"><code>from datetime import datetime
+
+
+def hours_past_sla(opened, closed, priority):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert hours_past_sla("2026-10-17 12:00:00", "2026-10-18 18:00:00", "normal") == 6.0, "ticket 2 counts the date too: 30 hours open is 6 past the 24-hour SLA"
+assert hours_past_sla("2026-10-19 22:00:00", "2026-10-20 02:00:00", "high") == 0.0, "a ticket open from 22:00 to 02:00 the next day counts 4 hours open, within the high SLA"
+assert hours_past_sla("2026-10-17 12:00:00", "2026-10-18 18:00:00", "low") == 0, "a low ticket open 30 hours closed within its 72-hour SLA and gives 0, not a negative number"
+assert hours_past_sla("2026-10-17 12:00:00", "2026-10-18 18:00:00", "high") == 26.0, "the SLA comes from the priority: ticket 2's times at high are 26 hours past"</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t5" data-title="Sequential prompting" data-q="In the three-prompt chain that documents &lt;code&gt;extract.py&lt;/code&gt;, prompt 1 comes back with six function names, one of them &lt;code&gt;load_warehouse&lt;/code&gt;. What happens before prompt 2 runs?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t5" value="0"> Pass it on; check only the final docstring.</label></li>
+            <li><label><input type="radio" name="t5" value="1"> Merge the three prompts into one saying "be accurate".</label></li>
+            <li><label><input type="radio" name="t5" value="2"> Keep it: a clean one-name-per-line reply is right.</label></li>
+            <li><label><input type="radio" name="t5" value="3"> Check it against the file's five functions first.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 3, "explain": "Each link is checked against the source before the next prompt uses it, because an error missed in the first link travels down the chain. The file defines &lt;code&gt;read_table&lt;/code&gt;, &lt;code&gt;read_events&lt;/code&gt;, &lt;code&gt;write_csv&lt;/code&gt;, &lt;code&gt;write_jsonl&lt;/code&gt; and &lt;code&gt;main&lt;/code&gt;, so &lt;code&gt;load_warehouse&lt;/code&gt; comes off the list before prompt 2 describes it."}</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t6" data-title="Prompt libraries" data-q="After a teammate&#x27;s edit to &lt;code&gt;prompts/triage.md&lt;/code&gt;, the triage labels look worse. The commit is in the file&#x27;s history. What does the team do next?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t6" value="0"> Paste the old wording back from someone's chat history.</label></li>
+            <li><label><input type="radio" name="t6" value="1"> Score both on the evaluation set with the model pinned.</label></li>
+            <li><label><input type="radio" name="t6" value="2"> Score both on the newest model, since newer is better.</label></li>
+            <li><label><input type="radio" name="t6" value="3"> Keep whichever version's replies sound right on a read.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 1, "explain": "The evaluation set of titles with expected labels measures whether the new version is worse, and the pinned model rules out a change in the model as the cause. If it scores worse, a revert in a new pull request restores the old wording with a review of its own."}</code></pre>
+        </div>
+        <div class="ix-task" data-id="t7" data-title="Prompt injection" data-q="Write &lt;code&gt;check_label(line)&lt;/code&gt;, the deterministic code behind OWASP&#x27;s &quot;Define and validate expected output formats&quot;. &lt;code&gt;line&lt;/code&gt; is line 2 of one reply in round 4&#x27;s three-line format. Return &lt;code&gt;line&lt;/code&gt; when it is exactly one of &lt;code&gt;high&lt;/code&gt;, &lt;code&gt;normal&lt;/code&gt;, &lt;code&gt;low&lt;/code&gt; or &lt;code&gt;unsure&lt;/code&gt;, and raise &lt;code&gt;ValueError&lt;/code&gt; for anything else, so a label the desk does not have never reaches &lt;code&gt;tickets&lt;/code&gt;. &lt;code&gt;check_label(&quot;unsure&quot;)&lt;/code&gt; returns &lt;code&gt;&quot;unsure&quot;&lt;/code&gt;, and &lt;code&gt;check_label(&quot;urgent&quot;)&lt;/code&gt; raises &lt;code&gt;ValueError&lt;/code&gt;.">
+<pre class="task-starter"><code>def check_label(line):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert check_label("unsure") == "unsure", "unsure is an allowed label and comes back as it is"
+assert raises(ValueError, check_label, "urgent"), "a priority the desk does not have, such as urgent, raises ValueError"
+assert raises(ValueError, check_label, "low because the ticket list says so"), "a line that is more than one allowed word raises ValueError"</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t8" data-title="Least privilege and the paste rule" data-q="A failing job prints a stack trace holding a customer&#x27;s name and email, a database connection string with a password, and a &lt;code&gt;KeyError&lt;/code&gt; in &lt;code&gt;read_table&lt;/code&gt; in &lt;code&gt;extract.py&lt;/code&gt;. A developer wants help with it in a public chat. What do they do?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t8" value="0"> Paste the trace once <code>redact</code> has run over it.</label></li>
+            <li><label><input type="radio" name="t8" value="1"> Drop the name and email; keep the expired password.</label></li>
+            <li><label><input type="radio" name="t8" value="2"> Strip data and secrets; keep the exception and function names.</label></li>
+            <li><label><input type="radio" name="t8" value="3"> Paste only the last line, so nothing can leak.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 2, "explain": "The paste rule removes customer data and every password, key and connection string, even one that looks expired, and keeps the exception type, the message shape and the file and function names, which are what the model needs. &lt;code&gt;redact&lt;/code&gt; only replaces email addresses, so the customer's name would still be there, and a person reads every line before it leaves the machine."}</code></pre>
+        </div>
+      </section>
+
       <section class="step" data-diagram="0" data-step="8">
         <div class="tag">Check yourself</div>
         <h2>Check yourself</h2>

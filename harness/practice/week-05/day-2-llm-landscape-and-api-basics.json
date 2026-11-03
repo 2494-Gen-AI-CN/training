@@ -74,10 +74,18 @@
         "Use GitHub Copilot as the model instead: catches confusing a product built on a model with the model family, which the page keeps apart.",
         "Name the exact model ID in the design notes so the choice holds: catches quoting model IDs that change with each release, where the page says to name the family."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "A teammate plans to use a fine-tuned BERT classifier to give each ticket a priority and a one-line reason, such as for <code>Checkout button frozen</code>. What do you tell them?",
       "starter": "",
-      "tests": ""
+      "tests": "",
+      "options": [
+        "BERT reads both ways, so its reason is better.",
+        "BERT only labels it; a decoder writes the reason.",
+        "Use GitHub Copilot, the model family that writes.",
+        "Keep BERT; pin its exact model ID in the design notes."
+      ],
+      "answer": 1,
+      "explain": "BERT is an encoder: fine-tuned on labelled tickets it can put the title in the <code>high</code> bucket, but it does not compose new sentences, so a decoder such as GPT, Claude or Llama writes the label and the reason. Reading in both directions makes BERT good at labelling text, not at writing it."
     },
     {
       "id": "t2",
@@ -90,10 +98,18 @@
         "Open weights means no terms apply, so legal review is unneeded: catches reading open weights as open source with no strings, when the Llama 3.1 Community License must be accepted before download.",
         "Keep it private by putting the service's API key in the code instead of an environment variable: catches mixing up key handling with where the prompt goes, and puts the key where the page says it never goes."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "A team wants ticket titles to stay off any provider's servers. Someone proposes Llama because it has open weights, reached through a third-party hosted Llama service. What do you tell them?",
       "starter": "",
-      "tests": ""
+      "tests": "",
+      "options": [
+        "Open weights make every Llama deployment private.",
+        "Open weights carry no terms, so legal review can be skipped.",
+        "That service is hosted; only self-run weights stay local.",
+        "It stays private if the API key is in code, not a variable."
+      ],
+      "answer": 2,
+      "explain": "Llama reached through someone else's hosted service is a hosted model, so every title crosses the network under that provider's terms; prompts stay local only when the team runs the weights itself. Even then the weights come with Meta's licence, accepted before download."
     },
     {
       "id": "t3",
@@ -106,10 +122,18 @@
         "Asking which customers' data may be sent to a vendor: catches the case the page calls wrong twice, client data in a prompt and a governance decision given to a tool with no accountability.",
         "SQL for a new question in warehouse/questions.sql, shipped as the assistant wrote it: catches skipping the fit-with-review column, where the SQL ships only after a person runs it on known rows and reads every join."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "Four of the desk's chores could go to an assistant. Which one is the best fit?",
       "starter": "",
-      "tests": ""
+      "tests": "",
+      "options": [
+        "A ticket-id pattern checked by <code>test_ticket_refs_reads_numbers</code>",
+        "Choosing SCD type 1 or 2 for <code>dim_customer</code>",
+        "Which customers' data may be sent to a vendor",
+        "New SQL shipped as written to <code>warehouse/questions.sql</code>"
+      ],
+      "answer": 0,
+      "explain": "A task fits when checking the answer is cheap, and a new pattern pasted in place of <code>TICKET_REF</code> has a test waiting: a pass is evidence and a fail shows the pattern is wrong. Generated SQL ships only after a person runs it on known rows and reads every join, and the SCD type and the data-sharing question are decisions the team owns."
     },
     {
       "id": "t4",
@@ -123,10 +147,10 @@
         "A low ticket open 30 hours returns 0, not a negative number; an answer that skips the in-time case returns -42.",
         "The SLA comes from the priority: the same ticket 2 times with priority high return 26.0, so an answer that hard-codes 24 hours fails."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>hours_past_sla(opened, closed, priority)</code>. <code>opened</code> and <code>closed</code> are timestamps as strings in the seed's <code>\"YYYY-MM-DD HH:MM:SS\"</code> form, and <code>priority</code> is <code>\"high\"</code>, <code>\"normal\"</code> or <code>\"low\"</code>, with SLAs of 4, 24 and 72 hours. Return how many hours the ticket ran past its SLA, counting the hours open from the full timestamps, date included, as the page's script does with <code>datetime.fromisoformat</code> and <code>total_seconds()</code>. A ticket that closed within its SLA returns <code>0</code>. For ticket 2, <code>hours_past_sla(\"2026-10-17 12:00:00\", \"2026-10-18 18:00:00\", \"normal\")</code> returns <code>6.0</code>, from 30 hours open.",
+      "starter": "from datetime import datetime\n\n\ndef hours_past_sla(opened, closed, priority):\n    ...",
+      "tests": "assert hours_past_sla(\"2026-10-17 12:00:00\", \"2026-10-18 18:00:00\", \"normal\") == 6.0, \"ticket 2 counts the date too: 30 hours open is 6 past the 24-hour SLA\"\nassert hours_past_sla(\"2026-10-19 22:00:00\", \"2026-10-20 02:00:00\", \"high\") == 0.0, \"a ticket open from 22:00 to 02:00 the next day counts 4 hours open, within the high SLA\"\nassert hours_past_sla(\"2026-10-17 12:00:00\", \"2026-10-18 18:00:00\", \"low\") == 0, \"a low ticket open 30 hours closed within its 72-hour SLA and gives 0, not a negative number\"\nassert hours_past_sla(\"2026-10-17 12:00:00\", \"2026-10-18 18:00:00\", \"high\") == 26.0, \"the SLA comes from the priority: ticket 2's times at high are 26 hours past\""
     },
     {
       "id": "t5",
@@ -139,10 +163,18 @@
         "Merge the three prompts into one with \"be accurate\" added: catches undoing the chain, when one prompt doing several jobs does all of them halfway and leaves nothing intermediate to inspect.",
         "Trust the list because the reply is a clean one-name-per-line format: catches taking a well-formatted reply as a correct one, the invented behaviour \"Use only what the code shows\" guards against."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "In the three-prompt chain that documents <code>extract.py</code>, prompt 1 comes back with six function names, one of them <code>load_warehouse</code>. What happens before prompt 2 runs?",
       "starter": "",
-      "tests": ""
+      "tests": "",
+      "options": [
+        "Pass it on; check only the final docstring.",
+        "Merge the three prompts into one saying \"be accurate\".",
+        "Keep it: a clean one-name-per-line reply is right.",
+        "Check it against the file's five functions first."
+      ],
+      "answer": 3,
+      "explain": "Each link is checked against the source before the next prompt uses it, because an error missed in the first link travels down the chain. The file defines <code>read_table</code>, <code>read_events</code>, <code>write_csv</code>, <code>write_jsonl</code> and <code>main</code>, so <code>load_warehouse</code> comes off the list before prompt 2 describes it."
     },
     {
       "id": "t6",
@@ -155,10 +187,18 @@
         "Compare the two versions on whatever model is current, since models only get better: catches leaving the model unpinned, so a change in replies cannot be traced to the prompt.",
         "Judge the new version by reading a few replies and deciding whether they sound right: catches skipping the evaluation set, the fixed inputs with expected outputs that make a prompt change measurable."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "After a teammate's edit to <code>prompts/triage.md</code>, the triage labels look worse. The commit is in the file's history. What does the team do next?",
       "starter": "",
-      "tests": ""
+      "tests": "",
+      "options": [
+        "Paste the old wording back from someone's chat history.",
+        "Score both on the evaluation set with the model pinned.",
+        "Score both on the newest model, since newer is better.",
+        "Keep whichever version's replies sound right on a read."
+      ],
+      "answer": 1,
+      "explain": "The evaluation set of titles with expected labels measures whether the new version is worse, and the pinned model rules out a change in the model as the cause. If it scores worse, a revert in a new pull request restores the old wording with a review of its own."
     },
     {
       "id": "t7",
@@ -171,10 +211,10 @@
         "check_label('urgent') raises ValueError, a priority the desk does not have; an answer that passes the reply through, the reply fed straight into UPDATE tickets SET priority, returns it.",
         "check_label('low because the ticket list says so') raises ValueError; an answer that only checks the line starts with an allowed word accepts it, though the format asks for exactly one word."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>check_label(line)</code>, the deterministic code behind OWASP's \"Define and validate expected output formats\". <code>line</code> is line 2 of one reply in round 4's three-line format. Return <code>line</code> when it is exactly one of <code>high</code>, <code>normal</code>, <code>low</code> or <code>unsure</code>, and raise <code>ValueError</code> for anything else, so a label the desk does not have never reaches <code>tickets</code>. <code>check_label(\"unsure\")</code> returns <code>\"unsure\"</code>, and <code>check_label(\"urgent\")</code> raises <code>ValueError</code>.",
+      "starter": "def check_label(line):\n    ...",
+      "tests": "assert check_label(\"unsure\") == \"unsure\", \"unsure is an allowed label and comes back as it is\"\nassert raises(ValueError, check_label, \"urgent\"), \"a priority the desk does not have, such as urgent, raises ValueError\"\nassert raises(ValueError, check_label, \"low because the ticket list says so\"), \"a line that is more than one allowed word raises ValueError\""
     },
     {
       "id": "t8",
@@ -187,10 +227,18 @@
         "Keep the connection string because the password in it is from an old, expired setup: catches the page's rule to remove passwords, keys and connection strings even ones that look expired.",
         "Strip everything but the last line, so nothing can leak: catches removing the exception type and the file and function names, which are what the model needs."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "A failing job prints a stack trace holding a customer's name and email, a database connection string with a password, and a <code>KeyError</code> in <code>read_table</code> in <code>extract.py</code>. A developer wants help with it in a public chat. What do they do?",
       "starter": "",
-      "tests": ""
+      "tests": "",
+      "options": [
+        "Paste the trace once <code>redact</code> has run over it.",
+        "Drop the name and email; keep the expired password.",
+        "Strip data and secrets; keep the exception and function names.",
+        "Paste only the last line, so nothing can leak."
+      ],
+      "answer": 2,
+      "explain": "The paste rule removes customer data and every password, key and connection string, even one that looks expired, and keeps the exception type, the message shape and the file and function names, which are what the model needs. <code>redact</code> only replaces email addresses, so the customer's name would still be there, and a person reads every line before it leaves the machine."
     }
   ]
 }

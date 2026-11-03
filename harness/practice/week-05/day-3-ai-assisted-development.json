@@ -74,8 +74,16 @@
         "An option saying the assistant ran the code and the rule failed catches the belief that inline suggestions run anything; only an agent given tools runs commands.",
         "An option saying to accept the suggestion and let the tests catch it later catches skipping the loop's second move, reading the suggestion line by line."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "A developer is writing <code>assign_agent(ticket)</code>, and the ticket on the tracker says every ticket from the customer Acme goes to the agent Lee. The rule is written nowhere in the code or the open files, and the inline suggestion that appears gives each ticket to whichever agent has the fewest open tickets. What explains this, and what comes next?",
+      "options": [
+        "It saw the ticket but chose a common pattern; add the rule by hand.",
+        "It ran the code, the rule failed; fix the sample and ask again.",
+        "It never saw the ticket; write the rule in the docstring and reread.",
+        "It never saw the ticket; accept it and let the tests catch the gap."
+      ],
+      "answer": 2,
+      "explain": "An editor assistant builds its suggestion from the surrounding code, open tabs and recent edits, and it never runs the code, so a rule that lives only in a ticket never reaches it. State the intent where it can see it, in the docstring, and read the next suggestion before Tab accepts it.",
       "starter": "",
       "tests": ""
     },
@@ -90,8 +98,16 @@
         "An option that relies on content exclusion alone in every mode catches missing its stated gap in Edit and Agent modes.",
         "An option saying an export only open in another tab is never sent catches forgetting that snippets from open tabs inform suggestions."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "A team keeps customer exports holding <code>customers.email</code> values in an <code>exports/</code> folder of its repository. It wants those files kept out of every request its editor assistant sends, including when a developer works in the agent mode of Copilot Chat. Which plan does that?",
+      "options": [
+        "Move the exports out of the repository, so the editor never has them open.",
+        "Set <code>telemetry.telemetryLevel</code> to <code>off</code> so the editor stops sending the exports.",
+        "Add <code>exports/</code> to content exclusion, which hides those files in every mode.",
+        "Open the exports only in another tab, never in the file being edited."
+      ],
+      "answer": 0,
+      "explain": "Content exclusion has a stated gap in the Edit and Agent modes of Copilot Chat, and <code>telemetry.telemetryLevel</code> covers only VS Code's own usage data, so the plan that holds in every mode is that the files are never in the folder the editor opens. A file open in another tab can still inform a suggestion.",
       "starter": "",
       "tests": ""
     },
@@ -106,10 +122,10 @@
         "The value on the lower edge, 2, returns \"2 to 7\"; writing days <= 2 for the first band moves the edge the wrong way.",
         "The values beside the edges, 1 and 8, return \"under 2\" and \"over 7\"; a fix that widens the middle band past an edge fails here."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "The starter is an illustrative reply an assistant gave for <code>reopen_band(days)</code>, a sibling of <code>ticket_age_band</code> that sorts the days since a ticket was reopened. The requirement: fewer than 2 days returns <code>\"under 2\"</code>, from 2 to 7 days with both edges included returns <code>\"2 to 7\"</code>, and more than 7 days returns <code>\"over 7\"</code>. Fix the function so it returns the right band on and beside each edge; for example, <code>reopen_band(7)</code> returns <code>\"2 to 7\"</code> and <code>reopen_band(8)</code> returns <code>\"over 7\"</code>.",
+      "starter": "def reopen_band(days):\n    \"\"\"Return the band for a ticket reopened days ago.\"\"\"\n    if days < 2:\n        return \"under 2\"\n    elif days < 7:\n        return \"2 to 7\"\n    else:\n        return \"over 7\"",
+      "tests": "assert reopen_band(7) == \"2 to 7\", \"7 days, on the upper edge, is in the middle band\"\nassert reopen_band(2) == \"2 to 7\", \"2 days, on the lower edge, is in the middle band\"\nassert (reopen_band(1), reopen_band(8)) == (\"under 2\", \"over 7\"), \"1 day and 8 days, beside the edges, fall outside the middle band\""
     },
     {
       "id": "t4",
@@ -120,12 +136,12 @@
       "checks": [
         "Called with a correct band function, the test raises nothing; an expected value of \"over 24\" at 24, copied from the round-1 code, fails here.",
         "Called with the round-1 function that returns \"over 24\" at 24, the test raises AssertionError; tests that check only 3 and 72, far from the upper edge, let it pass.",
-        "Called with a function that returns \"under 4\" at 4, the test raises AssertionError; tests that skip the lower edge let it pass."
+        "Called with a function that returns \"under 4\" at 4, or one that returns \"4 to 24\" at 3, the test raises AssertionError; tests that skip the value on or beside the lower edge let it pass."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>test_age_band_edges(band)</code>, a plain test function that takes a band function and asserts what <code>band</code> returns on and beside each edge of the <code>ticket_age_band</code> requirement: fewer than 4 hours returns <code>\"under 4\"</code>, from 4 to 24 hours with both edges included returns <code>\"4 to 24\"</code>, and more than 24 hours returns <code>\"over 24\"</code>. Take every expected value from the requirement. Called with a band function that meets the requirement, it returns without an error; called with the round-1 function, which returns <code>\"over 24\"</code> at 24, it raises <code>AssertionError</code>.",
+      "starter": "def test_age_band_edges(band):\n    ...",
+      "tests": "def _band_right(hours):\n    if hours < 4:\n        return \"under 4\"\n    if hours <= 24:\n        return \"4 to 24\"\n    return \"over 24\"\n\ndef _band_round_1(hours):\n    if hours < 4:\n        return \"under 4\"\n    elif hours < 24:\n        return \"4 to 24\"\n    else:\n        return \"over 24\"\n\ndef _band_lower_edge(hours):\n    if hours <= 4:\n        return \"under 4\"\n    if hours <= 24:\n        return \"4 to 24\"\n    return \"over 24\"\n\ndef _band_below_edge(hours):\n    if hours < 3:\n        return \"under 4\"\n    if hours <= 24:\n        return \"4 to 24\"\n    return \"over 24\"\n\ndef _band_past_edge(hours):\n    if hours < 4:\n        return \"under 4\"\n    if hours <= 25:\n        return \"4 to 24\"\n    return \"over 24\"\n\nassert not raises(AssertionError, test_age_band_edges, _band_right), \"called with a band function that meets the requirement, the test raises nothing\"\nassert raises(AssertionError, test_age_band_edges, _band_round_1), \"called with the round-1 function, which gives \\\"over 24\\\" at 24, the test raises AssertionError\"\nassert (raises(AssertionError, test_age_band_edges, _band_lower_edge), raises(AssertionError, test_age_band_edges, _band_below_edge)) == (True, True), \"called with a function wrong at 3 or at 4, the test raises AssertionError\"\nassert raises(AssertionError, test_age_band_edges, _band_past_edge), \"called with a function that gives \\\"4 to 24\\\" at 25, the test raises AssertionError\""
     },
     {
       "id": "t5",
@@ -138,8 +154,16 @@
         "A draft that mentions a --since-date option catches accepting an invented feature; nothing in the code reads sys.argv or imports argparse.",
         "A draft that drops the order catches missing that the query orders by event_id, the \"oldest first\" the page's draft also dropped."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "The desk function <code>read_changes(conn, since)</code> runs <code>SELECT * FROM ticket_events WHERE event_id &gt; %s ORDER BY event_id</code> with <code>since</code> as its one parameter and returns the rows, and its file neither imports <code>argparse</code> nor reads <code>sys.argv</code>. An assistant drafts four docstrings for it. Which draft matches the code?",
+      "options": [
+        "Return <code>ticket_events</code> rows created after the timestamp <code>since</code>, oldest first.",
+        "Return <code>ticket_events</code> rows with an <code>event_id</code> above <code>since</code>; set it with <code>--since-date</code>.",
+        "Return <code>ticket_events</code> rows with an <code>event_id</code> above the watermark <code>since</code>, in any order.",
+        "Return <code>ticket_events</code> rows with an <code>event_id</code> above the watermark <code>since</code>, oldest first."
+      ],
+      "answer": 3,
+      "explain": "The query compares <code>since</code> with <code>event_id</code> and orders by <code>event_id</code>, so <code>since</code> is an event id used as a watermark and the rows come back oldest first. A parameter's meaning comes from the code that uses it, and a flag exists only when something in the code reads it.",
       "starter": "",
       "tests": ""
     },
@@ -152,10 +176,18 @@
       "checks": [
         "An option that accepts the keyword because many libraries use that name catches trusting a confident, plausible keyword, as params was.",
         "An option that checks the 'latest' reference page and stops catches missing that a reference page has its own version, which can differ from the pin.",
-        "An option that asks the assistant to confirm its own keyword catches checking a claim against the tool that made it instead of the library's own docs."
+        "An option that trusts the doc link and version the reply gave and commits catches skipping the check those details are for: looking the keyword up in the reference and running the line."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "An assistant's reply builds <code>bigquery.QueryJobConfig(max_bytes=10_000_000)</code>, with a keyword you have never seen, and ends with a doc link and a note that it applies to version 3.47.0. The project pins google-cloud-bigquery 3.47.0, and the 'latest' reference page for the class renders as 3.42.1. What do you do before that line goes in a commit?",
+      "options": [
+        "Keep <code>max_bytes</code>: many libraries use the name and the reply sounds sure.",
+        "Find <code>max_bytes</code> in the class's reference, then run the line against the installed 3.47.0.",
+        "Find <code>max_bytes</code> on the 'latest' reference page and commit once it appears.",
+        "Trust the doc link and version 3.47.0 the reply gave and commit the line."
+      ],
+      "answer": 1,
+      "explain": "The class's reference is the authority on its keywords, and a reference page has its own version, here 3.42.1 against a pin of 3.47.0, so a one-line run against the installed 3.47.0 settles it. A keyword the reference page does not list is the warning sign, whatever doc link and version the reply gives.",
       "starter": "",
       "tests": ""
     }

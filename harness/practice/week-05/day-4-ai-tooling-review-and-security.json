@@ -68,8 +68,17 @@
         "Dropping the docstring catches accepting a style point that contradicts the team's lint configuration, which brings back C0116 on the next run.",
         "Ignoring the merge finding because the MySQL foreign key prevents orphans catches dismissing a true finding whose case still arrives through staging."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "An assistant reviews <code>clean_events</code> and returns three findings, all stated with the same confidence: the <code>how=\"left\"</code> merge lets an event with no ticket pass as clean, <code>duplicated</code> rejects both copies of a duplicate, and the one-line docstring should go because the name says it all. The team's lint config requires a docstring on every function. Which finding do you act on, and how?",
+      "options": [
+        "Act on all three, since each is stated as surely.",
+        "Guard the merge with a missing-ticket reason and an orphan test.",
+        "Rework the <code>duplicated</code> check so that one copy survives.",
+        "Drop the docstring, since the function's name says it all.",
+        "Skip the merge finding, since MySQL's foreign key forbids orphans."
+      ],
+      "answer": 1,
+      "explain": "Each finding is a claim settled with the docs or a test: <code>duplicated</code> keeps the first copy by default and dropping the docstring brings back pylint's C0116, while an orphan can still arrive through staging, so the true merge finding earns a cheap guard and a test.",
       "starter": "",
       "tests": ""
     },
@@ -84,8 +93,16 @@
         "Changing the tests in the same commit so they fit the rewrite catches the refactor that bends its own proof.",
         "Accepting it on the reply's word that it is faster catches \"this is faster\" with no timing, which the page treats as a claim like any other."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "Asked for a faster <code>apply_scd2</code>, an assistant returns a version that marks a customer changed by comparing the <code>_x</code> and <code>_y</code> columns of a pandas merge, and says it is faster. Week 4's three tests pass against it unedited. What do you do before accepting it?",
+      "options": [
+        "Accept it, since week 4's three tests pass unedited.",
+        "Edit week 4's tests in the same commit to fit the rewrite.",
+        "Accept it, since the reply says it is faster.",
+        "Add a test with a country missing on both sides, then time both."
+      ],
+      "answer": 3,
+      "explain": "Existing tests guard only their fixtures, which hold no missing value, and pandas compares a missing value as unequal to itself, so the rewrite needs a test for that edge. A measurement then decides whether it is worth having, since \"this is faster\" with no timing is a claim like any other.",
       "starter": "",
       "tests": ""
     },
@@ -98,10 +115,18 @@
       "checks": [
         "Escaping the quote by hand inside the f-string catches the first wrong fix the page names: the input is still glued into the SQL text.",
         "Passing (status) without the comma catches the one-value tuple mistake: (status) is a plain string and no tuple.",
-        "Keeping the f-string because status is checked against a list after the query runs catches mixing up where the value comes from with when it is checked; only an identifier from a constant, like read_table's table name, may sit in the SQL text."
+        "Keeping the f-string because extract.read_table keeps one catches taking read_table for a precedent: its table name comes from the TABLES constant, never from input, while status comes from the command line."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "In <code>export_tickets.py</code>, <code>status = sys.argv[1]</code> and the query ends with <code>f\"WHERE t.status = '{status}'\"</code>, so a status of <code>closed' OR '1'='1</code> exports every ticket. Which change fixes the injection?",
+      "options": [
+        "Put a <code>%s</code> marker in the SQL and pass <code>(status,)</code> as its parameters.",
+        "Keep the f-string and escape every quote in <code>status</code> by hand.",
+        "Put a <code>%s</code> marker in the SQL and pass <code>(status)</code>, no comma.",
+        "Keep the f-string, as <code>extract.read_table</code> does with its table name."
+      ],
+      "answer": 0,
+      "explain": "A <code>%s</code> marker with a tuple of parameters keeps the SQL structure apart from its data, so the hostile status becomes one odd value that no ticket has. <code>(status)</code> with no comma is a plain string and no tuple, and <code>read_table</code>'s f-string is safe only because its table name comes from the <code>TABLES</code> constant, while <code>status</code> comes from the command line.",
       "starter": "",
       "tests": ""
     },
@@ -114,12 +139,12 @@
       "checks": [
         "It returns the value set in the mapping, \"s3cret\" in the example; a function that returns the literal \"deskapp\" fails, which is the hard-coded credential the page names.",
         "It raises KeyError when DESK_DB_PASSWORD is missing; environ.get(\"DESK_DB_PASSWORD\", \"deskapp\") fails, because it hands back the secret without a word.",
-        "It raises KeyError for a mapping that holds other variables but not DESK_DB_PASSWORD; a .get with any default, \"\" or None included, fails."
+        "It returns the value even when DESK_DB_PASSWORD is set to an empty string; environ.get(\"DESK_DB_PASSWORD\") or \"deskapp\" fails, because an empty value falls back to the hard-coded credential."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>db_password(environ)</code>. It takes a mapping of environment variable names to values, such as <code>os.environ</code> or a plain dict, and returns the value of <code>DESK_DB_PASSWORD</code> with no fallback, so a missing variable raises <code>KeyError</code> and stops the program. <code>db_password({\"DESK_DB_PASSWORD\": \"s3cret\"})</code> returns <code>\"s3cret\"</code>, and <code>db_password({})</code> raises <code>KeyError</code>.",
+      "starter": "def db_password(environ):\n    ...",
+      "tests": "assert db_password({\"DESK_DB_PASSWORD\": \"s3cret\"}) == \"s3cret\", \"returns the password the mapping holds\"\nassert raises(KeyError, db_password, {}), \"raises KeyError when DESK_DB_PASSWORD is missing\"\nassert db_password({\"DESK_DB_PASSWORD\": \"\"}) == \"\", \"returns the value even when it is empty, with no fallback\""
     },
     {
       "id": "t5",
@@ -132,8 +157,16 @@
         "Pasting the client's code into a public chat with the email removed catches forgetting that the client's code goes only to an approved assistant.",
         "Sending the real row to the approved assistant because it is approved catches forgetting that a prompt carries only the context the model needs, and an invented row shows the shape of the problem."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "The client's contract forbids sending its data out of the company, the client has approved one assistant, and a staged row holding <code>dana@example.com</code> makes <code>clean_events</code> misbehave. What do you send to get help, and to which assistant?",
+      "options": [
+        "Paste the one real row into a public chat.",
+        "Paste the code and the row, email removed, into a public chat.",
+        "Send the code and an invented, labelled row to the approved assistant.",
+        "Send the code and the real row to the approved assistant."
+      ],
+      "answer": 2,
+      "explain": "The client's code goes only to an assistant the client approved, and a pasted row is data sent out, so the row holding <code>dana@example.com</code> goes nowhere. An invented row shows the shape of the problem and keeps the prompt to the context the model needs.",
       "starter": "",
       "tests": ""
     },
@@ -148,8 +181,16 @@
         "Keeping it with the copyright notice added catches confusing copyleft with a permissive licence, where MIT asks only for the notice.",
         "Keeping it because writing the prompt makes you its author catches the copyright misreading: the Copyright Office protects sufficient human expressive choices, never a prompt alone."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "An editor assistant suggests a long function for the client's closed-source product, and it matches a file in a public repository licensed under GPLv3. What do you do with it?",
+      "options": [
+        "Rely on the provider's terms, which assign the output to you.",
+        "Check the match, then rewrite or remove it before it ships.",
+        "Add the repository's copyright and licence notice, as MIT asks.",
+        "Claim it, since writing the prompt makes you its author."
+      ],
+      "answer": 1,
+      "explain": "GPLv3 is copyleft: code that matches it, shipped in the client's product, requires the whole work under the GPL with its source, which a closed product cannot do. The provider assigns its rights only \"if any\" exist, and keeping the notice is all a permissive licence such as MIT asks.",
       "starter": "",
       "tests": ""
     },
@@ -164,8 +205,16 @@
         "Trusting it because its generated tests pass catches Wednesday's case, where a generated test asserted the off-by-one at 24 hours as correct.",
         "Clearing it because Bandit reports nothing catches treating a deterministic, narrow scanner as a review; B608 found one of the five problems in export_tickets.py."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "An assistant wrote <code>ticket_age_band(hours)</code> and its tests in a minute, the generated tests pass, and Bandit reports nothing. A teammate says the assisted way was cheaper than writing it by hand. What decides the comparison?",
+      "options": [
+        "The writing time: the assisted version took one minute.",
+        "The generated tests: they pass, so it meets the requirement.",
+        "The scanner: Bandit reports nothing, so it needs no review.",
+        "The total cost, against the requirement's four expected outputs."
+      ],
+      "answer": 3,
+      "explain": "A change's total cost counts review, defects found later, what the developer learned and who can maintain it, and both ways answer to the same four expected outputs. Wednesday's first reply came with a generated test that asserted the off-by-one at 24 hours, and Bandit's narrow B608 caught one problem of five in <code>export_tickets.py</code>.",
       "starter": "",
       "tests": ""
     }
