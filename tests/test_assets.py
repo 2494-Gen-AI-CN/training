@@ -35,8 +35,13 @@ def _solves(g: dict, code: str, checks: str) -> bool:
     return finished and bool(results) and all(r["ok"] for r in results)
 
 
+def _numbered(rel: str) -> list:
+    """(page number, element) for the page's Python tasks; choice tasks (D-0084) run no Python and are left out."""
+    return practice_browser.python_tasks(ParsedPage(DOCS / "weeks" / f"{rel}.html").root)
+
+
 def _tasks(rel: str) -> list:
-    return ParsedPage(DOCS / "weeks" / f"{rel}.html").root.find_all("div", "ix-task")
+    return [t for _n, t in _numbered(rel)]
 
 
 class AssetTests(unittest.TestCase):
@@ -111,6 +116,16 @@ class PracticeTaskTests(unittest.TestCase):
                 with self.subTest(rel=rel, task=t.attrs.get("data-id")):
                     for attr in ("data-id", "data-title", "data-q"):
                         self.assertTrue(t.attrs.get(attr), f"missing {attr}")
+                    if practice_browser.is_choice(t):
+                        # D-0084: no Python to run; the markup carries radios and a hidden answer key
+                        key = t.find_all("pre", "task-answer")
+                        self.assertEqual(1, len(key), "a choice task has one task-answer")
+                        self.assertIn("hidden", key[0].attrs, "task-answer is hidden")
+                        answer = json.loads(key[0].text())
+                        radios = t.find_all("input")
+                        self.assertTrue(radios and all(r.attrs.get("type") == "radio" for r in radios), "a choice task's options are radios")
+                        self.assertIn(answer.get("answer"), range(len(radios)), "the answer names one of the options")
+                        continue
                     starter, checks = t.find_all("pre", "task-starter"), t.find_all("pre", "task-tests")
                     self.assertEqual((1, 1), (len(starter), len(checks)), "one task-starter and one task-tests")
                     self.assertIn("hidden", checks[0].attrs, "task-tests is hidden")
@@ -125,12 +140,14 @@ class PracticeTaskTests(unittest.TestCase):
     def test_model_answers_pass_every_check(self):
         g = _runner()
         for _w, _d, rel in authored_days():
-            tasks = _tasks(rel)
-            if not tasks:
+            numbered = _numbered(rel)
+            tasks = [t for _n, t in numbered]
+            if not tasks:   # no task, or choice tasks only (D-0084): no trainer file is needed
                 continue
             answers = TRAINER / rel / "solutions" / "practice.py"
-            self.assertTrue(answers.is_file(), f"{rel}: the page has tasks, so the trainer repo needs solutions/practice.py")
-            models, problems = practice_browser.model_sections(answers.read_text(encoding="utf-8"), [t.attrs["data-id"] for t in tasks])
+            self.assertTrue(answers.is_file(), f"{rel}: the page has Python tasks, so the trainer repo needs solutions/practice.py")
+            models, problems = practice_browser.model_sections(answers.read_text(encoding="utf-8"), [t.attrs["data-id"] for t in tasks],
+                                                               [n for n, _t in numbered])
             with self.subTest(rel=rel, what="practice.py has one '# Task N:' section per page task"):
                 self.assertEqual([], problems)
             for t in tasks:
@@ -148,9 +165,9 @@ class PracticeTaskTests(unittest.TestCase):
             if not tasks:
                 continue
             path = TRAINER / rel / "solutions" / "practice_cases.py"
-            self.assertTrue(path.is_file(), f"{rel}: the page has tasks, so the trainer repo needs solutions/practice_cases.py")
+            self.assertTrue(path.is_file(), f"{rel}: the page has Python tasks, so the trainer repo needs solutions/practice_cases.py")
             cases = runpy.run_path(str(path))["CASES"]
-            self.assertEqual({t.attrs["data-id"] for t in tasks}, set(cases), f"{rel}: practice_cases.py covers exactly the page's tasks")
+            self.assertEqual({t.attrs["data-id"] for t in tasks}, set(cases), f"{rel}: practice_cases.py covers exactly the page's Python tasks")
             for t in tasks:
                 tid, source = t.attrs["data-id"], t.find("pre", "task-tests").text()
                 labels = [n.msg.value for n in ast.parse(source).body if isinstance(n, ast.Assert)]

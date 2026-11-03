@@ -21,12 +21,26 @@ Usage:
     python harness/practice_tasks.py approve <week> <day> --all | --none
     python harness/practice_tasks.py validate <week> <day>         shape of the file against the page (the agents run it)
     python harness/practice_tasks.py insert <week> <day>           write the built tasks into the page
-    python harness/practice_tasks.py verify <week> <day>           one day: file valid, page in sync, starters fail,
-                                                                   model answers pass, every case behaves (CPython)
+    python harness/practice_tasks.py verify <week> <day>           one day: file valid, page in sync; for Python tasks,
+                                                                   starters fail, model answers pass, every case
+                                                                   behaves (CPython)
     python harness/practice_tasks.py check                         every day: page section == what the file renders
     python harness/practice_tasks.py extract <week> <day>          one-off: build the file from a hand-written section
 
-A task is BUILT when it is approved and carries q, starter and tests. Only built tasks reach the page.
+A task has one of two kinds (D-0084), named by its optional "kind" key:
+
+  python   (the default, "kind" absent) the reader writes code in the page and Pyodide runs the checks.
+           Built keys: q, starter, tests. Its model answer and cases live in trainer/<rel>/solutions/.
+  choice   a multiple-choice question: radio buttons, checked in the page by JavaScript, no Pyodide.
+           Built keys: q (a short scenario, <code> only), options (choiceOptionsMin..choiceOptionsMax distinct
+           strings, <code> allowed), answer (0-based index of the right option) and explain (one or two
+           sentences shown after the reader answers). starter and tests stay "". For a choice proposal,
+           "checks" lists the misconception each wrong option catches.
+
+A task is BUILT when it is approved and carries every built key of its kind. Only built tasks reach the page.
+trainer/<rel>/solutions/practice.py and practice_cases.py are needed only when the day has at least one built
+Python task: a day whose built tasks are all choice tasks needs neither, and verify checks it in this file and
+the page alone.
 """
 from __future__ import annotations
 
@@ -47,14 +61,21 @@ VERDICTS = ("full", "partial", "none")   # every teaching step carries a task / 
 TOP_KEYS = ("day", "page", "assessed", "verdict", "summary", "steps", "tasks")
 STEP_KEYS = ("step", "title", "suitable", "reason", "task")
 TASK_KEYS = ("id", "title", "step", "idea", "checks", "approved", "q", "starter", "tests")
-BUILT_KEYS = ("q", "starter", "tests")
+KINDS = ("python", "choice")                          # D-0084; an absent "kind" is python
+BUILT_KEYS = ("q", "starter", "tests")                # a Python task
+CHOICE_KEYS = ("q", "options", "answer", "explain")   # a choice task (D-0084); its starter and tests stay ""
 
 SECTION_RE = re.compile(r'^[ \t]*<section class="practice"[^>]*>.*?^[ \t]*</section>[ \t]*\n', re.S | re.M)
 STEP_RE = re.compile(r'^([ \t]*)<section class="step"', re.M)
-TASK_RE = re.compile(
-    r'<div class="ix-task" data-id="([^"]*)" data-title="([^"]*)" data-q="([^"]*)">\s*'
-    r'<pre class="task-starter"><code>(.*?)</code></pre>\s*'
-    r'<pre class="task-tests" hidden><code>(.*?)</code></pre>\s*</div>', re.S)
+PY_TASK_RE = (r'<div class="ix-task" data-id="([^"]*)" data-title="([^"]*)" data-q="([^"]*)">\s*'
+              r'<pre class="task-starter"><code>(.*?)</code></pre>\s*'
+              r'<pre class="task-tests" hidden><code>(.*?)</code></pre>\s*</div>')
+CHOICE_TASK_RE = (r'<div class="ix-task ix-choice" data-kind="choice" data-id="([^"]*)" data-title="([^"]*)" data-q="([^"]*)">\s*'
+                  r'<ol class="task-options">(.*?)</ol>\s*'
+                  r'<pre class="task-answer" hidden><code>(.*?)</code></pre>\s*</div>')
+TASK_RE = re.compile(f"{PY_TASK_RE}|{CHOICE_TASK_RE}", re.S)   # groups 1-5 a Python task, 6-10 a choice task
+OPTION_RE = re.compile(r'<li><label><input type="radio" name="[^"]*" value="\d+"> (.*?)</label></li>', re.S)
+MARKUP_RE = re.compile(r"<(?!/?code>)")              # any tag but <code> and </code>
 
 
 # ---------------------------------------------------------------- files
@@ -92,8 +113,27 @@ def save(rel: str, doc: dict) -> None:
     write_text(path_for(rel), json.dumps(doc, indent=2, ensure_ascii=False) + "\n")
 
 
+def kind_of(task: dict) -> str:
+    return task.get("kind") or "python"
+
+
+def built_keys(task: dict) -> tuple[str, ...]:
+    return CHOICE_KEYS if kind_of(task) == "choice" else BUILT_KEYS
+
+
+def _has(value) -> bool:
+    """A built key is filled: a non-blank string, a non-empty list, or any other value but None (answer 0 counts)."""
+    if isinstance(value, str):
+        return bool(value.strip())
+    return value is not None and value != []
+
+
+def filled_keys(task: dict) -> list[str]:
+    return [k for k in built_keys(task) if _has(task.get(k))]
+
+
 def is_built(task: dict) -> bool:
-    return task.get("approved") is True and all((task.get(k) or "").strip() for k in BUILT_KEYS)
+    return task.get("approved") is True and len(filled_keys(task)) == len(built_keys(task))
 
 
 def built(doc: dict | None) -> list[dict]:
@@ -115,7 +155,20 @@ def render(tasks: list[dict], indent: str = "      ") -> str:
     code = lambda s: html.escape(s.strip("\n"), quote=False)         # noqa: E731
     out = [f'{indent}<section class="practice" id="practice" hidden>', f'{inner}<div class="tag">Practice</div>', f'{inner}<h2>Practice</h2>']
     for t in tasks:
-        out += [f'{inner}<div class="ix-task" data-id="{attr(t["id"])}" data-title="{attr(t["title"])}" data-q="{attr(t["q"])}">',
+        head = f'data-id="{attr(t["id"])}" data-title="{attr(t["title"])}" data-q="{attr(t["q"])}"'
+        if kind_of(t) == "choice":
+            # D-0084: options are HTML like q (<code> only) and stand as they are; the answer key is escaped as
+            # task-tests is, and widgets.js reads it to mark the reader's pick.
+            key = json.dumps({"answer": t["answer"], "explain": t["explain"]}, ensure_ascii=False)
+            out += [f'{inner}<div class="ix-task ix-choice" data-kind="choice" {head}>',
+                    f'{inner}  <ol class="task-options">',
+                    *[f'{inner}    <li><label><input type="radio" name="{attr(t["id"])}" value="{i}"> {o}</label></li>'
+                      for i, o in enumerate(t["options"])],
+                    f'{inner}  </ol>',
+                    f'<pre class="task-answer" hidden><code>{code(key)}</code></pre>',
+                    f'{inner}</div>']
+            continue
+        out += [f'{inner}<div class="ix-task" {head}>',
                 f'<pre class="task-starter"><code>{code(t["starter"])}</code></pre>',
                 f'<pre class="task-tests" hidden><code>{code(t["tests"])}</code></pre>',
                 f'{inner}</div>']
@@ -140,10 +193,21 @@ def put_section(text: str, tasks: list[dict]) -> str:
 
 
 def page_tasks(text: str) -> list[dict]:
-    """The tasks a page carries, read back from its markup."""
+    """The tasks a page carries, read back from its markup, in page order. A Python task reads back as
+    {id, title, q, starter, tests}; a choice task (D-0084) as {id, title, kind, q, options, answer, explain}."""
     m = SECTION_RE.search(text)
-    return [{"id": html.unescape(i), "title": html.unescape(t), "q": html.unescape(q), "starter": html.unescape(s), "tests": html.unescape(c)}
-            for i, t, q, s, c in TASK_RE.findall(m.group(0) if m else "")]
+    un = html.unescape
+    out = []
+    for t in TASK_RE.finditer(m.group(0) if m else ""):
+        if t.group(1) is not None:
+            i, title, q, s, c = t.group(1, 2, 3, 4, 5)
+            out.append({"id": un(i), "title": un(title), "q": un(q), "starter": un(s), "tests": un(c)})
+            continue
+        i, title, q, opts, key = t.group(6, 7, 8, 9, 10)
+        key = json.loads(un(key))
+        out.append({"id": un(i), "title": un(title), "kind": "choice", "q": un(q), "options": OPTION_RE.findall(opts),
+                    "answer": key.get("answer"), "explain": key.get("explain")})
+    return out
 
 
 def in_sync(rel: str) -> str | None:
@@ -153,7 +217,7 @@ def in_sync(rel: str) -> str | None:
         return None if doc is None or not built(doc) else f"{rel}: the file has built tasks and the page is missing"
     text = read_text(page)
     if doc is None:
-        return f"{rel}: the page carries practice tasks and harness/practice/{rel}.json is missing (run extract)" if 'class="ix-task"' in text else None
+        return f"{rel}: the page carries practice tasks and harness/practice/{rel}.json is missing (run extract)" if 'class="ix-task' in text else None
     try:
         same = put_section(text, built(doc)) == text
     except ValueError as exc:
@@ -209,15 +273,24 @@ def problems(doc: dict, rel: str, page_text: str | None = None, bounds: dict | N
             p.append(f"task {tid}: approved must be true, false or null (null = the trainer has not answered)")
         if t["step"] is not None and steps and (by_step.get(t["step"], {}).get("task") != tid):
             p.append(f"task {tid}: step {t['step']} does not name it back")
-        filled = [k for k in BUILT_KEYS if (t[k] or "").strip()]
-        if filled and len(filled) != len(BUILT_KEYS):
-            p.append(f"task {tid}: q, starter and tests are written together, got only {filled}")
+        if t.get("kind") is not None and t["kind"] not in KINDS:
+            p.append(f"task {tid}: kind must be one of {KINDS} (or absent, which is python), got {t['kind']!r}")
+            continue
+        keys, filled = built_keys(t), filled_keys(t)
+        named = ", ".join(keys[:-1]) + " and " + keys[-1]
+        if filled and len(filled) != len(keys):
+            p.append(f"task {tid}: {named} are written together, got only {filled}")
         if filled and t["approved"] is not True:
-            p.append(f"task {tid}: carries q, starter and tests without the trainer's approval")
+            p.append(f"task {tid}: carries {named} without the trainer's approval")
         if not filled and (not str(t["idea"]).strip() or not t["checks"]):
             p.append(f"task {tid}: a proposal needs an idea and the list of what its checks prove")
-        if len(filled) == len(BUILT_KEYS):
-            p += [f"task {tid}: {x}" for x in _built_problems(t, bounds or {})]
+        if kind_of(t) == "choice" and any((t[k] or "").strip() for k in ("starter", "tests")):
+            p.append(f"task {tid}: a choice task keeps starter and tests empty (D-0084)")
+        if kind_of(t) == "python" and any(_has(t.get(k)) for k in ("options", "answer", "explain")):
+            p.append(f"task {tid}: options, answer and explain belong to a choice task; set \"kind\": \"choice\" or drop them")
+        if len(filled) == len(keys):
+            check = _choice_problems if kind_of(t) == "choice" else _built_problems
+            p += [f"task {tid}: {x}" for x in check(t, bounds or {})]
     if steps:
         fit = [s for s in steps if s.get("suitable")]
         want = "none" if not fit else "full" if len(fit) == len(steps) else "partial"
@@ -248,8 +321,38 @@ def _built_problems(t: dict, bounds: dict) -> list[str]:
     labels = [n.msg.value for n in asserts if isinstance(n.msg, ast.Constant)]
     if len(labels) != len(set(labels)):
         p.append("two checks share a label")
-    if re.search(r"<(?!/?code>)", t["q"]):
+    if MARKUP_RE.search(t["q"]):
         p.append("q may hold <code> and nothing else as markup")
+    return p
+
+
+def _choice_problems(t: dict, bounds: dict) -> list[str]:
+    """A built choice task (D-0084): the bounds come from metrics.json practice, never from here."""
+    p: list[str] = []
+    opts, answer, explain = t["options"], t["answer"], t["explain"]
+    if not isinstance(opts, list) or not all(isinstance(o, str) for o in opts):
+        return ["options must be a list of strings"]
+    if not isinstance(explain, str):
+        return ["explain must be a string"]
+    lo, hi = bounds.get("choiceOptionsMin", 2), bounds.get("choiceOptionsMax", 99)
+    if not lo <= len(opts) <= hi:
+        p.append(f"{len(opts)} options, expected {lo} to {hi}")
+    if any(not o.strip() for o in opts):
+        p.append("an option is empty")
+    elif any(o != o.strip() for o in opts):
+        p.append("an option starts or ends with white space")
+    seen = [" ".join(o.split()).casefold() for o in opts]
+    if len(seen) != len(set(seen)):
+        p.append("two options are the same")
+    if type(answer) is not int or not 0 <= answer < len(opts):
+        p.append(f"answer must be the 0-based index of one option (0 to {len(opts) - 1}), got {answer!r}")
+    for name, s in [("q", t["q"]), ("explain", explain)] + [(f"option {i}", o) for i, o in enumerate(opts)]:
+        if MARKUP_RE.search(s):
+            p.append(f"{name} may hold <code> and nothing else as markup")
+    if any(re.search(r"\b(all|none|both|neither) of (the )?(above|these)\b", o, re.I) for o in opts):
+        p.append("no 'all of the above' or 'none of the above' option: every option is one answer")
+    if re.search(r"\bcorrect answer\b", explain, re.I):
+        p.append("explain says why in the step's words and never 'correct answer'")
     return p
 
 
@@ -280,7 +383,8 @@ def cmd_show(week_no: int, day_nos: list[int]) -> int:
             answer = {True: "approved", False: "declined", None: "NOT ANSWERED"}[t["approved"]]
             state = "built" if is_built(t) else answer
             where = "" if t["step"] is None else f" (step {t['step'] + 1})"
-            print(f"  {t['id']}  {t['title']}{where}  [{state}]")
+            kind = "  multiple choice" if kind_of(t) == "choice" else ""
+            print(f"  {t['id']}  {t['title']}{where}{kind}  [{state}]")
             if t["idea"]:
                 print(f"      {t['idea']}")
             for c in t["checks"]:
@@ -324,7 +428,7 @@ def cmd_validate(week_no: int, day_no: int) -> int:
     found = problems(doc, rel, read_text(page) if page.is_file() else None, bounds())
     for x in found:
         print("  " + x)
-    print(f"{'FAIL' if found else 'OK'}: {path_for(rel).relative_to(ROOT).as_posix()}"
+    print(f"{'FAIL' if found else 'OK'}: harness/practice/{rel}.json"
           f" ({doc.get('verdict')}, {len(doc.get('tasks', []))} task(s), {len(built(doc))} built)")
     return 1 if found else 0
 
@@ -362,8 +466,10 @@ def cmd_check() -> int:
 
 
 def cmd_verify(week_no: int, day_no: int) -> int:
-    """Everything the contract tests ask of one day's tasks, without the other days in the way."""
-    import practice_browser   # noqa: E402  (needs trainer/; imported here so the other commands do not)
+    """Everything the contract tests ask of one day's tasks, without the other days in the way. Python tasks run
+    their contract under CPython against trainer/<rel>/solutions/; choice tasks (D-0084) have no code, so for them
+    the validation above is the whole check, and a day of choice tasks only needs no trainer file."""
+    import practice_browser   # noqa: E402  (reads trainer/ for Python tasks; imported here so the other commands do not)
     _w, _d, rel = locate(week_no, day_no)
     if cmd_validate(week_no, day_no):
         return 1
@@ -379,14 +485,16 @@ def cmd_verify(week_no: int, day_no: int) -> int:
     b = bounds()
     for tid, line in data["expected"].items():
         print("  " + line)
-        if len(data["cases"][tid]["accept"]) < b.get("acceptMin", 0):
+        if tid in data["model"] and len(data["cases"][tid]["accept"]) < b.get("acceptMin", 0):
             bad.append(f"{tid}: practice_cases.py needs at least {b['acceptMin']} other right answer(s)")
-    extra = set(data["cases"]) - set(data["expected"])
+    extra = set(data["cases"]) - set(data["model"])
     if extra:
-        bad.append(f"practice_cases.py has entries for tasks the page does not carry: {sorted(extra)}")
+        bad.append(f"practice_cases.py has entries for tasks the page does not carry as Python tasks: {sorted(extra)}")
     for x in bad:
         print("  PROBLEM " + x)
-    print(f"{'FAIL' if bad else 'OK'}: {rel}, {len(data['expected'])} task(s) under CPython"
+    n_py, n_choice = len(data["model"]), len(data["choice"])
+    ran = f"{n_py} task(s) under CPython" + (f", {n_choice} choice task(s) validated" if n_choice else "")
+    print(f"{'FAIL' if bad else 'OK'}: {rel}, {ran}"
           + ("" if bad else "; the browser pass (harness/practice_browser.py) is still owed"))
     return 1 if bad else 0
 
@@ -407,7 +515,9 @@ def cmd_extract(week_no: int, day_no: int, today: str) -> int:
         "summary": "Extracted from the page: these tasks were written by hand before the practice stage existed.",
         "steps": [{**s, "suitable": True, "reason": "carries a task since before D-0047", "task": found[i]["id"]} for i, s in enumerate(steps)] if paired else [],
         "tasks": [{"id": t["id"], "title": t["title"], "step": steps[i]["step"] if paired else None, "idea": "", "checks": [],
-                   "approved": True, "q": t["q"], "starter": t["starter"], "tests": t["tests"]} for i, t in enumerate(found)],
+                   "approved": True, "q": t["q"], "starter": t.get("starter", ""), "tests": t.get("tests", "")}
+                  | ({"kind": "choice", "options": t["options"], "answer": t["answer"], "explain": t["explain"]} if kind_of(t) == "choice" else {})
+                  for i, t in enumerate(found)],
     }
     if put_section(text, doc["tasks"]) != text:
         raise SystemExit(f"{rel}: the section on the page is not in the generated shape; rendering it back would change the page. Nothing written.")
