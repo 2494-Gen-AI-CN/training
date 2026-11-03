@@ -1,0 +1,195 @@
+{
+  "day": "w05d1",
+  "page": "docs/weeks/week-05/day-1-gen-ai-and-prompt-engineering.html",
+  "assessed": "2026-11-03",
+  "verdict": "full",
+  "summary": "The day is judgement, not code: seven steps lend themselves to multiple-choice questions on when to ship a rule, why replies vary, what to fix first in a prompt, what a new chat knows, when to fine-tune, how to check a method and what may be pasted, and only the constraints step has behaviour a Python check can see (an answer line tested against the allowed words); none of it lends itself to calling a model, which the runtime cannot do.",
+  "steps": [
+    {
+      "step": 0,
+      "title": "AI, machine learning and deep learning",
+      "suitable": true,
+      "reason": "The nested definitions are quiz material, and the triage function on the page only illustrates a hand-written rule, so a Python task would test nothing the step teaches. The step does teach a judgement with named wrong ways (Google's first rule: six tickets is not data, a hand-written rule is not machine learning, a learned rule copies bad labels), which fits a choice task.",
+      "task": "t1"
+    },
+    {
+      "step": 1,
+      "title": "Generative AI and how a large language model writes",
+      "suitable": true,
+      "reason": "Tokens and sampling have no behaviour a check can see without a model, and simulating the weighted dice roll needs randomness the checks cannot pin. Why one prompt gives two replies is a judgement the page names three wrong readings of (temperature 0 is fully deterministic, the model looks facts up, the model has seen the desk's tables), so it fits a choice task.",
+      "task": "t2"
+    },
+    {
+      "step": 2,
+      "title": "Prompt engineering and zero-shot prompting",
+      "suitable": true,
+      "reason": "Prompts are typed text sent to a model the runtime cannot reach, so no Python task fits. Round 1 gives a judgement the page names the wrong ways of: what to add first when a zero-shot prompt invents tiers (context before examples, and a fluent reply that fails every success criterion is still a failure).",
+      "task": "t3"
+    },
+    {
+      "step": 3,
+      "title": "Few-shot prompting and constraints",
+      "suitable": true,
+      "reason": "The step's own code checks each answer line against the allowed words, and the mistakes it names give a different return value: a substring test passes \"This is probably high.\", leaving out unsure rejects the escape hatch, and round 1's invented tiers must be caught. A short function on lists of strings stays inside the runtime and the page.",
+      "task": "t4"
+    },
+    {
+      "step": 4,
+      "title": "Instructions, guidelines, iteration and dialog state",
+      "suitable": true,
+      "reason": "The page shows dialog state as a table of what each turn sends, never as code, so a Python model of a message list would rest on a structure the page does not teach. What a new chat knows and when to start fresh against sending a follow-up is a judgement the page names the wrong ways of, which fits a choice task.",
+      "task": "t5"
+    },
+    {
+      "step": 5,
+      "title": "Fine-tuning and conditioning",
+      "suitable": true,
+      "reason": "Training is week 6 and nothing here runs, so no Python task fits. The \"when a team reaches for each\" table is a judgement the reader can get wrong in the ways the page names (examples in a prompt change the model, fine-tune first so it remembers), which fits a choice task.",
+      "task": "t6"
+    },
+    {
+      "step": 6,
+      "title": "Hallucinations and how to check an answer",
+      "suitable": true,
+      "reason": "The worked case is pandas, which the runtime does not load, so the AttributeError cannot be reproduced in a check. What a developer does with a confident count_by reply is a judgement with named wrong ways (trust the plausible name, rely on a prompting technique alone, check docs for a version the desk does not pin), which fits a choice task.",
+      "task": "t7"
+    },
+    {
+      "step": 7,
+      "title": "Responsible use and security",
+      "suitable": true,
+      "reason": "The page says names and connection strings are removed by hand and read before pasting, so a Python redactor task would teach against the step. Its sorting table (paste after redaction, never, paste) is a judgement whose wrong ways the page names: trusting desk.redact, pasting the employer's code, pasting a credential line.",
+      "task": "t8"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "kind": "choice",
+      "title": "Rule or model",
+      "step": 0,
+      "idea": "The desk has six labelled tickets and wants priorities set automatically. Which plan matches the page? Right: ship the hand-written rule now; it counts as AI but not machine learning, and the team moves to a model trained on labelled tickets once the conditions grow too complex to maintain.",
+      "checks": [
+        "Train a model on the six tickets because a learned rule beats a written one catches skipping Google's first rule: machine learning needs data, and six tickets is not data.",
+        "Call the if rule machine learning because it predicts a priority catches the marketing reading the page warns about: nothing was trained, so it is AI in the broad sense only.",
+        "Train on last year's tickets because a learned rule cannot repeat a past mistake catches the trade-off the page's table names: a learned rule copies whatever the old labels got wrong."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t2",
+      "kind": "choice",
+      "title": "Two replies to one prompt",
+      "step": 1,
+      "idea": "A teammate sends the same triage prompt twice and gets high, then normal, for the same title. Which explanation holds? Right: each token is sampled from a probability distribution, so replies vary, and even at temperature 0 the docs say results are not fully deterministic.",
+      "checks": [
+        "The model looked the ticket up in the desk's database and the row changed catches the belief that the model looks facts up or has seen the desk's tables; it sees only its context window.",
+        "Setting temperature to 0 makes every reply identical, so the first run had a bug catches reading temperature 0 as a guarantee; the docs say a small amount of variation is still possible.",
+        "The first reply was right and the second is broken, so the first is the answer to keep catches treating a printed reply as a promise; each reply is one sample, and a fluent one can still be false."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t3",
+      "kind": "choice",
+      "title": "Fixing a zero-shot prompt",
+      "step": 2,
+      "idea": "\"Write a triage rule for our support tickets.\" comes back with P1 to P4 tiers and made-up response times. What do you add first? Right: context: the three priorities, their SLA hours of 4, 24 and 72, and the output wanted, one priority and one reason line per ticket.",
+      "checks": [
+        "Add a few labelled example tickets and nothing else catches reaching for examples before context; the page says the first fix to a zero-shot prompt is usually context, before examples.",
+        "Keep the reply because it is well written and covers every case catches judging a reply by how it reads; round 1 reads well and fails all three success criteria.",
+        "Send the same one-line prompt again until the tiers come back right catches hoping sampling fixes a prompt; the model saw one sentence and answered for a generic help desk, and it will again."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t4",
+      "kind": "python",
+      "title": "Constraints",
+      "step": 3,
+      "idea": "The reader writes broken_answers(lines), which takes the answer line of each triage reply as a list of strings and returns, in the same order, the lines that are not exactly one of high, normal, low or unsure. For example, broken_answers([\"This is probably high.\", \"normal\", \"unsure\"]) returns [\"This is probably high.\"].",
+      "checks": [
+        "A sentence that contains an allowed word, such as \"This is probably high.\", is reported; a substring test like \"high\" in line lets it through.",
+        "\"unsure\" is not reported; an allowed list of only the three priorities forgets the escape hatch the constraint adds.",
+        "A tier the desk does not have, such as \"P1\" from round 1, is reported along with the others, in the order the lines came."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t5",
+      "kind": "choice",
+      "title": "Dialog state",
+      "step": 4,
+      "idea": "Yesterday's long chat ended with a good round-4 reply. Today you open a new chat and type \"Triage these three tickets the same way as before.\" What happens, and what do you send instead? Right: the new chat starts empty and knows nothing about yesterday, so you paste the complete round-4 prompt with today's titles.",
+      "checks": [
+        "The assistant remembers yesterday's priorities, so the short message is enough catches the belief that a chat assistant remembers; every turn re-sends the conversation, and a new chat holds only its own messages.",
+        "Go back to yesterday's chat and keep adding follow-ups there instead catches ignoring drift; old turns can roll out of the window and long contexts lose accuracy, so a fresh chat with a complete prompt often beats a long patched one.",
+        "Send a follow-up turn naming the broken rule, as with round 3 catches using a follow-up where nothing is in the window to fix; a follow-up works only because the previous reply is in the context window."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t6",
+      "kind": "choice",
+      "title": "Prompt or fine-tune",
+      "step": 5,
+      "idea": "A teammate wants the model to use the desk's three priorities on every request and proposes fine-tuning. The desk has three labels, six titles and one team decision. What does the page advise? Right: prompt first, since all of it fits in the window and is minutes to try; fine-tune only when the examples outgrow the window and the team accepts a training job and its evaluation.",
+      "checks": [
+        "The three examples in the prompt already changed the model, so it will know the priorities in a new chat catches blurring conditioning with fine-tuning; examples steer through the window and the model's parameters never change.",
+        "Fine-tune first, because a prompt lasts only one conversation and so is never the right tool catches skipping the order OpenAI's guide gives: prompting may be all you need, and fine-tuning is slow to try.",
+        "Few-shot prompting is a small fine-tune, so the two cost the same to try catches the confusion the page opens with; fine-tuning is a second training pass with a training file, conditioning is text in a prompt."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t7",
+      "kind": "choice",
+      "title": "Checking a suggested method",
+      "step": 6,
+      "idea": "A reply says DataFrame.count_by(\"priority\") groups and counts in one call. The desk pins pandas 3.0.6. What do you do before it goes in? Right: find the entry in the pandas 3.0 reference and run the line; the reference lists no count_by, the run raises AttributeError, and the fix is df[\"priority\"].value_counts().",
+      "checks": [
+        "Use it, since pandas has count and grouping and the name fits them catches overreliance on a plausible, confidently stated name; a hallucination reads exactly like a correct answer.",
+        "Ask again with \"say I don't know if unsure\" and use the method if it comes back the same catches treating a prompting technique as proof; the docs say these techniques reduce hallucinations but do not eliminate them.",
+        "Check the reference for the newest pandas release, where any new method would appear catches skipping the version; the check goes to the docs for the version the desk pins."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t8",
+      "kind": "choice",
+      "title": "What goes into a public chat",
+      "step": 7,
+      "idea": "A stack trace from the desk holds mysql://desk_app:s3cret@db.internal:3306/ticket_desk and a customer's name and email, and you want help from a public chat assistant. What do you paste? Right: the trace after removing the host, user, password, name and email by hand and reading it again.",
+      "checks": [
+        "The trace after running it through desk.redact catches trusting the helper's name; it hides emails only, leaves the name and the user, and its pattern happens to match s3cret@db.internal so the line only looks clean.",
+        "The trace as it is, since the assistant needs the exact error catches pasting credentials and personal information, which never go into a public chat.",
+        "The redacted trace together with transform.clean_events so the assistant sees the code catches pasting the employer's code, which goes only to an assistant the employer has approved."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    }
+  ]
+}

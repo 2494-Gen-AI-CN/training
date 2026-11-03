@@ -1,0 +1,196 @@
+{
+  "day": "w05d2",
+  "page": "docs/weeks/week-05/day-2-llm-landscape-and-api-basics.html",
+  "assessed": "2026-11-03",
+  "verdict": "full",
+  "summary": "The day lends itself to two small Python tasks on the desk's own checks (hours open from two timestamps, validating a model's label against the allowed set) and to six choice questions on judgements the page names the wrong ways (encoder or decoder, hosted or self-hosted, which chore to hand over, when to stop a chain, how to roll back a prompt, what to strip from a stack trace), and not to any task that calls a model, which week 9 owns.",
+  "steps": [
+    {
+      "step": 0,
+      "title": "Model families: encoders, decoders and the four names",
+      "suitable": true,
+      "reason": "No Python behaviour here, but the step teaches a judgement the brief's first pitfall names: expecting BERT to write the triage reason when an encoder only labels. A choice question on that scenario fits; the trainer may judge it too close to recall and drop it to the quiz.",
+      "task": "t1"
+    },
+    {
+      "step": 1,
+      "title": "Open weights, hosted models and four ways to reach one",
+      "suitable": true,
+      "reason": "Where a prompt goes is a judgement with named wrong answers: open weights read as private by default or as free of a licence, and Llama reached through someone else's service still treated as self-hosted. A choice question fits; a Python task on reading an environment variable would have no wrong answer beyond not writing it.",
+      "task": "t2"
+    },
+    {
+      "step": 2,
+      "title": "Use cases for a developer, and where judgement stays human",
+      "suitable": true,
+      "reason": "The step teaches sorting chores by verification cost, and the page names the poor fits (choosing the SCD type, deciding which customer's data may leave). The ticket-id regex is already written on the page, so a Python task would hand over the snippet; a choice question on which chore to give an assistant fits.",
+      "task": "t3"
+    },
+    {
+      "step": 3,
+      "title": "Iterative and chain-of-thought prompting",
+      "suitable": true,
+      "reason": "The prompting method is not behaviour, but the step's check on it is: the datetime script that settles ticket 2 at 30 hours, and the page names the direct reply's mistake of subtracting clock times and ignoring the date. A small hours-open function against the SLA table is a sibling of that script, using only fromisoformat and total_seconds as the page shows them.",
+      "task": "t4"
+    },
+    {
+      "step": 4,
+      "title": "Sequential prompting: a chain of small prompts",
+      "suitable": true,
+      "reason": "No Python behaviour (every prompt is read-only), but the step teaches when to stop and check a link, and the page names the wrong move: an error missed in the first link travels down the chain. A choice question on what to do when prompt 1 returns a sixth function name for extract.py fits.",
+      "task": "t5"
+    },
+    {
+      "step": 5,
+      "title": "Prompt libraries and version control for prompts",
+      "suitable": true,
+      "reason": "The step is about Git and pull requests, which no Python check can see, but it teaches a judgement the page spells out: a worse prompt is found in the file's history, measured on the evaluation set with the model pinned, and reverted in a pull request. A choice question on a teammate's edit that made labels worse fits.",
+      "task": "t6"
+    },
+    {
+      "step": 6,
+      "title": "Security considerations: prompt injection and data leakage",
+      "suitable": true,
+      "reason": "OWASP mitigation 2 on the page is code: reject any label outside high, normal, low and unsure, and the page names a reply fed straight into an UPDATE with no check as the danger sign. A function that validates one reply line returns or raises, which a check can see, and it takes a string, so no model is called.",
+      "task": "t7"
+    },
+    {
+      "step": 7,
+      "title": "Least privilege, insecure defaults and the questions Thursday answers",
+      "suitable": true,
+      "reason": "The redact helper is already on the page and its limit (the name survives) is a reading point, not behaviour to write. The stack-trace paste checklist is a judgement with named wrong ways (trusting the helper, keeping a key that looks expired, stripping the exception the model needs), so a choice question fits.",
+      "task": "t8"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "kind": "choice",
+      "title": "Model families",
+      "step": 0,
+      "idea": "A teammate plans to use a fine-tuned BERT classifier to give each ticket a priority and a one-line reason, such as for Checkout button frozen. The right answer: BERT can put the title in the high bucket but writes no reason, so a decoder such as GPT, Claude or Llama writes the label and the sentence.",
+      "checks": [
+        "BERT reads in both directions, so it understands the title better and writes a better reason: catches the brief's first pitfall, treating every LLM as a chatbot when an encoder labels and does not compose sentences.",
+        "Use GitHub Copilot as the model instead: catches confusing a product built on a model with the model family, which the page keeps apart.",
+        "Name the exact model ID in the design notes so the choice holds: catches quoting model IDs that change with each release, where the page says to name the family."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t2",
+      "kind": "choice",
+      "title": "Access",
+      "step": 1,
+      "idea": "A team wants ticket titles to stay off any provider's servers and proposes Llama because it has open weights, reached through a third-party hosted Llama service. The right answer: reached that way it is a hosted model, so prompts go to that provider under its terms; they stay local only if the team runs the weights itself, and the weights still come under Meta's licence.",
+      "checks": [
+        "Open weights means every Llama deployment is private: catches the brief's pitfall of reading open weights as private by default.",
+        "Open weights means no terms apply, so legal review is unneeded: catches reading open weights as open source with no strings, when the Llama 3.1 Community License must be accepted before download.",
+        "Keep it private by putting the service's API key in the code instead of an environment variable: catches mixing up key handling with where the prompt goes, and puts the key where the page says it never goes."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t3",
+      "kind": "choice",
+      "title": "Use cases",
+      "step": 2,
+      "idea": "Of four desk chores, which is the best one to hand an assistant? The right answer: a new ticket-id pattern, because it is pasted in place of TICKET_REF and the existing test test_ticket_refs_reads_numbers passes or fails it.",
+      "checks": [
+        "Choosing SCD type 1 or 2 for dim_customer: catches handing over a design judgement with no test, which the team is accountable for and writes down in its design notes.",
+        "Asking which customers' data may be sent to a vendor: catches the case the page calls wrong twice, client data in a prompt and a governance decision given to a tool with no accountability.",
+        "SQL for a new question in warehouse/questions.sql, shipped as the assistant wrote it: catches skipping the fit-with-review column, where the SQL ships only after a person runs it on known rows and reads every join."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t4",
+      "kind": "python",
+      "title": "Chain-of-thought",
+      "step": 3,
+      "idea": "The reader writes hours_past_sla(opened, closed, priority): the two timestamps are strings in the seed's 'YYYY-MM-DD HH:MM:SS' form, the SLA hours are high 4, normal 24 and low 72, and the function returns how many hours the ticket ran past its SLA, 0 when it closed in time. For ticket 2, hours_past_sla('2026-10-17 12:00:00', '2026-10-18 18:00:00', 'normal') returns 6.0, from 30 hours open.",
+      "checks": [
+        "Ticket 2 returns 6.0 past a 24-hour SLA; an answer that subtracts the clock times and ignores the date, the direct reply's mistake, gets 6 hours open and returns 0.",
+        "A ticket opened at 22:00 and closed at 02:00 the next day counts 4 hours open, so a high ticket returns 0.0; clock-time subtraction gives a negative number.",
+        "A low ticket open 30 hours returns 0, not a negative number; an answer that skips the in-time case returns -42.",
+        "The SLA comes from the priority: the same ticket 2 times with priority high return 26.0, so an answer that hard-codes 24 hours fails."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t5",
+      "kind": "choice",
+      "title": "Sequential prompting",
+      "step": 4,
+      "idea": "In the three-prompt chain that documents extract.py, prompt 1 returns six function names, one of them load_warehouse, which the file does not define. What happens before prompt 2 runs? The right answer: check the list against the file, which defines read_table, read_events, write_csv, write_jsonl and main, and fix it before it feeds prompt 2.",
+      "checks": [
+        "Pass the list on and check only the final docstring: catches the cost the page names, an error missed in the first link travels down the chain.",
+        "Merge the three prompts into one with \"be accurate\" added: catches undoing the chain, when one prompt doing several jobs does all of them halfway and leaves nothing intermediate to inspect.",
+        "Trust the list because the reply is a clean one-name-per-line format: catches taking a well-formatted reply as a correct one, the invented behaviour \"Use only what the code shows\" guards against."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t6",
+      "kind": "choice",
+      "title": "Prompt libraries",
+      "step": 5,
+      "idea": "After a teammate's edit to prompts/triage.md, the triage labels look worse. What does the team do? The right answer: find the commit in the file's history, run both versions against the evaluation set of titles with expected labels on the pinned model, and revert in a new pull request if the new version scores worse.",
+      "checks": [
+        "Paste the old wording back from someone's chat history and push it: catches keeping prompts in one person's chat history, where nobody can find, review or notice a change.",
+        "Compare the two versions on whatever model is current, since models only get better: catches leaving the model unpinned, so a change in replies cannot be traced to the prompt.",
+        "Judge the new version by reading a few replies and deciding whether they sound right: catches skipping the evaluation set, the fixed inputs with expected outputs that make a prompt change measurable."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t7",
+      "kind": "python",
+      "title": "Prompt injection",
+      "step": 6,
+      "idea": "The reader writes check_label(line), the deterministic code behind OWASP's \"Define and validate expected output formats\": line is line 2 of one reply in round 4's three-line format, and the function returns the label when it is exactly one of high, normal, low or unsure and raises ValueError otherwise. check_label('unsure') returns 'unsure'; check_label('urgent') raises ValueError.",
+      "checks": [
+        "check_label('unsure') returns 'unsure'; an allowed set of only the three priorities, Monday's round-3 lesson left out, raises.",
+        "check_label('urgent') raises ValueError, a priority the desk does not have; an answer that passes the reply through, the reply fed straight into UPDATE tickets SET priority, returns it.",
+        "check_label('low because the ticket list says so') raises ValueError; an answer that only checks the line starts with an allowed word accepts it, though the format asks for exactly one word."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t8",
+      "kind": "choice",
+      "title": "Least privilege and the paste rule",
+      "step": 7,
+      "idea": "A failing job prints a stack trace with a customer's name and email, a database connection string with a password, and a KeyError in extract.py's read_table; a developer wants help in a public chat. The right answer: remove the name, email and connection string, keep the exception type, the message shape and the file and function names, and read every line before it leaves the machine.",
+      "checks": [
+        "Run it through redact from desk.py and paste the result: catches trusting a helper that only catches the pattern it was written for, so the customer's name is still there.",
+        "Keep the connection string because the password in it is from an old, expired setup: catches the page's rule to remove passwords, keys and connection strings even ones that look expired.",
+        "Strip everything but the last line, so nothing can leak: catches removing the exception type and the file and function names, which are what the model needs."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    }
+  ]
+}

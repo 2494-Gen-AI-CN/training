@@ -1,0 +1,149 @@
+{
+  "day": "w05d5",
+  "page": "docs/weeks/week-05/day-5-project-0-showcase.html",
+  "assessed": "2026-11-03",
+  "verdict": "full",
+  "summary": "The day lends itself to six choice tasks, one per step, on judgements the page names the wrong ways for (which slide title, where the risk goes, how to answer a manager, what to do when a live query stalls, which STAR answer scores, what a shortened slot keeps), and it does not lend itself to any Python task, because nothing on the page is code a check can run in Pyodide.",
+  "steps": [
+    {
+      "step": 0,
+      "title": "Presenting data work to a client: the business case first, the finding as the title",
+      "suitable": true,
+      "reason": "No Python fits: the step teaches slide wording, not code. It teaches a judgement the page names the wrong ways for, topic titles, column-name titles and a pipeline-first opening against a finding title, so it fits a choice task.",
+      "task": "t1"
+    },
+    {
+      "step": 1,
+      "title": "The recommendation and the risk: what a manager keeps from a talk",
+      "suitable": true,
+      "reason": "No Python fits: the step teaches what a talk closes on. The page names the wrong closes (a finding with no recommendation, a cause claimed from a correlation, limitations left as small print at the end), which makes a choice task between closing lines.",
+      "task": "t2"
+    },
+    {
+      "step": 2,
+      "title": "What technical and non-technical managers ask, and why",
+      "suitable": true,
+      "reason": "No Python fits: the step teaches how to answer a spoken question. The page gives the two-sentence shape and names the weak answers (the pipeline walk that starts \"So, basically\", an answer that hides that the data cannot say), so a choice between replies to one manager question fits.",
+      "task": "t3"
+    },
+    {
+      "step": 3,
+      "title": "Running queries live in front of an audience",
+      "suitable": true,
+      "reason": "No Python fits: the step is BigQuery console work in front of an audience, which Pyodide cannot run. It teaches what to do when a live query stalls and names the wrong moves (waiting in silence, editing and rerunning on stage, which spends bytes, reloading tables on the day), so a choice task fits.",
+      "task": "t4"
+    },
+    {
+      "step": 4,
+      "title": "Telling a project in an interview: situation, task, action, result",
+      "suitable": true,
+      "reason": "No Python fits: the step teaches a spoken answer, and its one command is git log, which the runtime has no terminal for. It names how a STAR answer goes wrong (all situation, \"we\" throughout, a task with no result or number), so picking the strongest of several answers fits a choice task.",
+      "task": "t5"
+    },
+    {
+      "step": 5,
+      "title": "The Project 0 showcase: the rubric and what a strong 15 minutes holds",
+      "suitable": true,
+      "reason": "No Python fits: the step teaches the slot plan, the hand-in and Git commands. It states what a ten-minute version keeps (the first slide, the recommendation, the risk and one live query) and what it drops (a finding), so a choice task on cutting the slot fits; the credentials rule is already a Check yourself question.",
+      "task": "t6"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "kind": "choice",
+      "title": "The finding as the title",
+      "step": 0,
+      "idea": "A pair's slide shows a bar chart of average ticket hours to close per priority for the desk, and they pick its title. The right answer is a sentence stating what the chart shows with a direction or number in it, such as that normal tickets close past their 24-hour SLA more often than high ones (illustrative).",
+      "checks": [
+        "A one-word title such as \"Results\" catches the topic title the page says you recognise on sight, which leaves the manager to work out the finding.",
+        "A title made of the column names, such as \"hours_to_close by priority\", catches the query-name title the page and the brief's pitfalls name.",
+        "A title that describes the pipeline behind the chart, such as the fact table and the join it came from, catches opening with how the project was built instead of what the data says."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t2",
+      "kind": "choice",
+      "title": "The recommendation and the risk",
+      "step": 1,
+      "idea": "A pair's correlation slide shows that stations near transit see more short trips (illustrative), and they choose how to close on it. The right answer gives a recommendation with an action and the slide behind it, the limitation that bounds it stated beside it, and the cheap test that would confirm it.",
+      "checks": [
+        "A close that says transit causes short trips and recommends acting on that catches claiming a cause from a correlation.",
+        "A close that restates the finding and stops catches a finding with no recommendation, which leaves the manager nothing to act on.",
+        "A close that gives the recommendation and moves every limitation to a list on the last slide catches the small-print limitation the page says to state beside the claim it affects."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t3",
+      "kind": "choice",
+      "title": "Answering a manager's question",
+      "step": 2,
+      "idea": "After the talk a non-technical manager asks which option is cheaper, and the pair's dataset has no cost column. The right answer is two sentences: the data cannot answer it and why, then what data would answer it and how long adding it would take.",
+      "checks": [
+        "A reply that opens \"So, basically, the way we built it...\" and walks through the pipeline catches the weak answer the page recognises by its length and its opening.",
+        "A reply that guesses an answer from a nearby column with no limit stated catches overstated certainty, which the page says risks an inappropriate decision.",
+        "A reply that says the data cannot answer it and stops catches leaving out the second sentence, the data that would answer it."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t4",
+      "kind": "choice",
+      "title": "When a live query stalls",
+      "step": 3,
+      "idea": "Halfway through the talk a pair presses Run on a saved query from questions.sql and the job sits there with nothing in the Results tab. The right answer is to say what the query asks and what it will show, move on to the next slide, which carries the chart, and come back to the Results tab when the job finishes.",
+      "checks": [
+        "Waiting at the console until the rows appear catches the silence the page says not to leave the audience in.",
+        "Editing the query text on stage and running it again catches the move the page warns runs it fresh and spends bytes from the sandbox's 1 TiB a month.",
+        "Reloading the tables there and then catches spending sandbox storage on the day, which the page says never comes back."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t5",
+      "kind": "choice",
+      "title": "A STAR answer that scores",
+      "step": 4,
+      "idea": "An interviewer says \"Tell me about a time you handled bad data\", and the reader picks the strongest of several Project 0 answers. The right answer spends most of its words on what \"I\" did (the validation rules, the rejects table, the tests) and ends on a result with a figure, such as rows loaded, rows rejected with a reason and a rerun that adds zero.",
+      "checks": [
+        "An answer that spends almost all of its length on the client, the dataset and the city and ends with no action or number catches the all-situation STAR answer.",
+        "An answer that tells the same story as \"we\" throughout catches the \"we did everything\" habit the page says to replace with \"I\" for your own part.",
+        "An answer that ends on \"I owned the ingestion job\" catches stating the task as if it were the result, which gives an interviewer nothing to score."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t6",
+      "kind": "choice",
+      "title": "Cutting the slot to ten minutes",
+      "step": 5,
+      "idea": "On the day the fifteen-minute slot shrinks to ten, and the pair decides what to keep. The right answer keeps the first slide, the recommendation, the risk and one live query, and drops a finding.",
+      "checks": [
+        "Dropping the risk slide to save time catches the step-1 rule that a shorter talk keeps the finding, the recommendation and the risk.",
+        "Dropping every live query for screenshots catches losing the minutes in which \"the warehouse is real\" is judged.",
+        "Keeping every slide and having one partner present all of it faster catches the pitfall of one partner speaking while the other clicks, and a talk with no slack left for the question."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    }
+  ]
+}

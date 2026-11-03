@@ -1,0 +1,163 @@
+{
+  "day": "w05d3",
+  "page": "docs/weeks/week-05/day-3-ai-assisted-development.html",
+  "assessed": "2026-11-03",
+  "verdict": "partial",
+  "summary": "The day lends itself to two Python tasks on the ticket_age_band thread (fixing a generated off-by-one and writing a boundary test from the requirement) and four choice tasks on judgements the page names the wrong ways for (what an assistant sees, what leaves the machine, marking a drafted docstring, checking a library keyword); its life-cycle overview and its Copilot product tour are concepts and vocabulary that belong in the quiz.",
+  "steps": [
+    {
+      "step": 0,
+      "title": "Generative AI across the development life cycle",
+      "suitable": false,
+      "reason": "The step is an overview: which life-cycle stage an assistant helps with and that the developer owns every committed line, which is one-sentence recall for the quiz. Its two habits, context in and checks out, are practised by the tasks on steps 4 and 5.",
+      "task": null
+    },
+    {
+      "step": 1,
+      "title": "Pairing with an assistant",
+      "suitable": true,
+      "reason": "No Python behaviour, but the step teaches a judgement the reader can get wrong: a suggestion is built from the code around the cursor and open tabs, never from a requirement left in a ticket, and the assistant does not run the code. A choice task on why a suggestion ignored a ticket rule, and what to do next, tests that.",
+      "task": "t1"
+    },
+    {
+      "step": 2,
+      "title": "The editor-assistant category: GitHub Copilot and a second example",
+      "suitable": false,
+      "reason": "The step is a product tour: Copilot's surfaces, slash commands and hash variables, plans, and the Codeium to Windsurf to Devin Desktop names. Which surface runs commands or what /tests does is vocabulary recall, which the choice kind excludes, and nothing runs in Pyodide.",
+      "task": null
+    },
+    {
+      "step": 3,
+      "title": "Integration with the editor and the team's workflow",
+      "suitable": true,
+      "reason": "Settings and a network service cannot run in the page, but the step and the brief's Pitfalls name a misjudgement the reader can make: believing telemetry.telemetryLevel or content exclusion covers everything, or that a file only open in a tab never informs a request. A choice task on keeping a customer export out of the assistant's requests fits.",
+      "task": "t2"
+    },
+    {
+      "step": 4,
+      "title": "Generating code with context: ticket_age_band",
+      "suitable": true,
+      "reason": "A band function's return value on and beside each edge is behaviour a check can see, and the page names the mistake: a < where the requirement includes the edge. A fix-it task on a sibling generated function, with a different band and edges, keeps the page's own ticket_age_band out of the answer.",
+      "task": "t3"
+    },
+    {
+      "step": 5,
+      "title": "Unit tests with an assistant, and their limits",
+      "suitable": true,
+      "reason": "A test is a plain function with an assert, and whether it raises AssertionError against a buggy band function and stays quiet against a correct one is behaviour a check can see. The page names both failures: an expected value copied from the code, and tests that skip the values on and beside an edge.",
+      "task": "t4"
+    },
+    {
+      "step": 6,
+      "title": "Documentation with an assistant",
+      "suitable": true,
+      "reason": "A check sees __doc__ but cannot judge whether a sentence matches the code, so no Python task fits. The step teaches marking a draft against the code, and the page names the wrong ways (a parameter read from its name, an invented feature, a dropped ordering), which suits a choice task on a sibling desk function.",
+      "task": "t5"
+    },
+    {
+      "step": 7,
+      "title": "Learning a new library through an assistant",
+      "suitable": true,
+      "reason": "google-cloud-bigquery is an installed package Pyodide does not load, so no Python task fits. The step teaches a judgement with named wrong ways (trusting a plausible keyword, trusting the 'latest' reference page over the pin), which suits a choice task on what to do before a generated keyword goes in a commit.",
+      "task": "t6"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "kind": "choice",
+      "title": "AI pair programming",
+      "step": 1,
+      "idea": "A developer writes a function whose rule (tickets from one customer go to a named agent) is written only in the ticket, and the inline suggestion ignores it. The right answer: the assistant builds its suggestion from the code around the cursor, open tabs and recent edits, so the rule goes into the docstring or prompt and the new suggestion is read before it is accepted.",
+      "checks": [
+        "An option saying the assistant read the ticket but chose the common pattern catches the belief that an editor assistant knows a requirement it was never shown.",
+        "An option saying the assistant ran the code and the rule failed catches the belief that inline suggestions run anything; only an agent given tools runs commands.",
+        "An option saying to accept the suggestion and let the tests catch it later catches skipping the loop's second move, reading the suggestion line by line."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t2",
+      "kind": "choice",
+      "title": "Integration with IDE",
+      "step": 3,
+      "idea": "A team wants a folder of customer exports (customers.email values) kept out of every request its editor assistant sends, including in agent mode. The right answer: content exclusion does not apply in the Edit and Agent modes of Copilot Chat, so the safer fix is to keep customer data out of the repository.",
+      "checks": [
+        "An option that sets telemetry.telemetryLevel to off catches the belief that the editor's switch stops the extension; it covers VS Code's own usage data only.",
+        "An option that relies on content exclusion alone in every mode catches missing its stated gap in Edit and Agent modes.",
+        "An option saying an export only open in another tab is never sent catches forgetting that snippets from open tabs inform suggestions."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t3",
+      "kind": "python",
+      "title": "Code generation",
+      "step": 4,
+      "idea": "The starter is an illustrative generated reply for a sibling of ticket_age_band: reopen_band(days) with the requirement fewer than 2 days returns \"under 2\", 2 to 7 days with both edges included returns \"2 to 7\", and more than 7 returns \"over 7\". The reply uses elif days < 7: and the reader fixes it, so reopen_band(7) returns \"2 to 7\" and reopen_band(8) returns \"over 7\".",
+      "checks": [
+        "The value on the upper edge, 7, returns \"2 to 7\"; the generated elif days < 7: leaves the edge out of the middle band.",
+        "The value on the lower edge, 2, returns \"2 to 7\"; writing days <= 2 for the first band moves the edge the wrong way.",
+        "The values beside the edges, 1 and 8, return \"under 2\" and \"over 7\"; a fix that widens the middle band past an edge fails here."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t4",
+      "kind": "python",
+      "title": "Unit tests",
+      "step": 5,
+      "idea": "The reader writes test_age_band_edges(band), a plain test function that asserts what band returns on and beside the 4 and 24 hour edges of the page's requirement, taking the expected values from the requirement. Called with a correct band function it returns without error; called with the round-1 function (elif hours < 24:) it raises AssertionError.",
+      "checks": [
+        "Called with a correct band function, the test raises nothing; an expected value of \"over 24\" at 24, copied from the round-1 code, fails here.",
+        "Called with the round-1 function that returns \"over 24\" at 24, the test raises AssertionError; tests that check only 3 and 72, far from the upper edge, let it pass.",
+        "Called with a function that returns \"under 4\" at 4, the test raises AssertionError; tests that skip the lower edge let it pass."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t5",
+      "kind": "choice",
+      "title": "Documentation",
+      "step": 6,
+      "idea": "A sibling desk function, read_changes(conn, since), selects ticket_events rows WHERE event_id > since ORDER BY event_id, and an assistant offers drafted docstrings. The right answer is the one that calls since an event id watermark and keeps the oldest-first order, checked against the query that uses it.",
+      "checks": [
+        "A draft that calls since a timestamp catches reading a parameter's meaning from its name instead of from the code that uses it.",
+        "A draft that mentions a --since-date option catches accepting an invented feature; nothing in the code reads sys.argv or imports argparse.",
+        "A draft that drops the order catches missing that the query orders by event_id, the \"oldest first\" the page's draft also dropped."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t6",
+      "kind": "choice",
+      "title": "Learning a library",
+      "step": 7,
+      "idea": "An assistant's reply passes a keyword argument to a library class that the reader has never seen, and the project pins a version newer than the one the 'latest' reference page shows. The right answer: look the keyword up in the class's official reference and run the line against the installed version before it goes in a commit.",
+      "checks": [
+        "An option that accepts the keyword because many libraries use that name catches trusting a confident, plausible keyword, as params was.",
+        "An option that checks the 'latest' reference page and stops catches missing that a reference page has its own version, which can differ from the pin.",
+        "An option that asks the assistant to confirm its own keyword catches checking a claim against the tool that made it instead of the library's own docs."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    }
+  ]
+}

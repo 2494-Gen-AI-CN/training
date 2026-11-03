@@ -1,0 +1,173 @@
+{
+  "day": "w05d4",
+  "page": "docs/weeks/week-05/day-4-ai-tooling-review-and-security.html",
+  "assessed": "2026-11-03",
+  "verdict": "full",
+  "summary": "The day is judgement about generated code and prompts, so six steps take a choice task on a decision the page names the wrong ways to make, and one, the fallback password, takes a Python task because KeyError is behaviour a check can see; the pandas, MySQL and Connector/Python code the page runs stays out of the browser runtime.",
+  "steps": [
+    {
+      "step": 0,
+      "title": "Code analysis: judging an assistant's review",
+      "suitable": true,
+      "reason": "Its code is pandas, which the runtime does not load, so no Python task fits. It teaches a judgement the page names the wrong ways to make: acting on a finding because it sounds sure, accepting a library claim without its docs, accepting a style point that breaks the lint config, dismissing a true finding because the source cannot produce the case.",
+      "task": "t1"
+    },
+    {
+      "step": 1,
+      "title": "Optimizing and refactoring behind tests",
+      "suitable": true,
+      "reason": "The behaviour change lives in pandas comparing missing values, and plain Python's None == None is True, so a Python check cannot reproduce the mistake. The step teaches when a faster rewrite may be accepted, and the page names the wrong calls: accepting because the existing tests pass, editing the tests in the same commit, and trusting \"this is faster\" with no timing.",
+      "task": "t2"
+    },
+    {
+      "step": 2,
+      "title": "Security risks in generated code: code injection",
+      "suitable": true,
+      "reason": "The fix is Connector/Python's %s marker against a MySQL server, which the runtime lacks, and the in-browser sqlite3 binds with a ? marker the page never teaches, so a Python task would rest on an idiom off the page. The page names the wrong fixes outright (escaping the quote by hand, (status) without its comma, a placeholder for a table name), which makes a choice among fixes a good fit.",
+      "task": "t3"
+    },
+    {
+      "step": 3,
+      "title": "Insecure defaults, data leakage and the patterns to recognise",
+      "suitable": true,
+      "reason": "Reading a secret from a mapping shows up as behaviour: the value comes back when it is set and KeyError is raised when it is missing. The page's two mistakes, a hard-coded password and os.environ.get with a fallback, each return the wrong thing a check can see; TLS, the log level and the logged row are left to the page's table.",
+      "task": "t4"
+    },
+    {
+      "step": 4,
+      "title": "Responsible and ethical use",
+      "suitable": true,
+      "reason": "No behaviour for a Python check, but the step teaches what may go into which assistant, and the page names the wrong ways: a real customer row in a public chat, client code in a public chat, and sending data out against a contract that forbids it.",
+      "task": "t5"
+    },
+    {
+      "step": 5,
+      "title": "Legal ramifications: licensing, IP and copyright",
+      "suitable": true,
+      "reason": "No behaviour for a Python check, but the step teaches what to do with a suggestion that matches GPL code bound for closed-source client code, and the page names the wrong readings: provider terms make it yours, a kept notice is enough as with MIT, and a prompt makes you its author.",
+      "task": "t6"
+    },
+    {
+      "step": 6,
+      "title": "AI tooling review: assisted against traditional development",
+      "suitable": true,
+      "reason": "The worked ticket_age_band code is Wednesday's and is shown in full, so a Python task on it would hand over the answer, and the step's teaching is the comparison itself. The page names the wrong conclusions about the assisted version: faster to write means cheaper, generated tests passing proves it, and an empty scanner report clears it.",
+      "task": "t7"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "kind": "choice",
+      "title": "Code analysis",
+      "step": 0,
+      "idea": "An assistant reviews clean_events and returns the page's three findings: the left merge lets an event with no ticket pass as clean, duplicated rejects both copies, and the one-line docstring should go. The question asks which finding to act on and how. The right answer acts on the merge finding with a missing-ticket reject reason and a test that stages an orphan, after the pandas docs show the duplicated claim is false and pylint's C0116 shows the docstring point breaks the team's lint config.",
+      "checks": [
+        "Acting on all three because the reply states each one with the same confidence catches judging a finding by how sure it sounds, which the checklist exists to stop.",
+        "Reworking the duplicated check catches accepting a claim about a library without opening its docs, where keep=\"first\" settles it as false.",
+        "Dropping the docstring catches accepting a style point that contradicts the team's lint configuration, which brings back C0116 on the next run.",
+        "Ignoring the merge finding because the MySQL foreign key prevents orphans catches dismissing a true finding whose case still arrives through staging."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t2",
+      "kind": "choice",
+      "title": "Code optimization",
+      "step": 1,
+      "idea": "An assistant returns a \"faster\" apply_scd2 that compares the _x and _y columns of a merge, and week 4's three tests pass against it unedited. The question asks what to do before accepting it. The right answer adds a test for the edge the rewrite touches (a missing country on both sides, which the fixtures do not hold), runs it against both versions, and measures before calling the rewrite worth having.",
+      "checks": [
+        "Accepting it because the existing tests pass catches forgetting that tests guard only their fixtures, which hold no missing value.",
+        "Changing the tests in the same commit so they fit the rewrite catches the refactor that bends its own proof.",
+        "Accepting it on the reply's word that it is faster catches \"this is faster\" with no timing, which the page treats as a claim like any other."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t3",
+      "kind": "choice",
+      "title": "Code injection",
+      "step": 2,
+      "idea": "export_tickets.py builds its WHERE clause with f\"... WHERE t.status = '{status}'\" and status comes from sys.argv. The question asks which change fixes the injection. The right answer is a %s marker in the SQL text with (status,) passed as the second argument of cursor.execute.",
+      "checks": [
+        "Escaping the quote by hand inside the f-string catches the first wrong fix the page names: the input is still glued into the SQL text.",
+        "Passing (status) without the comma catches the one-value tuple mistake: (status) is a plain string and no tuple.",
+        "Keeping the f-string because status is checked against a list after the query runs catches mixing up where the value comes from with when it is checked; only an identifier from a constant, like read_table's table name, may sit in the SQL text."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t4",
+      "kind": "python",
+      "title": "Insecure defaults",
+      "step": 3,
+      "idea": "The reader writes db_password(environ), which takes a mapping of environment variables and returns the value of DESK_DB_PASSWORD with no fallback, so a missing variable stops the program. db_password({\"DESK_DB_PASSWORD\": \"s3cret\"}) returns \"s3cret\", and db_password({}) raises KeyError.",
+      "checks": [
+        "It returns the value set in the mapping, \"s3cret\" in the example; a function that returns the literal \"deskapp\" fails, which is the hard-coded credential the page names.",
+        "It raises KeyError when DESK_DB_PASSWORD is missing; environ.get(\"DESK_DB_PASSWORD\", \"deskapp\") fails, because it hands back the secret without a word.",
+        "It raises KeyError for a mapping that holds other variables but not DESK_DB_PASSWORD; a .get with any default, \"\" or None included, fails."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t5",
+      "kind": "choice",
+      "title": "Responsible use",
+      "step": 4,
+      "idea": "The client's contract forbids sending its data out, and a staged row holding dana@example.com makes clean_events misbehave. The question asks what goes into which assistant to get help. The right answer sends the function's code to the assistant the client approved, with an invented example row that says it is invented.",
+      "checks": [
+        "Pasting the real staged row into a public chat because it is a single row catches forgetting that a pasted row is data sent out and that personal data never goes into a public chat.",
+        "Pasting the client's code into a public chat with the email removed catches forgetting that the client's code goes only to an approved assistant.",
+        "Sending the real row to the approved assistant because it is approved catches forgetting that a prompt carries only the context the model needs, and an invented row shows the shape of the problem."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t6",
+      "kind": "choice",
+      "title": "Licensing and copyright",
+      "step": 5,
+      "idea": "A long suggestion for closed-source client code matches a GPLv3-licensed repository. The question asks what to do with it. The right answer checks the match and rewrites or removes the code, because shipping it brings the GPL's conditions (the whole work under the GPL, source included) that the client never agreed to.",
+      "checks": [
+        "Keeping it because the provider's terms assign the output to you catches missing the words \"if any\": a provider can only hand over rights that exist.",
+        "Keeping it with the copyright notice added catches confusing copyleft with a permissive licence, where MIT asks only for the notice.",
+        "Keeping it because writing the prompt makes you its author catches the copyright misreading: the Copyright Office protects sufficient human expressive choices, never a prompt alone."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t7",
+      "kind": "choice",
+      "title": "AI tooling review",
+      "step": 6,
+      "idea": "An assistant wrote ticket_age_band(hours) and its tests in a minute, and a teammate calls the assisted way cheaper than writing it by hand. The question asks what decides the comparison. The right answer is the total cost of the change, with the requirement's four expected outputs for 3, 4, 24 and 25 hours as the acceptance test both ways answer to.",
+      "checks": [
+        "Calling it cheaper because it was faster to write catches counting writing time alone, leaving out review, later defects, learning and maintenance.",
+        "Trusting it because its generated tests pass catches Wednesday's case, where a generated test asserted the off-by-one at 24 hours as correct.",
+        "Clearing it because Bandit reports nothing catches treating a deterministic, narrow scanner as a review; B608 found one of the five problems in export_tickets.py."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    }
+  ]
+}
