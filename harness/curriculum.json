@@ -625,7 +625,7 @@
           "kind": "lesson",
           "gate": "full",
           "demoFormat": "none",
-          "status": "planned",
+          "status": "authored",
           "title": "Gen AI orientation & prompt engineering",
           "subtitle": "ML/DL/GenAI overview · zero/few-shot · constraints · hallucinations · responsible use",
           "subtopics": [
@@ -652,7 +652,7 @@
           "kind": "lesson",
           "gate": "full",
           "demoFormat": "none",
-          "status": "planned",
+          "status": "authored",
           "title": "LLM landscape & API basics",
           "subtitle": "GPT · BERT · Claude · Llama · Copilot · use cases · best practices · security",
           "subtopics": [
@@ -669,7 +669,7 @@
           "kind": "lesson",
           "gate": "full",
           "demoFormat": "none",
-          "status": "planned",
+          "status": "authored",
           "title": "AI-assisted development",
           "subtitle": "pair programming · Copilot · IDE integration · code generation · documentation",
           "subtopics": [
@@ -688,7 +688,7 @@
           "kind": "lesson",
           "gate": "full",
           "demoFormat": "none",
-          "status": "planned",
+          "status": "authored",
           "title": "AI tooling: optimization, analysis & security",
           "subtitle": "code optimization · code analysis · responsible use · security risks",
           "subtopics": [
@@ -706,7 +706,7 @@
           "kind": "lesson",
           "gate": "full",
           "demoFormat": "none",
-          "status": "planned",
+          "status": "authored",
           "title": "Project 0 showcase",
           "subtitle": "rehearse · present data work to the client · tell it in an interview · feedback form",
           "subtopics": [

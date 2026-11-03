@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w05d1">
+<title>W5·D1 — Gen AI orientation &amp; prompt engineering | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261103">
+<script src="../../assets/js/theme.js?v=20261103"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="../../exit-criteria/index.html">Exit criteria</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>Gen AI orientation &amp; prompt engineering: what a model does with your words</h1>
+        <div class="meta">
+          <span><b>Week 5</b> · Day 1</span>
+          <span>Mon Nov 9, 2026</span>
+          <span>Gen AI introduction</span>
+          <span><b>~44 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span class="verified">Sources checked 2026-11-03 · python 3.15 · pandas 3.0.6</span>
+          <span class="exit"><a href="../../exit-criteria/qc-3-data-and-gen-ai-fundamentals.html#w05d1">Exit criteria</a></span>
+        </div>
+        <p class="summary">This page assumes week 4's ticket desk: its tickets, their three priorities and the ETL job
+        that moves them into a warehouse. It teaches what AI, machine learning, deep learning and generative AI are, how
+        a large language model turns a prompt into text, and how to improve a prompt in rounds, from zero-shot through
+        examples, constraints and an instruction block. It ends with hallucinations and the rules for using an assistant
+        safely. Afterwards you can explain generative AI and its common applications, say why one prompt gives two
+        answers, and walk an interviewer through fixing a prompt that went wrong.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="0">
+        <div class="tag">Foundations</div>
+        <h2>AI, machine learning and deep learning</h2>
+        <p>Four terms get used as if they meant the same thing: AI, machine learning, deep learning and generative AI.
+        They nest inside each other, and an interviewer often asks you to say how.</p>
+        <h3>What artificial intelligence means</h3>
+        <p>Google's machine learning glossary defines artificial intelligence as "a non-human program or model that can
+        solve sophisticated tasks".<sup class="cite"><a href="#src-1">1</a></sup> That covers a lot: a spam filter, a
+        chess engine, a route planner. The same glossary adds that "formally, machine learning is a sub-field of artificial
+        intelligence."<sup class="cite"><a href="#src-1">1</a></sup> So a program can count as AI without learning
+        anything, as long as it solves the task.</p>
+        <p>Machine learning is "the process of training a piece of software, called a model, to make useful predictions or
+        generate content (like text, images, audio, or video) from data."<sup class="cite"><a href="#src-2">2</a></sup>
+        A model, in this vocabulary, is "any mathematical construct that processes input data and returns
+        output."<sup class="cite"><a href="#src-1">1</a></sup> On this page "model" always means that trained construct.
+        It never means a data model from week 4 or a Python class.</p>
+        <p>The four terms sit inside each other like circles on a whiteboard:</p>
+        <ul>
+          <li>Artificial intelligence is the outer circle: any program or model that solves a hard task, learned or written by hand.</li>
+          <li>Machine learning sits inside it: the part where a model is trained from data.</li>
+          <li>Deep learning sits inside machine learning: training with neural networks that have several layers.</li>
+          <li>Generative AI, "a class of models that creates content from user input", is built mostly on deep learning.<sup class="cite"><a href="#src-2">2</a></sup></li>
+        </ul>
+        <p>The glossary admits the last circle is loosely defined. It calls generative AI "an emerging transformative field with no
+        formal definition".<sup class="cite"><a href="#src-1">1</a></sup> In an interview, give a working definition and
+        say where it comes from. You will also meet marketing copy that calls a fixed <code>if</code> rule "AI". Under the
+        glossary's wording that is fair, but it is not machine learning, because nothing was trained.</p>
+        <h3>A rule written by a person against a rule learned from examples</h3>
+        <p>Every ticket on the desk carries one of three priorities, <code>high</code>, <code>normal</code> or
+        <code>low</code>, and the <code>priorities</code> table gives them SLA hours of 4, 24 and
+        72.<sup class="cite"><a href="#src-3">3</a></sup> Here is a rule a person wrote after reading the six seed
+        titles:</p>
+<pre><code>def triage(title):
+    t = title.lower()
+    if "500" in t or "frozen" in t:
+        return "high"
+    if t.startswith("add "):
+        return "low"
+    return "normal"
+
+for title in ["Login page returns 500", "Invoice PDF is blank", "Typo on pricing page",
+              "Checkout button frozen", "Export is missing rows", "Add dark mode"]:
+    print(triage(title), "|", title)</code></pre>
+<pre class="out">high | Login page returns 500
+normal | Invoice PDF is blank
+normal | Typo on pricing page
+high | Checkout button frozen
+normal | Export is missing rows
+low | Add dark mode</pre>
+        <p>All six agree with the priorities in <code>sql/seed.sql</code>, because the person who wrote the conditions had
+        already seen those six titles. A seventh title such as "Password reset email never arrives" would fall through to
+        <code>normal</code> whether or not that is right.</p>
+        <p>A learned rule starts from the other end. A team collects last year's tickets with the priority each one was
+        given, and a training program finds the pattern that links titles to priorities. In machine learning terms each
+        ticket is an example, the title is the input, and the priority is the label, "the 'answer' or 'result' portion of an
+        example".<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <p>Learning from examples that carry the right answer is
+        called supervised learning: "Supervised learning models can make predictions after seeing lots of data with the
+        correct answers".<sup class="cite"><a href="#src-2">2</a></sup> Google's list of system types puts it beside
+        unsupervised learning, reinforcement learning and generative AI.<sup class="cite"><a href="#src-2">2</a></sup></p>
+        <table>
+          <thead><tr><th></th><th>Rule written by a person</th><th>Rule learned from labelled examples</th></tr></thead>
+          <tbody>
+            <tr><td>Where the rule comes from</td><td>Conditions someone typed</td><td>A pattern found in past tickets and their priorities</td></tr>
+            <tr><td>What it needs first</td><td>Someone who understands the tickets</td><td>Many labelled tickets</td></tr>
+            <tr><td>How it fails</td><td>A title nobody thought of falls through</td><td>It copies whatever the old labels got wrong</td></tr>
+            <tr><td>How you recognise it</td><td><code>if "500" in title</code></td><td>"We trained on last year's tickets"</td></tr>
+          </tbody>
+        </table>
+        <p>Google's first rule of machine learning addresses this trade-off. It is "Don't be afraid to launch a
+        product without machine learning", because "Machine learning is cool, but it requires
+        data".<sup class="cite"><a href="#src-4">4</a></sup> Six tickets is not data, so the hand-written rule is the
+        right first answer here. The same guide warns that "a complex heuristic is
+        unmaintainable",<sup class="cite"><a href="#src-4">4</a></sup> which is when a team with hundreds of
+        conditions and years of labelled tickets starts to train a model instead.</p>
+        <h3>Deep learning, in one line</h3>
+        <p>"Neural networks are a family of model architectures designed to find nonlinear patterns in
+        data",<sup class="cite"><a href="#src-5">5</a></sup> and "a deep neural network contains more than one hidden
+        layer".<sup class="cite"><a href="#src-1">1</a></sup> Deep learning is machine learning done with those deep
+        networks. How they are built and trained is week 6's subject. For now, recognise it on sight: a project that talks
+        about layers, a network and its weights is doing deep learning.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>AI contains machine learning, which contains deep learning, which most generative AI is built on.</li>
+          <li>A hand-written rule is AI in the broad sense but not machine learning.</li>
+          <li>Supervised learning finds a rule from examples whose labels hold the right answer.</li>
+          <li>Without data, ship the hand-written rule first.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A program with hand-written rules does what a person told it, condition by condition. Machine learning trains
+          a model on examples instead, so the rule comes from the data. If a model learned our ticket priorities from
+          titles, the title would be the input and the priority would be the label, and that's supervised learning.</p>
+          <p>I'd ship a hand-written rule when there isn't much data or the rule is simple. Google's own first rule says
+          don't be afraid to launch without machine learning, and you move to a model once the heuristics get too complex
+          to maintain.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">Foundations</div>
+        <h2>Generative AI and how a large language model writes</h2>
+        <h3>What generative AI is and what it is used for</h3>
+        <p>"Generative AI is a class of models that creates content from user
+        input."<sup class="cite"><a href="#src-2">2</a></sup> The Government of Canada's guide says it "produces
+        content such as text, audio, code, videos and images".<sup class="cite"><a href="#src-6">6</a></sup> It adds
+        that "based on the training data, these models generate content that is statistically likely in response to a
+        prompt."<sup class="cite"><a href="#src-6">6</a></sup></p>
+        <p>NIST quotes a United States executive order that calls it "the class of AI models that emulate the structure
+        and characteristics of input data in order to generate derived synthetic
+        content."<sup class="cite"><a href="#src-7">7</a></sup></p>
+        <p>A large language model, or LLM, is the kind that works with text. The Claude glossary says LLMs "are trained on
+        vast amounts of text data and can generate human-like text, answer questions, summarize information, and
+        more."<sup class="cite"><a href="#src-8">8</a></sup> Its common applications include:</p>
+        <ul>
+          <li>writing and editing documents and emails<sup class="cite"><a href="#src-6">6</a></sup></li>
+          <li>answering questions and summarising long text<sup class="cite"><a href="#src-8">8</a></sup></li>
+          <li>drafting and explaining code<sup class="cite"><a href="#src-6">6</a></sup></li>
+        </ul>
+        <p>Most people meet an LLM through a chat assistant, a web page where you type a prompt and read a reply;
+        Claude is one example.<sup class="cite"><a href="#src-8">8</a></sup> Tuesday's page sorts the other ways a developer reaches a model.</p>
+        <h3>Tokens and next-token prediction</h3>
+        <p>A language model "estimates the probability of a token or sequence of tokens occurring within a longer sequence
+        of tokens", and "a token could be a word, a subword (a subset of a word), or even a single
+        character."<sup class="cite"><a href="#src-9">9</a></sup> A tokenizer might split the desk title
+        <code>Checkout button frozen</code> into <code>Check</code>, <code>out</code>, <code> button</code> and
+        <code> frozen</code>.</p>
+        <p>That split is illustrative. How many characters a token covers "depends on the model and the
+        language", and the Claude docs say one newer tokenizer "produces approximately 30 percent more tokens for the same
+        text than earlier models".<sup class="cite"><a href="#src-8">8</a></sup></p>
+        <p>Writing a reply is a loop over tokens:</p>
+        <ol>
+          <li>The prompt is split into tokens.</li>
+          <li>The model gives every possible next token a probability, given all the tokens so far.</li>
+          <li>One token is picked and added to the end.</li>
+          <li>The loop repeats until the reply is finished.</li>
+        </ol>
+        <p>A model trained only on that loop is "pretrained to predict the next word, given the previous context of text in the
+        document", and such models "are not inherently good at answering questions or following
+        instructions".<sup class="cite"><a href="#src-8">8</a></sup> Further training, which the Claude glossary names
+        fine-tuning and RLHF, turns that predictor into an assistant.<sup class="cite"><a href="#src-8">8</a></sup></p>
+        <h3>The context window: everything the model sees</h3>
+        <p>The context window is "all the text a language model can reference when generating a response, including the
+        response itself". It is separate from the training data, "a 'working memory' for the
+        model".<sup class="cite"><a href="#src-10">10</a></sup> When an interviewer asks what the model actually sees, the
+        answer is the window and nothing else. It has never seen the desk's <code>priorities</code> table unless the prompt
+        puts those rows in front of it.</p>
+        <p>A bigger window holds more, with a limit: "more context isn't automatically better. As token count grows,
+        accuracy and recall degrade, a phenomenon known as context rot."<sup class="cite"><a href="#src-10">10</a></sup>
+        Training also has a date. The Claude models overview lists a "Reliable knowledge cutoff" for every
+        model,<sup class="cite"><a href="#src-11">11</a></sup> so a question about a library release newer than
+        that date asks for something the model never learned.</p>
+        <h3>Sampling, temperature and two answers to one prompt</h3>
+        <p>Step 3 of the loop is a weighted dice roll. Picture the model after <code>The checkout button is</code>, with
+        illustrative scores of 0.6 for <code> frozen</code>, 0.3 for <code> stuck</code> and 0.1 for <code> grey</code>.
+        Sampling picks one in proportion to its weight, so <code> stuck</code> wins about three rolls in
+        ten.</p>
+        <p>"Temperature controls the degree of randomness in token selection." At temperature 0 "the highest probability
+        tokens are always selected", and replies "are mostly deterministic, but a small amount of variation is still
+        possible."<sup class="cite"><a href="#src-12">12</a></sup></p>
+        <p>The Claude glossary adds that "even with
+        temperature set to 0, the results will not be fully deterministic".<sup class="cite"><a href="#src-8">8</a></sup> OpenAI states that "the content
+        generated from a model is non-deterministic" and recommends "pinning your production applications to specific model
+        snapshots".<sup class="cite"><a href="#src-13">13</a></sup></p>
+        <p>Two consequences come back on every later page:</p>
+        <ul>
+          <li>The same prompt can give two different replies, so a reply printed on this page is an example, never a promise.</li>
+          <li>The loop picks what is statistically likely, and nothing in it looks a fact up, so a fluent reply can be false.</li>
+        </ul>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Generative AI creates new content shaped like its training data.</li>
+          <li>An LLM writes one token at a time, each picked from a probability distribution.</li>
+          <li>The model sees only its context window and what training left behind.</li>
+          <li>Sampling makes replies vary; predicting likely text makes fluent errors possible.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Generative AI is a class of models that create new content, like text, code or images, from a prompt. The
+          common applications are drafting and editing documents and emails, summarising, answering questions, and for
+          developers, explaining and drafting code.</p>
+          <p>A large language model produces text one token at a time. It looks at everything in its context window,
+          gives every possible next token a probability, samples one, adds it to the end and repeats until the reply is
+          done.</p>
+          <p>Because each token is sampled, the same prompt can give two answers. And because the model predicts what's
+          likely instead of looking anything up, a reply can sound fluent and still be false, so I check it.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">Prompting</div>
+        <h2>Prompt engineering and zero-shot prompting</h2>
+        <p>The rest of the page follows one prompt through four rounds. It asks for a triage rule for the desk's tickets,
+        and each round fixes what the previous reply got wrong.</p>
+        <h3>What prompt engineering is</h3>
+        <p>A prompt is "any text entered as input to a large language model to condition the model to behave in a certain
+        way".<sup class="cite"><a href="#src-1">1</a></sup> Prompt engineering is "the art of creating prompts that elicit the desired responses from a large
+        language model."<sup class="cite"><a href="#src-1">1</a></sup> OpenAI's guide says it more plainly: "prompt
+        engineering is the process of writing effective instructions for a
+        model".<sup class="cite"><a href="#src-13">13</a></sup></p>
+        <p>The Claude docs list three things to have before you start improving a
+        prompt:<sup class="cite"><a href="#src-14">14</a></sup></p>
+        <ul>
+          <li>"a clear definition of the success criteria"</li>
+          <li>"some ways to empirically test against those criteria"</li>
+          <li>"a first draft prompt"</li>
+        </ul>
+        <p>That is the same discipline as code and its tests. For the desk, the success criteria are short. Each ticket
+        lands in exactly one of <code>high</code>, <code>normal</code> or <code>low</code>, the choice respects the SLA
+        hours, and every answer carries one reason line a person can check. The test is to run the prompt on real titles
+        and compare the replies with the priorities the desk already gave them.</p>
+        <p>The same overview warns that "not every success criterion or failing eval is best solved by prompt
+        engineering".<sup class="cite"><a href="#src-14">14</a></sup> Sometimes the fix is a different model, or the
+        hand-written rule from step 1. On a team you recognise prompt engineering by its paper trail: rounds of one prompt
+        kept side by side, each with its reply and a note of what changed.</p>
+        <h3>Zero-shot prompting</h3>
+        <p>A zero-shot prompt is "a prompt that does not provide an example of how you want the large language model to
+        respond".<sup class="cite"><a href="#src-1">1</a></sup> You state the task and nothing else. It is the first thing
+        anyone types, and it is often good enough for a general question.</p>
+        <p>Its limit is that the model fills every gap with its own guess. The glossary's own zero-shot example asks for a
+        country's currency, and notes that "Rupee," "INR," and "₹" could all be correct while the format might still
+        matter to you.<sup class="cite"><a href="#src-1">1</a></sup> A reply can be right in substance and still useless to
+        the program or person that reads it. You recognise a zero-shot prompt by what is missing: no examples, no
+        constraints, no output format.</p>
+        <h3>Round 1: a triage rule for the desk</h3>
+        <p>Nothing on this page needs an account or a tool. If you have a free chat assistant of your own, you can try
+        these prompts at home; your replies will differ from the printed ones, which were written for this page.</p>
+        <p>Prompt, round 1 (shown here, never run):</p>
+<pre><code>Write a triage rule for our support tickets.</code></pre>
+        <p>Illustrative reply (written for this page):</p>
+<pre><code>Here is a triage rule for support tickets:
+
+P1 (urgent): system down or security issue. Respond within 1 hour.
+P2 (high): major feature broken for many users. Respond within 4 hours.
+P3 (medium): feature partly broken, workaround exists. Respond within 1 business day.
+P4 (low): cosmetic issues and feature requests. Respond within 1 week.
+
+Assign the highest level that applies.</code></pre>
+        <p>The reply reads well, and it fails all three success criteria:</p>
+        <ul>
+          <li>It invents four tiers, <code>P1</code> to <code>P4</code>, including an <code>urgent</code> tier, where the desk has three priorities.</li>
+          <li>It makes up response times and ignores the desk's real SLA hours: <code>high</code> 4, <code>normal</code> 24, <code>low</code> 72.<sup class="cite"><a href="#src-3">3</a></sup></li>
+          <li>It gives a rule with no reason line per ticket, so nobody can check a single decision.</li>
+        </ul>
+        <div class="ix-spot" data-snippet="Prompt: Write a triage rule for our support tickets." data-q="The model has never seen the desk. What three facts is it forced to guess?" data-a="The priorities that exist (high, normal, low), their SLA hours (4, 24, 72) and the shape of the answer wanted (one priority and one reason line per ticket). Each guess shows up as a gap in the reply."></div>
+        <p>The model saw one sentence, so it answered for a generic help desk. The Claude
+        docs put it this way: "Think of Claude as a brilliant but new employee who lacks context on your norms and
+        workflows."<sup class="cite"><a href="#src-15">15</a></sup> They also advise that "if you want Claude to do more
+        than the task strictly requires, explicitly request it rather than relying on the model to infer this from vague
+        prompts."<sup class="cite"><a href="#src-15">15</a></sup></p>
+        <p>So the first fix to a zero-shot prompt is usually context, before examples. Name the three priorities, give
+        their SLA hours, and say what the output should look like: one priority and one reason line per ticket. Saying
+        why helps too, since "providing context or motivation behind your instructions" gives the model "more information
+        about your goals".<sup class="cite"><a href="#src-15">15</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Write success criteria and a way to test them before improving a prompt.</li>
+          <li>A zero-shot prompt states the task with no example of the answer.</li>
+          <li>Round 1 invented tiers and hours because the prompt held no context.</li>
+          <li>The first fix is context: the real priorities, their SLA hours and the output wanted.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Prompt engineering is writing and refining the text I give a model until it reliably gives the response I
+          need. Before I start, I write down what a correct answer looks like and how I'll test for it, the same way I'd
+          write tests before changing code.</p>
+          <p>A zero-shot prompt gives the task with no example of the answer. When a one-line triage prompt came back with
+          made-up P1 to P4 tiers, the first thing I added was context: our three priorities, their SLA hours, and the exact
+          output I wanted.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="3">
+        <div class="tag">Prompting</div>
+        <h2>Few-shot prompting and constraints</h2>
+        <h3>Few-shot prompting</h3>
+        <p>A few-shot prompt "contains more than one (a 'few') example demonstrating how the large language model should
+        respond."<sup class="cite"><a href="#src-1">1</a></sup> Google's prompting guide calls them examples you include
+        "to show the model what getting it right looks
+        like."<sup class="cite"><a href="#src-16">16</a></sup> A 2020 paper by Brown et al. showed a
+        large language model working "without any gradient updates or fine-tuning", with "few-shot demonstrations
+        specified purely via text interaction with the model".<sup class="cite"><a href="#src-17">17</a></sup> The
+        model itself does not change.</p>
+        <p>The Claude docs call examples "one of the most reliable ways to steer Claude's output format, tone, and
+        structure". They advise 3 to 5 of them, wrapped in <code>&lt;example&gt;</code> tags "so Claude can distinguish them
+        from instructions".<sup class="cite"><a href="#src-15">15</a></sup> You recognise a few-shot prompt on sight by
+        its labelled pairs before the question, such as <code>Login page returns 500 -&gt; high</code>.</p>
+        <h3>Round 2: three labelled tickets, three held out</h3>
+        <p>Round 2 adds the context from round 1's fix and three of the seed's tickets, one per priority. One per priority
+        matters: three <code>high</code> examples would show the model only one label. The other three seed titles are
+        held out, so the prompt is tested on tickets it has not seen. That is how a team learns whether its examples
+        generalise.</p>
+        <p>Prompt, round 2 (shown here, never run):</p>
+<pre><code>We triage support tickets into exactly three priorities:
+high (respond within 4 hours), normal (24 hours), low (72 hours).
+
+&lt;example&gt;Login page returns 500 -&gt; high&lt;/example&gt;
+&lt;example&gt;Typo on pricing page -&gt; normal&lt;/example&gt;
+&lt;example&gt;Add dark mode -&gt; low&lt;/example&gt;
+
+Give the priority for each of these tickets:
+Checkout button frozen
+Export is missing rows
+Invoice PDF is blank</code></pre>
+        <p>Illustrative reply (written for this page):</p>
+<pre><code>Checkout button frozen -&gt; high (customers cannot complete a purchase)
+Export is missing rows -&gt; normal (the export runs but some data is missing)
+Invoice PDF is blank -&gt; high (a customer cannot read their invoice)</code></pre>
+        <p>The seed gives <code>Checkout button frozen</code> <code>high</code> and <code>Export is missing rows</code>
+        <code>normal</code>, so two of three are right. It gives <code>Invoice PDF is blank</code>
+        <code>normal</code>.<sup class="cite"><a href="#src-3">3</a></sup> The model's <code>high</code> is a
+        plausible reading of a broken billing document. The seed's <code>normal</code> is a decision the team made, and
+        no example in the prompt shows it.</p>
+        <p>Few-shot examples teach format and pattern; they cannot carry a decision they never show. The fix is a rule
+        that lets the model say it cannot tell.</p>
+        <h3>Constraints</h3>
+        <p>A constraint is a rule about what the reply may contain: which words are allowed, how many lines, what to do
+        when the input is not enough. The Claude docs note that "being specific about the output you want can help enhance
+        results."<sup class="cite"><a href="#src-15">15</a></sup> For the desk, the allowed words come straight from the
+        <code>priorities</code> table,<sup class="cite"><a href="#src-3">3</a></sup> plus one escape hatch:</p>
+        <ul>
+          <li>answer with exactly one of <code>high</code>, <code>normal</code>, <code>low</code>, <code>unsure</code></li>
+          <li>follow it with one reason line</li>
+          <li>answer <code>unsure</code> when the title gives no evidence for a priority</li>
+        </ul>
+        <p>The <code>unsure</code> answer does the most work. Giving a model permission to say it does not know "can
+        drastically reduce false information".<sup class="cite"><a href="#src-18">18</a></sup> It also hands the hard case
+        back to the person on the desk, who knows what the team decided.</p>
+        <h3>Round 3: one word, one reason, or unsure</h3>
+        <p>Round 3 keeps round 2 and adds the three constraints before the titles.</p>
+        <p>Prompt, round 3 (shown here, never run):</p>
+<pre><code>We triage support tickets into exactly three priorities:
+high (respond within 4 hours), normal (24 hours), low (72 hours).
+
+&lt;example&gt;Login page returns 500 -&gt; high&lt;/example&gt;
+&lt;example&gt;Typo on pricing page -&gt; normal&lt;/example&gt;
+&lt;example&gt;Add dark mode -&gt; low&lt;/example&gt;
+
+For each ticket, answer with exactly one word from: high, normal, low, unsure.
+Then one reason line. Answer unsure when the title gives no evidence.
+
+Checkout button frozen
+Export is missing rows
+Invoice PDF is blank</code></pre>
+        <p>The expected output is <code>high</code>, <code>normal</code> and <code>unsure</code>, each with a reason. The
+        third reason should say that the title does not tell whether billing is blocked, so a person decides. Here is an
+        illustrative reply, written for this page:</p>
+<pre><code>Checkout button frozen
+This is probably high.
+Customers cannot finish a purchase.
+
+Export is missing rows
+normal
+The export runs but some rows are missing.
+
+Invoice PDF is blank
+unsure
+The title does not say whether the customer is blocked from paying.</code></pre>
+        <p>The labels are now right, and the first answer still breaks a constraint. A program that reads the reply
+        checks each answer line against the allowed words:</p>
+<pre><code>ALLOWED = {"high", "normal", "low", "unsure"}
+for line in ["This is probably high.", "normal", "unsure"]:
+    print(line in ALLOWED, "|", line)</code></pre>
+<pre class="out">False | This is probably high.
+True | normal
+True | unsure</pre>
+        <p>A constraint narrows the reply but does not guarantee it. The fix is the bare word <code>high</code> on its own
+        line, and the next step gets it two ways: an output-format rule and a follow-up turn. Either way, the reply is
+        checked before anything uses it.<sup class="cite"><a href="#src-18">18</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Few-shot examples sit in the prompt and change the reply, never the model.</li>
+          <li>Give one example per label and test on held-out titles.</li>
+          <li>Examples cannot teach a team decision they never show.</li>
+          <li>Constraints, including an unsure answer, narrow the reply, and code still checks it.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Few-shot prompting puts a few worked examples in the prompt so the model copies their pattern and format.
+          Nothing about the model changes, which is the difference from fine-tuning. I give one example per label and
+          test on inputs that aren't among the examples.</p>
+          <p>When the examples were right and the model still mislabelled a blank invoice as high, it was because no
+          example showed how our team treats billing. So I added constraints: one word from an allowed list, one reason,
+          and unsure when the title isn't enough. Then I still check every line against that list.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">Prompting</div>
+        <h2>Instructions, guidelines, iteration and dialog state</h2>
+        <h3>Instructions and guidelines: the block at the top</h3>
+        <p>Google's prompting guide names the parts a prompt can have:<sup class="cite"><a href="#src-16">16</a></sup></p>
+        <ul>
+          <li>the task, what you want done</li>
+          <li>system instructions, which "get passed to the model before any user input in the prompt"</li>
+          <li>few-shot examples</li>
+          <li>contextual information the model needs, such as the desk's priorities</li>
+        </ul>
+        <p>The block of system instructions is usually called the system prompt. It sets the model's role, its rules and
+        the output format for the whole conversation. "Setting a role in the system prompt focuses Claude's behavior and
+        tone for your use case."<sup class="cite"><a href="#src-15">15</a></sup> OpenAI's version is the developer
+        message, "instructions provided by the application developer, prioritized ahead of user
+        messages."<sup class="cite"><a href="#src-13">13</a></sup></p>
+        <p>To test whether instructions are clear, the Claude docs suggest showing the prompt "to a colleague with minimal
+        context on the task" and asking them to follow it: "If they'd be confused, Claude will be
+        too."<sup class="cite"><a href="#src-15">15</a></sup> The model weighs instructions; it does not
+        execute them like code. A reply that ignores a rule is possible, so the output is still checked
+        against the rules.<sup class="cite"><a href="#src-18">18</a></sup></p>
+        <h3>Round 4: role, audience, rules, output format</h3>
+        <p>Round 4 moves everything that is not a ticket into an instruction block at the top, in four parts. You
+        recognise a team's reusable prompt by this shape: it opens with a role, then rules, then <code>Output format:</code>.</p>
+        <p>Prompt, round 4 (shown here, never run):</p>
+<pre><code>You are triaging support tickets for a small help desk.
+Your answers are read by a program first, then by the agent on duty.
+
+Rules:
+- The only priorities are high (4-hour SLA), normal (24-hour SLA), low (72-hour SLA).
+- Answer unsure when the title gives no evidence for a priority.
+- Judge from the title only. Do not invent details about the customer.
+
+Output format, for each ticket:
+line 1: the ticket title
+line 2: exactly one word: high, normal, low or unsure
+line 3: one reason, one sentence
+
+&lt;example&gt;Login page returns 500 -&gt; high&lt;/example&gt;
+&lt;example&gt;Typo on pricing page -&gt; normal&lt;/example&gt;
+&lt;example&gt;Add dark mode -&gt; low&lt;/example&gt;
+
+Tickets:
+Checkout button frozen
+Export is missing rows
+Invoice PDF is blank</code></pre>
+        <p>Illustrative reply (written for this page):</p>
+<pre><code>Checkout button frozen
+high
+A frozen checkout stops customers from paying.
+
+Export is missing rows
+normal
+The export still runs, so work continues while the gap is fixed.
+
+Invoice PDF is blank
+unsure
+The title does not say whether billing is blocked, so the agent on duty decides.</code></pre>
+        <p>This reply meets every success criterion, and it is the expected output for round 4. Every second line passes
+        the allowed-words check from step 4, and every answer has a reason a person can argue with. The audience line
+        mattered: once the model is told a program reads the reply, a bare word is the obvious answer.</p>
+        <h3>Dialog state: the whole conversation, every turn</h3>
+        <p>A chat assistant seems to remember earlier turns, and the mechanism is simple. "The Messages API is stateless,
+        which means that you always send the full conversational history to the
+        API."<sup class="cite"><a href="#src-19">19</a></sup> Each turn's input "contains all previous conversation
+        history plus the current user message", and each output "becomes part of the input for the next
+        turn".<sup class="cite"><a href="#src-10">10</a></sup> The dialog state is the whole conversation, re-sent every
+        time.</p>
+        <table>
+          <thead><tr><th>Turn</th><th>What the model receives</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>instruction block, first message</td></tr>
+            <tr><td>2</td><td>instruction block, first message, first reply, second message</td></tr>
+            <tr><td>3</td><td>all of turn 2, second reply, third message</td></tr>
+            <tr><td>new chat</td><td>only its own first message</td></tr>
+          </tbody>
+        </table>
+        <p>Two things follow. A new chat starts empty, so it knows nothing about yesterday's conversation, and the
+        priorities have to be in its prompt again. A long chat also drifts. Chat interfaces "can also manage the context
+        window on a rolling 'first in, first out' basis",<sup class="cite"><a href="#src-10">10</a></sup> so your first
+        instructions can fall out of the window, and long contexts lose accuracy anyway. A fresh chat with a complete
+        prompt often beats a long, patched one.</p>
+        <h3>Iterating with a follow-up turn</h3>
+        <p>Because the previous reply is in the window, a short follow-up can fix one line of it without restating the
+        prompt. The Claude docs list this as "iterative refinement: use Claude's outputs as inputs for follow-up
+        prompts".<sup class="cite"><a href="#src-18">18</a></sup> After round 3's reply, a follow-up turn could read:</p>
+        <p>Prompt, follow-up turn after round 3 (shown here, never run):</p>
+<pre><code>Line 2 of each answer must be the bare word only.
+Rewrite just the Checkout button frozen answer.</code></pre>
+        <p>Illustrative reply (written for this page):</p>
+<pre><code>Checkout button frozen
+high
+Customers cannot finish a purchase.</code></pre>
+        <p>The follow-up names the rule that was broken and the one answer to redo. When a fix needs more than a line or
+        two, write the improved prompt as a new round and start a fresh chat.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>An instruction block sets role, audience, rules and output format before any ticket.</li>
+          <li>The model weighs instructions, so the reply is still checked.</li>
+          <li>Every turn re-sends the whole conversation; a new chat starts empty.</li>
+          <li>A short follow-up fixes one line; a big fix belongs in a fresh prompt.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A system prompt is the instruction block that goes before any user input. I put four things in it: the role,
+          who reads the answer, the rules, and the exact output format. I test it by asking whether a colleague with no
+          context could follow it.</p>
+          <p>A chat assistant seems to remember because the whole conversation is sent again on every turn. A new chat
+          starts with nothing, and a long chat drifts because old turns can drop out of the context window, so for a big
+          change I start fresh with a complete prompt.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
+        <div class="tag">Definitions</div>
+        <h2>Fine-tuning and conditioning</h2>
+        <p>Interviewers like to ask how few-shot prompting differs from fine-tuning, because the two are easy to blur.
+        Training a model is week 6's subject.</p>
+        <h3>Conditioning: steering through the context window</h3>
+        <p>The glossary's definition of a prompt already holds the idea: text entered "to condition the model to behave in
+        a certain way".<sup class="cite"><a href="#src-1">1</a></sup> Conditioning means steering a model through what is
+        in its context window. Instructions, examples, the desk's priorities and the previous turns are all conditioning.
+        Every round of the triage prompt was conditioning, and none of them changed the model.</p>
+        <p>That has a consequence you can see. Conditioning lasts as long as the text stays in the window. Close the
+        chat, open a new one, and the model is back where it started, with no memory of the three priorities.</p>
+        <h3>Fine-tuning: a second training pass</h3>
+        <p>Before fine-tuning there is pretraining, the long first training run in which the model learns to predict the
+        next word from huge amounts of text.<sup class="cite"><a href="#src-8">8</a></sup> Fine-tuning comes after it:
+        "a second, task-specific training pass performed on a pre-trained model to refine its parameters for a specific
+        use case."<sup class="cite"><a href="#src-1">1</a></sup> The parameters, also called weights, are the numbers the
+        model learned in training. Fine-tuning changes them.</p>
+        <p>The Claude glossary describes the effect: fine-tuning "causes the model to start representing and mimicking the
+        patterns and characteristics of the fine-tuning dataset".<sup class="cite"><a href="#src-8">8</a></sup> You
+        recognise it on sight by its inputs. Fine-tuning has a training file of hundreds of input and output pairs and a
+        training job that runs on it. Conditioning has a prompt with three examples written into its text.</p>
+        <h3>When a team reaches for each</h3>
+        <table>
+          <thead><tr><th></th><th>Conditioning (prompting)</th><th>Fine-tuning</th></tr></thead>
+          <tbody>
+            <tr><td>What changes</td><td>the input in the context window</td><td>the model's parameters</td></tr>
+            <tr><td>How many examples</td><td>a few, as many as fit in the window</td><td>hundreds or more, in a training file</td></tr>
+            <tr><td>How long it lasts</td><td>one request or conversation</td><td>every later request to that model</td></tr>
+            <tr><td>Cost to try</td><td>minutes: edit the text and run it again</td><td>a training job, data preparation and evaluation</td></tr>
+          </tbody>
+        </table>
+        <p>OpenAI's optimisation guide puts the order plainly: "the prompt engineering process may be all you need in
+        order to get great results for your use case."<sup class="cite"><a href="#src-20">20</a></sup> Fine-tuning
+        earns its place when a team needs to "provide more example inputs and outputs than could fit within the context
+        window of a single request".<sup class="cite"><a href="#src-20">20</a></sup> The same guide warns that it
+        "can be a time-consuming process", and states that "OpenAI is winding down the fine-tuning
+        platform."<sup class="cite"><a href="#src-20">20</a></sup></p>
+        <p>The desk's triage needs three labels, six titles and one team decision, all of which fit in a prompt. That is
+        why this week uses prompting only.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Conditioning steers the model through the context window and lasts one conversation.</li>
+          <li>Fine-tuning is a second training pass that changes the model's parameters.</li>
+          <li>Teams try prompting first and fine-tune only when the examples outgrow the window.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Fine-tuning is a second, task-specific training pass on a pretrained model that changes its parameters.
+          Putting examples in a prompt is conditioning: it steers the model through the context window for that request
+          only, and the model itself doesn't change.</p>
+          <p>I'd start with prompting because it's fast to try. A team fine-tunes when it has far more examples than fit
+          in a prompt and needs the behaviour on every request, and it accepts the cost of a training job and the
+          evaluation that follows.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="6">
+        <div class="tag">Judgement</div>
+        <h2>Hallucinations and how to check an answer</h2>
+        <h3>What a hallucination is</h3>
+        <p>The Claude docs define a hallucination as text "that is factually incorrect or inconsistent with the given
+        context".<sup class="cite"><a href="#src-18">18</a></sup> NIST prefers the word confabulation: "the production of
+        confidently stated but erroneous or false content (known colloquially as 'hallucinations' or
+        'fabrications')".<sup class="cite"><a href="#src-7">7</a></sup> A hallucination is stated confidently, so it
+        reads exactly like a correct answer.</p>
+        <p>NIST also says why it happens: "Confabulations are a natural result of the way generative models are
+        designed."<sup class="cite"><a href="#src-7">7</a></sup> It is part of how the loop from step 2 works, so
+        no prompt removes it for good.</p>
+        <h3>Why a model invents a method</h3>
+        <p>Here is a question a developer on the desk might ask while counting tickets.</p>
+        <p>Prompt (shown here, never run):</p>
+<pre><code>How do I count the tickets per priority in a pandas DataFrame df?</code></pre>
+        <p>Illustrative reply (written for this page):</p>
+<pre><code>Use DataFrame.count_by, which groups and counts in one call:
+
+counts = df.count_by("priority")
+print(counts)</code></pre>
+        <p>The method name is plausible. pandas has <code>count</code>, it has grouping, and <code>count_by</code> reads
+        like the two joined. There is no such method. A model produces one for three reasons:</p>
+        <ul>
+          <li>Next-token prediction with no lookup. Models "generate outputs that approximate the statistical distribution of their training data", which "can also produce outputs that are factually inaccurate".<sup class="cite"><a href="#src-7">7</a></sup></li>
+          <li>Missing context. The prompt names neither the pandas version nor its documentation, so the model fills the gap.</li>
+          <li>A question past the knowledge cutoff, the date each model's training stops.<sup class="cite"><a href="#src-11">11</a></sup></li>
+        </ul>
+        <p>OWASP's list of risks for LLM applications names this exact case for developers: "The model suggests insecure
+        or non-existent code libraries".<sup class="cite"><a href="#src-21">21</a></sup> The same entry defines
+        overreliance, when users "place excessive trust in LLM-generated content, failing to verify its
+        accuracy."<sup class="cite"><a href="#src-21">21</a></sup></p>
+        <h3>Checking a claim against the docs</h3>
+        <p>The desk pins pandas 3.0.6, so the check goes to the 3.0 reference. Its DataFrame page lists
+        <code>DataFrame.count</code>, "Count non-NA cells for each column or row", and <code>DataFrame.value_counts</code>.
+        It lists no <code>count_by</code>.<sup class="cite"><a href="#src-22">22</a></sup> Running the suggested line
+        settles it:</p>
+<pre><code>import pandas as pd
+df = pd.DataFrame({"priority": ["high", "normal", "normal", "high", "normal", "low"]})
+df.count_by("priority")</code></pre>
+        <p>Python stops with a traceback whose last line is <code>AttributeError: 'DataFrame' object has no attribute
+        'count_by'</code>.<sup class="cite"><a href="#src-22">22</a></sup></p>
+        <p>The reference's <code>Series.value_counts</code> is the real tool: "Return a Series containing counts of unique
+        values."<sup class="cite"><a href="#src-23">23</a></sup> Selecting the column gives a Series, so the fix is one
+        line:</p>
+<pre><code>print(df["priority"].value_counts())</code></pre>
+<pre class="out">priority
+normal    3
+high      2
+low       1
+Name: count, dtype: int64</pre>
+        <p>A developer checks any claim about an API or a library in the same three steps:</p>
+        <ol>
+          <li>Ask for the source: which documentation page, for which version.</li>
+          <li>Check the official docs for that version, and read the entry itself.</li>
+          <li>Run it, ideally in a test, before it goes anywhere near a commit.</li>
+        </ol>
+        <p>Prompting helps too. The Claude docs suggest three techniques:</p>
+        <ul>
+          <li>Allow the model to say "I don't know".</li>
+          <li>Ask for citations that back each claim.</li>
+          <li>Restrict the model to documents you provide.</li>
+        </ul>
+        <p>They are clear that these techniques reduce hallucinations but "don't eliminate them
+        entirely".<sup class="cite"><a href="#src-18">18</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A hallucination is confident, false content, and it reads like a correct answer.</li>
+          <li>It comes from predicting likely text with no lookup, missing context or a knowledge cutoff.</li>
+          <li>Check the docs for your version and run the code before trusting a method.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A hallucination is content a model states confidently that is false or doesn't match the context it was
+          given. It happens because the model predicts likely text instead of looking anything up, so a method name like
+          count_by can sound exactly like pandas and not exist.</p>
+          <p>Before I use a model's claim about a library, I find the entry in the official docs for the version we pin,
+          and I run the code. If the docs don't list it, it doesn't go in.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="7">
+        <div class="tag">Judgement</div>
+        <h2>Responsible use and security</h2>
+        <p>Everything so far is about getting a good answer. This step is about what you type in to get it, and what you
+        owe the code that comes back.</p>
+        <h3>What never goes into a public chat</h3>
+        <p>Text pasted into a public chat assistant leaves your machine and goes to the tool's supplier, who may keep a
+        copy.<sup class="cite"><a href="#src-6">6</a></sup> OWASP's entry on
+        sensitive information disclosure says such information "includes personal identifiable information (PII),
+        financial details, health records", along with security credentials and confidential business
+        data.<sup class="cite"><a href="#src-24">24</a></sup> It adds that users "need to understand the risks of
+        unintentionally providing sensitive data".<sup class="cite"><a href="#src-24">24</a></sup></p>
+        <p>The Canadian guide is blunter: "Public servants must not input personal information into publicly available
+        online generative AI tools."<sup class="cite"><a href="#src-6">6</a></sup> NIST's data privacy risk covers
+        "leakage and unauthorized use, disclosure, or de-anonymization" of personal or sensitive
+        data.<sup class="cite"><a href="#src-7">7</a></sup> On the desk, four kinds of text never go into a public
+        chat:</p>
+        <ul>
+          <li>Personal information, such as the customer <code>Dana Whitfield</code> with her address <code>dana@example.com</code> from <code>customers</code>.<sup class="cite"><a href="#src-3">3</a></sup></li>
+          <li>Credentials. The desk reads its database password with <code>os.environ["DESK_DB_PASSWORD"]</code> in <code>db.py</code>, so the line that exports it holds a secret.<sup class="cite"><a href="#src-25">25</a></sup></li>
+          <li>The employer's code, which goes only to an assistant the employer has approved.</li>
+          <li>Client data, such as a sample of a client's dataset.</li>
+        </ul>
+        <h3>Redaction, and why one regular expression is not enough</h3>
+        <p>Redaction means removing names, emails, hosts, users and passwords from text before it leaves your machine.
+        The desk has a helper, <code>desk.redact</code>, documented as "Return the text with email addresses hidden." It
+        replaces every match of its <code>EMAIL</code> pattern with <code>[email]</code>.<sup class="cite"><a href="#src-26">26</a></sup>
+        Run from the desk's folder, it does less than its name suggests:</p>
+<pre><code>from desk import redact
+
+print(redact("Dana Whitfield (dana@example.com): Login page returns 500"))
+print(redact("host=127.0.0.1 user=desk_app password=s3cret"))
+print(redact("mysql://desk_app:s3cret@db.internal:3306/ticket_desk"))</code></pre>
+<pre class="out">Dana Whitfield ([email]): Login page returns 500
+host=127.0.0.1 user=desk_app password=s3cret
+mysql://desk_app:[email]:3306/ticket_desk</pre>
+        <p>The email goes and the name stays. The second line passes through untouched, password included. In the third,
+        the pattern happens to match <code>s3cret@db.internal</code>, so the line looks cleaned while the user name
+        stays.<sup class="cite"><a href="#src-26">26</a></sup> Names and connection strings are removed by hand, and the result is read before it is pasted.</p>
+        <p>Here is how eight pieces of text from the desk's world sort out:</p>
+        <table>
+          <thead><tr><th>Text</th><th>Decision</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td>a ticket with Dana Whitfield's email</td><td>paste after redaction</td><td><code>desk.redact</code> hides the email; remove the name by hand</td></tr>
+            <tr><td>the <code>DESK_DB_PASSWORD</code> export line</td><td>never</td><td>a credential</td></tr>
+            <tr><td><code>transform.clean_events</code></td><td>never into a public chat</td><td>it stands in for the employer's code</td></tr>
+            <tr><td>a stack trace with a connection string</td><td>paste after redaction</td><td>remove the host, user and password by hand</td></tr>
+            <tr><td>a sample of a client's dataset</td><td>never</td><td>client data</td></tr>
+            <tr><td>a public error message</td><td>paste</td><td>nothing private in it</td></tr>
+            <tr><td>a paragraph of your own P0 README</td><td>paste</td><td>your own text, and P0 permits AI use</td></tr>
+            <tr><td>an anonymised ticket title</td><td>paste</td><td>no person, secret or client in it</td></tr>
+          </tbody>
+        </table>
+        <h3>Who owns a generated line</h3>
+        <p>The developer who commits a line owns it, whoever typed it first. The Canadian guide makes the user responsible
+        that generated content "is accurate, non-partisan, unbiased, and doesn't violate intellectual property
+        laws".<sup class="cite"><a href="#src-6">6</a></sup> It also warns that generative AI "can produce content that
+        is discriminatory or not representative",<sup class="cite"><a href="#src-6">6</a></sup> so a review checks
+        for bias as well as bugs. NIST lists "automation bias, over-reliance" among its risks for
+        generative AI.<sup class="cite"><a href="#src-7">7</a></sup></p>
+        <p>In practice, a generated line goes through the same code review and the same tests as any other. On a good team
+        you recognise it in the pull request: a description that says the change was drafted with an assistant, then
+        reviewed and tested by the author, with the tests that ran.</p>
+        <h3>The rules a developer keeps</h3>
+        <p>OWASP recommends user education with "guidance on avoiding the input of sensitive
+        information."<sup class="cite"><a href="#src-24">24</a></sup> The rules this week works by come to
+        six:</p>
+        <ul>
+          <li>Never paste PII, credentials, keys or client data into a public chat.</li>
+          <li>The employer's code goes only to an employer-approved assistant, never to a public chat.</li>
+          <li>Every generated line is read, tested and owned by the developer who commits it.</li>
+          <li>A claim about an API or a library is checked in its docs.</li>
+          <li>Iterate; never stop at the first answer.</li>
+          <li>Give the model the code, the error, the constraint and the expected output.</li>
+        </ul>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>PII, credentials, the employer's code and client data never go into a public chat.</li>
+          <li>The desk's redact hides emails only; names and connection strings are cleaned by hand.</li>
+          <li>Generated code gets the same review and tests, and its committer owns it.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Personal information, credentials and keys, client data and my employer's code never go into a public chat
+          assistant. To make a stack trace safe, I remove the connection string's host, user and password and any names
+          or emails by hand, then read it again before pasting, because an email regex alone misses most of that.</p>
+          <p>Whoever commits generated code owns it. I read every line, run the tests, and check any claim about a
+          library in its docs, exactly as I would for code a teammate wrote.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="8">
+        <div class="tag">Check yourself</div>
+        <h2>Check yourself</h2>
+        <p>Nine retrieval questions, at least one per section. Answer each out loud before you open it.</p>
+        <details class="check"><summary>Is a hand-written <code>if</code> rule for ticket priorities machine learning? What would the label be if a model learned the rule instead?</summary><p>It is AI in the broad sense, a program solving a task, but not machine learning, because nothing was trained. A learned rule would use past tickets as examples, the title as the input and the priority as the label, which is supervised learning.</p></details>
+        <details class="check"><summary>What is generative AI, what is it commonly used for, and how does a large language model produce a reply?</summary><p>Generative AI is a class of models that create new content, such as text, code or images, from user input. Common uses are drafting and editing documents and emails, answering questions, summarising and working with code. An LLM writes one token at a time: it gives every possible next token a probability from what is in its context window, samples one, appends it and repeats.</p></details>
+        <details class="check"><summary>Why can the same prompt give two different replies, even at temperature 0?</summary><p>Each token is sampled from a probability distribution, and temperature only controls how random that pick is. Even at temperature 0 the docs say results are not fully deterministic, so a reply is an example, never a promise.</p></details>
+        <details class="check"><summary>"Write a triage rule for our support tickets." came back with P1 to P4 tiers. Why, and what do you add first?</summary><p>The model saw one sentence and nothing about the desk, so it guessed a generic help desk. Add context first: the three priorities, their SLA hours of 4, 24 and 72, and the output wanted, one priority and one reason line per ticket.</p></details>
+        <details class="check"><summary>The few-shot examples are all correct, yet the model labels <code>Invoice PDF is blank</code> <code>high</code> where the desk says <code>normal</code>. Why, and what fixes it?</summary><p>No example shows how the team treats a billing ticket, and examples cannot teach a decision they never show. A constraint fixes it: exactly one word from <code>high</code>, <code>normal</code>, <code>low</code>, <code>unsure</code>, one reason line, and <code>unsure</code> when the title gives no evidence, so a person decides.</p></details>
+        <details class="check"><summary>What does a new chat know about yesterday's chat, and why does a long chat drift?</summary><p>Nothing: the whole conversation is re-sent each turn, and a new chat starts with only its own messages. A long chat drifts because old turns can roll out of the context window and accuracy drops as the window fills.</p></details>
+        <details class="check"><summary>How is putting three examples in a prompt different from fine-tuning?</summary><p>Examples in a prompt condition the model through its context window for that request only, and the model does not change. Fine-tuning is a second training pass that changes the model's parameters, used when a team has far more examples than fit in a prompt.</p></details>
+        <details class="check"><summary>A reply recommends <code>df.count_by("priority")</code>. How do you check it, and what is the fix?</summary><p>Look it up in the pandas reference for the pinned version, 3.0.6, which lists no <code>count_by</code>, and run it, which raises an <code>AttributeError</code>. The documented tool is <code>Series.value_counts</code>, so the fix is <code>df["priority"].value_counts()</code>.</p></details>
+        <details class="check"><summary>What does <code>desk.redact</code> miss in a stack trace with a connection string, and what never goes into a public chat at all?</summary><p>It hides email addresses only, so names, hosts, users and passwords stay and must be removed by hand. Credentials and keys, client data and the employer's code never go into a public chat, and personal information goes only after it is redacted.</p></details>
+      </section>
+
+      <section class="reading-sources" aria-label="Sources and deeper dive">
+        <h2>Sources &amp; deeper dive</h2>
+        <ul>
+          <li id="src-1"><a href="https://developers.google.com/machine-learning/glossary" target="_blank" rel="noopener">Machine Learning Glossary (Google for Developers)</a> — definitions of AI, model, label, prompt, zero-shot, few-shot and fine-tuning.</li>
+          <li id="src-2"><a href="https://developers.google.com/machine-learning/intro-to-ml/what-is-ml" target="_blank" rel="noopener">What is Machine Learning? (Google for Developers)</a> — machine learning, supervised learning and generative AI as a class of models.</li>
+          <li id="src-3"><a href="https://github.com/2494-Gen-AI-CN/demos/blob/55f65d7/ticket-desk/sql/seed.sql" target="_blank" rel="noopener">ticket-desk/sql/seed.sql at 55f65d7</a> — the priorities rows, their SLA hours, the six seed tickets and the customers.</li>
+          <li id="src-4"><a href="https://developers.google.com/machine-learning/guides/rules-of-ml" target="_blank" rel="noopener">Rules of Machine Learning (Google for Developers)</a> — Rule #1, and why a hand-written heuristic is a fair first answer.</li>
+          <li id="src-5"><a href="https://developers.google.com/machine-learning/crash-course/neural-networks" target="_blank" rel="noopener">Neural networks, Machine Learning Crash Course (Google for Developers)</a> — neural networks as model architectures for nonlinear patterns.</li>
+          <li id="src-6"><a href="https://www.canada.ca/en/government/system/digital-government/digital-government-innovations/responsible-use-ai/generative-ai/guide-use-generative-ai.html" target="_blank" rel="noopener">Guide on the use of generative artificial intelligence (Government of Canada)</a> — what generative AI produces, what never goes in, and who is responsible for the output.</li>
+          <li id="src-7"><a href="https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf" target="_blank" rel="noopener">NIST AI 600-1, Generative Artificial Intelligence Profile (July 2024)</a> — confabulation, data privacy and over-reliance as named risks.</li>
+          <li id="src-8"><a href="https://platform.claude.com/docs/en/about-claude/glossary" target="_blank" rel="noopener">Glossary (Claude docs)</a> — LLMs, tokens, pretraining, temperature and fine-tuning in one place.</li>
+          <li id="src-9"><a href="https://developers.google.com/machine-learning/resources/intro-llms" target="_blank" rel="noopener">Introduction to Large Language Models (Google for Developers)</a> — tokens and how a language model predicts the next one.</li>
+          <li id="src-10"><a href="https://platform.claude.com/docs/en/build-with-claude/context-windows" target="_blank" rel="noopener">Context windows (Claude docs)</a> — the context window, context rot and how turns accumulate.</li>
+          <li id="src-11"><a href="https://platform.claude.com/docs/en/models/overview" target="_blank" rel="noopener">Models overview (Claude docs)</a> — where each model's reliable knowledge cutoff is listed.</li>
+          <li id="src-12"><a href="https://docs.cloud.google.com/vertex-ai/generative-ai/docs/learn/prompts/adjust-parameter-values" target="_blank" rel="noopener">Experiment with parameter values (Google Cloud Vertex AI)</a> — temperature and how it changes token selection.</li>
+          <li id="src-13"><a href="https://developers.openai.com/api/docs/guides/prompt-engineering" target="_blank" rel="noopener">Prompt engineering (OpenAI API docs)</a> — non-deterministic output, pinned snapshots and developer messages.</li>
+          <li id="src-14"><a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview" target="_blank" rel="noopener">Prompt engineering overview (Claude docs)</a> — success criteria before prompting, and when prompting is not the fix.</li>
+          <li id="src-15"><a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices" target="_blank" rel="noopener">Prompting best practices (Claude docs)</a> — context, examples in tags, roles and the colleague test.</li>
+          <li id="src-16"><a href="https://docs.cloud.google.com/vertex-ai/generative-ai/docs/learn/prompts/introduction-prompt-design" target="_blank" rel="noopener">Introduction to prompting (Google Cloud Vertex AI)</a> — the parts of a prompt, system instructions and few-shot examples.</li>
+          <li id="src-17"><a href="https://arxiv.org/abs/2005.14165" target="_blank" rel="noopener">Language Models are Few-Shot Learners (Brown et al., 2020)</a> — few-shot demonstrations given as text, with no gradient updates.</li>
+          <li id="src-18"><a href="https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations" target="_blank" rel="noopener">Reduce hallucinations (Claude docs)</a> — what a hallucination is, the defences, and their limit.</li>
+          <li id="src-19"><a href="https://platform.claude.com/docs/en/build-with-claude/working-with-messages" target="_blank" rel="noopener">Using the Messages API (Claude docs)</a> — why the full conversation is sent on every turn.</li>
+          <li id="src-20"><a href="https://developers.openai.com/api/docs/guides/model-optimization" target="_blank" rel="noopener">Model optimization (OpenAI API docs)</a> — when prompting is enough and what fine-tuning costs.</li>
+          <li id="src-21"><a href="https://genai.owasp.org/llmrisk/llm092025-misinformation/" target="_blank" rel="noopener">OWASP Top 10 for LLM Applications, LLM09:2025 Misinformation</a> — non-existent libraries and overreliance.</li>
+          <li id="src-22"><a href="https://pandas.pydata.org/pandas-docs/version/3.0/reference/frame.html" target="_blank" rel="noopener">DataFrame API reference, pandas 3.0.6 documentation</a> — the DataFrame methods that exist, and no count_by among them.</li>
+          <li id="src-23"><a href="https://pandas.pydata.org/pandas-docs/version/3.0/reference/api/pandas.Series.value_counts.html" target="_blank" rel="noopener">pandas.Series.value_counts, pandas 3.0.6 documentation</a> — the method that counts unique values.</li>
+          <li id="src-24"><a href="https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/" target="_blank" rel="noopener">OWASP Top 10 for LLM Applications, LLM02:2025 Sensitive Information Disclosure</a> — what counts as sensitive information and why users must not paste it.</li>
+          <li id="src-25"><a href="https://github.com/2494-Gen-AI-CN/demos/blob/55f65d7/ticket-desk/db.py" target="_blank" rel="noopener">ticket-desk/db.py at 55f65d7</a> — the desk reads its database password from DESK_DB_PASSWORD.</li>
+          <li id="src-26"><a href="https://github.com/2494-Gen-AI-CN/demos/blob/55f65d7/ticket-desk/desk.py" target="_blank" rel="noopener">ticket-desk/desk.py at 55f65d7</a> — desk.redact and the EMAIL pattern it uses.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · after you have read the page</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 5 Day 1</footer>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 1 — goals</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Explain what generative AI is, where it sits inside AI, machine learning and deep learning, and its common applications</li>
+      <li>Explain the basic theory of how a large language model writes: tokens, next-token prediction, the context window and sampling</li>
+      <li>Say why the same prompt can give two answers and why a fluent answer can be false, and check a claim against the docs</li>
+      <li>Improve a prompt in rounds, from zero-shot through few-shot examples, constraints and an instruction block</li>
+      <li>Name what never goes into a public chat assistant and who owns a generated line</li>
+    </ul>
+    <p class="goals-foot">Tuesday assumes this page's vocabulary: token, context window, few-shot, constraint, hallucination.</p>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Day 2 — LLM landscape & API basics →", href: "day-2-llm-landscape-and-api-basics.html" };
+window.DIAGRAM = {
+  title: "Day 1 · from a model's words to a prompt you can trust",
+  width: 500, height: 566,
+  nodes: [
+    { id:"circles", step:0, x:24, y:14, w:200, h:56, label:"Nested circles\n  AI > ML > DL > GenAI", detail:"AI solves sophisticated tasks; machine learning trains a model from data; deep learning uses networks with more than one hidden layer; generative AI creates content and is built mostly on deep learning." },
+    { id:"rule", step:0, x:276, y:14, w:200, h:56, label:"Two ways to a rule\n  written · learned from labels", detail:"A person writes if \"500\" in title; supervised learning finds the rule from past tickets, with the priority as the label. Without data, ship the written rule." },
+    { id:"llm", step:1, x:24, y:94, w:452, h:52, label:"LARGE LANGUAGE MODEL\n  tokens · next-token probabilities · context window · sampling", detail:"The model scores every possible next token from what is in its window, samples one and repeats. Temperature sets how random the pick is; even at 0 replies can vary." },
+    { id:"r1", step:2, x:24, y:170, w:200, h:52, label:"Round 1 · zero-shot\n  invents P1 to P4", detail:"One sentence, no context: the reply invents tiers and hours and gives no reason line. First fix: the three priorities, their SLA hours and the output wanted." },
+    { id:"r2", step:3, x:276, y:170, w:200, h:52, label:"Round 2 · few-shot\n  Invoice PDF is blank: high", detail:"One labelled example per priority, three held-out titles. Two right; the blank invoice comes back high where the seed says normal, a team decision no example shows." },
+    { id:"r3", step:3, x:276, y:246, w:200, h:52, label:"Round 3 · constraints\n  one word, one reason, unsure", detail:"The labels are right, but one line reads \"This is probably high.\" and fails the allowed-words check." },
+    { id:"r4", step:4, x:24, y:246, w:200, h:52, label:"Round 4 · instruction block\n  role · audience · rules · format", detail:"high, normal, unsure, each on its own line with a reason: the expected output." },
+    { id:"dialog", step:4, x:24, y:322, w:200, h:52, label:"Dialog state\n  whole chat re-sent each turn", detail:"A new chat starts empty; old turns can roll out of the window, so long chats drift. A follow-up turn fixes one line." },
+    { id:"ft", step:5, x:276, y:322, w:200, h:52, label:"Conditioning vs fine-tuning\n  the input · the parameters", detail:"Prompting steers through the window for one conversation; fine-tuning is a second training pass that changes the weights." },
+    { id:"hall", step:6, x:24, y:398, w:452, h:52, label:"HALLUCINATION\n  df.count_by does not exist · df[\"priority\"].value_counts()", detail:"Confident, false content from predicting likely text with no lookup. Check the docs for the pinned version, then run it." },
+    { id:"rules", step:7, x:24, y:474, w:452, h:52, label:"RESPONSIBLE USE\n  never paste secrets or client data · redact by hand · own the line", detail:"PII, credentials, the employer's code and client data stay out of public chats. desk.redact hides emails only. The committer reads, tests and owns every generated line." },
+    { id:"check", step:8, x:24, y:542, w:452, h:20, label:"CHECK YOURSELF · answer out loud, then open" }
+  ],
+  edges: [
+    { id:"e1", step:0, from:"circles", to:"rule", label:"ML is one way" },
+    { id:"e2", step:1, from:"circles", to:"llm", label:"GenAI, inside DL" },
+    { id:"e3", step:2, from:"llm", to:"r1", label:"a prompt" },
+    { id:"e4", step:3, from:"r1", to:"r2", label:"+ context, examples" },
+    { id:"e5", step:3, from:"r2", to:"r3", label:"+ constraints" },
+    { id:"e6", step:4, from:"r3", to:"r4", label:"+ instructions" },
+    { id:"e7", step:4, from:"r4", to:"dialog", dir:"-" },
+    { id:"e8", step:5, from:"dialog", to:"ft", label:"conditioning" },
+    { id:"e9", step:6, from:"llm", to:"hall", label:"no lookup", dir:"-" },
+    { id:"e10", step:7, from:"hall", to:"rules", label:"check, then own" },
+    { id:"e11", step:8, from:"rules", to:"check", dir:"-" }
+  ],
+  captions: [
+    "AI contains machine learning, which contains deep learning, and a rule can be written by a person or learned from labelled examples. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "A large language model writes one token at a time from what is in its context window, and sampling makes replies vary.",
+    "Round 1 is zero-shot: one sentence and no context, so the reply invents tiers the desk does not have.",
+    "Round 2 adds one example per priority and round 3 adds constraints; examples cannot carry a team decision, and code checks the reply.",
+    "Round 4's instruction block gives the expected output, and the dialog state is the whole conversation re-sent every turn.",
+    "Conditioning changes the input for one conversation; fine-tuning changes the model's parameters with a second training pass.",
+    "A hallucination is confident, false content: check the docs for the pinned version and run the code.",
+    "Responsible use: what never goes into a public chat, why one regex is not redaction, and who owns a generated line.",
+    "You can now explain generative AI, how a model writes, how to improve a prompt in rounds, and how to use one safely."
+  ]
+};
+window.QUIZ = {
+  id: "w05-d1",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "A chat assistant is writing its reply to the third message of a conversation. What does the model receive?",
+      options: ["Only the third message", "The instruction block, all earlier messages and replies, and the third message", "Its training data and the third message", "Every conversation the same user has had"], answer: 1,
+      explain: "The conversation is stateless on the model's side: the full history is re-sent every turn. A new chat starts with only its own messages." },
+    { type: "scq", stem: "A few-shot prompt has one correct example per priority, yet the reply labels Invoice PDF is blank high where the desk says normal. Which change addresses it?",
+      options: ["Add three more high examples", "Allow the answer unsure when the title gives no evidence, so a person decides", "Raise the temperature", "Fine-tune a model on the six seed tickets"], answer: 1,
+      explain: "No example shows the team's decision about billing tickets, so more guessing does not help. A constraint with an unsure answer hands the case back to the person on the desk." },
+    { type: "tf", stem: "Setting temperature to 0 makes a model give exactly the same reply to the same prompt every time.", answer: false,
+      explain: "At temperature 0 the most likely tokens are picked, and replies are mostly deterministic, but the docs say a small amount of variation is still possible." },
+    { type: "mcq", stem: "Which of these must never be pasted into a public chat assistant, even after editing? Select all that apply.",
+      options: ["The export line that sets DESK_DB_PASSWORD", "A sample of a client's dataset", "A public error message", "transform.clean_events from the employer's code", "An anonymised ticket title"], answer: [0, 1, 3],
+      explain: "A credential, client data and the employer's code never go into a public chat. A public error message and an anonymised title carry nothing private." },
+    { type: "match", stem: "Match each term to what it means.",
+      pairs: [
+        { l: "zero-shot prompt", r: "the task with no example of the answer" },
+        { l: "few-shot prompt", r: "a few worked examples in the prompt before the question" },
+        { l: "fine-tuning", r: "a second training pass that changes the model's parameters" },
+        { l: "hallucination", r: "confidently stated content that is false" }
+      ],
+      explain: "Zero-shot and few-shot differ by examples in the prompt; both are conditioning. Fine-tuning changes the model itself. A hallucination reads like a correct answer." },
+    { type: "open", stem: "In two or three sentences: what is generative AI, and how does a large language model produce text?",
+      hint: "Content from input; tokens; probabilities; the context window.",
+      model: "Generative AI is a class of models that create new content, such as text, code or images, from user input, used for drafting documents, summarising, answering questions and working with code. A large language model writes one token at a time: it gives every possible next token a probability based on everything in its context window, samples one, appends it and repeats until the reply is done." }
+  ]
+};
+</script>
+
+<script src="../../assets/js/diagram.js?v=20261103"></script>
+<script src="../../assets/js/scrolly.js?v=20261103"></script>
+<script src="../../assets/js/modals.js?v=20261103"></script>
+<script src="../../assets/js/quiz.js?v=20261103"></script>
+<script src="../../assets/js/widgets.js?v=20261103"></script>
+<script src="../../assets/js/glossary.js?v=20261103"></script>
+</body>
+</html>

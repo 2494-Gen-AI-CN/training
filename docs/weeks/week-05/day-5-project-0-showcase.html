@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w05d5">
+<title>W5·D5 — Project 0 showcase | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261103">
+<script src="../../assets/js/theme.js?v=20261103"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="../../exit-criteria/index.html">Exit criteria</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>Project 0 showcase: presenting data work to a client and telling it in an interview</h1>
+        <div class="meta">
+          <span><b>Week 5</b> · Day 5</span>
+          <span>Fri Nov 13, 2026</span>
+          <span>Gen AI introduction</span>
+          <span><b>~40 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span class="verified">Sources checked 2026-11-03 · python 3.15</span>
+          <span class="exit"><a href="../../exit-criteria/qc-3-data-and-gen-ai-fundamentals.html#w05d5">Exit criteria</a></span>
+        </div>
+        <p class="summary">This page assumes the week's Gen AI ideas up to Thursday's review of generated code, and the
+        Project 0 work your pair built over two weeks: a BigQuery warehouse, five or more SQL files, charts and a deck. It is
+        study material for after the showcase. It covers presenting data work to a mixed audience of managers, what a
+        manager keeps from a talk and asks about it, and running queries live without losing the audience. It then tells
+        the same project as an interview story in situation, task, action and result, and reads the P0 rubric as a
+        definition of done. Afterwards you can answer "how would you present this to a non-technical manager?" and "tell
+        me about a project you built with a partner" in a few spoken sentences.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="0">
+        <div class="tag">Presenting</div>
+        <h2>Presenting data work to a client: the business case first, the finding as the title</h2>
+        <p>A data project ends when someone who did not build it makes a decision with it. Two weeks of loading, cleaning
+        and modelling become fifteen minutes of talk, and the people listening judge the work by what they can repeat
+        afterwards.</p>
+        <h3>Know who is listening</h3>
+        <p>Google's technical writing course tells you to define an audience by role first, then by how close it is to the
+        knowledge you are sharing.<sup class="cite"><a href="#src-1">1</a></sup> A project manager, a data engineer and a
+        head of operations can sit in the same meeting and need different things from it. Role tells you what each one
+        decides. Proximity tells you how much of your vocabulary they share.</p>
+        <p>The same course names the trap: the curse of knowledge. Experts skip steps that feel obvious to them, and as
+        the audience widens you should assume that you must explain more.<sup class="cite"><a href="#src-1">1</a></sup>
+        To a head of operations, staging table and grain are noise until someone says what they mean for the
+        business.</p>
+        <p>The Project 0 spec names its audience as technical and non-technical managers who care about what the data
+        says, not how it was stored. A mixed audience like that gets the business case and the finding first, and the
+        method when someone asks for it. The technical manager will ask, and step 3 covers what they ask.</p>
+        <h3>Open with the business case</h3>
+        <p>A business case is the one or two paragraphs that say who the client is, what they want to know and why it
+        matters to them, written so a non-technical manager can read it. The P0 README opens with it, and the deck opens
+        with the client and what they asked before any table or chart appears.</p>
+        <p>The first slide of a client deck holds three things:</p>
+        <ul>
+          <li>the client, named in one line, with what they do</li>
+          <li>the question they asked, in their words, or the three to five questions the README lists</li>
+          <li>the decision the answer feeds, such as where to add staff or which programme to expand</li>
+        </ul>
+        <p>The common slip is to open with the pipeline: the staging tables, the star schema and the cleansing rules. That
+        order follows how you built the project, while the audience wants the order in which they would use it, which
+        starts with their own question.</p>
+        <h3>The finding as the slide title</h3>
+        <p>The UK Government Analysis Function's chart guidance says a chart's headline title should state the chart's
+        headline message, with an example such as "Increase in number of people living alone". A separate statistical
+        subtitle then says what the data is, its geography and its time period.<sup class="cite"><a href="#src-2">2</a></sup>
+</p>
+        <p>Penn State's assertion-evidence approach makes the same move for whole slides. Each slide is built on a
+        succinct sentence message instead of a phrase topic, and the body is visual evidence for that sentence instead of
+        a bulleted list.<sup class="cite"><a href="#src-3">3</a></sup> A manager who reads only the titles of your deck
+        should come away with your argument.</p>
+        <table>
+          <thead><tr><th>Topic title (what the slide is about)</th><th>Finding title (what the slide shows)</th></tr></thead>
+          <tbody>
+            <tr><td>Results</td><td>Members ride half as long as casual riders (illustrative)</td></tr>
+            <tr><td>avg_duration by member_type</td><td>Casual riders take the longest trips on weekends (illustrative)</td></tr>
+            <tr><td>Tickets by priority</td><td>Normal tickets close after their 24-hour SLA more often than high ones (illustrative)</td></tr>
+          </tbody>
+        </table>
+        <p>You recognise a topic deck on sight: titles that are column names, single nouns such as "Results" or "Analysis", or a query's name. A finding
+        deck reads as sentences, usually with a number or a direction in each one, and the subtitle under the chart says
+        which data, where and when.</p>
+        <h3>One message per chart</h3>
+        <p>A finding title commits each slide to one message, which is both its strength and its limit. The Analysis
+        Function's quick test: if you cannot describe a chart's message over the phone in a few sentences, simplify it or
+        split it into several charts, because one chart should not carry too many
+        messages.<sup class="cite"><a href="#src-2">2</a></sup></p>
+        <p>The same guidance asks you to keep charts as simple as possible.<sup class="cite"><a href="#src-2">2</a></sup></p>
+        <ul>
+          <li>Remove shaded backgrounds, borders, shadows and 3D shapes.</li>
+          <li>Keep a line chart to about four lines.</li>
+          <li>Keep a pie chart to five or fewer categories.</li>
+        </ul>
+        <p>If writing the finding title is hard, the chart is probably answering two questions, and the fix is a second
+        slide.</p>
+        <div class="ix-spot" data-snippet="Slide 1  Bike share for the City of Toronto: where should new docks go?&#10;Slide 2  Data and method&#10;Slide 3  trips_by_station&#10;Slide 4  Three downtown stations carry most weekday rides (illustrative)&#10;Slide 5  Recommendation: add docks at the three busiest stations first" data-q="Which two slide titles would you rewrite before presenting this deck, and how?" data-a="Slide 3 is a column name and slide 2 is a topic. Slide 3 becomes a sentence stating what the station chart shows. Slide 2 moves later in the talk, or becomes a one-line subtitle, because the audience wants the answer before the method."></div>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Define the audience by role, then by how close it is to your knowledge.</li>
+          <li>The first slide names the client, their question and the decision it feeds.</li>
+          <li>Each slide title is a sentence stating the finding; the subtitle says which data, where and when.</li>
+          <li>A chart you cannot describe over the phone in a few sentences needs splitting.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>With ten minutes and a non-technical manager, my first slide names the client, the question they asked and
+          the decision it feeds. I leave the pipeline for later, because they care about what the data says, and I can
+          explain the method if someone asks.</p>
+          <p>A topic title like "Monthly rides by station" tells you what the chart is about. A finding title is a
+          sentence that says what it shows, with the number in it. On a client slide I use the finding, so someone who
+          reads only the titles still gets the argument.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">Presenting</div>
+        <h2>The recommendation and the risk: what a manager keeps from a talk</h2>
+        <p>A finding on its own is only information. The talk is worth its fifteen minutes when it turns the findings into a
+        recommendation, and it earns trust by saying plainly how far that recommendation can be relied on.</p>
+        <h3>Three things a manager takes away</h3>
+        <p>Ask a manager a day later what a data talk said and you rarely hear about the join or the chart type. What
+        survives is short:</p>
+        <ul>
+          <li>the finding: what the data shows, in one sentence</li>
+          <li>the recommendation: what the speakers think the client should do about it</li>
+          <li>the risk: what could make that recommendation wrong, and how much it matters</li>
+        </ul>
+        <p>Plan the talk backwards from those three. Write the recommendation first, then pick the two or three findings
+        that support it, then name the limitation that most affects it. Every slide that serves none of the three is a
+        candidate for the appendix.</p>
+        <p>This also settles what to cut when the slot shrinks. A shorter talk keeps the finding, the recommendation and
+        the risk, and drops the second example, the extra chart and the method detail.</p>
+        <h3>Close on something the audience can act on</h3>
+        <p>Scrum has a meeting built around exactly this moment. In the Sprint Review, the Scrum Guide says, "The Scrum
+        Team presents the results of their work to key stakeholders", and then "attendees collaborate on what to do
+        next".<sup class="cite"><a href="#src-4">4</a></sup> A data talk to a client follows the same shape: here is what
+        we found, and here is what we suggest you do next.</p>
+        <p>The P0 deck closes with what the pair recommends. A recommendation a manager can act on has a few parts:</p>
+        <ul>
+          <li>an action, phrased as a verb: add, move, stop, test, staff</li>
+          <li>who or what it applies to: a station, a priority, a customer segment, a season</li>
+          <li>the slide that supports it, so the audience can look back at the evidence</li>
+          <li>the next step that would confirm it, such as a small trial or another month of data</li>
+        </ul>
+        <p>The desk's own warehouse queries show the habit at small scale. Each one opens with a comment line saying what
+        the answer means for the desk, for example "The busiest weekday per agent is where a second agent helps." That
+        sentence becomes a recommendation once it has a number.</p>
+        <h3>State the risk before anyone asks</h3>
+        <p>The Government Analysis Function's guidance on communicating quality says that being upfront about quality,
+        uncertainty and limitations protects the integrity of findings. Overstated certainty risks "inappropriate
+        decisions", and the analyst's role is to explain how the limitations feed through into the decisions users
+        take.<sup class="cite"><a href="#src-5">5</a></sup></p>
+        <p>Tie each limitation to the decision. A limitation slide that lists every flaw in the data is hard to use, while a
+        sentence saying "this affects the recommendation in this way" lets the manager weigh it. P0 work usually carries
+        a few predictable limits:</p>
+        <ul>
+          <li>the dataset covers one city, one period or one source, so the finding may not travel</li>
+          <li>the cleansing rules sent some rows to the rejects table, and those rows are missing from every answer</li>
+          <li>the type 2 change was introduced by the pair because nothing in the raw data changed over time</li>
+          <li>the correlation slide shows two measures moving together, which is weaker evidence than a test</li>
+        </ul>
+        <p>Say the limit next to the recommendation it affects. At the end of the talk it reads like small print; beside
+        the claim, it shows you understood your own numbers.</p>
+        <h3>A correlation is not a cause</h3>
+        <p>The NIST/SEMATECH e-Handbook states it directly: association does not imply causality, and a correlation can
+        never prove cause and effect.<sup class="cite"><a href="#src-6">6</a></sup> Two measures can rise together for
+        reasons other than cause:</p>
+        <ul>
+          <li>a third factor drives both</li>
+          <li>the arrow runs the other way</li>
+          <li>chance in a small sample</li>
+        </ul>
+        <p>The P0 spec asks for one correlation stated in the client's terms with a line on why it may not be a cause. The
+        shape is two sentences. The first states the relationship ("stations near transit see more short trips",
+        illustrative). The second gives the most likely other explanation ("those stations are also downtown, where trips
+        are short anyway").</p>
+        <p>The follow-up an interviewer likes here is the hard case: your strongest chart supports a recommendation the
+        data only partly backs. Keep the recommendation, say how far the evidence goes, and propose the cheap test that
+        would settle it. That leaves the manager with a decision they can make this week and a way to check it.</p>
+        <div class="ix-predict" data-q="A pair's slide is titled &quot;Warmer days cause more bike trips&quot;, drawn from a scatter plot of temperature against daily trips. What would a careful manager ask, and how should the title change?" data-a="The manager asks how the pair knows temperature is the cause, since season, daylight and school holidays move with it. The title becomes a relationship, such as &quot;Daily trips rise with temperature&quot;, with a line under the chart naming season as another explanation."></div>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A manager keeps the finding, the recommendation and the risk.</li>
+          <li>Close like a Sprint Review: results, then what to do next.</li>
+          <li>State each limitation beside the recommendation it affects.</li>
+          <li>A correlation slide states the relationship and one reason it may not be a cause.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>When my best chart only partly backs the recommendation, I still make the recommendation, but I say how far
+          the evidence goes right beside it. Then I suggest the small test that would confirm it, so the manager can act
+          now and check later.</p>
+          <p>A correlation never proves a cause. On a slide I state the relationship in the client's terms and add one
+          line on the other explanation, usually a third factor that drives both measures.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">Presenting</div>
+        <h2>What technical and non-technical managers ask, and why</h2>
+        <p>Questions are part of the talk, and the Sprint Review shows why: the point of presenting results to
+        stakeholders is that the attendees then work out together what to do
+        next.<sup class="cite"><a href="#src-4">4</a></sup> You can predict most questions from the asker's role, which is
+        the first thing the audience guidance asks you to pin down.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <h3>The non-technical manager's questions</h3>
+        <p>A non-technical manager decides what the business does with your finding. Their questions test whether the
+        finding is worth acting on and what acting on it costs. They are far from your knowledge, so they ask about
+        consequences.</p>
+        <ul>
+          <li>"So what does this mean for us?" The finding has to connect to their goal, such as revenue, cost, service or
+          risk.</li>
+          <li>"How sure are you?" They are pricing the risk of being wrong.</li>
+          <li>"What would you do first?" They want the recommendation as one action they can approve.</li>
+          <li>"What would it take to be more certain?" They are deciding between acting now and waiting.</li>
+        </ul>
+        <p>"How sure are you?" is the question that catches presenters who left the limitations out. The Analysis
+        Function's point applies here: the answer explains how the limits feed into the decision, so the manager can avoid
+        an inappropriate one.<sup class="cite"><a href="#src-5">5</a></sup> A presenter who already named the risk beside
+        the recommendation answers by pointing back to that slide.</p>
+        <h3>The technical manager's questions</h3>
+        <p>A technical manager is close to your knowledge and is deciding something else: whether to trust the numbers.
+        Their questions probe the pipeline underneath the finding. Because they share your vocabulary, the curse of
+        knowledge works in your favour here, and you can answer in the terms you built
+        with.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <table>
+          <thead><tr><th>Question</th><th>What it is checking</th><th>What a good answer holds</th></tr></thead>
+          <tbody>
+            <tr><td>Where does the data come from, and how much of it is there?</td><td>Whether the sample can support the claim</td><td>The source, the row count and the period it covers</td></tr>
+            <tr><td>What did you throw away?</td><td>Whether cleaning biased the result</td><td>The cleansing rules and how many rows went to the rejects table</td></tr>
+            <tr><td>Can someone else rerun this?</td><td>Whether the result is reproducible</td><td>The README, the configuration file and the fact that a second run adds nothing</td></tr>
+            <tr><td>Why is the fact table at that grain?</td><td>Whether the model fits the questions</td><td>The grain in one sentence and the question it serves</td></tr>
+            <tr><td>Is that relationship a cause?</td><td>Whether the claim outruns the evidence</td><td>The relationship, plus the other explanation you considered</td></tr>
+          </tbody>
+        </table>
+        <p>The last row is the one where both kinds of manager meet. A correlation can never prove cause and
+        effect,<sup class="cite"><a href="#src-6">6</a></sup> and the technical manager will ask whether you know that
+        while the non-technical one asks whether to act on it. One answer serves both, in three parts:</p>
+        <ol>
+          <li>the relationship</li>
+          <li>the alternative explanation</li>
+          <li>the test that would separate them</li>
+        </ol>
+        <h3>Answer in two sentences</h3>
+        <p>A question at the end of a talk has a short window. A long answer loses the person who asked and the people
+        who did not. A two-sentence shape keeps it tight:</p>
+        <ol>
+          <li>the answer itself, as directly as you can say it</li>
+          <li>the evidence behind it, or the limitation that bounds it</li>
+        </ol>
+        <p>Take an illustrative exchange about the desk. A manager asks how sure the pair is that normal tickets are the
+        problem. The answer: "Fairly sure for the period we have: normal tickets averaged past their 24-hour SLA in every
+        week of the sample. The sample is a few weeks long, so we would check another month before changing staffing."
+        The numbers are invented for the example.</p>
+        <p>The hardest version is a question your data cannot answer. Say so in the first sentence, and in the second say
+        what data would answer it. "Our dataset has no cost column, so I can't say which option is cheaper. The
+        finance team's per-dock figures would let us add that in a day."</p>
+        <p>You recognise a weak answer by its length and its opening. It starts with "So, basically, the way we built
+        it..." and walks through the pipeline before reaching the point. A strong one starts with yes, no or a number.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Non-technical managers ask about consequences: so what, how sure, what first.</li>
+          <li>Technical managers ask whether to trust the numbers: source, rejects, rerun, grain.</li>
+          <li>Answer in two sentences: the answer, then the evidence or the limit.</li>
+          <li>When the data cannot answer, say so and name the data that would.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Non-technical managers usually ask "so what", "how sure are you" and "what would you do first", because
+          they're deciding whether to act. Technical managers ask where the data came from, what I threw away and whether
+          they can rerun it, because they're deciding whether to trust it.</p>
+          <p>If a manager asks something my data can't answer, I say that in one sentence, and in the second I say what
+          data would answer it and how long it would take to add.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="3">
+        <div class="tag">Live queries</div>
+        <h2>Running queries live in front of an audience</h2>
+        <p>The P0 spec asks for the queries to run in BigQuery during the talk. A live query is the riskiest minute of
+        the slot and the most convincing one, so this step covers knowing what the console will show before you press
+        anything, and what to do when it does something else.</p>
+        <h3>Why run the query instead of showing a screenshot</h3>
+        <p>A screenshot proves that a query once returned something. Running it in front of the audience proves three
+        things:</p>
+        <ul>
+          <li>the warehouse exists</li>
+          <li>the tables are loaded</li>
+          <li>the SQL in your repository is the SQL behind the chart</li>
+        </ul>
+        <p>The P0 rubric's line "the warehouse is real" is judged in exactly these minutes.</p>
+        <h3>What the editor tells you before you press Run</h3>
+        <p>BigQuery's query editor checks the SQL as you type. A valid query shows a check mark and the amount of data the
+        query will process when run, and after it runs the rows appear in the Results tab of the Query results
+        pane.<sup class="cite"><a href="#src-7">7</a></sup> Console queries run as interactive jobs by default, which "are
+        intended to start executing as quickly as possible"; batch queries are lower priority and may
+        queue.<sup class="cite"><a href="#src-7">7</a></sup></p>
+        <p>Here is the first query in the ticket desk's <code>warehouse/questions.sql</code>, a file in the same shape the
+        P0 spec asks for: the question and its meaning as comments, then the SQL.</p>
+<pre><code>-- How long does a ticket take to close, per priority?
+-- A priority whose average passes its SLA is where the desk staffs first.
+SELECT t.priority, t.sla_hours, AVG(f.hours_since_open) AS hours_to_close, SUM(f.event_count) AS closed,
+  CASE WHEN AVG(f.hours_since_open) &lt;= t.sla_hours THEN 'within SLA'
+  ELSE 'over SLA' END AS sla_band
+FROM desk_dw.fact_ticket_events AS f
+JOIN desk_dw.dim_ticket AS t ON t.ticket_key = f.ticket_key
+WHERE f.kind = 'closed'
+GROUP BY t.priority, t.sla_hours
+ORDER BY t.priority;</code></pre>
+        <p>It returns one row for each priority that has closed tickets, sorted by name, with five columns:
+        <code>priority</code>, <code>sla_hours</code>, <code>hours_to_close</code>, <code>closed</code> and
+        <code>sla_band</code>. The exact numbers depend on what was loaded into <code>desk_dw</code>, which is why a
+        presenter reads them off the screen instead of from memory.</p>
+        <p>The comment lines are your script for a short routine:</p>
+        <ol>
+          <li>Open the saved query, or the <code>.sql</code> file, before the slide that needs it.</li>
+          <li>Read the first comment aloud: this is the question the query answers.</li>
+          <li>Point at the check mark and the bytes estimate, then press Run.</li>
+          <li>Read one number aloud from the Results tab and say what it means, using the second comment.</li>
+          <li>Switch back to the deck, where the chart shows the same answer.</li>
+        </ol>
+        <h3>Saved queries, history and the fallback</h3>
+        <p>Saved queries are BigQuery Studio code assets powered by Dataform, available only in the console, and classic
+        saved queries are deprecated.<sup class="cite"><a href="#src-8">8</a></sup> A closed tab has three ways back:</p>
+        <ul>
+          <li>a saved query: Save, then Save query (Control+S), reopened from the Files or Explorer pane; if saving fails,
+          the Dataform API might not be enabled<sup class="cite"><a href="#src-9">9</a></sup></li>
+          <li>Personal history in the Explorer pane, where "Open as new query" puts a past job's SQL back in the
+          editor<sup class="cite"><a href="#src-10">10</a></sup></li>
+          <li>the <code>.sql</code> file in the repository, pasted into a new tab; it is the source of truth, because the
+          hand-in contains it</li>
+        </ul>
+        <h3>The cache, the sandbox and a stalled query</h3>
+        <p>Run exactly the same query text a second time and BigQuery returns the result from a cached table, typically
+        for about 24 hours and on a best-effort basis. Any change to the text, even whitespace or a comment, prevents the
+        cache hit. When the cache answers, Job information shows "0 B (results
+        cached)".<sup class="cite"><a href="#src-11">11</a></sup></p>
+        <p>That is why a rehearsal run of the identical text shortly before the talk makes the real run fast: the query comes
+        back instantly.
+        If someone asks about the 0 B, it means the result came from the earlier run of the identical text; changing the
+        text runs it fresh.</p>
+        <p>The cache matters more in the free sandbox, which has hard limits:<sup class="cite"><a href="#src-12">12</a></sup></p>
+        <ul>
+          <li>10 GiB of storage for the lifetime of the sandbox, which is not refunded when you delete data</li>
+          <li>1 TiB of processed query data a month</li>
+          <li>tables, views and partitions expire automatically 60 days after creation</li>
+          <li>no DML, no streaming and no Data Transfer Service</li>
+        </ul>
+        <p>Editing a query on stage, even adding a comment, runs it fresh and spends bytes from the monthly allowance.
+        Reloading tables on the day spends storage that never comes back.</p>
+        <p>If the job just sits there, do not wait in silence. Say what the query asks and what it will show, move
+        on to the next slide, and come back to the Results tab when it finishes. The deck already carries the chart, so
+        the argument does not depend on the spinner.</p>
+        <p>Switching screens is the other place a live query goes wrong. Rehearse the switch from deck to console and
+        back on the projector you will use.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A live query proves the warehouse is real; a screenshot proves it once worked.</li>
+          <li>Read the question aloud, point at the bytes estimate, run, then read one number.</li>
+          <li>Identical query text returns from the cache as "0 B (results cached)".</li>
+          <li>When a job stalls, say what it asks, move on and come back.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I run queries live because it shows the warehouse is real and the SQL in the repo is what's behind the
+          chart. Before I press Run I say what question the query answers, and afterwards I read one number aloud and say
+          what it means for the client.</p>
+          <p>If the warehouse stalls mid-talk, I say what the query is asking, move to the next slide, which has the
+          chart, and come back to the results when they land. If a rerun shows zero bytes, I explain that the result came
+          from the cache of the identical earlier run.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">Interview</div>
+        <h2>Telling a project in an interview: situation, task, action, result</h2>
+        <p>An interview asks you to tell Project 0 again as yours, to a different
+        listener, in about two minutes: a real dataset, a cloud warehouse, tests and a deck.</p>
+        <h3>Behavioural and hypothetical questions</h3>
+        <p>Google's guide to structured interviewing separates two kinds of question. Behavioural questions ask you to
+        describe prior achievements ("Tell me about a time you..."). Hypothetical questions present a job-related
+        situation and ask what you would do ("What would you do if...").<sup class="cite"><a href="#src-14">14</a></sup></p>
+        <p>The same guide says interviewers plan follow-up questions to "help elicit a high level of detail", and score
+        answers against a shared rubric of poor, borderline, solid and
+        outstanding.<sup class="cite"><a href="#src-14">14</a></sup> So a project story has to survive follow-ups
+        such as "What was your part?" and "What if the data were a hundred times bigger?"</p>
+        <p>A behavioural question wants a past story with a beginning and an end; a
+        hypothetical one wants your reasoning about something new, and P0 supplies that too. "We loaded a
+        hundred thousand rows (illustrative). At a hundred times that I would first check how many bytes each query
+        reads, because the sandbox allows 1 TiB of processed query data a month."<sup class="cite"><a href="#src-12">12</a></sup></p>
+        <h3>STAR, with the time where it belongs</h3>
+        <p>STAR is the usual structure for a behavioural answer: Situation, Task, Action, Result. The University of
+        Washington's career centre gives it proportions, and the Action is the steps "you personally took", with the
+        Result including quantifiable outcomes.<sup class="cite"><a href="#src-15">15</a></sup></p>
+        <table>
+          <thead><tr><th>Part</th><th>Share of the answer</th><th>What it holds for P0 (illustrative)</th></tr></thead>
+          <tbody>
+            <tr><td>Situation</td><td>about 20%</td><td>A pair project: a bike-share dataset rebuilt as a warehouse for an invented city client</td></tr>
+            <tr><td>Task</td><td>about 10%</td><td>My part: the ingestion job and its rejects handling</td></tr>
+            <tr><td>Action</td><td>about 60%</td><td>The validation rules I wrote, the rejects table, the tests, the load log, the rerun check</td></tr>
+            <tr><td>Result</td><td>about 10%</td><td>Rows loaded, rows rejected with a reason, the questions the queries answered</td></tr>
+          </tbody>
+        </table>
+        <p>You recognise a weak STAR answer by where the time goes. It spends most of two minutes on the situation and ends with no action and no number. A strong
+        one spends most of its time on sentences like "I wrote the rejects table so the job carried on past bad rows" and
+        ends on a result with a figure in it.</p>
+        <p>The same sentence answers "what did you get wrong the first time?" once it
+        starts with "My first version stopped at the first bad row, so".</p>
+        <p>MIT's career office says to prepare three to five stories as bullet notes and not to memorise scripts, which
+        sound unnatural and do not adapt to the question asked.<sup class="cite"><a href="#src-16">16</a></sup></p>
+        <h3>"I" for your part, and a number at the end</h3>
+        <p>On a pair project the temptation is "we did everything". MIT's guidance is to show ownership with "I"
+        statements instead of "we".<sup class="cite"><a href="#src-16">16</a></sup> Amazon, which calls STAR "the
+        cornerstone" of its behavioural interviews, asks for "precise metrics and data that quantify your impact" and
+        applies a "so what?" test. Its guide contrasts "we improved customer satisfaction" with a first-person sentence
+        that names the action and the number.<sup class="cite"><a href="#src-17">17</a></sup></p>
+        <p>Git records which part was yours, so you can say "I" honestly. The
+        <code>--author</code> option limits the log to commits whose author line matches a
+        pattern:<sup class="cite"><a href="#src-18">18</a></sup></p>
+<pre><code>git log --author="Ada" --oneline -- P0</code></pre>
+        <p>It prints one line per commit whose author line matches "Ada" and that touched <code>P0/</code>,
+        newest first, each line a short commit id and the summary line.<sup class="cite"><a href="#src-18">18</a></sup> Run it with your own
+        name, and the list is the bullet notes for your Action.</p>
+        <p>The "so what?" test is the Result. "I built the ingestion job" is a task; the load count, the rejects with
+        their reason and a rerun that adds zero rows are a result an interviewer can score.</p>
+        <p>The answer below is an example of that shape, and its counts stand in for your own. Hand over the
+        <code>P0/</code> link with it, so an interviewer can check the story against the README in a minute.</p>
+        <p>If an assistant helped you on P0, the week's rule gives you the honest sentence: you read, tested and own every
+        line you committed, and you can say which tests prove it. Nothing on this page needs an AI tool or account. If
+        you have a free chat assistant of your own, it can play the interviewer and ask follow-ups on your STAR notes,
+        provided no client data or credentials go into the chat.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Behavioural questions want a past story; hypothetical ones want your reasoning.</li>
+          <li>STAR spends about 60% on the Action and ends on a Result with a number.</li>
+          <li>Say "I" for your own part; git log with an author filter lists it.</li>
+          <li>Prepare three to five stories as bullet notes, never a memorised script.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>On Project 0 my partner and I rebuilt a bike-share dataset as a BigQuery warehouse for a city client. My part
+          was the ingestion job.</p>
+          <p>My first version stopped at the first bad row, so I wrote validation rules, a rejects table and pytest
+          tests. The fixed job loaded about a hundred thousand rows (illustrative), sent the malformed ones to the
+          rejects table with a reason, and a second run added zero rows.</p>
+          <p>Walking through the pipeline, I start at the raw files and the config that names them, then the staging
+          tables, the star schema with one type 2 dimension, and the SQL files that each answer one of the client's
+          questions.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
+        <div class="tag">Showcase</div>
+        <h2>The Project 0 showcase: the rubric and what a strong 15 minutes holds</h2>
+        <p>The showcase is one slot: a pair, a deck, a few live queries and one question from managers who did not build
+        the warehouse.</p>
+        <h3>The rubric as the definition of done</h3>
+        <p>The P0 spec ends with "What we look for", three lines that work as the showcase's acceptance criteria:</p>
+        <ul>
+          <li>the story lands: a non-technical listener leaves knowing what the data says and what you recommend</li>
+          <li>the warehouse is real: from a fresh clone, following the README, the job runs, the rows land in BigQuery
+          and the queries answer</li>
+          <li>the analysis matters: the features, the correlation and the charts each tell the client something they
+          can act on</li>
+        </ul>
+        <p>Read them as the showcase's Definition of Done. The Sprint
+        Review inspects the outcome of the Sprint with key stakeholders.<sup class="cite"><a href="#src-4">4</a></sup> The Review is timeboxed to four hours for a one-month
+        Sprint;<sup class="cite"><a href="#src-4">4</a></sup> the showcase gives each pair fifteen minutes, so every
+        minute has to serve one of the three lines.</p>
+        <h3>Fifteen minutes, minute by minute</h3>
+        <p>The spec's Presentation block sets the frame:</p>
+        <ul>
+          <li>15 minutes per pair</li>
+          <li>technical and non-technical managers in the audience</li>
+          <li>the deck, with queries run live in BigQuery</li>
+          <li>both partners speak</li>
+        </ul>
+        <p>About twelve minutes of deck and queries leaves time for a question.</p>
+        <table>
+          <thead><tr><th>Minutes</th><th>What happens</th><th>Who speaks</th></tr></thead>
+          <tbody>
+            <tr><td>0 to 1</td><td>The client, their question and the decision it feeds</td><td>Partner A</td></tr>
+            <tr><td>1 to 3</td><td>The data in one line, then the first finding with its chart</td><td>Partner A</td></tr>
+            <tr><td>3 to 7</td><td>The next findings, one or two of them proved with a live query</td><td>Partner B</td></tr>
+            <tr><td>7 to 10</td><td>The engineered features and the correlation, with its line on cause</td><td>Partner A</td></tr>
+            <tr><td>10 to 12</td><td>The recommendation and the risk that bounds it</td><td>Partner B</td></tr>
+            <tr><td>12 to 15</td><td>One question from the audience, answered in two sentences</td><td>Whoever owns that part</td></tr>
+          </tbody>
+        </table>
+        <p>When many pairs present, the slot can shrink to ten minutes. Rehearse a short version that keeps the first
+        slide, the recommendation, the risk and one live query, and drops a finding.</p>
+        <p>The joins between partners are where talks lose their thread. A planned hand-over
+        sentence fixes that by closing one part and opening the next: "That's where riders start their trips; Sam will
+        show where they end and what that means for new docks" (illustrative). Speaker notes and the slide timer in
+        PowerPoint's Presenter View help a pair stay inside the slot.<sup class="cite"><a href="#src-13">13</a></sup></p>
+        <p>The live part carries a trade-off. Running every query live proves the warehouse is real, but each fresh run
+        spends bytes from the sandbox's 1 TiB of processed query data a month and waits on the
+        job.<sup class="cite"><a href="#src-12">12</a></sup> A rehearsed query comes back from the cache at "0 B (results
+        cached)" only when its text is identical, and only best-effort for about 24
+        hours.<sup class="cite"><a href="#src-11">11</a></sup> A strong slot runs one or two rehearsed queries live and
+        shows the rest from the deck.</p>
+        <h3>A hand-in a stranger can run</h3>
+        <p>The second rubric line is checked from the hand-in, pushed to <code>P0/</code> in one partner's
+        learner repository before the showcase. It holds:</p>
+        <ul>
+          <li>the README, the configuration file with placeholders for anything private, and the ingestion code with its tests</li>
+          <li>the <code>.sql</code> files, the schema diagram, the charts and the slide deck</li>
+          <li>a sample load log, a sample of the rejects, and a link to the dataset</li>
+        </ul>
+        <p>The README's general job is to say what the project does, why it is useful and how
+        to get started,<sup class="cite"><a href="#src-19">19</a></sup> and the P0 version opens with the business case and
+        lets someone run everything from a fresh clone.</p>
+        <p>Credentials stay out of the hand-in. Running <code>gcloud auth application-default login</code> saves a
+        credential file at <code>%APPDATA%\gcloud\application_default_credentials.json</code> on Windows and at
+        <code>$HOME/.config/gcloud/application_default_credentials.json</code> on Linux and
+        macOS.<sup class="cite"><a href="#src-20">20</a></sup> The <code>GOOGLE_APPLICATION_CREDENTIALS</code> environment
+        variable can point at a credential JSON file instead.<sup class="cite"><a href="#src-20">20</a></sup> Both live
+        outside the repository.</p>
+        <p>Google's own page says "Service account keys create a security risk and are not recommended", because a leaked
+        key works for an attacker with no other information.<sup class="cite"><a href="#src-20">20</a></sup> No key file
+        goes into <code>P0/</code>.</p>
+        <p>A <code>.gitignore</code> tells Git which files to ignore when you commit, but a file that is already tracked
+        must be untracked before an ignore rule affects it.<sup class="cite"><a href="#src-21">21</a></sup> If a config
+        file with real values, for example <code>P0/config.yaml</code>, was committed once, stop tracking it and commit
+        the change:</p>
+<pre><code>git rm --cached P0/config.yaml
+git commit -m "Stop tracking the private config file"</code></pre>
+        <p>Git stops tracking the file but leaves it on your disk, so the ignore rule now applies; the earlier commit
+        still holds the real values, so anyone who can read the history can read them.<sup class="cite"><a href="#src-21">21</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>The three rubric lines are the showcase's definition of done.</li>
+          <li>About twelve minutes of deck and queries leaves room for one question.</li>
+          <li>Both partners speak, joined by a planned hand-over sentence.</li>
+          <li>Credentials live outside the repository; a committed secret stays in the history.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A strong fifteen minutes opens on the client and their question, spends the middle on findings with one or
+          two queries run live, closes on a recommendation and its risk, and leaves three minutes for a question. My
+          partner and I split it by section, with a planned sentence at each hand-over.</p>
+          <p>At each hand-over I close my part in one sentence and name what my partner will show next, so the audience
+          hears one argument, not two talks.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="6">
+        <div class="tag">Check yourself</div>
+        <h2>Check yourself</h2>
+        <p>Nine retrieval questions: one or more per section, and two that recap the week's Gen AI rules as they apply to
+        P0. Answer each out loud before you open it.</p>
+        <details class="check"><summary>A slide reads "Results" above a bar chart of trips per station. What do you change, and what goes under the chart?</summary><p>Rewrite the title as a sentence that states what the chart shows, with the number or direction in it. Under the chart, a subtitle says what the data is, where it comes from and which period it covers.</p></details>
+        <details class="check"><summary>What does a manager keep from a data talk, and where does the limitation belong?</summary><p>The finding, the recommendation and the risk. The limitation goes beside the recommendation it affects, phrased as how it changes the decision, so the manager can weigh it instead of finding it in small print at the end.</p></details>
+        <details class="check"><summary>A manager asks whether your correlation means one thing causes the other. What do you say?</summary><p>No: a correlation can never prove cause and effect. State the relationship in the client's terms, name the most likely other explanation, such as a third factor that drives both, and say what test would separate them.</p></details>
+        <details class="check"><summary>A manager asks a question your data cannot answer. What shape does your answer take?</summary><p>Two sentences. The first says plainly that the data cannot answer it and why; the second says what data would answer it and how long adding it would take.</p></details>
+        <details class="check"><summary>You rerun a rehearsed query and Job information shows "0 B (results cached)". Why, and what would stop that happening?</summary><p>BigQuery returned the result from its cache, because the query text was identical to an earlier run within roughly a day. Any change to the text, even a comment or whitespace, runs it fresh and spends bytes from the sandbox's 1 TiB a month.</p></details>
+        <details class="check"><summary>Halfway through a talk the query job sits there and nothing comes back. What do you do in the next thirty seconds?</summary><p>Say what the query asks and what it will show, move on to the next slide, which carries the chart, and return to the Results tab when the job finishes. If a tab was lost, Personal history and "Open as new query" bring the SQL back.</p></details>
+        <details class="check"><summary>Roughly how should a STAR answer split its time, and what does a weak one look like?</summary><p>About 20% situation, 10% task, 60% action and 10% result. A weak answer spends most of its time on the situation and the dataset, says "we" throughout and ends without a number.</p></details>
+        <details class="check"><summary>A pair committed its config file with a real project id and key path, then added it to <code>.gitignore</code>. Is it safe now?</summary><p>No. An ignore rule does not affect a file that is already tracked, so it needs <code>git rm --cached</code> and a commit, and the old commit still holds the values in the history. Credentials belong in an environment variable or a file outside the repository, with placeholders in the committed config.</p></details>
+        <details class="check"><summary>Week recap: an interviewer asks whether you used an AI assistant on P0. What can you say, whichever way the answer goes?</summary><p>P0 allowed an assistant and did not require one. If you used one, you read, tested and own every line you committed, you checked its claims about BigQuery or pandas against the official docs, and you never pasted client data, credentials or keys into a public chat. Either way, the tests and the README are the evidence.</p></details>
+      </section>
+
+      <section class="reading-sources" aria-label="Sources and deeper dive">
+        <h2>Sources &amp; deeper dive</h2>
+        <ul>
+          <li id="src-1"><a href="https://developers.google.com/tech-writing/one/audience" target="_blank" rel="noopener">Audience (Google Technical Writing One)</a> — role, proximity to the knowledge and the curse of knowledge.</li>
+          <li id="src-2"><a href="https://analysisfunction.civilservice.gov.uk/policy-store/data-visualisation-charts/" target="_blank" rel="noopener">Data visualisation: charts (Government Analysis Function)</a> — headline titles, the phone test and keeping charts simple.</li>
+          <li id="src-3"><a href="https://www.assertion-evidence.com/" target="_blank" rel="noopener">The Assertion-Evidence Approach (Penn State)</a> — slides built on a sentence message with visual evidence.</li>
+          <li id="src-4"><a href="https://scrumguides.org/scrum-guide.html" target="_blank" rel="noopener">The Scrum Guide</a> — the Sprint Review as a working session with stakeholders, and its timebox.</li>
+          <li id="src-5"><a href="https://analysisfunction.civilservice.gov.uk/policy-store/communicating-quality-uncertainty-and-change/" target="_blank" rel="noopener">Communicating quality, uncertainty and change (Government Analysis Function)</a> — why limitations are stated up front and tied to the decision.</li>
+          <li id="src-6"><a href="https://www.itl.nist.gov/div898/handbook/eda/section3/eda33q.htm" target="_blank" rel="noopener">NIST/SEMATECH e-Handbook: Scatter plot</a> — association does not imply causality.</li>
+          <li id="src-7"><a href="https://docs.cloud.google.com/bigquery/docs/running-queries" target="_blank" rel="noopener">Run a query (BigQuery)</a> — the check mark, the bytes estimate, the Results tab and interactive jobs.</li>
+          <li id="src-8"><a href="https://docs.cloud.google.com/bigquery/docs/saved-queries-introduction" target="_blank" rel="noopener">Introduction to saved queries (BigQuery)</a> — saved queries as Dataform-backed code assets; classic ones deprecated.</li>
+          <li id="src-9"><a href="https://docs.cloud.google.com/bigquery/docs/work-with-saved-queries" target="_blank" rel="noopener">Create saved queries (BigQuery)</a> — Save query, the Files pane and the Dataform API.</li>
+          <li id="src-10"><a href="https://docs.cloud.google.com/bigquery/docs/managing-jobs" target="_blank" rel="noopener">Manage jobs (BigQuery)</a> — Personal history and "Open as new query".</li>
+          <li id="src-11"><a href="https://docs.cloud.google.com/bigquery/docs/cached-results" target="_blank" rel="noopener">Using cached query results (BigQuery)</a> — when a rerun comes from the cache and what breaks it.</li>
+          <li id="src-12"><a href="https://docs.cloud.google.com/bigquery/docs/sandbox" target="_blank" rel="noopener">BigQuery sandbox</a> — storage, query and expiration limits of the free tier.</li>
+          <li id="src-13"><a href="https://support.microsoft.com/en-us/office/use-presenter-view-in-powerpoint-fe7638e4-76fb-4349-8d81-5eb6679f49d7" target="_blank" rel="noopener">Use Presenter View in PowerPoint (Microsoft Support)</a> — next slide, speaker notes and the slide timer.</li>
+          <li id="src-14"><a href="https://rework.withgoogle.com/intl/en/guides/a-guide-to-structured-interviewing-for-better-hiring-practices" target="_blank" rel="noopener">A guide to structured interviewing (Google re:Work)</a> — behavioural and hypothetical questions, follow-ups and the scoring rubric.</li>
+          <li id="src-15"><a href="https://careers.uw.edu/resources/star-method-of-interviewing/" target="_blank" rel="noopener">STAR Method of Interviewing (UW Career &amp; Internship Center)</a> — the four parts of STAR and how much time each gets.</li>
+          <li id="src-16"><a href="https://capd.mit.edu/resources/the-star-method-for-behavioral-interviews/" target="_blank" rel="noopener">The STAR method for behavioral interviews (MIT CAPD)</a> — "I" statements and bullet notes instead of scripts.</li>
+          <li id="src-17"><a href="https://www.aboutamazon.com/news/workplace/amazon-interview-guide" target="_blank" rel="noopener">Amazon interview guide (About Amazon)</a> — precise metrics and the "so what?" test.</li>
+          <li id="src-18"><a href="https://git-scm.com/docs/git-log" target="_blank" rel="noopener">git-log Documentation (git-scm.com)</a> — <code>--author</code>, <code>--oneline</code> and limiting the log to a path.</li>
+          <li id="src-19"><a href="https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-readmes" target="_blank" rel="noopener">About READMEs (GitHub Docs)</a> — what a README is for and where GitHub looks for it.</li>
+          <li id="src-20"><a href="https://docs.cloud.google.com/docs/authentication/application-default-credentials" target="_blank" rel="noopener">How Application Default Credentials works (Google Cloud)</a> — where the credential file lives and why service account keys are a risk.</li>
+          <li id="src-21"><a href="https://docs.github.com/en/get-started/git-basics/ignoring-files" target="_blank" rel="noopener">Ignoring files (GitHub Docs)</a> — <code>.gitignore</code> and untracking a file that was already committed.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · after you have read the page</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 5 Day 5</footer>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 5 — goals</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Open a data talk with the business case and write every slide title as the finding it shows</li>
+      <li>Close on a recommendation with its risk, and answer a technical or non-technical manager's question in two sentences</li>
+      <li>Run a saved BigQuery query in front of an audience, read its bytes estimate and a cached result, and recover when a job stalls</li>
+      <li>Tell a pair project as a STAR story, with "I" for your own part and a number in the result</li>
+      <li>Check a P0 hand-in and a fifteen-minute slot against the spec's rubric</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Back to program →", href: "../../index.html" };
+window.DIAGRAM = {
+  title: "Day 5 · from a finding to a story you can tell",
+  width: 500, height: 520,
+  nodes: [
+    { id:"audience", step:0, x:24, y:16, w:200, h:52, label:"Audience\n  role · proximity", detail:"Define the audience by role, then by how close it is to the knowledge. Experts skip steps (the curse of knowledge); a wider audience needs more explained." },
+    { id:"title", step:0, x:276, y:16, w:200, h:52, label:"Finding title\n  a sentence · subtitle", detail:"The title states the headline message; the subtitle says what the data is, where and when. One message per chart: if it cannot be told over the phone, split it." },
+    { id:"rec", step:1, x:24, y:92, w:452, h:52, label:"Finding → recommendation → risk\n  a correlation is not a cause", detail:"A manager keeps three things. Close like a Sprint Review: results, then what to do next. State each limitation beside the recommendation it affects." },
+    { id:"nontech", step:2, x:24, y:170, w:200, h:52, label:"Non-technical asks\n  so what · how sure", detail:"They decide whether to act: so what, how sure are you, what first, what would make you more certain." },
+    { id:"tech", step:2, x:276, y:170, w:200, h:52, label:"Technical asks\n  source · rejects · rerun", detail:"They decide whether to trust the numbers: where the data came from, what was thrown away, whether it reruns, why that grain." },
+    { id:"query", step:3, x:24, y:248, w:200, h:56, label:"Live query\n  question · bytes · Run\n  one number aloud", detail:"The editor shows a check mark and the bytes it will process. Saved queries open from the Files pane; Personal history restores a lost one." },
+    { id:"cache", step:3, x:276, y:248, w:200, h:56, label:"Cache & sandbox\n  0 B (results cached)\n  1 TiB a month", detail:"Identical text returns from the cache for about 24 hours, best-effort. Any edit runs fresh. Sandbox tables expire after 60 days." },
+    { id:"star", step:4, x:24, y:330, w:452, h:50, label:"STAR\n  S 20% · T 10% · A 60% · R 10% · say I", detail:"Behavioural questions want a past story. The action is what you personally did; the result carries a number. git log --author lists your part." },
+    { id:"slot", step:5, x:24, y:404, w:200, h:52, label:"15-minute slot\n  both speak · one question", detail:"Client and question, findings with one or two live queries, recommendation and risk, then one question answered in two sentences." },
+    { id:"handin", step:5, x:276, y:404, w:200, h:52, label:"Hand-in\n  README · no keys", detail:"The P0 folder runs from a fresh clone. Credentials stay outside the repository; a committed secret stays in the history." },
+    { id:"check", step:6, x:24, y:476, w:452, h:36, label:"CHECK YOURSELF\n  answer out loud, then open" }
+  ],
+  edges: [
+    { id:"e1", step:0, from:"audience", to:"title", label:"first slide" },
+    { id:"e2", step:1, from:"title", to:"rec", label:"so what?" },
+    { id:"e3", step:2, from:"rec", to:"nontech", label:"act on it?" },
+    { id:"e4", step:2, from:"rec", to:"tech", label:"trust it?" },
+    { id:"e5", step:3, from:"tech", to:"query", label:"prove it" },
+    { id:"e6", step:3, from:"query", to:"cache", label:"rerun" },
+    { id:"e7", step:4, from:"rec", to:"star", label:"same project, new listener", dir:"-" },
+    { id:"e8", step:5, from:"star", to:"slot", dir:"-" },
+    { id:"e9", step:5, from:"star", to:"handin", dir:"-" },
+    { id:"e10", step:6, from:"slot", to:"check", dir:"-" }
+  ],
+  captions: [
+    "Know who is listening, open with the client and their question, and make every slide title the finding. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "A manager keeps the finding, the recommendation and the risk; a correlation slide never claims a cause.",
+    "Non-technical managers ask whether to act; technical managers ask whether to trust the numbers. Answer in two sentences.",
+    "A live query: say the question, point at the bytes estimate, run, read one number. The cache makes a rehearsed query instant.",
+    "The same project told in an interview: STAR, most of the time on your own actions, and a number at the end.",
+    "The showcase: the rubric as the definition of done, a planned fifteen minutes, and a hand-in a stranger can run.",
+    "You can now present a data project to mixed managers, run its queries in front of them, and tell it as your story in an interview."
+  ]
+};
+window.QUIZ = {
+  id: "w05-d5",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "Which slide title follows the finding-title approach?",
+      options: ["Results", "avg_duration by member_type", "Members ride half as long as casual riders", "Data and method"], answer: 2,
+      explain: "A finding title is a sentence stating what the slide shows. The others are a topic, a column name and a section label, which leave the manager to work out the message." },
+    { type: "scq", stem: "You rerun the exact query you rehearsed, and Job information shows \"0 B (results cached)\". What happened?",
+      options: ["The query failed and returned no rows", "BigQuery returned the result from its cache because the query text was identical", "The sandbox's monthly allowance ran out", "The table expired and was recreated empty"], answer: 1,
+      explain: "Identical query text rerun within about 24 hours (best-effort) comes from the cache, so it reads 0 bytes. Changing the text, even a comment, runs it fresh." },
+    { type: "tf", stem: "In a STAR answer, the Situation should take most of the time so the interviewer understands the dataset.", answer: false,
+      explain: "The Action carries about 60% of the answer and the Situation about 20%. An answer that is mostly situation never reaches what you did or the result." },
+    { type: "mcq", stem: "Which belong on a P0 correlation slide? Select all that apply.",
+      options: ["The relationship stated in the client's terms", "A line on why it may not be a cause", "A title saying one measure causes the other", "A subtitle naming the data, the place and the period"], answer: [0, 1, 3],
+      explain: "A correlation can never prove cause and effect, so the slide states the relationship and the other explanation. The subtitle carries what the data is, where and when." },
+    { type: "match", stem: "Match each manager's question to what it is checking.",
+      pairs: [
+        { l: "How sure are you?", r: "the risk of acting on the finding" },
+        { l: "What did you throw away?", r: "whether cleaning biased the result" },
+        { l: "Can someone else rerun this?", r: "whether the result is reproducible" },
+        { l: "So what does this mean for us?", r: "whether the finding connects to the client's goal" }
+      ],
+      explain: "Non-technical managers test whether to act; technical managers test whether to trust the numbers. Knowing which helps you answer in two sentences." },
+    { type: "open", stem: "A manager asks a question your data cannot answer. Write the two sentences you would say.",
+      hint: "The honest answer first, then what would answer it.",
+      model: "Our dataset has no cost column, so I can't tell you which option is cheaper. The finance team's per-dock figures would let us add that, and we could rerun the comparison within a day." }
+  ]
+};
+</script>
+
+<script src="../../assets/js/diagram.js?v=20261103"></script>
+<script src="../../assets/js/scrolly.js?v=20261103"></script>
+<script src="../../assets/js/modals.js?v=20261103"></script>
+<script src="../../assets/js/quiz.js?v=20261103"></script>
+<script src="../../assets/js/widgets.js?v=20261103"></script>
+<script src="../../assets/js/glossary.js?v=20261103"></script>
+</body>
+</html>

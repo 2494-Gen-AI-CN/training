@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w05d3">
+<title>W5·D3 — AI-assisted development | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261103">
+<script src="../../assets/js/theme.js?v=20261103"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="../../exit-criteria/index.html">Exit criteria</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>AI-assisted development: an assistant as your pair, from prompt to reviewed commit</h1>
+        <div class="meta">
+          <span><b>Week 5</b> · Day 3</span>
+          <span>Wed Nov 11, 2026</span>
+          <span>Gen AI introduction</span>
+          <span><b>~43 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span class="verified">Sources checked 2026-11-03 · python 3.15 · google-cloud-bigquery 3.47.0 · pytest 9.2.0</span>
+          <span class="exit"><a href="../../exit-criteria/qc-3-data-and-gen-ai-fundamentals.html#w05d3">Exit criteria</a></span>
+        </div>
+        <p class="summary">This page assumes Tuesday's map of the four ways a developer reaches a model: a chat
+        assistant, an editor assistant, an agentic coding tool and API access. It teaches AI-assisted development: where
+        an assistant fits in the life cycle, pairing with one, GitHub Copilot as the editor-assistant example, what an
+        editor extension sends and which settings govern it, and generating code, tests and documentation for the
+        ticket desk. Afterwards you can explain who owns generated code, prompt for a function with its boundaries, say
+        why a generated test suite can pass on a bug, and check an assistant's claim about a library against its
+        reference.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="0">
+        <div class="tag">Gen AI for developers</div>
+        <h2>Generative AI across the development life cycle</h2>
+        <p>Every program in this course has passed through the stages of the software development life cycle: plan,
+        code, test, review, document and maintain. This step asks where a generative AI assistant fits in each stage and
+        what it never takes over. Monday's page closed with a short list of rules for using an assistant, and this page
+        applies one of them throughout: every generated line is read, tested and owned by the developer who commits it.</p>
+        <p>Nothing on this page needs an account, a key or an install. Each prompt is shown and never run, and each reply
+        is either quoted from an official doc or written for this page and labelled as illustrative. If you have a free
+        chat or editor assistant of your own, you can try the prompts at home. Your replies will differ from the ones
+        printed here, because a model's answer changes between versions and between runs.</p>
+        <h3>Where an assistant helps, stage by stage</h3>
+        <p>GitHub's best-practices page for its assistant lists the jobs it does best:<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <ul>
+          <li>"Writing tests and repetitive code"</li>
+          <li>"Debugging and correcting syntax"</li>
+          <li>"Explaining and commenting code"</li>
+          <li>"Generating regular expressions"</li>
+        </ul>
+        <p>Laid over the life cycle, those jobs land in every stage, and each stage keeps a part that belongs to a
+        person.</p>
+        <table>
+          <thead><tr><th>Stage</th><th>Where an assistant helps</th><th>What stays the developer's</th></tr></thead>
+          <tbody>
+            <tr><td>Plan</td><td>Breaking a ticket into smaller tasks; listing questions to ask the client</td><td>What to build, and in what order</td></tr>
+            <tr><td>Code</td><td>Boilerplate and a first draft of a function from a clear requirement</td><td>The design, and whether the draft is accepted</td></tr>
+            <tr><td>Test</td><td>Drafting test cases and the repetitive setup around them</td><td>Which behaviours must be tested, taken from the requirement</td></tr>
+            <tr><td>Review</td><td>Explaining an unfamiliar change before you read it closely</td><td>The approval and the merge</td></tr>
+            <tr><td>Document</td><td>A first docstring, a README outline, a plain summary for a manager</td><td>Checking every sentence against the code</td></tr>
+            <tr><td>Maintain</td><td>Explaining old code before you change it</td><td>The change itself, and the commit</td></tr>
+          </tbody>
+        </table>
+        <p>Thursday's page takes the review stage further, into analysis, refactoring and the security of generated
+        code; this page stays with writing new code, tests and documentation.</p>
+        <h3>What stays the developer's</h3>
+        <p>VS Code's documentation for its AI features is direct about the risk: "AI can produce incorrect code or
+        misunderstand your intent."<sup class="cite"><a href="#src-2">2</a></sup> It is just as direct about who carries
+        it: "You remain responsible for deciding which changes reach your codebase."<sup class="cite"><a href="#src-2">2</a></sup>
+        It then advises you to "Review the diff and validate the result before you commit or merge
+        changes."<sup class="cite"><a href="#src-2">2</a></sup></p>
+        <p>That is the ownership question an interviewer asks after "do you use AI?": who is responsible for a bug the
+        assistant wrote? The answer is the developer who committed it. The commit carries your name, the reviewer
+        approved your change, and the client sees the desk's behaviour, not the tool that drafted it. GitHub puts the
+        same limit in its own words: the assistant is not meant to "Replace your expertise and
+        skills".<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <p>The trade-off is speed against verification. An assistant writes repetitive code and tests faster than a
+        person types them, but it can also produce a package, a function or a keyword that does not exist. GitHub's
+        review guide tells reviewers to "Watch out for hallucinated or suspicious packages (such as packages that don't
+        actually exist)."<sup class="cite"><a href="#src-3">3</a></sup></p>
+        <h3>Using an assistant well: context in, checks out</h3>
+        <p>Monday's prompting rounds showed the first habit: stop zero-shotting. A one-line request leaves the model to
+        guess everything you did not say, and it guesses with confidence. Give it what a new teammate would need on
+        their first morning:</p>
+        <ul>
+          <li>the code the answer must fit beside, such as the function that will call it;</li>
+          <li>the full error message when something fails, with the line it points at;</li>
+          <li>the constraint: the Python version, the library pin, the project's style, what must not change;</li>
+          <li>the expected output for two or three concrete inputs, including the awkward ones.</li>
+        </ul>
+        <p>The second habit is the check on the way out. Read every line before accepting it, run the tests, and look up
+        any claim about an API or library in that library's own docs. GitHub's review guide puts the tests first:
+        "Always run automated tests and static analysis tools first."<sup class="cite"><a href="#src-3">3</a></sup></p>
+        <p>You can recognise unowned generated code in a pull request. The author cannot explain a line when asked, or
+        an import names a package nobody added to the project's requirements.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>An assistant helps at every life-cycle stage, from planning to maintenance.</li>
+          <li>The decision, the review and the commit stay with the developer.</li>
+          <li>Give the model the code, the error, the constraint and the expected output.</li>
+          <li>Read, test and check every generated claim against the docs before committing.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I use an assistant across the whole life cycle: to break a ticket into tasks, draft boilerplate and tests,
+          explain code I have not read yet, and write a first docstring. What I never hand over is the decision about
+          what to build, the review, and the commit. If generated code ships a bug, that bug is mine.</p>
+          <p>To use it well I don't zero-shot it. I give it the surrounding code, the full error, the constraints and a
+          few expected outputs, then I read every line, run the tests, and check any library claim in the official
+          docs before it goes in.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">AI pair programming</div>
+        <h2>Pairing with an assistant</h2>
+        <p>Editor assistants are often sold as an "AI pair programmer". The phrase makes sense only once you know what
+        human pair programming is, so this step starts there and then asks which part of the pair an assistant can
+        play.</p>
+        <h3>Driver and navigator</h3>
+        <p>Pair programming is two developers working on one task at one screen. Böckeler and Siessegger's guide names
+        the two roles. "The Driver is the person at the wheel, i.e. the keyboard."<sup class="cite"><a href="#src-4">4</a></sup>
+        The driver also explains as they go: "A driver should always talk through what she is doing while doing
+        it."<sup class="cite"><a href="#src-4">4</a></sup></p>
+        <p>"The Navigator is in the observer position, while the driver is typing."<sup class="cite"><a href="#src-4">4</a></sup>
+        The navigator "reviews the code on-the-go, gives directions and shares thoughts" and "has an eye on the larger
+        issues, bugs".<sup class="cite"><a href="#src-4">4</a></sup></p>
+        <h3>The assistant as a navigator: what it sees and what it does not</h3>
+        <p>An assistant fits the navigator's seat. It watches what you type and offers directions, in the form of
+        suggested code. You stay the driver, with your hands on the keyboard and the final say over every line. The
+        difference from a human navigator is what each one knows.</p>
+        <table>
+          <thead><tr><th>Question</th><th>A human navigator</th><th>An editor assistant</th></tr></thead>
+          <tbody>
+            <tr><td>Does it know the requirement?</td><td>Yes, from the ticket and the stand-up</td><td>Only if the requirement is written in the prompt or an open file</td></tr>
+            <tr><td>What does it see?</td><td>The screen, the team's history, the client</td><td>The code around the cursor, open tabs, recent edits</td></tr>
+            <tr><td>Does it run the code?</td><td>It can ask you to run the tests</td><td>No; only an agent given tools runs commands</td></tr>
+            <tr><td>Does it change the file?</td><td>No; the driver types</td><td>Only when you accept a suggestion</td></tr>
+          </tbody>
+        </table>
+        <p>GitHub's application card for inline suggestions describes the assistant's view. The prompt is built from
+        "the surrounding code from your cursor position", combined with "code snippets from open tabs in the
+        editor".<sup class="cite"><a href="#src-5">5</a></sup> A requirement that lives in a ticket, a meeting or your
+        head is not in that list. If the assistant does not see the rule, its suggestion follows the most likely
+        pattern instead.</p>
+        <h3>The suggestion loop</h3>
+        <p>Suggestions are "only applied to the file or text field if you explicitly accept
+        them."<sup class="cite"><a href="#src-5">5</a></sup> So every accepted line is a decision you made.
+        A working loop with an assistant has four moves:</p>
+        <ol>
+          <li>State the intent: a clear function name and docstring, a comment, or a chat message with the requirement.</li>
+          <li>Read the suggestion line by line, as a navigator would read your code.</li>
+          <li>Accept it, edit it, or reject it and restate the intent.</li>
+          <li>Run the tests before moving on.</li>
+        </ol>
+        <p>You recognise the loop on a teammate's screen by dimmed grey text after the cursor, which the Tab key accepts,
+        or by a chat panel open beside the file. Look for a pause between the grey text appearing and
+        the key press. A developer who accepts faster than they could read has skipped the second move.</p>
+        <div class="ix-predict" data-q="You type the name of a new function and an assistant immediately suggests a complete body. Nothing has run yet. What has the assistant checked about that body?" data-a="Nothing that involves running it. The suggestion was predicted from the code around the cursor and the open tabs. It has not executed the code, and it has not seen any requirement that is not written in those files. The checking starts when you read it and run the tests."></div>
+        <h3>When to switch it off</h3>
+        <p>Pairing is not always the right mode, even between people. For tasks with many unknowns, the guide says the
+        usual pairing styles "often don't work as well" and suggests a spike, a short time-boxed investigation, or
+        splitting up.<sup class="cite"><a href="#src-4">4</a></sup> The same holds for an assistant. Turn suggestions off,
+        or ignore them, in these cases:</p>
+        <ul>
+          <li>a design decision, such as how to model a table, where the common pattern may be wrong for your team;</li>
+          <li>unfamiliar code you have not read yet, because you cannot judge a suggestion for code you do not understand;</li>
+          <li>a task with many unknowns, where you need to explore and learn before anyone writes the final code.</li>
+        </ul>
+        <p>Human review stays in the loop either way. GitHub's guide to reviewing AI-generated code notes that "Pairing
+        and team input helps catch subtle issues."<sup class="cite"><a href="#src-3">3</a></sup> An assistant is a
+        navigator that has read part of the code; a colleague in review has read the requirement too.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>The driver types and explains; the navigator reviews and watches the larger issues.</li>
+          <li>An assistant suggests from nearby code and open tabs, never from the unwritten requirement.</li>
+          <li>The loop is state the intent, read, accept or edit or reject, then run the tests.</li>
+          <li>Switch it off for design decisions, unread code and tasks full of unknowns.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>In pair programming the driver types and talks through what they're doing, and the navigator reviews as
+          they go and watches the bigger picture. An AI assistant plays a kind of navigator: it suggests code, but it
+          only sees what's around my cursor and in my open files, and it never runs anything unless it's an agent with
+          tools.</p>
+          <p>So my loop is: state the intent clearly, read the suggestion, accept, edit or reject it, then run the
+          tests. I switch it off for design decisions and for code I haven't read yet.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">Overview of Copilot</div>
+        <h2>The editor-assistant category: GitHub Copilot and a second example</h2>
+        <p>Tuesday's page sorted the ways a developer reaches a model into four categories: a chat assistant, an editor
+        assistant, an agentic coding tool and API access. This step is the editor assistant, with GitHub Copilot as the
+        main example because its documentation is public and detailed.</p>
+        <h3>What an editor assistant is</h3>
+        <p>An editor assistant is an extension that runs inside the code editor. For Copilot, "For most supported IDEs,
+        the GitHub Copilot extension or plugin is the primary entry point," and it works "using context from your open
+        files and workspace".<sup class="cite"><a href="#src-7">7</a></sup> GitHub describes the product as "an AI
+        assistant that helps you write, understand, and ship software".<sup class="cite"><a href="#src-6">6</a></sup></p>
+        <p>The same page splits its features in two. Assistive ones respond as you go: "Copilot responds while you work,
+        suggesting code, answering questions, or explaining code." Agentic ones take a goal: "You describe a goal, and
+        Copilot can work through multiple steps."<sup class="cite"><a href="#src-6">6</a></sup> A chat assistant in a
+        browser tab differs in where its context comes from and how code reaches your file.</p>
+        <table>
+          <thead><tr><th></th><th>Chat assistant in a browser</th><th>Editor assistant</th></tr></thead>
+          <tbody>
+            <tr><td>What it sees</td><td>Only what you paste into the chat</td><td>Open files and workspace context, picked up automatically</td></tr>
+            <tr><td>How code reaches the file</td><td>You copy it across</td><td>You accept a suggestion or a proposed edit</td></tr>
+          </tbody>
+        </table>
+        <h3>Copilot's surfaces in the editor</h3>
+        <table>
+          <thead><tr><th>Surface</th><th>What the docs say it does</th></tr></thead>
+          <tbody>
+            <tr><td>Inline suggestions</td><td>"Get suggestions directly in the editor as you work."<sup class="cite"><a href="#src-7">7</a></sup></td></tr>
+            <tr><td>Next edit suggestions</td><td>"Get inline suggestions as you type, including suggestions for your next edit."<sup class="cite"><a href="#src-2">2</a></sup></td></tr>
+            <tr><td>Chat</td><td>"Ask questions about your codebase, compare approaches, and plan complex changes"<sup class="cite"><a href="#src-7">7</a></sup></td></tr>
+            <tr><td>Agent</td><td>"Ask an agent to find relevant code, edit files, run commands, and validate its work"<sup class="cite"><a href="#src-7">7</a></sup></td></tr>
+            <tr><td>JetBrains plugin</td><td>"Inline and next edit suggestions, chat, agentic features, inline chat, code review, and commit message generation."<sup class="cite"><a href="#src-7">7</a></sup></td></tr>
+          </tbody>
+        </table>
+        <p>Agent mode is where the
+        editor assistant overlaps with the agentic coding tool category: VS Code says "An agent uses a model and tools to
+        find relevant code, make changes, and run checks."<sup class="cite"><a href="#src-2">2</a></sup> It is the one
+        surface that runs commands, so it is also the one whose changes need the closest review.</p>
+        <h3>Chat commands and context variables</h3>
+        <p>The chat panel accepts short slash commands for common requests and hash variables that attach context. You
+        recognise them on sight in a screenshot or a teammate's chat history.</p>
+        <table>
+          <thead><tr><th>Typed in chat</th><th>What GitHub's cheat sheet says</th></tr></thead>
+          <tbody>
+            <tr><td><code>/tests</code></td><td>"Generate unit tests for the selected code."</td></tr>
+            <tr><td><code>/explain</code></td><td>"Explain how the code in your active editor works."</td></tr>
+            <tr><td><code>/fix</code></td><td>"Propose a fix for problems in the selected code."</td></tr>
+            <tr><td><code>/doc</code> (Visual Studio)</td><td>"Add documentation comment for this symbol."</td></tr>
+            <tr><td><code>#file</code></td><td>"Includes the current file's content in the prompt."</td></tr>
+            <tr><td><code>#selection</code></td><td>"Includes the currently selected text in the prompt."</td></tr>
+          </tbody>
+        </table>
+        <p>All six rows come from the Copilot Chat cheat sheet.<sup class="cite"><a href="#src-8">8</a></sup> The hash
+        variables are how you choose which code goes with the question.</p>
+        <h3>Plans and seats</h3>
+        <p>GitHub lists the plans as Free, Student, Pro, Pro+,
+        Max, Business and Enterprise, and Copilot Student is "Available to verified
+        students."<sup class="cite"><a href="#src-9">9</a></sup> An individual can "Use Copilot Free to explore core
+        features with no paid plan required."<sup class="cite"><a href="#src-6">6</a></sup> The limit is volume: inline
+        suggestions are "Limited to 2000 completions per month on Copilot Free."<sup class="cite"><a href="#src-9">9</a></sup></p>
+        <p>A company assigns seats under Business or Enterprise instead, and the seat brings the organization's policies
+        with it. Administrators can "exclude files that Copilot shouldn't see, and review usage data and audit
+        logs".<sup class="cite"><a href="#src-6">6</a></sup> The next step covers those settings.</p>
+        <h3>A second example: Codeium, now Windsurf</h3>
+        <p>Codeium's editor extensions are the second example, and their names have moved quickly:</p>
+        <ul>
+          <li>On 2025-04-04 Codeium renamed itself Windsurf ("Today, we are proud to officially rebrand our company to
+          Windsurf.") and planned to "Rebrand the original Codeium Extensions to the 'Windsurf
+          Plugins'".<sup class="cite"><a href="#src-10">10</a></sup></li>
+          <li>On 2025-07-14 the company announced that "Windsurf is being acquired by Cognition."<sup class="cite"><a href="#src-11">11</a></sup></li>
+          <li>On 2026-06-02 the Windsurf editor took a new name: "Devin Desktop is the new name for
+          Windsurf."<sup class="cite"><a href="#src-12">12</a></sup></li>
+        </ul>
+        <p>The plugins still carry the Windsurf name. Their docs say "Windsurf Plugins bring AI-powered coding assistance
+        to JetBrains IDEs," offering "Autocomplete, Chat, Command, and more", and that the plugin "is in maintenance mode
+        and Cascade is being deprecated".<sup class="cite"><a href="#src-13">13</a></sup> Cascade was Windsurf's agent;
+        the launch post names "Devin Local, which is the successor to Cascade as our primary local
+        agent".<sup class="cite"><a href="#src-14">14</a></sup></p>
+        <p>A product name you remember may be out of date, so product facts come from the vendor's current docs. The
+        category is what carries over from one product to the next.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>An editor assistant is an extension that reads open files and workspace context.</li>
+          <li>Copilot offers inline and next edit suggestions, chat and an agent inside the editor.</li>
+          <li>Slash commands run common requests; hash variables choose the context sent.</li>
+          <li>Codeium's plugins became Windsurf Plugins; Windsurf itself is now Devin Desktop.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>An editor assistant is an extension inside the IDE that suggests code using my open files and workspace as
+          context. GitHub Copilot is the common example: it gives inline suggestions and next edit suggestions as I
+          type, a chat panel for questions about the codebase, and an agent mode that can edit files and run commands.</p>
+          <p>Compared with a chat assistant in a browser, it picks up context automatically instead of me pasting it,
+          which is faster but means the team has to decide what it may read. Codeium's plugins are another example;
+          they're now called Windsurf Plugins, so I'd check the vendor's current docs before saying what they do.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="3">
+        <div class="tag">Integration with IDE</div>
+        <h2>Integration with the editor and the team's workflow</h2>
+        <p>Installing an editor assistant connects your editor to a service over the network. Before a team switches
+        one on, someone asks what leaves the machine and which settings control it. This step answers both, then looks
+        at the two other places a model can sit in a team's workflow.</p>
+        <h3>What the extension sends</h3>
+        <p>GitHub's application card for inline suggestions describes the request. "The surrounding code from your
+        cursor position is pre-processed by the inline suggestions system" and "combined with contextual information
+        (such as code snippets from open tabs in the editor)".<sup class="cite"><a href="#src-5">5</a></sup> It adds that
+        "Code context — including edit history, surrounding code, and cursor position — is structured and scoped before
+        reaching the language model."<sup class="cite"><a href="#src-5">5</a></sup> Put together, a suggestion can be
+        built from:</p>
+        <ul>
+          <li>the code around your cursor in the file you are editing;</li>
+          <li>snippets from other files open in tabs;</li>
+          <li>your recent edit history and the cursor position;</li>
+          <li>in chat, the text you type and any file or selection you attach with <code>#file</code> or <code>#selection</code>.</li>
+        </ul>
+        <p>People tend to forget the second item. A file you opened in a tab an hour ago, perhaps an export holding
+        <code>customers.email</code> values such as <code>dana@example.com</code>, can inform a request while you edit
+        something else. That is why the settings below exist.</p>
+        <h3>Settings a team checks before switching it on</h3>
+        <table>
+          <thead><tr><th>Setting</th><th>Who sets it</th><th>What it controls, and its limit</th></tr></thead>
+          <tbody>
+            <tr><td>Content exclusion</td><td>Repository administrators, organization owners, enterprise owners<sup class="cite"><a href="#src-15">15</a></sup></td><td>Excluded files "will not inform inline suggestions in other files" or "Copilot's responses"; it is "a guardrail for the tools that GitHub controls."<sup class="cite"><a href="#src-15">15</a></sup></td></tr>
+            <tr><td>Matching public code</td><td>You, or the organization when the seat comes from one</td><td>Whether to "either allow or block code suggestions that match publicly available code"<sup class="cite"><a href="#src-16">16</a></sup></td></tr>
+            <tr><td>Use of your data for training</td><td>You, on Copilot Free, Pro, Pro+ or Max</td><td>From April 24, 2026 these plans' interactions may train models unless "Allow GitHub to use my data for AI model training" is Disabled; Business and Enterprise are not affected<sup class="cite"><a href="#src-16">16</a></sup></td></tr>
+            <tr><td>Organization policy</td><td>Organization owners, under any enterprise policy</td><td>"Control the availability of GitHub Copilot features and models"; an enterprise setting "you cannot override" at organization level<sup class="cite"><a href="#src-17">17</a></sup></td></tr>
+          </tbody>
+        </table>
+        <p>Content exclusion has a gap: it "is currently not supported in Edit and Agent modes of
+        Copilot Chat in Visual Studio Code and other editors."<sup class="cite"><a href="#src-15">15</a></sup> On a personal
+        account, web search for Chat "is disabled by default."<sup class="cite"><a href="#src-16">16</a></sup> If you
+        have a free Copilot account at home, the training setting in the table is the one to check first.</p>
+        <div class="ix-predict" data-q="Your repository uses content exclusion for a folder of customer exports. A teammate asks Copilot's agent in VS Code to tidy that folder. Does the exclusion keep the files out of the request?" data-a="You cannot rely on it. GitHub's content exclusion page says exclusion is not supported in the Edit and Agent modes of Copilot Chat in VS Code and other editors. The safer fix is to keep customer data out of the repository in the first place."></div>
+        <p>The editor has its own telemetry switch. In VS Code it is one setting, <code>telemetry.telemetryLevel</code>,
+        with the values <code>all</code>, <code>error</code>, <code>crash</code> and <code>off</code>.<sup class="cite"><a href="#src-18">18</a></sup>
+        You recognise it in a user's <code>settings.json</code>:</p>
+<pre><code>{
+  "telemetry.telemetryLevel": "off"
+}</code></pre>
+        <p>That line stops VS Code's own usage data, and only that. The docs warn that extensions "may be collecting
+        their own usage data and are not controlled by the telemetry.telemetryLevel" setting, so an assistant extension
+        is checked in its own settings.<sup class="cite"><a href="#src-18">18</a></sup></p>
+        <h3>Beyond the editor: a model in a script or a CI job</h3>
+        <p>The fourth category from Tuesday, API access, puts a model inside a program instead of an editor. Two shapes
+        are common, and this page names them without running either:</p>
+        <ul>
+          <li>A script sends a request to a provider's API. For Anthropic's Messages API that is a <code>POST</code> to
+          <code>https://api.anthropic.com/v1/messages</code>, and it needs "A Claude Console account" and "An API
+          key".<sup class="cite"><a href="#src-20">20</a></sup></li>
+          <li>A CI job calls a model when something happens in the repository. The Claude Code GitHub Action "runs Claude
+          Code inside your repository's workflows", and given a <code>prompt</code> input it runs "without waiting for a
+          mention".<sup class="cite"><a href="#src-19">19</a></sup></li>
+        </ul>
+        <p>A CI job of that kind might summarise or review each pull request as it opens. The review still ends with a
+        person, because the job's comments are suggestions like any other.</p>
+        <h3>Secrets in CI</h3>
+        <p>Once a model is called from code, an interviewer asks where the key lives. The Action's docs answer: "Never
+        commit API keys or OAuth tokens directly to your repository. Always store them as GitHub
+        Secrets".<sup class="cite"><a href="#src-19">19</a></sup> You recognise the pattern in a file under
+        <code>.github/workflows/</code>:</p>
+<pre><code>anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}</code></pre>
+        <p>The workflow names a secret, and GitHub fills in the value when the job runs, so the key never appears in the
+        repository. A script follows the same rule through an environment variable: Anthropic's SDK "reads
+        <code>ANTHROPIC_API_KEY</code> automatically".<sup class="cite"><a href="#src-20">20</a></sup> It is the habit
+        from week 4, where the desk's <code>dw.client</code> read <code>DESK_GCP_PROJECT</code> from the environment
+        instead of the code.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Suggestions are built from nearby code, open tabs, edit history and cursor position.</li>
+          <li>Content exclusion hides files, but not in Edit and Agent modes.</li>
+          <li>The editor's telemetry setting does not cover an extension's own usage data.</li>
+          <li>A script or CI job can call a model; its key lives in a secret.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>An editor extension sends the code around my cursor, snippets from my open tabs and my recent edits, plus
+          whatever I type in chat. Before switching it on, the team checks content exclusion for sensitive files, the
+          public-code matching setting, whether our plan's data can be used for training, and the organization's
+          policy.</p>
+          <p>I'd also know the limits: exclusion doesn't apply in agent mode, and the editor's telemetry switch doesn't
+          cover the extension. Outside the editor, a model can sit in a script or a CI job that reviews pull requests,
+          and its API key goes in a GitHub secret, never in the repository.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">Code generation</div>
+        <h2>Generating code with context: <code>ticket_age_band</code></h2>
+        <p>The running example is a new function, <code>ticket_age_band(hours)</code>, which does not exist in the desk's
+        code. It sorts a ticket's age into a bucket, the kind of engineered feature Project 0 asks for, and it is small
+        enough to check by hand.</p>
+        <h3>The requirement</h3>
+        <p>The band edges come from the desk's data. The <code>priorities</code> rows in <code>sql/seed.sql</code> give
+        <code>high</code> an SLA of 4 hours, <code>normal</code> 24 and <code>low</code> 72. The requirement uses the
+        first two as edges:</p>
+        <ul>
+          <li>fewer than 4 hours returns <code>under 4</code>;</li>
+          <li>from 4 to 24 hours, both included, returns <code>4 to 24</code>;</li>
+          <li>more than 24 hours returns <code>over 24</code>, which is where <code>low</code>'s 72 lands.</li>
+        </ul>
+        <p>So 3 gives <code>under 4</code>, 4 and 24 both give <code>4 to 24</code>, and 25 gives <code>over 24</code>.</p>
+        <h3>Round 1: a zero-shot prompt</h3>
+        <p>Prompt, round 1 (shown, never run):</p>
+<pre><code>Write a Python function ticket_age_band(hours) that sorts a ticket's
+age into the bands "under 4", "4 to 24" and "over 24".</code></pre>
+        <p>The prompt names the labels but never says whether 24 belongs to the middle band. Illustrative reply (written
+        for this page):</p>
+<pre><code>def ticket_age_band(hours):
+    """Return the age band of a ticket open for hours."""
+    if hours &lt; 4:
+        return "under 4"
+    elif hours &lt; 24:
+        return "4 to 24"
+    else:
+        return "over 24"</code></pre>
+        <p>It reads cleanly and runs. The way to judge it is the four values on and beside each edge:</p>
+<pre><code>for hours in (3, 4, 24, 25):
+    print(hours, ticket_age_band(hours))</code></pre>
+<pre class="out">3 under 4
+4 4 to 24
+24 over 24
+25 over 24</pre>
+        <p>The third line breaks the requirement. Line 5, <code>elif hours &lt; 24:</code>, leaves 24 out of the middle
+        band, and the fix is <code>elif hours &lt;= 24:</code>. The prompt was ambiguous about 24, so any reply had to
+        guess that edge, and this one guessed wrong.</p>
+        <h3>Round 2: the code, the boundaries and the expected outputs</h3>
+        <p>GitHub's best-practices page asks for exactly what round 1 left out: "Be specific about your requirements."
+        and "Provide examples of things like input data, outputs, and implementations."<sup class="cite"><a href="#src-1">1</a></sup>
+        Its prompting guide adds "Use examples to help Copilot understand what you want." and, when the result is wrong,
+        "iterate on your prompt and try again."<sup class="cite"><a href="#src-21">21</a></sup></p>
+        <p>Prompt, round 2 (shown, never run):</p>
+<pre><code>I am adding a function to a Python ticket desk. Priorities have SLA hours:
+high 4, normal 24, low 72.
+
+Write ticket_age_band(hours) with these rules:
+- hours &lt; 4 returns "under 4"
+- 4 &lt;= hours &lt;= 24 returns "4 to 24" (both edges included)
+- hours &gt; 24 returns "over 24"
+
+Expected: 3 -&gt; "under 4", 4 -&gt; "4 to 24", 24 -&gt; "4 to 24", 25 -&gt; "over 24".
+Style: plain if statements, no imports, a one-line docstring that starts "Return".</code></pre>
+        <p>The prompt carries the context, the edges written as comparisons, four expected outputs and the project's
+        style. Illustrative reply (written for this page), with the same check run below it:</p>
+<pre><code>def ticket_age_band(hours):
+    """Return the age band of a ticket that has been open for hours."""
+    if hours &lt; 4:
+        return "under 4"
+    if hours &lt;= 24:
+        return "4 to 24"
+    return "over 24"
+
+
+for hours in (3, 4, 24, 25, 72):
+    print(hours, ticket_age_band(hours))</code></pre>
+<pre class="out">3 under 4
+4 4 to 24
+24 4 to 24
+25 over 24
+72 over 24</pre>
+        <p>Every value matches the requirement, including <code>low</code>'s 72. This reply carries no planted bug.</p>
+        <h3>Reading a generated function</h3>
+        <p>The trade-off of round 2 is time: the prompt took longer to write. Deciding the edges was needed either way, and round 1
+        only hid that decision inside the model's guess. GitHub's application card warns that
+        generated code "may not actually be semantically or syntactically correct."<sup class="cite"><a href="#src-5">5</a></sup>
+        Its review guide puts running the tests first in its checklist.<sup class="cite"><a href="#src-3">3</a></sup></p>
+        <p>On sight, look for the comparison at each edge. A <code>&lt;</code> where the requirement includes the edge,
+        as in <code>elif hours &lt; 24:</code>, is the classic off-by-one, a bug where a comparison is wrong by exactly
+        one step. A new task also deserves a fresh session: "Start a new conversation or session when you begin a new
+        task."<sup class="cite"><a href="#src-21">21</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A zero-shot prompt left the edge at 24 to the model's guess.</li>
+          <li>Round 2 gave the context, the comparisons, expected outputs and the style.</li>
+          <li>Check a generated function on and beside every edge: 3, 4, 24, 25.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>When I ask an assistant for a function, I give it the code it has to fit with, the requirement written as
+          exact comparisons, a few expected outputs including the edges, and the project's style. A zero-shot request
+          leaves the boundaries to the model's guess.</p>
+          <p>Then I run the function on and either side of each boundary before I accept it. For a band from 4 to 24
+          hours, that's 3, 4, 24 and 25, which is exactly where an off-by-one like a less-than instead of a
+          less-than-or-equal shows up.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
+        <div class="tag">Code generation: unit tests</div>
+        <h2>Unit tests with an assistant, and their limits</h2>
+        <p>A unit test runs one small piece of code with a known input and checks the result. Tests are one of the
+        jobs an assistant is best at, and also the place where trusting it goes wrong most quietly.</p>
+        <h3>What an assistant writes well</h3>
+        <p>GitHub lists "Writing tests and repetitive code" among the tasks Copilot does
+        best.<sup class="cite"><a href="#src-1">1</a></sup> Its testing tutorial says "you can prompt Copilot to write a
+        full suite of unit tests with the <code>/tests</code> slash command".<sup class="cite"><a href="#src-23">23</a></sup>
+        The cookbook gives a sample prompt, quoted here from the official doc:<sup class="cite"><a href="#src-24">24</a></sup></p>
+<pre><code>/tests Generate unit tests for this function. Validate both success and failure, and include edge cases.</code></pre>
+        <p>The same page warns that "Copilot Chat responses are non-deterministic, so you may get a different response
+        from the one shown here."<sup class="cite"><a href="#src-24">24</a></sup> What comes back is usually strong on
+        the parts that are tedious to type:</p>
+        <ul>
+          <li>test names that say what each case checks;</li>
+          <li>the repeated setup and imports around each test;</li>
+          <li>a list of edge cases you can read and prune.</li>
+        </ul>
+        <h3>A generated suite that passes on a bug</h3>
+        <p>In pytest, a test is a plain function with an <code>assert</code> in it: "<code>pytest</code> allows you to
+        use the standard Python <code>assert</code> for verifying expectations and values in Python
+        tests."<sup class="cite"><a href="#src-22">22</a></sup> Suppose the round-1 function from the previous step sits in
+        <code>bands.py</code>, a new module invented for this page, and an assistant is asked for tests. Illustrative
+        reply (written for this page):</p>
+<pre><code>from bands import ticket_age_band
+
+
+def test_under_four_hours():
+    assert ticket_age_band(3) == "under 4"
+
+
+def test_four_hours_is_middle_band():
+    assert ticket_age_band(4) == "4 to 24"
+
+
+def test_twenty_four_hours():
+    assert ticket_age_band(24) == "over 24"
+
+
+def test_long_open_ticket():
+    assert ticket_age_band(72) == "over 24"</code></pre>
+        <p>Run against the round-1 function in <code>bands.py</code>, pytest reports all four tests passed. Read them
+        against the requirement from the previous step before you open the question.</p>
+        <div class="ix-predict" data-q="Run against the round-1 function, the one with elif hours &lt; 24, how many of these four tests pass, and is any of them wrong?" data-a="All four pass. The third one is wrong: it asserts that 24 hours is over 24, which is what the buggy code returns and the opposite of the requirement. The suite is green and the bug is still there."></div>
+        <p>The assistant read the code, saw that 24 returns <code>over 24</code>, and wrote that down as the expected
+        answer. A passing suite only proves the code agrees with the tests. When the tests were written from the code,
+        that agreement is guaranteed and proves nothing.</p>
+        <h3>The test that comes from the requirement</h3>
+        <p>The test that matters is written from the requirement, which says 24 belongs to the middle band:</p>
+<pre><code>def test_twenty_four_hours_is_middle_band():
+    assert ticket_age_band(24) == "4 to 24"</code></pre>
+        <p>This test fails against the round-1 function, which returns <code>over 24</code>, and passes against round 2.
+        It replaces the generated <code>test_twenty_four_hours</code>. GitHub's tutorial states the limit plainly: "The
+        tests that Copilot generates may not cover all scenarios, so you should always review the generated
+        code."<sup class="cite"><a href="#src-23">23</a></sup> Its sample prompt even asks for "Tests for boundary
+        conditions", but a boundary test copied from buggy code repeats the bug.</p>
+        <p>An assistant tests the code as written. It cannot know a requirement or a
+        boundary nobody told it, so expected values come from you.</p>
+        <h3>Boundary-value testing</h3>
+        <p>The next interview question is usually which inputs to test. Off-by-one errors live at the edges, so for each
+        edge you test the value on it and the values either side. For the 4 and 24 hour edges that gives:</p>
+        <ul>
+          <li>3 and 4 around the lower edge, expecting <code>under 4</code> and <code>4 to 24</code>;</li>
+          <li>24 and 25 around the upper edge, expecting <code>4 to 24</code> and <code>over 24</code>.</li>
+        </ul>
+        <p>You recognise the failure mode on sight in a review: a generated test such as
+        <code>assert ticket_age_band(24) == "over 24"</code> whose expected value matches the code instead of the
+        ticket.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Assistants write test names, setup and edge-case lists quickly.</li>
+          <li>A test generated from buggy code can assert the bug as correct.</li>
+          <li>Expected values come from the requirement, never from the code under test.</li>
+          <li>Test on and beside every boundary, where off-by-one errors live.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>An assistant is good at the tedious part of testing: names, setup, and a list of edge cases I can review.
+          Its limit is that it tests the code as written. It can't know a requirement nobody gave it, so if the code
+          has an off-by-one, the generated test can assert the bug as the right answer and still pass.</p>
+          <p>So I take expected values from the requirement and test on and either side of each boundary. For a band
+          that includes 24 hours, the one test I'd add asserts that 24 gives the middle band.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="6">
+        <div class="tag">Documentation</div>
+        <h2>Documentation with an assistant</h2>
+        <p>Documentation is the stage developers most like to hand over, and an assistant produces fluent prose on
+        request, but fluent text can still be wrong. This step marks a drafted docstring and README section against the
+        desk's real code.</p>
+        <h3>What an assistant drafts well</h3>
+        <p>"Explaining and commenting code" is on GitHub's list of what Copilot does
+        best.<sup class="cite"><a href="#src-1">1</a></sup> The chat cheat sheet has commands for it: <code>/explain</code>
+        will "Explain how the code in your active editor works," and in Visual Studio <code>/doc</code> will "Add
+        documentation comment for this symbol."<sup class="cite"><a href="#src-8">8</a></sup> Good uses include:</p>
+        <ul>
+          <li>a first docstring for a function that has none;</li>
+          <li>an outline for a README, with the headings a newcomer needs;</li>
+          <li>a plain-language summary of a module for a manager or a client.</li>
+        </ul>
+        <p>The limit is that an assistant describes what the code looks like it does. A parameter's meaning or a
+        feature that sounds natural can be invented, and the code is the source of truth.</p>
+        <h3>Marking a drafted docstring against the code</h3>
+        <p>Here is <code>extract.read_events</code> as it stands in the desk's code at the end of week 4:</p>
+<pre><code>def read_events(conn, after):
+    """Return the desk's events with an event_id above after, oldest first."""
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM ticket_events WHERE event_id &gt; %s ORDER BY event_id", (after,))
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.commit()
+    return rows</code></pre>
+        <p>Called with <code>after=0</code> it returns every event row as a dict, lowest <code>event_id</code> first.
+        Imagine the docstring were missing and an assistant drafted one. Illustrative reply (written for this
+        page):</p>
+<pre><code>def read_events(conn, after):
+    """Return events created after the timestamp after.
+
+    Args:
+        conn: an open connection to the desk's database.
+        after: a timestamp; only events created after it are returned.
+    """</code></pre>
+        <p>The draft is wrong about <code>after</code>. The query compares it with <code>event_id</code>, a strict
+        greater-than, and orders by <code>event_id</code>, so <code>after</code> is an event id used as a watermark, not
+        a time. The caller confirms it: <code>etl.run</code> passes <code>watermark(bq)</code>, the highest
+        <code>event_id</code> already staged in <code>desk_raw.ticket_events</code>, or 0 when nothing is staged. The
+        fix is the real docstring, and the draft also drops "oldest first".</p>
+        <h3>A flag that does not exist</h3>
+        <p>The same assistant drafts a README section. Illustrative reply (written for this page):</p>
+<pre><code>## Loading events
+
+`python etl.py` loads the desk's new events into the warehouse.
+Add `--dry-run` to print what would load without writing anything.</code></pre>
+        <p>The first line is true. The second describes a feature nobody built.</p>
+        <div class="ix-spot" data-snippet="## Loading events&#10;&#10;`python etl.py` loads the desk's new events into the warehouse.&#10;Add `--dry-run` to print what would load without writing anything." data-q="How would you prove in under a minute that the --dry-run flag does not exist?" data-a="Search the project's Python files for argparse and sys.argv, the two usual ways a script reads command-line arguments. Neither extract.py nor etl.py uses either, so nothing reads a flag, and the sentence is deleted from the README."></div>
+        <p>A command-line flag has to be read by something. A Python script reads command-line flags in one of two usual
+        ways: the standard-library <code>argparse</code> module, or <code>sys.argv</code>, the list of words typed after
+        the script's name. Neither <code>extract.py</code> nor <code>etl.py</code>
+        imports <code>argparse</code> or reads <code>sys.argv</code>, so the job accepts no arguments at all. The fix is
+        to delete the sentence. If a dry run is worth having, someone opens a ticket to build it.</p>
+        <h3>Docstring conventions</h3>
+        <p>To mark a draft you need a standard, and for Python that is PEP 257. A docstring "is a string literal that
+        occurs as the first statement in a module, function, class, or method
+        definition".<sup class="cite"><a href="#src-25">25</a></sup> A one-line docstring "is a phrase ending in a period"
+        that "prescribes the function or method's effect as a command ('Do this', 'Return that'), not as a
+        description".<sup class="cite"><a href="#src-25">25</a></sup> The desk's "Return the desk's events with an
+        event_id above after, oldest first." follows that form.</p>
+        <p>A longer docstring for a function "should summarize its behavior and document its arguments, return
+        value(s), side effects, exceptions raised".<sup class="cite"><a href="#src-25">25</a></sup> That list is the
+        checklist for any drafted docstring: check each argument's meaning against the code that uses it, and each
+        claimed behaviour against what runs. GitHub's review guide says to "Check that the AI-generated code fits the
+        purpose and architecture of your project."<sup class="cite"><a href="#src-3">3</a></sup> Documentation is part of
+        that fit.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Assistants draft docstrings, README outlines and plain summaries quickly.</li>
+          <li>A draft can misstate a parameter or invent a feature; the code wins.</li>
+          <li>Prove a flag exists by finding the code that reads it.</li>
+          <li>PEP 257's list of behaviour, arguments, returns and exceptions is the marking checklist.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I use an assistant for a first draft: a docstring, a README outline, or a summary for a manager. Then I
+          check every sentence against the code. If the docstring and the code disagree about a parameter, the code
+          wins, and I find out by reading the query or the caller that uses it.</p>
+          <p>If a README mentions a command-line flag, I search for argparse or sys.argv. If nothing reads arguments,
+          the flag doesn't exist and the line comes out.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="7">
+        <div class="tag">Learning a library</div>
+        <h2>Learning a new library through an assistant</h2>
+        <p>Sooner or later a ticket needs a class you have never used. An assistant is a fast way in, as long as the
+        learning ends at the library's own reference page and a line of code you have run.</p>
+        <h3>The task: a query parameter from Python</h3>
+        <p>Week 4 ran <code>warehouse/kind_report.sql</code>, which filters <code>WHERE kind = @kind</code>, from the
+        <code>bq</code> tool with <code>--parameter=kind::&lt;kind&gt;</code>. The new task is to run the same file from
+        Python. The desk's <code>dw.py</code> reaches BigQuery through <code>bigquery.Client</code> and loads with
+        <code>bigquery.LoadJobConfig</code>, and it never uses <code>QueryJobConfig</code>. The classes this task needs
+        are new to the desk.<sup class="cite"><a href="#src-28">28</a></sup></p>
+        <h3>A prompt that asks for the docs</h3>
+        <p>Prompt (shown, never run):</p>
+<pre><code>I use google-cloud-bigquery 3.47.0 with Python 3.15. A SQL file filters
+WHERE kind = @kind. Show me how to pass "closed" as @kind from Python.
+
+Give me the official documentation page for each class you use, a minimal
+example, and the library version your answer applies to.</code></pre>
+        <p>The last paragraph turns the reply into something you can check. A doc link tells you where to verify each
+        name, and a minimal example can be compared line by line with the official one. The version matters because a
+        library's keywords change between releases.</p>
+        <h3>Checking the reply against the reference</h3>
+        <p>Illustrative reply (written for this page), trimmed to the line that matters:</p>
+<pre><code>from google.cloud import bigquery
+
+config = bigquery.QueryJobConfig(params={"kind": "closed"})</code></pre>
+        <p>It looks plausible, and <code>params</code> is a name many libraries use. The reference for
+        <code>QueryJobConfig</code> says to "Set properties on the constructed configuration by using the property name
+        as the name of a keyword argument."<sup class="cite"><a href="#src-26">26</a></sup> The property it lists is
+        <code>query_parameters</code>, a "list of parameters for parameterized query (empty by
+        default)".<sup class="cite"><a href="#src-26">26</a></sup> There is no <code>params</code> property, and the class
+        is documented to "raise error if an unknown property is being set".<sup class="cite"><a href="#src-26">26</a></sup>
+        Run under google-cloud-bigquery 3.47.0 on 2026-11-03, the reply's line raises <code>AttributeError: Property
+        params is unknown for &lt;class 'google.cloud.bigquery.job.query.QueryJobConfig'&gt;.</code><sup class="cite"><a href="#src-27">27</a></sup><sup class="cite"><a href="#src-29">29</a></sup></p>
+        <p>The fix follows the reference, with <code>ScalarQueryParameter(name, type_, value)</code> for one typed
+        value:<sup class="cite"><a href="#src-27">27</a></sup></p>
+<pre><code>from google.cloud import bigquery
+
+config = bigquery.QueryJobConfig(
+    query_parameters=[bigquery.ScalarQueryParameter("kind", "STRING", "closed")]
+)
+print(config.query_parameters)</code></pre>
+<pre class="out">[ScalarQueryParameter('kind', 'STRING', 'closed')]</pre>
+        <p>The guide on parameterized queries has the same shape in its own Python sample, with
+        <code>ScalarQueryParameter("corpus", "STRING", "romeoandjuliet")</code>, which makes it the minimal example to
+        compare against.<sup class="cite"><a href="#src-28">28</a></sup> It also names a limit: "Parameters can't be used
+        as substitutes for identifiers, column names, table names, or other parts of the
+        query."<sup class="cite"><a href="#src-28">28</a></sup></p>
+        <p>On sight, the warning sign is a keyword argument that the reference page does not list. Before such a line
+        goes in a commit, look the name up in the reference and run the line against the version you have installed.</p>
+        <h3>Which version does the page describe?</h3>
+        <p>Reference pages have versions too. The "latest" BigQuery reference pages still render as 3.42.1.<sup class="cite"><a href="#src-26">26</a></sup>
+        PyPI's latest release, and the desk's pin, is 3.47.0.<sup class="cite"><a href="#src-29">29</a></sup> The two
+        signatures above were checked against both. When the doc page and your pin differ, note the version the page
+        shows and run a one-line check against the installed library, which settles it.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Ask the assistant for the doc page, a minimal example and the version.</li>
+          <li>The reply's params keyword does not exist; the reference lists query_parameters.</li>
+          <li>Compare a reply with the official sample, then run it against your installed version.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>When I need a library I haven't used, I ask an assistant for a minimal example, the official doc page for
+          each class it uses, and the version the answer applies to. That gets me started fast, but the reference page
+          is the authority.</p>
+          <p>If the assistant says a function takes a certain keyword, I do two things before committing: I find that
+          keyword in the official reference, and I run the line against the version pinned in the project. A made-up
+          keyword like params instead of query_parameters fails right away.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="8">
+        <div class="tag">Check yourself</div>
+        <h2>Check yourself</h2>
+        <p>Eight retrieval questions, one per section. Answer each out loud before you open it.</p>
+        <details class="check"><summary>Name two stages of the development life cycle where an assistant helps, and say what stays the developer's in each.</summary><p>In the code stage it drafts boilerplate and functions, but the design and the decision to accept the draft stay with you. In the test stage it drafts cases and setup, but which behaviours must be tested comes from the requirement. In every stage the review and the commit are yours, so a bug it wrote is your bug.</p></details>
+        <details class="check"><summary>In AI pair programming, which role does the assistant play, and what does it not see?</summary><p>It plays a kind of navigator: it offers suggestions while you drive. It sees the code around the cursor, open tabs and recent edits, but not a requirement that is not written in those files, and it does not run the code unless it is an agent with tools.</p></details>
+        <details class="check"><summary>List GitHub Copilot's surfaces inside the editor and say which one can run commands.</summary><p>Inline suggestions, next edit suggestions, chat, and the agent. The agent is the one that can find code, edit files and run commands, so its changes need the closest review.</p></details>
+        <details class="check"><summary>Your team excludes a folder of customer exports with content exclusion. Where does that guardrail stop working?</summary><p>It is not supported in the Edit and Agent modes of Copilot Chat in VS Code and other editors, and it only covers tools GitHub controls. The safer fix is to keep customer data out of the repository.</p></details>
+        <details class="check"><summary>A generated <code>ticket_age_band</code> returns <code>over 24</code> for exactly 24 hours. Give the line, the issue and the fix, and say what the next prompt should contain.</summary><p>The line <code>elif hours &lt; 24:</code> leaves 24 out of the middle band; the fix is <code>elif hours &lt;= 24:</code>. The next prompt gives the context, the rules as exact comparisons, expected outputs for 3, 4, 24 and 25, and the project's style.</p></details>
+        <details class="check"><summary>An assistant wrote a function and its tests, and every test passes. Why is that not proof the function is correct, and which test would you add to <code>ticket_age_band</code>?</summary><p>The assistant tested the code as written, so a test can assert the bug as the expected answer. Expected values have to come from the requirement. The test to add is <code>assert ticket_age_band(24) == "4 to 24"</code>, which fails on the round-1 function.</p></details>
+        <details class="check"><summary>A drafted docstring says <code>after</code> is a timestamp. How do you decide whether it is right?</summary><p>Read the code that uses it. <code>read_events</code> compares <code>after</code> with <code>event_id</code> and <code>etl.run</code> passes the highest staged <code>event_id</code>, so it is an event id watermark and the code wins.</p></details>
+        <details class="check"><summary>An assistant tells you <code>QueryJobConfig</code> takes <code>params=</code>. What two things do you do before that line goes in a commit?</summary><p>Look the keyword up in the official reference, which lists <code>query_parameters</code> and no <code>params</code>. Then run the line against the installed version, where <code>params</code> raises an <code>AttributeError</code>.</p></details>
+      </section>
+
+      <section class="reading-sources" aria-label="Sources and deeper dive">
+        <h2>Sources &amp; deeper dive</h2>
+        <ul>
+          <li id="src-1"><a href="https://docs.github.com/en/copilot/get-started/best-practices" target="_blank" rel="noopener">Best practices for using GitHub Copilot</a> — what an assistant does best, what it is not for, and how to state a requirement.</li>
+          <li id="src-2"><a href="https://code.visualstudio.com/docs/copilot/overview" target="_blank" rel="noopener">Build with AI in VS Code</a> — inline and next edit suggestions, agents, and who stays responsible for a change.</li>
+          <li id="src-3"><a href="https://docs.github.com/en/copilot/tutorials/review-ai-generated-code" target="_blank" rel="noopener">Review AI-generated code</a> — tests first, hallucinated packages, fit with the project.</li>
+          <li id="src-4"><a href="https://martinfowler.com/articles/on-pair-programming.html" target="_blank" rel="noopener">On Pair Programming (Böckeler, Siessegger)</a> — driver and navigator, and when pairing works less well.</li>
+          <li id="src-5"><a href="https://docs.github.com/en/copilot/responsible-use/copilot-code-completion" target="_blank" rel="noopener">Application card: GitHub Copilot inline suggestions</a> — what context a suggestion is built from, and its limits.</li>
+          <li id="src-6"><a href="https://docs.github.com/en/copilot/get-started/what-is-github-copilot" target="_blank" rel="noopener">About GitHub Copilot</a> — assistive and agentic features, Copilot Free, administrator controls.</li>
+          <li id="src-7"><a href="https://docs.github.com/en/copilot/concepts/copilot-surfaces/copilot-in-ides" target="_blank" rel="noopener">GitHub Copilot in IDEs</a> — the extension as entry point and its surfaces in each editor.</li>
+          <li id="src-8"><a href="https://docs.github.com/en/copilot/reference/chat-cheat-sheet" target="_blank" rel="noopener">GitHub Copilot Chat cheat sheet</a> — slash commands and chat variables.</li>
+          <li id="src-9"><a href="https://docs.github.com/en/copilot/get-started/plans" target="_blank" rel="noopener">Plans for GitHub Copilot</a> — the plans and the Free completion limit.</li>
+          <li id="src-10"><a href="https://devin.ai/blog/windsurf-rebrand-announcement" target="_blank" rel="noopener">The Next Chapter: Renaming to Windsurf</a> — Codeium becomes Windsurf, and its extensions the Windsurf Plugins.</li>
+          <li id="src-11"><a href="https://devin.ai/blog/windsurfs-next-chapter" target="_blank" rel="noopener">The Next Chapter (Cognition)</a> — the 2025 acquisition announcement.</li>
+          <li id="src-12"><a href="https://docs.devin.ai/desktop/devin-desktop-faq" target="_blank" rel="noopener">Devin Desktop FAQ</a> — Windsurf's new name from June 2026.</li>
+          <li id="src-13"><a href="https://docs.devin.ai/windsurf/plugins/getting-started" target="_blank" rel="noopener">Welcome to Windsurf Plugins</a> — what the JetBrains plugins offer and their maintenance status.</li>
+          <li id="src-14"><a href="https://devin.ai/blog/windsurf-is-now-devin-desktop" target="_blank" rel="noopener">Windsurf is now Devin Desktop</a> — the launch post and Cascade's successor.</li>
+          <li id="src-15"><a href="https://docs.github.com/en/copilot/concepts/context/content-exclusion" target="_blank" rel="noopener">Content exclusion for GitHub Copilot</a> — who configures it, what it hides, and where it does not apply.</li>
+          <li id="src-16"><a href="https://docs.github.com/en/copilot/how-tos/manage-your-account/manage-policies" target="_blank" rel="noopener">Managing GitHub Copilot policies as an individual subscriber</a> — public-code matching, the training-data setting, web search.</li>
+          <li id="src-17"><a href="https://docs.github.com/en/copilot/how-tos/administer-copilot/manage-for-organization/manage-policies" target="_blank" rel="noopener">Managing policies and features for GitHub Copilot in your organization</a> — organization and enterprise policy.</li>
+          <li id="src-18"><a href="https://code.visualstudio.com/docs/configure/telemetry" target="_blank" rel="noopener">Telemetry (VS Code)</a> — the telemetryLevel setting and what it does not cover.</li>
+          <li id="src-19"><a href="https://code.claude.com/docs/en/github-actions" target="_blank" rel="noopener">Claude Code GitHub Actions</a> — a model in a CI workflow, and keys stored as GitHub Secrets.</li>
+          <li id="src-20"><a href="https://platform.claude.com/docs/en/get-started" target="_blank" rel="noopener">Get started with Claude</a> — what a direct API call needs, named only.</li>
+          <li id="src-21"><a href="https://docs.github.com/en/copilot/concepts/prompting/prompt-engineering" target="_blank" rel="noopener">Prompt engineering for GitHub Copilot</a> — examples, iteration and fresh sessions.</li>
+          <li id="src-22"><a href="https://docs.pytest.org/en/stable/how-to/assert.html" target="_blank" rel="noopener">How to write and report assertions in tests (pytest)</a> — a test is a plain assert.</li>
+          <li id="src-23"><a href="https://docs.github.com/en/copilot/tutorials/write-tests" target="_blank" rel="noopener">Writing tests with GitHub Copilot</a> — the /tests command and why generated tests are reviewed.</li>
+          <li id="src-24"><a href="https://docs.github.com/en/copilot/tutorials/copilot-cookbook/testing-code/generate-unit-tests" target="_blank" rel="noopener">Generating unit tests</a> — the cookbook prompt and its non-determinism warning.</li>
+          <li id="src-25"><a href="https://peps.python.org/pep-0257/" target="_blank" rel="noopener">PEP 257 – Docstring Conventions</a> — one-line and multi-line docstrings.</li>
+          <li id="src-26"><a href="https://docs.cloud.google.com/python/docs/reference/bigquery/latest/google.cloud.bigquery.job.QueryJobConfig" target="_blank" rel="noopener">Class QueryJobConfig</a> — keyword properties and query_parameters.</li>
+          <li id="src-27"><a href="https://docs.cloud.google.com/python/docs/reference/bigquery/latest/google.cloud.bigquery.query.ScalarQueryParameter" target="_blank" rel="noopener">Class ScalarQueryParameter</a> — the name, type and value signature.</li>
+          <li id="src-28"><a href="https://docs.cloud.google.com/bigquery/docs/parameterized-queries" target="_blank" rel="noopener">Run parameterized queries</a> — the official Python sample and what parameters cannot replace.</li>
+          <li id="src-29"><a href="https://pypi.org/project/google-cloud-bigquery/" target="_blank" rel="noopener">google-cloud-bigquery on PyPI</a> — the current release and its version history.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · after you have read the page</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 5 Day 3</footer>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 3 — goals</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Explain where generative AI helps across the development life cycle and what stays the developer's: the decision, the review and the commit</li>
+      <li>Prompt an assistant for a function with its context, boundaries and expected outputs, and check the reply on and beside every edge</li>
+      <li>Use an assistant to draft unit tests, and explain why a generated suite can pass on a bug and which test catches it</li>
+      <li>Learn a new library through an assistant by asking for the doc page, an example and the version, then checking each claim in the reference</li>
+    </ul>
+    <p class="goals-foot">Thursday assumes this review loop. Finish the check to unlock the next page.</p>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Day 4 — AI tooling: optimization, analysis & security →", href: "day-4-ai-tooling-review-and-security.html" };
+window.DIAGRAM = {
+  title: "Day 3 · an assistant in the development loop",
+  width: 500, height: 540,
+  nodes: [
+    { id:"sdlc", step:0, kind:"example", x:14, y:14, w:472, h:50, label:"THE LIFE CYCLE\n  plan · code · test · review · document · maintain", detail:"An assistant helps at every stage. The decision, the review and the commit stay with the developer who commits the change." },
+    { id:"pair", step:1, x:24, y:86, w:200, h:56, label:"AI pair programming\n  you drive · it suggests\n  intent · read · accept · test", detail:"The assistant sees nearby code, open tabs and recent edits, never the unwritten requirement, and runs nothing unless it is an agent." },
+    { id:"editor", step:2, x:276, y:86, w:200, h:56, label:"Editor assistant\n  inline · next edit\n  chat · agent", detail:"GitHub Copilot is the example; Codeium's plugins are now the Windsurf Plugins, and Windsurf itself is Devin Desktop." },
+    { id:"sends", step:3, x:24, y:166, w:200, h:56, label:"What it sends\n  nearby code · open tabs\n  edit history · chat text", detail:"Suggestions are built from the code around the cursor, snippets from open tabs, edit history and cursor position." },
+    { id:"settings", step:3, x:276, y:166, w:200, h:56, label:"Settings & workflow\n  exclusion · training · telemetry\n  script · CI · secrets", detail:"Content exclusion does not apply in Edit and Agent modes; telemetryLevel does not cover extensions; API keys live in secrets." },
+    { id:"gen", step:4, x:24, y:248, w:200, h:56, label:"Code generation\n  round 1: elif hours < 24\n  round 2: edges + outputs", detail:"The zero-shot reply put 24 in over 24. Round 2 gave the context, the comparisons, expected outputs for 3, 4, 24, 25 and the style." },
+    { id:"tests", step:5, x:276, y:248, w:200, h:56, label:"Unit tests\n  generated suite passes on the bug\n  ticket_age_band(24) == \"4 to 24\"", detail:"An assistant tests the code as written. Expected values come from the requirement, on and beside every boundary." },
+    { id:"docs", step:6, x:24, y:330, w:200, h:56, label:"Documentation\n  after is an event_id watermark\n  no --dry-run flag", detail:"Mark a drafted docstring and README against the code and PEP 257. If nothing reads sys.argv, there is no flag." },
+    { id:"lib", step:7, x:276, y:330, w:200, h:56, label:"New library\n  params → query_parameters\n  doc page · example · version", detail:"Ask for the doc page, a minimal example and the version; check each keyword in the reference and run it against your pin." },
+    { id:"own", step:8, x:24, y:412, w:452, h:46, label:"AN OWNED COMMIT\n  read · tested against the requirement · checked in the docs" },
+    { id:"check", step:8, x:24, y:478, w:452, h:40, label:"CHECK YOURSELF\n  answer out loud, then open" }
+  ],
+  edges: [
+    { id:"e1", step:1, from:"sdlc", to:"pair", label:"the code stage" },
+    { id:"e2", step:2, from:"pair", to:"editor", label:"in the editor" },
+    { id:"e3", step:3, from:"editor", to:"sends", label:"over the network" },
+    { id:"e4", step:3, from:"sends", to:"settings", label:"governed by" },
+    { id:"e5", step:4, from:"sends", to:"gen", label:"context in" },
+    { id:"e6", step:5, from:"gen", to:"tests", label:"test the edges" },
+    { id:"e7", step:6, from:"gen", to:"docs", label:"document it" },
+    { id:"e8", step:7, from:"docs", to:"lib", label:"check the source" },
+    { id:"e9", step:8, from:"tests", to:"own", dir:"-" },
+    { id:"e10", step:8, from:"docs", to:"own", dir:"-" },
+    { id:"e11", step:8, from:"lib", to:"own", dir:"-" },
+    { id:"e12", step:8, from:"own", to:"check", dir:"-" }
+  ],
+  captions: [
+    "Generative AI helps at every stage of the life cycle, and the decision, the review and the commit stay with you. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "In AI pair programming you drive and the assistant suggests from the code it can see: state the intent, read, accept or reject, test.",
+    "The editor-assistant category: Copilot's inline and next edit suggestions, chat and agent, with Codeium's plugins as a second example.",
+    "What an extension sends, the settings a team checks before switching it on, and a model in a script or CI job with its key in a secret.",
+    "Code generation: a zero-shot prompt left the edge at 24 to a guess; context, comparisons and expected outputs fixed it.",
+    "Generated tests check the code as written, so the test that catches the off-by-one comes from the requirement.",
+    "A drafted docstring and README are marked against the code: after is an event_id watermark and the --dry-run flag does not exist.",
+    "Learning a library: ask for the doc page, an example and the version, then check the keyword in the reference and run it.",
+    "You can now explain how a developer uses an assistant from prompt to commit and what makes the result theirs."
+  ]
+};
+window.QUIZ = {
+  id: "w05-d3",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "GitHub's application card lists what an inline suggestion is built from. Which of these is NOT part of it?",
+      options: ["The code around your cursor", "Snippets from files open in other tabs", "Your recent edit history", "The requirement written in the ticket tracker"], answer: 3,
+      explain: "The prompt is built from the surrounding code, open tabs, edit history and cursor position. A requirement that lives in a ticket or a meeting reaches the assistant only if you write it into the prompt or an open file." },
+    { type: "tf", stem: "If every unit test an assistant generated for a function passes, the function meets its requirement.", answer: false,
+      explain: "The assistant tests the code as written. The generated suite for ticket_age_band asserted that 24 hours is over 24, which matches the bug and passes. Expected values must come from the requirement." },
+    { type: "mcq", stem: "Which statements about Copilot's content exclusion are true? Select all that apply.",
+      options: ["Repository administrators, organization owners and enterprise owners can configure it", "Excluded files do not inform inline suggestions in other files", "It protects excluded files in the Agent mode of Copilot Chat in VS Code", "It is a guardrail only for the tools GitHub controls"], answer: [0, 1, 3],
+      explain: "Exclusion is set by repository, organization or enterprise owners and keeps files out of suggestions and chat replies. The docs say it is not supported in Edit and Agent modes, and it only covers GitHub-controlled tools." },
+    { type: "match", stem: "Match each Copilot Chat entry to what it does.",
+      pairs: [
+        { l: "/tests", r: "generate unit tests for the selected code" },
+        { l: "/explain", r: "explain how the code in the active editor works" },
+        { l: "/fix", r: "propose a fix for problems in the selected code" },
+        { l: "#selection", r: "include the selected text in the prompt" }
+      ],
+      explain: "Slash commands run a ready-made request; hash variables attach context. All four come from the Copilot Chat cheat sheet." },
+    { type: "scq", stem: "An assistant's reply passes a query parameter as bigquery.QueryJobConfig(params={\"kind\": \"closed\"}). What does the reference say?",
+      options: ["params is correct and takes a dict", "The property is query_parameters, a list such as [ScalarQueryParameter(\"kind\", \"STRING\", \"closed\")]", "Parameters go in the SQL text with an f-string", "QueryJobConfig accepts any keyword and ignores unknown ones"], answer: 1,
+      explain: "QueryJobConfig sets properties by keyword, and the property is query_parameters. An unknown property raises an error: on 3.47.0, params raises AttributeError: Property params is unknown." },
+    { type: "open", stem: "In two or three sentences: a generated ticket_age_band uses elif hours < 24 where the requirement includes 24 in the middle band. What is the bug, which test catches it, and why did the assistant's own tests miss it?",
+      hint: "One comparison, one assert, one reason.",
+      model: "It is an off-by-one: 24 returns over 24 instead of 4 to 24, and the fix is hours <= 24. The test assert ticket_age_band(24) == \"4 to 24\" catches it. The assistant wrote its tests from the code as written, so its test asserted the buggy answer and passed." }
+  ]
+};
+</script>
+
+<script src="../../assets/js/diagram.js?v=20261103"></script>
+<script src="../../assets/js/scrolly.js?v=20261103"></script>
+<script src="../../assets/js/modals.js?v=20261103"></script>
+<script src="../../assets/js/quiz.js?v=20261103"></script>
+<script src="../../assets/js/widgets.js?v=20261103"></script>
+<script src="../../assets/js/glossary.js?v=20261103"></script>
+</body>
+</html>

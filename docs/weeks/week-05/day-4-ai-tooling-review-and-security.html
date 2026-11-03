@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w05d4">
+<title>W5·D4 — AI tooling: optimization, analysis &amp; security | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261103">
+<script src="../../assets/js/theme.js?v=20261103"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="../../exit-criteria/index.html">Exit criteria</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>AI tooling: optimization, analysis &amp; security: reviewing what an assistant hands you</h1>
+        <div class="meta">
+          <span><b>Week 5</b> · Day 4</span>
+          <span>Thu Nov 12, 2026</span>
+          <span>Gen AI introduction</span>
+          <span><b>~42 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span class="verified">Sources checked 2026-11-03 · python 3.15 · pandas 3.0.6 · mysql-connector-python 26.7.0 · pytest 9.1.1 · pylint 4.0.0 · bandit 1.9.4</span>
+          <span class="exit"><a href="../../exit-criteria/qc-3-data-and-gen-ai-fundamentals.html#w05d4">Exit criteria</a></span>
+        </div>
+        <p class="summary">This page assumes Wednesday's loop: give an assistant the code, the error, the constraint and the
+        expected output, then read and test what comes back. It turns that loop on existing code and on security:
+        judging an assistant's review of the ticket desk's <code>clean_events</code>, accepting a faster
+        <code>apply_scd2</code> only behind tests, and finding five security problems in a generated export script. It
+        then covers responsible use, the legal questions of licensing and copyright, and a comparison of assisted and
+        traditional development. Afterwards you can judge generated output for correctness, maintainability and
+        security, explain and fix code injection, insecure defaults and data leakage, and say when an assistant is the
+        right tool.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="0">
+        <div class="tag">Code analysis</div>
+        <h2>Code analysis: judging an assistant's review</h2>
+        <h3>Asking an assistant to review a function</h3>
+        <p>The subject is <code>transform.clean_events</code> from the ticket desk's week 4 ETL job. It joins each staged
+        event to its ticket's <code>opened_at</code> and gives every bad row a reason. A useful review prompt gives the
+        model the code, what the function is for, where its data comes from and the team rules it must respect.</p>
+        <p class="label">Prompt (written for this page, never run here)</p>
+<pre><code>Review this function from our ETL job. It splits staged ticket events into
+clean rows and rejects. Events come from MySQL through a staging table, and
+the tickets table is reloaded on every run. Our lint config requires a
+docstring on every function. For each finding, name the line, say why it
+matters, and say whether it is a bug, a risk or a style point.
+
+&lt;the code of transform.clean_events, pasted in full&gt;</code></pre>
+        <p>If you have a free chat assistant of your own, you can try this prompt at home; nothing on this page needs
+        an account. The reply below was written for the page, so it never changes.</p>
+        <p class="label">Illustrative reply (written for this page)</p>
+<pre><code>1. The merge with how="left": an event whose ticket_id has no row in
+   tickets keeps an empty opened_at. created_at &lt; opened_at is then False,
+   so the event passes as clean. Consider rejecting events with no ticket.
+2. The duplicated(...) line: duplicated marks the first copy of a duplicate
+   too, so both copies are rejected and the good event is lost. Rework the
+   check so one copy survives.
+3. The docstring: drop the one-line docstring, the name says it all.</code></pre>
+        <p>Three findings, stated with the same confidence and no source. GitHub's application card for Copilot Chat
+        warns that an assistant's explanation may not always be accurate or complete and should be reviewed, and it
+        puts that review on the user.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <h3>Settling each finding with the docs and a test</h3>
+        <p>Finding 2 is a claim about a library, so the library's reference settles it.
+        <code>DataFrame.duplicated</code> defaults to <code>keep="first"</code>, which marks duplicates as
+        <code>True</code> except for the first occurrence; only <code>keep=False</code> marks every
+        copy.<sup class="cite"><a href="#src-2">2</a></sup> The first copy survives, and a week 4 test already asserts
+        it. The finding is false.</p>
+        <p>Finding 1 is about the merge. A left merge keeps every key of the left frame, like a SQL left outer join, and
+        fills the right frame's columns with missing values where no row matches.<sup class="cite"><a href="#src-3">3</a></sup>
+        A few lines of pandas show both findings at once. Ticket 9 is invented for the example and is not in
+        <code>sql/seed.sql</code>.</p>
+<pre><code>import pandas as pd
+
+events = pd.DataFrame({
+    "event_id": [1, 2, 3],
+    "ticket_id": [4, 4, 9],
+    "kind": ["assigned", "assigned", "closed"],
+    "created_at": pd.to_datetime(["2026-10-19 09:00", "2026-10-19 09:00", "2026-10-19 10:00"]),
+})
+tickets = pd.DataFrame({"ticket_id": [4], "opened_at": pd.to_datetime(["2026-10-19 08:00"])})
+
+print(events.duplicated(["ticket_id", "kind", "created_at"]).tolist())
+merged = events.merge(tickets, on="ticket_id", how="left")
+print(merged["opened_at"].isna().tolist())
+print((merged["created_at"] &lt; merged["opened_at"]).tolist())</code></pre>
+<pre class="out">[False, True, False]
+[False, False, True]
+[False, False, False]</pre>
+        <p>Only the second copy of the ticket 4 event is marked a duplicate. Event 3, whose ticket is missing, has no
+        <code>opened_at</code> after the merge, and a comparison with a missing time is <code>False</code>, so event 3
+        gets no reason and comes out clean. Finding 1 is true.</p>
+        <p>Can it happen? In MySQL, <code>ticket_events.ticket_id</code> is a foreign key with
+        <code>ON DELETE CASCADE</code>: MySQL rejects a child row with no matching parent, and deleting a ticket deletes
+        its events.<sup class="cite"><a href="#src-4">4</a></sup> No orphan exists at the source. One can still arrive
+        through staging, because <code>etl.run</code> exports <code>tickets</code> before it reads the events, and
+        staged events are appended while staged tickets are reloaded. The case is rare, so it earns a cheap guard: a
+        <code>missing ticket</code> reject reason and a test that stages an orphan.</p>
+        <h3>The critical-evaluation checklist</h3>
+        <p>Sorting findings needs a fixed set of questions, so the verdict does not depend on how sure the reply sounds.
+        GitHub's best-practice page for Copilot asks you to review suggestions for functionality, security, readability
+        and maintainability, and to back that review with linting and code
+        scanning.<sup class="cite"><a href="#src-5">5</a></sup> A checklist that covers all of it:</p>
+        <ul>
+          <li>Does it run? Read it, then run it or the test that covers it.</li>
+          <li>Does it meet the requirement, including the edge cases the prompt never mentioned?</li>
+          <li>Is it tested, and does some test fail when the code is wrong?</li>
+          <li>Can the team maintain it: does it follow the team's conventions, and can a teammate read it?</li>
+          <li>Is it safe: does it treat input, secrets and personal data the way the team requires?</li>
+          <li>Is every claim about a library or an API in that library's own docs?</li>
+        </ul>
+        <p>The first three questions are correctness, the fourth maintainability, the fifth security. Finding 2 fails
+        the docs question, Finding 1 passes all six, and Finding 3 fails maintainability.</p>
+        <h3>A linter's rule against an assistant's opinion</h3>
+        <p>Finding 3 says to drop the one-line docstring because the name says it all. The desk runs pylint, and its
+        message C0116, <code>missing-function-docstring</code>, is used when a function or method has no
+        docstring.<sup class="cite"><a href="#src-6">6</a></sup> Week 4 made docstrings a team convention, so accepting
+        the suggestion brings back a lint failure on the next run. A style point that contradicts the team's lint
+        configuration is a sign the model knows general taste and not your project.</p>
+        <p>A static-analysis tool such as pylint reads the code without running it, applies the same rule every time
+        and names the rule that fired. An assistant's review can change between runs and argues in prose. Teams keep
+        both and settle disagreements with the docs and a test. A weak review is easy to spot: it states library
+        behaviour with no link to the docs, or offers a style rule the team's linter would reject.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>An assistant's review is a list of claims, each settled with the docs or a test.</li>
+          <li>duplicated keeps the first copy by default, and the pandas reference says so.</li>
+          <li>A true finding about a rare case still earns a cheap guard and a test.</li>
+          <li>A suggestion that breaks the team's lint rules fails maintainability.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>When an assistant reviews my code, I treat each finding as a claim. If it's about a library, I open the
+          docs; if it's about behaviour, I write a small test that shows it. I act on the findings that hold up and fit
+          the team's conventions, and I drop the rest.</p>
+          <p>I judge generated output on three things. Correctness: does it run, does it meet the requirement, and does
+          a test fail when it's wrong. Maintainability: does it follow our conventions so a teammate can work on it.
+          Security: does it handle input, secrets and personal data safely.</p>
+          <p>If a finding is true but can't happen at the source, I check the other ways data arrives. Staging can
+          still produce an orphan, so I'd add a reject reason and a test for it.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">Code optimization</div>
+        <h2>Optimizing and refactoring behind tests</h2>
+        <h3>A refactor keeps the behaviour</h3>
+        <p>Refactoring restructures existing code, altering its internal structure without changing its external
+        behaviour.<sup class="cite"><a href="#src-7">7</a></sup> Optimizing is one reason to refactor: the same answers,
+        sooner. GitHub's tutorial on refactoring says Copilot Chat can suggest ways to speed up slow-running
+        code,<sup class="cite"><a href="#src-8">8</a></sup> so asking an assistant for a faster version is an ordinary
+        request. Accepting one is where the work starts.</p>
+        <p>A refactor promises the same behaviour, so the proof is the tests: they pass before the change and must pass,
+        unedited, after it. Tests changed in the same commit as the refactor can be bent to fit the new code. The
+        routine:</p>
+        <ol>
+          <li>Run the existing tests and confirm they pass.</li>
+          <li>Ask for the rewrite, then read the whole diff before accepting any of it.</li>
+          <li>Run the same tests, unedited, against the rewrite.</li>
+          <li>Ask which inputs the tests do not cover, and add a test for each one that matters.</li>
+        </ol>
+        <h3>The "faster" apply_scd2</h3>
+        <p><code>transform.apply_scd2</code> keeps customer history as a type 2 slowly changing dimension: when a
+        tracked value changes, it closes the current row and adds a new version. It decides "changed" in a Python loop,
+        one source row at a time, comparing each column in <code>TRACKED</code> with <code>==</code>. Asked for a faster
+        version, an assistant might replace that compare with a pandas <code>merge</code> on
+        <code>customer_id</code>.</p>
+        <p class="label">Illustrative reply (written for this page)</p>
+<pre><code>def apply_scd2(dimension, source, as_of):
+    """Return the customer dimension with type 2 history applied on as_of."""
+    rows = [dict(row) for row in dimension]
+    current = {row["customer_id"]: row for row in rows if row["is_current"]}
+    next_key = max((row["customer_key"] for row in rows), default=0) + 1
+    cur = pd.DataFrame(list(current.values()), columns=["customer_id", *TRACKED])
+    merged = pd.DataFrame(source).merge(cur, on="customer_id", how="left")
+    changed = pd.Series(False, index=merged.index)
+    for col in TRACKED:
+        changed |= merged[f"{col}_x"] != merged[f"{col}_y"]
+    for src, is_changed in zip(source, changed):
+        if not is_changed:
+            continue
+        old = current.get(src["customer_id"])
+        if old is not None:
+            old["effective_to"] = as_of
+            old["is_current"] = False
+        rows.append(dict(src, customer_key=next_key, effective_from=as_of,
+                         effective_to=OPEN_END, is_current=True))
+        next_key += 1
+    return rows</code></pre>
+        <p>Columns present in both frames of a merge get the suffixes <code>_x</code> and <code>_y</code> by
+        default,<sup class="cite"><a href="#src-3">3</a></sup> so <code>country_x</code> is the source's country and
+        <code>country_y</code> the dimension's. Run under pandas 3.0.6 against week 4's three <code>apply_scd2</code>
+        tests in <code>test_transform.py</code>, this version passes all three. A reviewer who stops there accepts
+        it.</p>
+        <div class="ix-predict" data-q="Dana's country is missing (None) in both the dimension and the source, and nothing else about her changes. What does each version do on a rerun?" data-a="The loop adds nothing, because plain Python treats None as equal to None. The rewrite adds a new version of Dana on every run, because pandas compares a missing value as unequal to itself."></div>
+        <h3>A missing value and the test the fixtures miss</h3>
+        <p>The rewrite changed behaviour at an edge. In plain Python, <code>None == None</code> is <code>True</code>. In
+        pandas a missing value is never equal to itself in a comparison, which is why the docs say to test for missing
+        values with <code>isna()</code> and not with <code>==</code>.<sup class="cite"><a href="#src-9">9</a></sup></p>
+<pre><code>import pandas as pd
+
+print(None == None)
+left = pd.Series([None, "CA"])
+right = pd.Series([None, "CA"])
+print((left == right).tolist())
+print((left.isna() &amp; right.isna()).tolist())</code></pre>
+<pre class="out">True
+[False, True]
+[True, False]</pre>
+        <p>The loop calls Dana's missing country unchanged; the rewrite calls it changed. Week 4's fixture holds no
+        missing value, so its tests cannot see the difference. The test that can is a copy of
+        <code>test_rerun_after_change_adds_nothing</code> with Dana's country set to <code>None</code> in both the
+        dimension and the source.</p>
+<pre><code>def test_rerun_with_missing_country_adds_nothing(dimension):
+    """A missing country that did not change adds no row on a rerun."""
+    dimension[0]["country"] = None
+    source = [dict(row) for row in dimension]
+    source[0]["monthly_fee"] = Decimal("199.00")
+    once = apply_scd2(dimension, source, AS_OF)
+    assert apply_scd2(once, source, AS_OF) == once</code></pre>
+        <p>Under pandas 3.0.6 this test passes against the loop and fails against the rewrite: the second run closes
+        Dana's current row and appends a fourth. The fix counts a column as changed only when the values differ and are
+        not both missing, using <code>isna()</code>.</p>
+        <p>On the desk the divergence is latent, because <code>sql/schema.sql</code> declares all four tracked columns
+        <code>NOT NULL</code>. It goes live on any source with nullable columns, Project 0's dataset of 100,000 rows or
+        more among them. In a diff, look for a <code>_x</code> against <code>_y</code> compare used as "changed" with no
+        <code>isna()</code> guard, and for a refactor that edits its tests in the same commit.</p>
+        <h3>Measure before you optimize</h3>
+        <p>The next interview question is how you knew the loop was slow. A profile is a set of statistics that describes
+        how often and for how long various parts of a program execute, and Python 3.15 adds a <code>profiling</code>
+        package to collect one.<sup class="cite"><a href="#src-10">10</a></sup> The older pure-Python
+        <code>profile</code> module is deprecated in 3.15.<sup class="cite"><a href="#src-11">11</a></sup> Profilers
+        are not for benchmarking; timing a small snippet is the job of <code>timeit</code>.<sup class="cite"><a href="#src-12">12</a></sup></p>
+        <p>Measured, the question has an honest answer. At the desk's four customers the loop finishes before anyone
+        could notice, and a rewrite buys only risk. At Project 0's 100,000 rows a vectorized compare may be worth having,
+        once a measurement shows the compare is where the time goes and the missing-value test passes. "This is faster"
+        with no timing is a claim like any other.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A refactor changes structure and keeps behaviour; the unedited tests prove it.</li>
+          <li>pandas compares a missing value as unequal to itself; test for it with isna().</li>
+          <li>Existing tests guard only their fixtures; add one for the edge the rewrite touches.</li>
+          <li>Measure with a profiler or timeit before deciding an optimization is worth it.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Before I accept a faster rewrite, I run the existing tests, read the whole diff, and run the same tests
+          unchanged against the new version. The tests come first because they describe what the code does today; if I
+          edit them alongside the refactor, they stop proving anything.</p>
+          <p>Refactoring means changing the structure without changing the behaviour. I prove it with the tests that
+          passed before, and then I add tests for the inputs the rewrite handles differently.</p>
+          <p>The old tests can pass while the rewrite is wrong, because they only cover their fixtures. A pandas compare
+          treats two missing values as different where plain Python treats them as equal, so I'd add a test with the
+          same missing value on both sides.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">Security risks</div>
+        <h2>Security risks in generated code: code injection</h2>
+        <h3>A generated export script</h3>
+        <p>The request to an assistant: a script that takes a ticket status from the command line, reads the tickets of
+        that status joined to <code>customers</code> for each customer's email, and writes them to a CSV file. The file
+        it returns, <code>export_tickets.py</code>, is new and not part of the desk. It runs, and on the happy path it
+        works.</p>
+        <p class="label">Illustrative reply (written for this page)</p>
+<pre><code>"""Export the tickets of one status, with each customer's email, to a CSV file."""
+import csv
+import logging
+import os
+import sys
+
+import mysql.connector
+
+logging.basicConfig(level=logging.DEBUG)
+log = logging.getLogger(__name__)
+
+
+def main():
+    """Write every ticket of the status given on the command line to tickets.csv."""
+    status = sys.argv[1]
+    conn = mysql.connector.connect(
+        host="127.0.0.1",
+        user="desk_app",
+        password=os.environ.get("DESK_DB_PASSWORD", "deskapp"),
+        database="ticket_desk",
+        ssl_disabled=True,
+    )
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute(
+        "SELECT t.ticket_id, t.title, t.status, c.email FROM tickets t "
+        "JOIN customers c ON c.customer_id = t.customer_id "
+        f"WHERE t.status = '{status}'"
+    )
+    rows = cursor.fetchall()
+    cursor.close()
+    with open("tickets.csv", "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=["ticket_id", "title", "status", "email"])
+        writer.writeheader()
+        for row in rows:
+            log.info("writing %s", row)
+            writer.writerow(row)
+    conn.close()
+
+
+if __name__ == "__main__":
+    main()</code></pre>
+        <p>The file carries five security problems. Before reading on, find as many as you can and say how you would
+        fix each. This step takes the query; the next step takes the other four. OWASP's Top 10 for LLM applications
+        frames the right attitude in its entry LLM05:2025, Improper Output Handling: treat the model like any other user,
+        with zero trust, and check what it produces before it runs.<sup class="cite"><a href="#src-13">13</a></sup></p>
+        <h3>SQL built from user input</h3>
+        <p>The last line of the query is an f-string, and <code>status</code> comes straight from
+        <code>sys.argv</code>, the list of command-line arguments. Whatever the user types becomes part of the SQL text.
+        That is code injection. MITRE catalogues it as CWE-89, Improper Neutralization of Special Elements used in an
+        SQL Command: the program builds an SQL command from externally influenced input.<sup class="cite"><a href="#src-14">14</a></sup>
+        Running the same string-building with a hostile status shows the SQL that reaches the database.</p>
+<pre><code>status = "closed' OR '1'='1"
+query = f"SELECT t.ticket_id, c.email FROM tickets t JOIN customers c ON c.customer_id = t.customer_id WHERE t.status = '{status}'"
+print(query)</code></pre>
+<pre class="out">SELECT t.ticket_id, c.email FROM tickets t JOIN customers c ON c.customer_id = t.customer_id WHERE t.status = 'closed' OR '1'='1'</pre>
+        <p>The quote in the input closes the string literal, and <code>'1'='1'</code> is true for every row, so the
+        export holds every ticket and every customer's email whatever status was asked for. OWASP names this case
+        directly: LLM-generated SQL queries executed without proper parameterization, leading to SQL
+        injection.<sup class="cite"><a href="#src-13">13</a></sup></p>
+        <h3>Binding a parameter, and what binding cannot do</h3>
+        <p>The desk already has the right pattern. <code>extract.read_events</code> passes its watermark as a
+        parameter:</p>
+<pre><code>cursor.execute("SELECT * FROM ticket_events WHERE event_id &gt; %s ORDER BY event_id", (after,))</code></pre>
+        <p><code>cursor.execute(operation, params)</code> binds the values in the tuple or dict <code>params</code> to
+        the <code>%s</code> markers in the operation, and a tuple of one value needs its comma, as in
+        <code>('abc',)</code>.<sup class="cite"><a href="#src-15">15</a></sup> The fix for the generated file has the
+        same shape:</p>
+<pre><code>cursor.execute(
+    "SELECT t.ticket_id, t.title, t.status, c.email FROM tickets t "
+    "JOIN customers c ON c.customer_id = t.customer_id "
+    "WHERE t.status = %s",
+    (status,),
+)</code></pre>
+        <p>A parameterized query defines the SQL structure separately from its data
+        values,<sup class="cite"><a href="#src-16">16</a></sup> so the hostile status is now one odd value that no
+        ticket has, and the export comes back empty. Two wrong fixes come up often: escaping the quote by hand inside the
+        f-string, and writing <code>(status)</code> without the comma, which is a plain string and no tuple.</p>
+        <p><code>extract.read_table</code> also runs <code>f"SELECT * FROM {table}"</code>, which raises a fair
+        question. OWASP's cheat sheet says parameter markers represent data values, not table names, column names or SQL
+        keywords, so an identifier is fixed in code or mapped from an
+        allow-list.<sup class="cite"><a href="#src-16">16</a></sup> <code>read_table</code> gets its table name from
+        the <code>TABLES</code> constant, never from input, which makes the constant its allow-list. The generated
+        file's status is a value from the user, so it must be a parameter.</p>
+        <p>Binding has a limit. It keeps input as data but does not decide whether this user may see these rows. Access
+        is a separate check.</p>
+        <h3>Defence in depth</h3>
+        <p>A bound parameter closes this hole, and it is one layer. Defence in depth means several independent checks,
+        so that one missed check does not become a breach:</p>
+        <ul>
+          <li>bound parameters, so input stays data;</li>
+          <li>least privilege on the database account, so an injection that slips through reads only what that account
+          may read;</li>
+          <li>secrets kept outside the code, so a leaked file does not leak the password;</li>
+          <li>a review and a scanner on every generated change.</li>
+        </ul>
+        <p>You recognise the risk on sight: <code>cursor.execute(f"...")</code>, or a quote and a plus sign gluing a
+        variable into SQL text. Every variable inside SQL text raises the same question: where does its value come
+        from?</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>An f-string query built from user input lets the input rewrite the SQL.</li>
+          <li>Bind values with a %s marker and a tuple, and keep the comma in a one-value tuple.</li>
+          <li>Identifiers cannot be bound; they come from code or an allow-list.</li>
+          <li>Binding is one layer; least privilege and secrets outside the code are others.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Generated code brings three security risks I look for. Code injection, like SQL built from user input with
+          an f-string, fixed with a bound parameter. Insecure defaults, like a fallback password or TLS switched off,
+          fixed by failing loudly and keeping the safe default. And data leakage, like customer emails written to a log,
+          fixed by logging only ids and counts.</p>
+          <p>An f-string pastes the user's text into the SQL itself, so a quote in the input can change the query. With
+          a placeholder and a parameter tuple, the SQL and the data travel separately, and the input can only ever be a
+          value.</p>
+          <p>The f-string in read_table is acceptable because the table name comes from a constant in the code, and a
+          placeholder can't stand for a table name anyway. The generated script's status comes from the command line,
+          so it has to be a parameter.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="3">
+        <div class="tag">Security risks</div>
+        <h2>Insecure defaults, data leakage and the patterns to recognise</h2>
+        <h3>A fallback password is a hard-coded credential</h3>
+        <p>The connect call in <code>export_tickets.py</code> reads its password with
+        <code>os.environ.get("DESK_DB_PASSWORD", "deskapp")</code>. It looks careful, because it reads an environment
+        variable. The second argument is the catch: a <code>.get</code> on <code>os.environ</code> returns the default
+        when the variable is missing.<sup class="cite"><a href="#src-17">17</a></sup> <code>deskapp</code> is the real
+        <code>desk_app</code> password from the desk's <code>sql/users.sql</code>, so the script runs with no variable
+        set, and the password sits in the file and its Git history for anyone to read.</p>
+        <p>MITRE calls this CWE-798, Use of Hard-coded Credentials: the product contains hard-coded credentials, such as
+        a password or cryptographic key.<sup class="cite"><a href="#src-18">18</a></sup> The fix is to fail loudly.
+        <code>os.environ["DESK_DB_PASSWORD"]</code> raises <code>KeyError</code> when the variable is missing, by the
+        ordinary rules of a mapping.<sup class="cite"><a href="#src-17">17</a></sup></p>
+<pre><code>import os
+
+os.environ.pop("DESK_DB_PASSWORD", None)
+print(os.environ.get("DESK_DB_PASSWORD", "deskapp"))
+try:
+    os.environ["DESK_DB_PASSWORD"]
+except KeyError as err:
+    print("KeyError:", err)</code></pre>
+<pre class="out">deskapp
+KeyError: 'DESK_DB_PASSWORD'</pre>
+        <p>The first form hands back the secret without a word; the second stops the program and names what is
+        missing. Better still, replace the whole connect call with <code>from db import connect</code>. The desk already
+        has one connection function, and it reads the password with no fallback.</p>
+        <h3>TLS switched off and a debug level left on</h3>
+        <p>Connector/Python attempts to establish a secure, encrypted connection by default when the server supports
+        TLS, and <code>ssl_disabled=True</code> disables SSL/TLS usage.<sup class="cite"><a href="#src-19">19</a></sup>
+        The generated line switches the safe default off, so the password and every row cross the network in the clear.
+        That is CWE-319, Cleartext Transmission of Sensitive Information, data sent in a channel that unauthorized
+        actors can sniff.<sup class="cite"><a href="#src-20">20</a></sup></p>
+        <p>The fix is to delete the line. Replacing it with <code>ssl_verify_cert=False</code> fixes nothing, because
+        that argument already defaults to <code>False</code>.<sup class="cite"><a href="#src-19">19</a></sup> A setting
+        left at, or switched to, the unsafe choice is CWE-1188, Initialization of a Resource with an Insecure
+        Default.<sup class="cite"><a href="#src-21">21</a></sup></p>
+        <p>The fourth problem is <code>logging.basicConfig(level=logging.DEBUG)</code>. The root logger starts at
+        <code>WARNING</code>, and <code>basicConfig(level=...)</code> sets its level. The levels run
+        <code>DEBUG</code> 10, <code>INFO</code> 20, <code>WARNING</code> 30, so <code>DEBUG</code> lets everything
+        through.<sup class="cite"><a href="#src-22">22</a></sup> MITRE's CWE-489, Active Debug Code, is a product
+        released with debugging code still enabled or active.<sup class="cite"><a href="#src-23">23</a></sup> The fix
+        is <code>level=logging.INFO</code>.</p>
+        <div class="ix-spot" data-snippet="password=os.environ.get(&quot;DESK_DB_PASSWORD&quot;, &quot;deskapp&quot;),&#10;ssl_disabled=True," data-q="A teammate says both lines are fine: the first reads an environment variable, and the second only matters on a server. What would you say?" data-a="The first runs, and leaks, the real password whenever the variable is missing; read it with os.environ[...] and no default. The second turns off the TLS the connector uses by default, so the password and rows travel in the clear; delete it."></div>
+        <h3>Customer data in the log</h3>
+        <p>The fifth problem is <code>log.info("writing %s", row)</code> inside the loop. Each row is the joined dict,
+        so the log holds every customer's email, <code>dana@example.com</code> among them. A log file is shared, shipped
+        and committed far more casually than a database. CWE-532 is Insertion of Sensitive Information into Log
+        File,<sup class="cite"><a href="#src-24">24</a></sup> and OWASP lists personal data, passwords, access tokens and
+        database connection strings among data that should usually not be recorded directly in
+        logs.<sup class="cite"><a href="#src-25">25</a></sup></p>
+<pre><code>import logging
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+log = logging.getLogger("export")
+row = {"ticket_id": 1, "title": "Login page returns 500", "email": "dana@example.com"}
+log.debug("connector detail %s", row)
+log.info("writing %s", row)
+log.info("wrote ticket %s", row["ticket_id"])</code></pre>
+<pre class="out">INFO writing {'ticket_id': 1, 'title': 'Login page returns 500', 'email': 'dana@example.com'}
+INFO wrote ticket 1</pre>
+        <p>The level and the content are separate problems. At <code>INFO</code> the debug line disappears, but the
+        line with Dana's email is still written. The fix logs each row's <code>ticket_id</code> and, at the end, the
+        count of rows written, and nothing else.</p>
+        <h3>Patterns to recognise, and what a scanner finds</h3>
+        <p>The five problems are patterns that turn up in generated code of every kind:</p>
+        <table>
+          <thead><tr><th>Pattern</th><th>What it looks like</th><th>Weakness</th><th>Fix</th></tr></thead>
+          <tbody>
+            <tr><td>SQL built from input</td><td><code>f"... = '{status}'"</code> passed to <code>execute</code></td><td>CWE-89</td><td>a <code>%s</code> marker and <code>(status,)</code></td></tr>
+            <tr><td>Secret with a fallback</td><td><code>os.environ.get("KEY", "secret")</code></td><td>CWE-798</td><td><code>os.environ["KEY"]</code>, or the team's one connect function</td></tr>
+            <tr><td>Safe default switched off</td><td><code>ssl_disabled=True</code></td><td>CWE-319</td><td>delete the argument</td></tr>
+            <tr><td>Debug left on</td><td><code>level=logging.DEBUG</code></td><td>CWE-489</td><td><code>level=logging.INFO</code></td></tr>
+            <tr><td>Personal data logged</td><td>a whole row holding <code>email</code> passed to <code>log.info</code></td><td>CWE-532</td><td>log ids and a count</td></tr>
+          </tbody>
+        </table>
+        <p>A scanner helps and does not finish the job. Bandit's B608 looks for strings that resemble SQL statements
+        involved in some form of string building.<sup class="cite"><a href="#src-26">26</a></sup> Its B106 looks for
+        function calls passed a password-like keyword argument whose value is a string
+        literal.<sup class="cite"><a href="#src-27">27</a></sup></p>
+        <p>Bandit 1.9.4, run at every severity against a copy of this file, raised only B608 for the f-string query. B106
+        stayed quiet, because the password is the default of a <code>.get</code> call; a control copy with
+        <code>password="deskapp"</code> did raise it.<sup class="cite"><a href="#src-27">27</a></sup> One problem in
+        five: an empty scanner report is not a clean review. With every fix in place the file reads:</p>
+<pre><code>"""Export the tickets of one status, with each customer's email, to a CSV file."""
+import csv
+import logging
+import sys
+
+from db import connect
+
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__name__)
+
+
+def main():
+    """Write every ticket of the status given on the command line to tickets.csv."""
+    status = sys.argv[1]
+    conn = connect()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute(
+        "SELECT t.ticket_id, t.title, t.status, c.email FROM tickets t "
+        "JOIN customers c ON c.customer_id = t.customer_id "
+        "WHERE t.status = %s",
+        (status,),
+    )
+    rows = cursor.fetchall()
+    cursor.close()
+    with open("tickets.csv", "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=["ticket_id", "title", "status", "email"])
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(row)
+            log.info("wrote ticket %s", row["ticket_id"])
+    log.info("wrote %d rows", len(rows))
+    conn.close()
+
+
+if __name__ == "__main__":
+    main()</code></pre>
+        <p>It stops at once when <code>DESK_DB_PASSWORD</code> is missing, keeps the connector's TLS default, logs at
+        <code>INFO</code> and writes only ticket ids and a count to the log. The CSV still holds emails, because the task
+        asked for them, and who may receive that file is a decision for the team.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A default in os.environ.get is a hard-coded credential; read the secret with no fallback.</li>
+          <li>ssl_disabled=True turns off the TLS the connector uses by default; delete it.</li>
+          <li>Log ids and counts, never whole rows that hold personal data.</li>
+          <li>The scanner caught one problem of five, so a person still reads every line.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>In generated code I look for SQL built by string formatting, secrets with fallback values, safety settings
+          switched off like TLS, debug logging left on, and whole records written to logs. Each has a plain fix: bind
+          the parameter, read the secret with no default, delete the override, log at info, and log ids instead of
+          rows.</p>
+          <p>A fallback password looks safe because it reads an environment variable, but the code then runs with no
+          variable set and the real password sits in the file and its history. I'd rather it fail with a KeyError so
+          someone notices.</p>
+          <p>Data leakage is often quiet. A debug log of whole rows puts customer emails into a file that gets shared
+          or committed, so I log the record's id and a count, and nothing personal.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">Responsible use</div>
+        <h2>Responsible and ethical use</h2>
+        <h3>Saying when generated code is in a change</h3>
+        <p>Responsible use starts with honesty inside the team. When a block of a change was generated, say so in the
+        pull request description, the way you would credit a snippet taken from documentation. The reviewer then reads
+        that block as code nobody on the team wrote line by line, and looks harder at its edges. A pull request that
+        hides a generated block is the thing to notice in someone else's work.</p>
+        <p>The same honesty runs outward. Many clients and employers have a written AI policy that says which assistants
+        are approved, what may be sent to them and whether generated code must be disclosed. Read it before the first
+        prompt. Such a policy may draw on public frameworks like NIST's AI Risk Management Framework, which is voluntary,
+        and its Generative AI Profile, NIST-AI-600-1, written to help organisations identify unique risks posed by
+        generative AI.<sup class="cite"><a href="#src-28">28</a></sup></p>
+        <h3>What may be pasted, and where</h3>
+        <p>The week's rules on what goes into a prompt matter most at this point:</p>
+        <ul>
+          <li>Never paste personal data, credentials, keys or client data into a public chat assistant.</li>
+          <li>The employer's or client's code goes only to an assistant the employer has approved, never to a public
+          chat.</li>
+          <li>A contract that forbids sending the client's data out of the company covers prompts too, because a pasted
+          row is data sent out.</li>
+          <li>What you may paste still carries only the context the model needs: the code, the error, the constraint and
+          the expected output.</li>
+        </ul>
+        <p>On the desk, the code of <code>clean_events</code> may go to an approved assistant, and a staged row holding
+        <code>dana@example.com</code> may go nowhere. When a prompt needs an example row, invent one and say it is
+        invented.</p>
+        <h3>Overreliance and the skills you build by hand</h3>
+        <p>OWASP's entry LLM09:2025 Misinformation defines overreliance as users placing excessive trust in LLM-generated
+        content and failing to verify its accuracy.<sup class="cite"><a href="#src-29">29</a></sup> The same entry notes
+        that a model can suggest insecure or non-existent code libraries, and that attackers publish packages under names
+        models commonly hallucinate.<sup class="cite"><a href="#src-29">29</a></sup> An install line copied from a reply
+        without opening the package's own docs is how that attack lands.</p>
+        <p>Overreliance has a slower cost for a junior developer. The critical-evaluation checklist works only if you can judge
+        the answer, and that judgement comes from writing, debugging and reading code yourself. Copilot Chat's
+        application card says users are responsible for reviewing and validating
+        responses.<sup class="cite"><a href="#src-1">1</a></sup> Some tasks are worth doing by hand while you learn, even
+        when an assistant would be faster:</p>
+        <ul>
+          <li>a first SQL join, written and checked against the rows you expect;</li>
+          <li>a first set of tests for a function, boundaries included;</li>
+          <li>a first debugging session that starts from a traceback and ends at the line at fault.</li>
+        </ul>
+        <h3>Bias in generated text about customers</h3>
+        <p>The same application card warns that training data may contain biases and errors that can be perpetuated by
+        the tool.<sup class="cite"><a href="#src-1">1</a></sup> On a support desk that shows up in generated text about
+        people: a reply template that guesses a customer's country from a name, or an apology that assumes the
+        customer's job. Read generated text about customers for assumptions the data does not support, and leave
+        personal attributes out of prompts that do not need them.</p>
+        <p>Ethics and law overlap here, and the next step takes the legal side: who owns the output, which licences ride
+        along with it, and what copyright says.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Say in the pull request when a block was generated, and follow the client's AI policy.</li>
+          <li>Personal data, credentials, keys and client data never go into a public chat.</li>
+          <li>Overreliance means using output unchecked; check packages and APIs in their own docs.</li>
+          <li>Read generated text about customers for assumptions the data does not support.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>The main limitation is that the output can be wrong while sounding sure: it can invent a library or miss
+          my project's rules. The risks are leaking data through a prompt and shipping code nobody read. The
+          ethical side is being open with the team and the client about what was generated, and checking generated text
+          about people for bias.</p>
+          <p>If the contract forbids sending the client's data out, none of it goes into a public chat: no rows, no
+          keys, no customer details. I use the assistant the client approved, or I write an invented example that shows
+          the shape of the problem.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
+        <div class="tag">Responsible use</div>
+        <h2>Legal ramifications: licensing, IP and copyright</h2>
+        <h3>Who owns generated output</h3>
+        <p>A provider's terms answer part of the question. Anthropic's consumer terms, effective October 8, 2025, read:
+        "we assign to you all of our right, title, and interest—if any—in Outputs".<sup class="cite"><a href="#src-30">30</a></sup>
+        The words "if any" matter, because a provider can only hand over rights that exist. The same terms say outputs
+        may not always be accurate and should not be relied on without independently confirming their
+        accuracy.<sup class="cite"><a href="#src-30">30</a></sup> The terms to read are those of the tool your employer
+        approved.</p>
+        <p>Copyright law answers the rest, and it differs by country. The U.S. Copyright Office's report on
+        copyrightability, Part 2, released January 29, 2025, says outputs are protected only where a human author has
+        determined sufficient expressive elements. That can include creative arrangements or modifications, but not the
+        mere provision of prompts.<sup class="cite"><a href="#src-31">31</a></sup> A function generated from a one-line
+        prompt may carry no author's copyright at all, while the human choices in a module built around generated pieces
+        can.</p>
+        <h3>Permissive and copyleft licences</h3>
+        <p>A model trained on public code can produce code close to something in a public repository, and that code
+        came with a licence. The two main families behave very differently:</p>
+        <table>
+          <thead><tr><th></th><th>Permissive (MIT)</th><th>Copyleft (GPLv3)</th></tr></thead>
+          <tbody>
+            <tr><td>Grant</td><td>to deal in the software without restriction<sup class="cite"><a href="#src-32">32</a></sup></td><td>a free, copyleft licence to use, change and share<sup class="cite"><a href="#src-33">33</a></sup></td></tr>
+            <tr><td>Main condition</td><td>the copyright and permission notice included in all copies or substantial portions<sup class="cite"><a href="#src-32">32</a></sup></td><td>the entire work licensed, as a whole, under the GPL to anyone who gets a copy (section 5(c))<sup class="cite"><a href="#src-33">33</a></sup></td></tr>
+            <tr><td>Source code</td><td>no duty to disclose</td><td>disclose source, under the same licence<sup class="cite"><a href="#src-34">34</a></sup></td></tr>
+            <tr><td>Inside closed-source client code</td><td>fine, with the notice kept</td><td>clashes with the closed licence</td></tr>
+          </tbody>
+        </table>
+        <p>choosealicense.com, maintained by GitHub, sums up MIT as a short and simple permissive licence whose only
+        conditions are keeping the copyright and licence notices, and GPLv3 as a strong copyleft
+        licence.<sup class="cite"><a href="#src-34">34</a></sup> GNU explains copyleft as requiring all modified and
+        extended versions of the program to be free as well.<sup class="cite"><a href="#src-35">35</a></sup> A
+        suggestion that matches GPL code, shipped in a closed-source client product, brings those conditions with it,
+        and the client never agreed to them.</p>
+        <h3>Suggestions that match public code, and training data</h3>
+        <p>Some tools now help with the matching question. GitHub Copilot's code referencing checks a suggestion against
+        code in public repositories on GitHub.com. Depending on the policy set, it blocks matches or shows them with
+        licensing information, if found.<sup class="cite"><a href="#src-36">36</a></sup> A long suggestion that reads
+        like a known library's file is the moment to check, with or without such a tool.</p>
+        <p>Whether training a model on copyrighted code and text is lawful in the first place is still open. The
+        Copyright Office's Part 3, on training, exists only as a pre-publication version dated May 9,
+        2025.<sup class="cite"><a href="#src-37">37</a></sup> An honest answer says so, and adds how teams manage the
+        risk meanwhile: approved tools, licence checks on matching suggestions, and contracts that say who carries
+        it.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Provider terms assign output rights only "if any" exist.</li>
+          <li>U.S. copyright protects sufficient human expressive choices, never a prompt alone.</li>
+          <li>MIT asks only for the notice; GPLv3 requires the whole work under the GPL.</li>
+          <li>Copyright in training data is still an open question.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Ownership of generated code is less clear than people think. The provider's terms usually assign me
+          whatever rights exist in the output, but in the US copyright protects only the human expressive choices, not
+          a prompt on its own. So I treat generated code as something I shape, review and take responsibility for.</p>
+          <p>If a suggestion matches a GPL repository and I ship it in closed-source client code, the GPL's conditions
+          come with it: the whole work would have to go out under the GPL, source included. The client never agreed to
+          that, so I'd check matches and rewrite or remove the code.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="6">
+        <div class="tag">AI tooling review</div>
+        <h2>AI tooling review: assisted against traditional development</h2>
+        <h3>The four categories, revisited</h3>
+        <p>Tuesday's page sorted the ways a developer reaches a model into four categories. The comparison with
+        traditional development depends on which one is in use, so here they are again:</p>
+        <table>
+          <thead><tr><th>Category</th><th>How you use it</th><th>Example</th></tr></thead>
+          <tbody>
+            <tr><td>Chat assistant</td><td>a conversation in a browser or app; you paste in the code and the context</td><td>Claude<sup class="cite"><a href="#src-30">30</a></sup></td></tr>
+            <tr><td>Editor assistant</td><td>suggestions and a chat panel inside the editor, with the open file as context</td><td>GitHub Copilot's assistive features<sup class="cite"><a href="#src-38">38</a></sup>; Codeium (later Windsurf, now Devin Desktop)<sup class="cite"><a href="#src-39">39</a></sup></td></tr>
+            <tr><td>Agentic coding tool</td><td>you describe a goal and the tool works through several steps</td><td>GitHub Copilot's agentic features<sup class="cite"><a href="#src-38">38</a></sup></td></tr>
+            <tr><td>API access</td><td>a program sends the prompt with a key and reads the reply</td><td>named only; week 9 is the first to call one</td></tr>
+          </tbody>
+        </table>
+        <p>GitHub's feature overview draws the same line inside one product. Its assistive side responds while you work,
+        suggesting code, answering questions or explaining code; its agentic side takes a goal and can work through
+        multiple steps.<sup class="cite"><a href="#src-38">38</a></sup> How agents plan and use tools is week 10's
+        subject. Products move faster than categories: Devin Desktop's site says it is the new name for Windsurf, and
+        the Windsurf JetBrains plugin is in maintenance mode.<sup class="cite"><a href="#src-39">39</a></sup><sup class="cite"><a href="#src-40">40</a></sup></p>
+        <h3>One task done two ways</h3>
+        <p>Take Wednesday's task: a new function, <code>ticket_age_band(hours)</code>, which is not in the desk. Its
+        requirement says fewer than 4 hours is <code>under 4</code>, 4 to 24 hours inclusive is <code>4 to 24</code>,
+        and more than 24 is <code>over 24</code>. The edges are the <code>high</code> and <code>normal</code> SLA hours
+        from the desk's <code>priorities</code> rows. The outputs for 3, 4, 24 and 25 hours are the acceptance test for
+        both ways of working.</p>
+<pre><code>def ticket_age_band(hours):
+    """Return the age band of a ticket that has been open for hours."""
+    if hours &lt; 4:
+        return "under 4"
+    if hours &lt;= 24:
+        return "4 to 24"
+    return "over 24"
+
+
+for hours in (3, 4, 24, 25):
+    print(hours, ticket_age_band(hours))</code></pre>
+<pre class="out">3 under 4
+4 4 to 24
+24 4 to 24
+25 over 24</pre>
+        <p>Done the traditional way, a developer reads the requirement and writes this function and its tests by hand.
+        Done the assisted way, the developer writes a prompt and reads the reply. On Wednesday the first reply tested
+        <code>hours &lt; 24</code>, so 24 came back <code>over 24</code>, and a generated test asserted the bug as
+        correct. A second round, with the boundaries and the four expected outputs in the prompt, came back right.</p>
+        <table>
+          <thead><tr><th>Measure</th><th>Traditional</th><th>Assisted</th></tr></thead>
+          <tbody>
+            <tr><td>Time to a first version</td><td>longer: typing and reading the requirement closely</td><td>shorter: a prompt and a reply</td></tr>
+            <tr><td>Defects found</td><td>a boundary slip, if any, is the author's own and caught by the author's tests</td><td>an off-by-one in the reply and a test that asserted it, caught by the four expected outputs</td></tr>
+            <tr><td>What the developer learned</td><td>the boundary rule, by writing it</td><td>how to state boundaries in a prompt</td></tr>
+            <tr><td>Who can maintain it</td><td>the author, who wrote every line</td><td>whoever read and tested every line</td></tr>
+          </tbody>
+        </table>
+        <h3>The total cost of a change</h3>
+        <p>The assisted version was quicker to write and can still cost the team more. Writing time is one part of a
+        change; review time, defects found later, what the developer learned and who can maintain the code are the rest.
+        An off-by-one that reaches production costs more than the minutes saved, and code its committer cannot explain
+        costs whoever changes it next.</p>
+        <p>Traditional tools have limits as well. Bandit's B608 is deterministic and narrow: it looks for SQL strings
+        built by string operations,<sup class="cite"><a href="#src-26">26</a></sup> and it found one of the five
+        problems in <code>export_tickets.py</code>. A model can suggest libraries that do not
+        exist,<sup class="cite"><a href="#src-29">29</a></sup> so the docs check stays in both workflows. GitHub's best
+        practices say Copilot is strong at writing tests and repetitive code, and present it as a tool rather than a
+        replacement for human programming.<sup class="cite"><a href="#src-5">5</a></sup><sup class="cite"><a href="#src-1">1</a></sup></p>
+        <h3>Deciding when to use an assistant</h3>
+        <p>Put together, the comparison becomes a decision per task. A reasonable starting table for a junior developer
+        on a team like the desk's:</p>
+        <table>
+          <thead><tr><th>Task</th><th>Decision</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td>Boilerplate tests for a function with written expected outputs</td><td>use an assistant</td><td>repetitive work, checked by the requirement's outputs</td></tr>
+            <tr><td>A regular expression</td><td>use it with review</td><td>easy to get subtly wrong; test it on real and edge inputs</td></tr>
+            <tr><td>A refactor for speed</td><td>use it with review</td><td>tests first, the whole diff read, the timing measured</td></tr>
+            <tr><td>A query that takes user input or touches customer data</td><td>use it with review, or do it by hand</td><td>security-sensitive; the bound parameter is not optional</td></tr>
+            <tr><td>A schema change</td><td>do it by hand</td><td>it changes the stored data and every caller</td></tr>
+            <tr><td>A concept you are learning for the first time</td><td>do it by hand</td><td>the judgement every review depends on comes from doing it</td></tr>
+          </tbody>
+        </table>
+        <p>The client's AI policy overrides the table, and a team revises it as its own defect history comes in.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Tools fall into four categories: chat, editor, agentic coding tool and API access.</li>
+          <li>Both workflows answer to the same acceptance test and the same docs check.</li>
+          <li>A change's total cost includes review, later defects, learning and maintenance.</li>
+          <li>Decide per task: use an assistant, use it with review, or do it by hand.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Assisted development gets me to a first version faster on repetitive, well-specified work like tests and
+          boilerplate. Traditional development is the better fit where the code is security-sensitive, changes shared
+          structure, or teaches me something I still need to learn. Either way, the same acceptance tests and the docs
+          decide whether it's right.</p>
+          <p>Faster to write can still cost more. If generated code hides an off-by-one, or nobody on the team can
+          explain it, review and later fixes eat the time saved. So I compare the total cost: writing, review, defects,
+          what I learned and who can maintain it.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="7">
+        <div class="tag">Check yourself</div>
+        <h2>Check yourself</h2>
+        <p>Nine retrieval questions, at least one per section. Answer each out loud before you open it.</p>
+        <details class="check"><summary>An assistant's review says <code>duplicated</code> marks the first copy of a duplicate too, so both copies are rejected. How do you settle it, and what is the answer?</summary><p>It is a claim about a library, so the pandas reference settles it. <code>duplicated</code> defaults to <code>keep="first"</code> and marks every copy except the first, so the first copy survives and the finding is false.</p></details>
+        <details class="check"><summary>What questions make up the critical-evaluation checklist, and how do they map to correctness, maintainability and security?</summary><p>Does it run, does it meet the requirement, and is it tested with a test that fails when it is wrong: correctness. Can the team maintain it under its conventions: maintainability. Is it safe with input, secrets and personal data: security. Is every library or API claim in the docs: a check on all three.</p></details>
+        <details class="check"><summary>A "faster" <code>apply_scd2</code> passes week 4's three tests. Why can it still be wrong, and which test do you add?</summary><p>The tests guard only their fixtures, which hold no missing value, and the rewrite's pandas compare treats two missing values as different. A copy of <code>test_rerun_after_change_adds_nothing</code> with Dana's country set to <code>None</code> on both sides passes on the loop and fails on the rewrite.</p></details>
+        <details class="check"><summary>Why is <code>f"... WHERE t.status = '{status}'"</code> dangerous in the generated script, and why is the f-string in <code>extract.read_table</code> acceptable?</summary><p>The status comes from the command line, so a quote in it can rewrite the SQL; that is code injection, fixed with a <code>%s</code> marker and <code>(status,)</code>. <code>read_table</code> takes its table name from the <code>TABLES</code> constant, and a placeholder cannot stand for a table name anyway.</p></details>
+        <details class="check"><summary>What is insecure about <code>os.environ.get("DESK_DB_PASSWORD", "deskapp")</code> and <code>ssl_disabled=True</code>, and what fixes each?</summary><p>The fallback is the real password, so the script runs with no variable set and the secret sits in the code; read it with <code>os.environ["DESK_DB_PASSWORD"]</code> or use the desk's <code>connect</code>. <code>ssl_disabled=True</code> turns off the TLS the connector negotiates by default; delete the line.</p></details>
+        <details class="check"><summary>The script logs every row with <code>log.info("writing %s", row)</code>. What leaks, does switching from <code>DEBUG</code> to <code>INFO</code> fix it, and what should the log hold?</summary><p>Every customer's email leaks into the log. <code>INFO</code> still writes that line, so the level fix alone is not enough. Log each row's <code>ticket_id</code> and the count of rows written, nothing personal.</p></details>
+        <details class="check"><summary>Your client's contract forbids sending its data out. What may you paste into a public chat assistant?</summary><p>None of the client's data, code, credentials or customer details. Use the assistant the client approved, or write an invented example that shows the shape of the problem, and follow the client's AI policy on disclosure.</p></details>
+        <details class="check"><summary>A suggestion matches a GPL-licensed repository. What happens if you ship it in closed-source client code, and who owns purely generated code?</summary><p>The GPL's conditions come with it: the whole work would have to be licensed under the GPL with its source, which a closed product cannot do. Provider terms assign output rights only if any exist, and U.S. copyright protects sufficient human expressive choices, not prompts alone.</p></details>
+        <details class="check"><summary>The assisted <code>ticket_age_band</code> was faster to write. Why might it still cost the team more than writing it by hand?</summary><p>Its first reply had an off-by-one at 24 hours and a generated test asserted the bug. Review time, defects found later, what the developer learned and who can maintain the code all count toward the total cost of the change.</p></details>
+      </section>
+
+      <section class="reading-sources" aria-label="Sources and deeper dive">
+        <h2>Sources &amp; deeper dive</h2>
+        <ul>
+          <li id="src-1"><a href="https://docs.github.com/en/copilot/responsible-use/chat-in-your-ide" target="_blank" rel="noopener">Application card: GitHub Copilot Chat</a> — accuracy limits, the user's duty to review, and bias from training data.</li>
+          <li id="src-2"><a href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.duplicated.html" target="_blank" rel="noopener">pandas.DataFrame.duplicated</a> — the <code>keep="first"</code> default that settles the review's false finding.</li>
+          <li id="src-3"><a href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.merge.html" target="_blank" rel="noopener">pandas.DataFrame.merge</a> — left joins, missing right-hand values and the <code>_x</code>/<code>_y</code> suffixes.</li>
+          <li id="src-4"><a href="https://dev.mysql.com/doc/refman/8.4/en/create-table-foreign-keys.html" target="_blank" rel="noopener">FOREIGN KEY Constraints (MySQL 8.4 Reference Manual)</a> — why no orphan event exists at the source.</li>
+          <li id="src-5"><a href="https://docs.github.com/en/copilot/get-started/best-practices" target="_blank" rel="noopener">Best practices for using GitHub Copilot</a> — what to review in a suggestion and what an assistant does well.</li>
+          <li id="src-6"><a href="https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/missing-function-docstring.html" target="_blank" rel="noopener">missing-function-docstring / C0116 (Pylint)</a> — the rule the review's style point would break.</li>
+          <li id="src-7"><a href="https://refactoring.com/" target="_blank" rel="noopener">Refactoring (Martin Fowler)</a> — the definition of a behaviour-preserving change.</li>
+          <li id="src-8"><a href="https://docs.github.com/en/copilot/tutorials/refactor-code" target="_blank" rel="noopener">Refactor code (GitHub Docs)</a> — a vendor naming optimization as a use of its chat.</li>
+          <li id="src-9"><a href="https://pandas.pydata.org/docs/user_guide/missing_data.html" target="_blank" rel="noopener">Working with missing data (pandas)</a> — why <code>==</code> cannot find a missing value and <code>isna()</code> can.</li>
+          <li id="src-10"><a href="https://docs.python.org/3/library/profiling.html" target="_blank" rel="noopener">profiling — Python profilers</a> — the profiler package new in Python 3.15.</li>
+          <li id="src-11"><a href="https://docs.python.org/3/library/profile.html" target="_blank" rel="noopener">profile (Python 3 docs)</a> — the older module, deprecated in 3.15.</li>
+          <li id="src-12"><a href="https://docs.python.org/3/library/timeit.html" target="_blank" rel="noopener">timeit (Python 3 docs)</a> — timing small snippets.</li>
+          <li id="src-13"><a href="https://genai.owasp.org/llmrisk/llm052025-improper-output-handling/" target="_blank" rel="noopener">LLM05:2025 Improper Output Handling (OWASP GenAI)</a> — generated SQL run without parameterization, and zero trust in model output.</li>
+          <li id="src-14"><a href="https://cwe.mitre.org/data/definitions/89.html" target="_blank" rel="noopener">CWE-89 (MITRE)</a> — SQL injection as a catalogued weakness.</li>
+          <li id="src-15"><a href="https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursor-execute.html" target="_blank" rel="noopener">MySQLCursor.execute() (MySQL Connector/Python)</a> — binding parameters to <code>%s</code> markers.</li>
+          <li id="src-16"><a href="https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html" target="_blank" rel="noopener">SQL Injection Prevention Cheat Sheet (OWASP)</a> — parameterized queries, and allow-lists for identifiers.</li>
+          <li id="src-17"><a href="https://docs.python.org/3/library/os.html" target="_blank" rel="noopener">os (Python 3 docs)</a> — <code>os.environ</code> and the default a <code>.get</code> returns.</li>
+          <li id="src-18"><a href="https://cwe.mitre.org/data/definitions/798.html" target="_blank" rel="noopener">CWE-798 (MITRE)</a> — hard-coded credentials.</li>
+          <li id="src-19"><a href="https://dev.mysql.com/doc/connector-python/en/connector-python-connectargs.html" target="_blank" rel="noopener">Connector/Python Connection Arguments (MySQL)</a> — the TLS default, <code>ssl_disabled</code> and <code>ssl_verify_cert</code>.</li>
+          <li id="src-20"><a href="https://cwe.mitre.org/data/definitions/319.html" target="_blank" rel="noopener">CWE-319 (MITRE)</a> — cleartext transmission of sensitive information.</li>
+          <li id="src-21"><a href="https://cwe.mitre.org/data/definitions/1188.html" target="_blank" rel="noopener">CWE-1188 (MITRE)</a> — a resource initialized with an insecure default.</li>
+          <li id="src-22"><a href="https://docs.python.org/3/library/logging.html" target="_blank" rel="noopener">logging (Python 3 docs)</a> — levels and what <code>basicConfig</code> sets.</li>
+          <li id="src-23"><a href="https://cwe.mitre.org/data/definitions/489.html" target="_blank" rel="noopener">CWE-489 (MITRE)</a> — debug code left active.</li>
+          <li id="src-24"><a href="https://cwe.mitre.org/data/definitions/532.html" target="_blank" rel="noopener">CWE-532 (MITRE)</a> — sensitive information written to a log file.</li>
+          <li id="src-25"><a href="https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html" target="_blank" rel="noopener">Logging Cheat Sheet (OWASP)</a> — data that should not be recorded directly in logs.</li>
+          <li id="src-26"><a href="https://bandit.readthedocs.io/en/latest/plugins/b608_hardcoded_sql_expressions.html" target="_blank" rel="noopener">B608: hardcoded_sql_expressions (Bandit)</a> — the one check that caught the generated query.</li>
+          <li id="src-27"><a href="https://bandit.readthedocs.io/en/latest/plugins/b106_hardcoded_password_funcarg.html" target="_blank" rel="noopener">B106: hardcoded_password_funcarg (Bandit)</a> — why a literal password is flagged and a fallback is not.</li>
+          <li id="src-28"><a href="https://www.nist.gov/itl/ai-risk-management-framework" target="_blank" rel="noopener">AI Risk Management Framework (NIST)</a> — the voluntary framework and its Generative AI Profile.</li>
+          <li id="src-29"><a href="https://genai.owasp.org/llmrisk/llm092025-misinformation/" target="_blank" rel="noopener">LLM09:2025 Misinformation (OWASP GenAI)</a> — overreliance and hallucinated packages.</li>
+          <li id="src-30"><a href="https://www.anthropic.com/legal/consumer-terms" target="_blank" rel="noopener">Consumer Terms of Service (Anthropic)</a> — one provider's assignment of output rights, "if any".</li>
+          <li id="src-31"><a href="https://www.copyright.gov/newsnet/2025/1060.html" target="_blank" rel="noopener">NewsNet 1060 (U.S. Copyright Office)</a> — Part 2 of the report, on copyrightability of outputs.</li>
+          <li id="src-32"><a href="https://opensource.org/license/mit" target="_blank" rel="noopener">The MIT License (Open Source Initiative)</a> — the full MIT text and its notice condition.</li>
+          <li id="src-33"><a href="https://opensource.org/license/gpl-3-0" target="_blank" rel="noopener">GNU General Public License version 3 (Open Source Initiative)</a> — the GPLv3 text, section 5(c) included.</li>
+          <li id="src-34"><a href="https://choosealicense.com/licenses/" target="_blank" rel="noopener">Licenses (choosealicense.com)</a> — permissive and copyleft licences compared, maintained by GitHub.</li>
+          <li id="src-35"><a href="https://www.gnu.org/licenses/copyleft.en.html" target="_blank" rel="noopener">What is Copyleft? (GNU)</a> — copyleft in its authors' words.</li>
+          <li id="src-36"><a href="https://docs.github.com/en/copilot/concepts/completions/code-referencing" target="_blank" rel="noopener">GitHub Copilot code referencing</a> — matching suggestions against public code, with licence information.</li>
+          <li id="src-37"><a href="https://www.copyright.gov/ai/" target="_blank" rel="noopener">Copyright and Artificial Intelligence (U.S. Copyright Office)</a> — every part of the report, Part 3 on training included.</li>
+          <li id="src-38"><a href="https://docs.github.com/en/copilot/get-started/features" target="_blank" rel="noopener">About GitHub Copilot features (GitHub Docs)</a> — the assistive and agentic sides of one product.</li>
+          <li id="src-39"><a href="https://devin.ai/desktop" target="_blank" rel="noopener">Devin Desktop</a> — the current name of the editor once called Windsurf.</li>
+          <li id="src-40"><a href="https://docs.devin.ai/windsurf/plugins/getting-started" target="_blank" rel="noopener">Welcome to Windsurf Plugins</a> — the Windsurf plugins and their maintenance status.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · after you have read the page</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 5 Day 4</footer>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 4 — goals</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Judge a generated review, rewrite or script for correctness, maintainability and security, settling each claim with the docs and a test</li>
+      <li>Explain how code injection gets into generated code through SQL built from user input, and fix it with a bound parameter</li>
+      <li>Recognise insecure defaults in generated code, such as a fallback password, TLS switched off and debug logging left on, and fix each</li>
+      <li>Spot data leakage, such as customer emails written to a log, and say what the log should hold instead</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Day 5 — Project 0 showcase →", href: "day-5-project-0-showcase.html" };
+window.DIAGRAM = {
+  title: "Day 4 · from a generated answer to a decision you can defend",
+  width: 500, height: 520,
+  nodes: [
+    { id:"review", step:0, kind:"example", x:14, y:14, w:472, h:50, label:"AN ASSISTANT'S REVIEW OF clean_events\n  one true · one false · one breaks a lint rule", detail:"Each finding is a claim. duplicated keeps the first copy by default (the docs settle it); a left merge lets an orphan event pass (a test shows it); dropping the docstring brings back pylint C0116." },
+    { id:"refactor", step:1, x:24, y:86, w:200, h:56, label:"Refactor behind tests\n  merge · _x != _y\n  missing != missing", detail:"The rewrite passes week 4's three tests and fails the missing-value copy, because pandas compares a missing value as unequal to itself." },
+    { id:"measure", step:1, x:276, y:86, w:200, h:56, label:"Measure first\n  profiling · timeit\n  4 customers or 100,000 rows", detail:"A profile shows where time goes; timeit times a snippet. An optimization is worth it only where a measurement says so." },
+    { id:"inject", step:2, x:24, y:166, w:200, h:56, label:"Code injection\n  f-string SQL from argv\n  → %s and (status,)", detail:"User input inside SQL text can rewrite the query (CWE-89). Bind values; identifiers come from code or an allow-list." },
+    { id:"defaults", step:3, x:276, y:166, w:200, h:56, label:"Defaults and leakage\n  fallback password · TLS off\n  DEBUG · emails in the log", detail:"CWE-798, CWE-319, CWE-489, CWE-532. Fail loudly on a missing secret, keep the TLS default, log at INFO, log ids and a count." },
+    { id:"scanner", step:3, x:276, y:244, w:200, h:40, label:"Bandit: 1 of 5 found", detail:"B608 flags the f-string query; nothing else of the five fires. An empty report is not a clean review." },
+    { id:"ethics", step:4, x:24, y:244, w:200, h:56, label:"Responsible use\n  disclose · paste nothing private\n  overreliance · bias", detail:"Say when a block was generated, follow the client's AI policy, verify packages and APIs, read text about customers for assumptions." },
+    { id:"legal", step:5, x:24, y:322, w:200, h:56, label:"Legal\n  output rights \"if any\"\n  MIT · GPLv3 · training data", detail:"Copyright needs human expressive choices; a GPL match brings its conditions; copyright in training data is still open." },
+    { id:"compare", step:6, x:276, y:322, w:200, h:56, label:"One task, two ways\n  traditional · assisted\n  total cost of a change", detail:"ticket_age_band against the outputs for 3, 4, 24 and 25 hours. Writing time is one part; review, defects, learning and maintenance are the rest." },
+    { id:"decide", step:6, x:24, y:402, w:452, h:48, label:"DECISION PER TASK\n  use an assistant · use it with review · do it by hand", detail:"Boilerplate tests: assistant. Regex or a speed refactor: with review. Queries on user input or customer data, schema changes, a first try at a concept: by hand or with review." },
+    { id:"check", step:7, x:24, y:470, w:452, h:40, label:"CHECK YOURSELF\n  answer out loud, then open" }
+  ],
+  edges: [
+    { id:"e1", step:1, from:"review", to:"refactor", label:"read before you change" },
+    { id:"e2", step:1, from:"refactor", to:"measure", label:"worth it?" },
+    { id:"e3", step:2, from:"refactor", to:"inject", label:"is it safe?" },
+    { id:"e4", step:3, from:"inject", to:"defaults", label:"four more" },
+    { id:"e5", step:3, from:"defaults", to:"scanner", dir:"-" },
+    { id:"e6", step:4, from:"inject", to:"ethics", label:"what goes in a prompt" },
+    { id:"e7", step:5, from:"ethics", to:"legal", label:"who owns it" },
+    { id:"e8", step:6, from:"scanner", to:"compare", label:"tools have limits" },
+    { id:"e9", step:6, from:"legal", to:"compare", dir:"-" },
+    { id:"e10", step:6, from:"compare", to:"decide", label:"per task" },
+    { id:"e11", step:7, from:"decide", to:"check", dir:"-" }
+  ],
+  captions: [
+    "An assistant's review is three claims: settle the library claim in the docs, show the behaviour with a test, check the style point against the lint rules. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "A faster rewrite is accepted behind the unedited tests plus one for the edge it changes, and only after a measurement says the speed matters.",
+    "The generated export builds SQL from the command line; a bound parameter keeps the input as data.",
+    "The other four problems are insecure defaults and leakage, and a scanner finds only one of the five.",
+    "Responsible use: disclose generated code, paste nothing private into a public chat, verify before you trust, read for bias.",
+    "Legal questions: output rights exist only \"if any\", a GPL match carries its conditions, and training-data copyright is open.",
+    "Assisted and traditional work answer to the same acceptance test; the decision per task weighs the total cost of a change.",
+    "You can now judge generated output for correctness, maintainability and security, and name and fix injection, insecure defaults and leakage."
+  ]
+};
+window.QUIZ = {
+  id: "w05-d4",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "An assistant's review says DataFrame.duplicated marks the first copy of a duplicate too. What does pandas do by default?",
+      options: ["Marks every copy, the first included", "Marks every copy except the first, because keep defaults to \"first\"", "Marks only the last copy", "Raises an error when duplicates exist"], answer: 1,
+      explain: "The pandas reference says duplicated defaults to keep=\"first\": duplicates are marked True except for the first occurrence. Only keep=False marks every copy, so the review's finding is false." },
+    { type: "tf", stem: "If week 4's three apply_scd2 tests pass against a faster rewrite, the rewrite keeps the loop's behaviour.", answer: false,
+      explain: "The tests guard only their fixtures, which hold no missing value. The merge-based rewrite treats two missing values as different, so a copy of the rerun test with a missing country passes on the loop and fails on the rewrite." },
+    { type: "mcq", stem: "Which lines of the generated export_tickets.py are security problems? Select all that apply.",
+      options: ["f\"WHERE t.status = '{status}'\" in the query", "password=os.environ.get(\"DESK_DB_PASSWORD\", \"deskapp\")", "ssl_disabled=True", "writer = csv.DictWriter(f, fieldnames=[...])", "log.info(\"writing %s\", row)"], answer: [0, 1, 2, 4],
+      explain: "The f-string query is code injection, the fallback is a hard-coded credential, ssl_disabled=True turns off TLS, and logging the whole row leaks emails. The CSV writer is ordinary code; the fifth problem is the DEBUG level, which is not in this list." },
+    { type: "match", stem: "Match each line from generated code to the weakness it shows.",
+      pairs: [
+        { l: "an f-string query built from user input", r: "code injection (CWE-89)" },
+        { l: "a password as the default of os.environ.get", r: "hard-coded credential (CWE-798)" },
+        { l: "logging.basicConfig(level=logging.DEBUG) in shipped code", r: "active debug code (CWE-489)" },
+        { l: "a whole customer row written to the log", r: "sensitive information in a log file (CWE-532)" }
+      ],
+      explain: "Injection comes from input inside SQL text; a fallback secret is still a secret in the code; a debug level left on is debug code still active; personal data in a log is leakage." },
+    { type: "scq", stem: "extract.read_table runs f\"SELECT * FROM {table}\". Why is that acceptable when the generated script's f-string is not?",
+      options: ["The f-string escapes quotes in table names", "The table name comes from the TABLES constant, and a placeholder cannot stand for a table name anyway", "MySQL ignores injected SQL in a SELECT *", "read_table only ever runs on a developer's laptop"], answer: 1,
+      explain: "Parameter markers represent data values, not table names, so an identifier is fixed in code or taken from an allow-list. TABLES is that allow-list. The generated script's status comes from the user, so it must be a bound parameter." },
+    { type: "open", stem: "In two or three sentences: an assistant hands you a faster version of a function. Walk through how you decide whether to accept it.",
+      hint: "Tests first, the diff, the edge the rewrite changes, a measurement.",
+      model: "I run the existing tests, read the whole diff and run the same tests unedited against the rewrite. Then I ask which inputs the tests miss, such as missing values, and add a test for each one the rewrite treats differently. I accept it only if those pass and a measurement shows the speed matters at the data size we have." }
+  ]
+};
+</script>
+
+<script src="../../assets/js/diagram.js?v=20261103"></script>
+<script src="../../assets/js/scrolly.js?v=20261103"></script>
+<script src="../../assets/js/modals.js?v=20261103"></script>
+<script src="../../assets/js/quiz.js?v=20261103"></script>
+<script src="../../assets/js/widgets.js?v=20261103"></script>
+<script src="../../assets/js/glossary.js?v=20261103"></script>
+</body>
+</html>

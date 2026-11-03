@@ -546,7 +546,7 @@ def style_summary(r: dict, mp: dict) -> dict:
 
 # ---------------------------------------------------------------- links (network)
 def check_url(href: str, timeout: int = 10) -> str | None:
-    """None when the URL answers with a status < 400 (HEAD, then GET on 403/405); else the reason.
+    """None when the URL answers with a status < 400 (HEAD, then GET on 403/404/405); else the reason.
 
     A 403 is retried once with a plain tool User-Agent, and a 403 that the host's root page answers too counts as
     unverifiable (None), not dead: Oracle's WAF in front of dev.mysql.com answers 403 to any browser-looking string it
@@ -562,12 +562,13 @@ def check_url(href: str, timeout: int = 10) -> str | None:
             with urllib.request.urlopen(urllib.request.Request(href, method="HEAD", headers=hdrs), timeout=timeout) as r:
                 return None if r.status < 400 else f"HTTP {r.status}"
         except urllib.error.HTTPError as e:
-            if e.code not in (403, 405):
+            if e.code not in (403, 404, 405):  # 404: nvlpubs.nist.gov answers HEAD 404, GET 200 (2026-11-03)
                 return f"HTTP {e.code}"
             if e.code == 403 and _host_blocks(href, timeout):
                 return None
         except Exception as e:  # noqa: BLE001 - any network failure is a dead link for this purpose
-            return e.__class__.__name__
+            last = e.__class__.__name__
+            continue  # try the next agent: www.canada.ca stalls the browser-looking one and answers curl (2026-11-03)
         try:
             with urllib.request.urlopen(urllib.request.Request(href, headers=hdrs), timeout=timeout + 5) as r:
                 return None if r.status < 400 else f"HTTP {r.status}"
