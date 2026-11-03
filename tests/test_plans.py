@@ -61,7 +61,9 @@ class PlanFileTests(unittest.TestCase):
                         continue
                     for st in d["subtopics"]:
                         self.assertIn((d["id"], st.strip().lower()), covered, f"{d['id']} subtopic '{st}' not in the coverage map")
-                self.assertTrue(plan["threads"], "plan needs at least one thread")
+                concept_week = all(d.get("demoFormat") == "none" for d in wk["days"] if d.get("kind") != "holiday")
+                if not concept_week:   # D-0082: a concept week has no thread
+                    self.assertTrue(plan["threads"], "plan needs at least one thread")
                 prev_last = plan_check.previous_last_block(plan["week"])
                 for t in plan["threads"]:
                     prev = None

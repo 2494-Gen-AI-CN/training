@@ -76,3 +76,26 @@
 | Preferred           | Query external data sources like Cloud Storage or Cloud SQL using federated queries |
 | Preferred           | Creates and manages BigQuery Connections (GCS, Cloud SQL, AWS S3) to enable federated or external querying. |
 | Stretch             | Implements advanced data transformations, including window functions and recursive queries. |
+
+## GenAI in Development
+
+<!-- D-0083: Revature unit GAD, 'Leveraging GenAI to Empower Development' (SharePoint workbook, Exit Criteria sheet, read 2026-11-03). Taxonomy level Unit on every row. Appended after the data sections so every earlier id keeps its position. -->
+
+| Criteria Difficulty | Exit Criteria |
+|---------------------|---------------|
+| Required            | Familiar with Generative AI, the basic theory behind it, and its common applications. |
+| Required            | Understand the role that Generative AI plays in software development and how to use it effectively. |
+| Required            | Able to leverage GenAI to learn new technology/frameworks (such as finding documentation, prompt engineering, etc.) |
+| Required            | Understand and apply prompt engineering techniques such as Iterative Prompting, Chain-of-Thought, and Sequential Prompting. |
+| Required            | Use GenAI tools for code generation, and understand related use cases and best practices. |
+| Required            | Use GenAI for unit testing, and understand its use cases and limitations. |
+| Required            | Understands potential security risks associated with using GenAI in development, including code injection, insecure defaults, and data leakage. |
+| Required            | Critically evaluate GenAI outputs for correctness, maintainability, and security. |
+| Preferred           | Able to leverage GenAI in a collaborative environment, such as through the use of prompt libraries and version control. |
+| Preferred           | Use GenAI to assist in writing and improving documentation. |
+| Preferred           | Use GenAI for code analysis, optimization, and refactoring, and understand the associated best practices. |
+| Preferred           | Understand the limitations, risks, and ethical considerations of GenAI-assisted development. |
+| Preferred           | Integrate GenAI tools into development environments and workflows (e.g., IDE plugins, APIs). |
+| Preferred           | Understand the legal ramifications of leveraging GenAI in development including licensing, IP, and copyright. |
+| Stretch             | Able to identify and mitigate insecure or vulnerable code patterns in GenAI-generated outputs. |
+| Stretch             | Compare and contrast GenAI-assisted development with traditional methods to assess effectiveness and appropriateness. |

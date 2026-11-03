@@ -616,6 +616,7 @@
       "phase": "genai",
       "project": "P0",
       "theme": "Gen AI introduction",
+      "notes": "WEEK ARC (D-0082): week 5 is a CONCEPT WEEK. Every day is demoFormat none: no walkthrough, no commit on the demo repo, no thread rung; the ticket desk's code stops at week 4's `06-etl-job` (demo repo `main`) and week 5 uses it only as the SUBJECT of examples (code an assistant reads, reviews, documents, tests or refactors), never as code the room types. The exit bar is Revature's GAD unit, qc3 section 'GenAI in Development' (D-0083): how a developer leverages generative AI without creating a security incident. Learners have NO provisioned AI account, editor assistant or API key, and the substitute trainer who delivers the week may have none either: nothing on a page, in a runbook or in a practice task requires an account, a key, a paid tool or a network call. Where a page shows a prompt and a model's reply, the reply is a labelled worked example (quoted from an official doc with its citation, or written by the author and marked as illustrative), never a claim about what a named model answers today; a prompt is a fenced block labelled as a prompt and is never run. A learner who has a free chat assistant or editor assistant of their own may follow along at home; the pages teach the CATEGORIES (chat assistants, editor assistants, agentic coding tools, API access) and name products only as examples with their official doc as the source. A runbook facilitation never asks learners to open a tool: the trainer's own screen (any assistant the trainer has, or the transcript printed in the runbook) is what the room sees, and pairs work on paper and the whiteboard (write the prompt, review the printed generated code, find the planted bug, decide what may be pasted). NOT an intro to week 6: no model training, no embeddings, no vector stores, no LangChain, no calling an API from Python, fine-tuning only as a definition against prompting and conditioning. Binding stance on every day: stop zero-shotting and iterate; give the model the context it needs (the code, the error, the constraint, the expected output); never paste PII, credentials, keys or client data into a public chat interface; every generated line is read, tested and owned by the developer who commits it; a model's claim about an API or a library is verified against the docs. Mon assumes week 4's desk and teaches what AI, ML, DL and generative AI are, how an LLM produces text (tokens, the context window, sampling, why it hallucinates), prompting from zero-shot to few-shot with constraints, iteration and dialog state, instructions and guidelines, fine-tuning and conditioning as definitions, hallucinations, responsible use and security, with the desk as the running example (a prompt that asks for a triage rule for the desk's tickets, improved in rounds); Tue assumes Mon's vocabulary and teaches the LLM landscape (GPT, BERT, Claude, Llama as model families: encoder vs decoder, open-weights vs hosted; Copilot and Codeium as the editor-assistant category), use cases for a developer, best practices (iterative, chain-of-thought and sequential prompting, prompt libraries and version control for prompts) and security considerations (prompt injection, data leakage, insecure defaults, licence and IP); Wed assumes Tue's landscape and teaches AI-assisted development: pair programming with an assistant, Copilot and editor integration as the category, code generation, writing unit tests with an assistant and its limits, documentation, and learning a new library through an assistant, with worked examples on the desk's code; Thu assumes Wed and teaches code analysis, optimisation and refactoring with an assistant, critical evaluation of outputs for correctness, maintainability and security, the security risks of generated code (code injection, insecure defaults, data leakage, insecure patterns to recognise), responsible and ethical use, legal ramifications (licensing, IP, copyright) and a review of the tooling landscape against traditional development; Fri is the Project 0 showcase (no new Gen AI content, no review block: AM rehearsal and polishing in the sprint / project work slot, presentations from 2:30 pm, feedback form), its page teaching how to present data work to a client and how to tell the same project in an interview. P0 permits AI use and never requires it; the showcase rubric is the P0 spec. Code blocks on these pages are read-only examples (a prompt, a reply, a diff, a test, a bash line) kept where the subtopic is code-shaped (D-0079).",
       "days": [
         {
           "day": 1,
@@ -623,7 +624,7 @@
           "id": "w05d1",
           "kind": "lesson",
           "gate": "full",
-          "demoFormat": "walkthrough",
+          "demoFormat": "none",
           "status": "planned",
           "title": "Gen AI orientation & prompt engineering",
           "subtitle": "ML/DL/GenAI overview · zero/few-shot · constraints · hallucinations · responsible use",
@@ -641,7 +642,8 @@
             "Responsible usage",
             "Security",
             "Prompt engineering introduction"
-          ]
+          ],
+          "notes": "DAY SHAPE (D-0082): first Gen AI day, concept only. The setup check is a vocabulary check, not a tool check (no account is needed). The desk is the running example from the first facilitation: a prompt asking for a triage rule for the desk's tickets, zero-shot first, then with examples, constraints and a second round, read against what a real triage rule needs. Security and responsible use are taught on this day as rules the room writes down (never paste PII, credentials, keys or client data into a public chat; every answer is checked), and every later day repeats them in context."
         },
         {
           "day": 2,
@@ -649,7 +651,7 @@
           "id": "w05d2",
           "kind": "lesson",
           "gate": "full",
-          "demoFormat": "walkthrough",
+          "demoFormat": "none",
           "status": "planned",
           "title": "LLM landscape & API basics",
           "subtitle": "GPT · BERT · Claude · Llama · Copilot · use cases · best practices · security",
@@ -666,7 +668,7 @@
           "id": "w05d3",
           "kind": "lesson",
           "gate": "full",
-          "demoFormat": "walkthrough",
+          "demoFormat": "none",
           "status": "planned",
           "title": "AI-assisted development",
           "subtitle": "pair programming · Copilot · IDE integration · code generation · documentation",
@@ -685,7 +687,7 @@
           "id": "w05d4",
           "kind": "lesson",
           "gate": "full",
-          "demoFormat": "walkthrough",
+          "demoFormat": "none",
           "status": "planned",
           "title": "AI tooling: optimization, analysis & security",
           "subtitle": "code optimization · code analysis · responsible use · security risks",
@@ -699,18 +701,21 @@
         },
         {
           "day": 5,
-          "slug": "day-5-gen-ai-review",
+          "slug": "day-5-project-0-showcase",
           "id": "w05d5",
-          "kind": "review",
+          "kind": "lesson",
           "gate": "full",
-          "demoFormat": "walkthrough",
+          "demoFormat": "none",
           "status": "planned",
-          "title": "Gen AI review & Project 0 wrap-up",
-          "subtitle": "week recap · cumulative check · project checkpoint",
+          "title": "Project 0 showcase",
+          "subtitle": "rehearse · present data work to the client · tell it in an interview · feedback form",
           "subtopics": [
-            "Review",
-            "Feedback form"
-          ]
+            "Presenting data work to a client",
+            "Running a live demo",
+            "Telling a project in an interview",
+            "Project 0 showcase"
+          ],
+          "notes": "DAY SHAPE (D-0082): the Project 0 showcase day; no new Gen AI content and no review block. AM: setup check (every pair's deck opens, its BigQuery queries run live in the sandbox, the hand-in folder `projects/P0/` is pushed), framing, one short facilitation on presenting data work (what a manager keeps, the finding as the title, queries run live, both partners speak), then the sprint / project work slot is rehearsal and polishing of the deck and the queries in pairs with the trainer circulating; lunch; PM: presentations start at 2:30 pm, 15 minutes per pair in the order the trainer draws, the audience plays technical and non-technical managers and asks one question per pair; the feedback form closes the day. The notes page is study material for after the day: how to present data work to a mixed audience, what managers ask and why, how to run a live query without losing the room, and how the same project is told in an interview (situation, task, action, result); its Check yourself may recap the week's Gen AI ideas."
         }
       ]
     },

@@ -389,3 +389,19 @@ At a small software company the support desk's database answers one ticket at a 
 | qc3.bigquery.P04 | Preferred | Query external data sources like Cloud Storage or Cloud SQL using federated queries | w04d5 | 05-external-data | 4 |
 | qc3.bigquery.P05 | Preferred | Creates and manages BigQuery Connections (GCS, Cloud SQL, AWS S3) to enable federated or external querying. | w04d5 | notes-only | 4 |
 | qc3.bigquery.S01 | Stretch | Implements advanced data transformations, including window functions and recursive queries. | w04d3 | 02-raw-staging | 7 |
+| qc3.genai-in-development.R01 | Required | Familiar with Generative AI, the basic theory behind it, and its common applications. | week 05 | — | — |
+| qc3.genai-in-development.R02 | Required | Understand the role that Generative AI plays in software development and how to use it effectively. | week 05 | — | — |
+| qc3.genai-in-development.R03 | Required | Able to leverage GenAI to learn new technology/frameworks (such as finding documentation, prompt engineering, etc.) | week 05 | — | — |
+| qc3.genai-in-development.R04 | Required | Understand and apply prompt engineering techniques such as Iterative Prompting, Chain-of-Thought, and Sequential Prompting. | week 05 | — | — |
+| qc3.genai-in-development.R05 | Required | Use GenAI tools for code generation, and understand related use cases and best practices. | week 05 | — | — |
+| qc3.genai-in-development.R06 | Required | Use GenAI for unit testing, and understand its use cases and limitations. | week 05 | — | — |
+| qc3.genai-in-development.R07 | Required | Understands potential security risks associated with using GenAI in development, including code injection, insecure defaults, and data leakage. | week 05 | — | — |
+| qc3.genai-in-development.R08 | Required | Critically evaluate GenAI outputs for correctness, maintainability, and security. | week 05 | — | — |
+| qc3.genai-in-development.P01 | Preferred | Able to leverage GenAI in a collaborative environment, such as through the use of prompt libraries and version control. | week 05 | — | — |
+| qc3.genai-in-development.P02 | Preferred | Use GenAI to assist in writing and improving documentation. | week 05 | — | — |
+| qc3.genai-in-development.P03 | Preferred | Use GenAI for code analysis, optimization, and refactoring, and understand the associated best practices. | week 05 | — | — |
+| qc3.genai-in-development.P04 | Preferred | Understand the limitations, risks, and ethical considerations of GenAI-assisted development. | week 05 | — | — |
+| qc3.genai-in-development.P05 | Preferred | Integrate GenAI tools into development environments and workflows (e.g., IDE plugins, APIs). | week 05 | — | — |
+| qc3.genai-in-development.P06 | Preferred | Understand the legal ramifications of leveraging GenAI in development including licensing, IP, and copyright. | week 05 | — | — |
+| qc3.genai-in-development.S01 | Stretch | Able to identify and mitigate insecure or vulnerable code patterns in GenAI-generated outputs. | week 05 | — | — |
+| qc3.genai-in-development.S02 | Stretch | Compare and contrast GenAI-assisted development with traditional methods to assess effectiveness and appropriateness. | week 05 | — | — |

@@ -25,7 +25,10 @@ domain of the thread. Name the artifact they will have built along the trainer.
 
 ## Threads
 
-<!-- One "### <thread-id>" per thread touched this week. Thread ids are kebab-case and stable across weeks. -->
+<!-- One "### <thread-id>" per thread touched this week. Thread ids are kebab-case and stable across weeks.
+     A concept week (every day demoFormat none, D-0082) has no thread in scope: keep this heading with one line saying
+     so and no "### <thread-id>" block; the Standalone, Demo ladder, Stop points and never-pre-provide tables keep their
+     headers and stay empty, Conventions may be empty or carry tooling rows for what the trainer shows on screen. -->
 
 ### {{thread-id}}
 

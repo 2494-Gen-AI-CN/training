@@ -27,6 +27,9 @@ Checks (stdlib only):
               Demo = a walkthrough of that day | facilitation | notes, Notes step a positive integer
   authored/live days - once trainer/week-WW/demos/ exists, the walkthroughs on disk equal the plan's for every
               authored or live day (name, Time, thread, Starts from, commit message) (D-0052)
+  concept week - D-0082: when every teaching day of the week is demoFormat none there is no thread, block or
+              walkthrough: the Threads heading carries one line saying so, the ladder, stop-point, conventions and
+              never-pre-provide tables may be empty (headers kept), and every coverage row is facilitation | notes
   exitmap   - from curriculum exitCriteria.fromWeek (D-0063) the LAST section "## Exit criteria map" carries every
               criterion of the week's exit-criteria group exactly once (ID, Tier and Criterion as the source file
               has them), in one of three Day forms: a day id of this week (Where = a walkthrough of that day |
@@ -269,6 +272,9 @@ def check_plan(path: Path, metrics: dict | None = None, root: Path = ROOT) -> li
     wk = next(w for w in cur["weeks"] if w["week"] == plan["week"])
     teaching = bi.teaching_days(wk)
     ids = [d["id"] for d in teaching]
+    # D-0082: a concept week (every teaching day demoFormat none) has no thread, no block and no walkthrough; the Threads
+    # heading stays with one line saying so, the ladder, stop-point, conventions and never-pre-provide tables may be empty.
+    concept_week = bool(teaching) and all(d.get("demoFormat") == "none" for d in teaching)
     # headings in order; the exit map (D-0063) is required from exitCriteria.fromWeek only
     reg = exit_criteria.registry(cur)
     exit_active = plan["week"] >= reg["fromWeek"]
@@ -295,7 +301,7 @@ def check_plan(path: Path, metrics: dict | None = None, root: Path = ROOT) -> li
             if need not in body:
                 p.append(f"{name}: Per-day shape {did} lacks '{need}'")
     # threads
-    if not plan["threads"]:
+    if not plan["threads"] and not concept_week:
         p.append(f"{name}: Threads section has no '### <thread-id>' block")
     expected: dict[str, tuple[str, str]] = {}  # walkthrough -> (thread, starts from)
     prev_last = previous_last_block(plan["week"], root)
@@ -303,7 +309,7 @@ def check_plan(path: Path, metrics: dict | None = None, root: Path = ROOT) -> li
         tid = t["id"]
         if not t["domain"] or not t["scope"]:
             p.append(f"{name}: thread {tid} needs '- Domain:' and '- Scope:' lines")
-        if not t["blocks"]:
+        if not t["blocks"] and not concept_week:
             p.append(f"{name}: thread {tid} has no block table with columns {BLOCK_COLS}")
         prev_name = None
         for i, r in enumerate(t["blocks"]):
@@ -438,7 +444,7 @@ def check_plan(path: Path, metrics: dict | None = None, root: Path = ROOT) -> li
     for r in plan["scaffold"]["handouts"]:
         if r["Day"] not in ids:
             p.append(f"{name}: Scaffold bundle row Day '{r['Day']}' is not a teaching day of this week")
-    if not plan["scaffold"]["never"]:
+    if not plan["scaffold"]["never"] and not concept_week:
         p.append(f"{name}: Scaffold bundle needs the never-pre-provide table (columns {NEVER_COLS})")
     for r in plan["scaffold"]["never"]:
         for w in re.split(r"[,\s]+", r["Walkthrough"].strip()):
@@ -448,11 +454,11 @@ def check_plan(path: Path, metrics: dict | None = None, root: Path = ROOT) -> li
         p.append(f"{name}: Run prerequisites needs at least one bullet (the demo repo branch, containers, keys, tools)")
     # conventions (D-0057): the rules a day or demo author could not infer from the block table
     conv = plan["conventions"]
-    if not conv:
+    if not conv and not concept_week:
         p.append(f"{name}: Conventions needs a table (columns {CONVENTION_COLS}) with at least a tally and a git row")
     kinds = {r["Kind"] for r in conv}
     for need in ("tally", "git"):
-        if conv and need not in kinds:
+        if conv and not concept_week and need not in kinds:
             p.append(f"{name}: Conventions needs a row of kind '{need}' (every week counts typed lines and commits)")
     for r in conv:
         tag = f"Conventions row '{r['Convention'] or '?'}'"
