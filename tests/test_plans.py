@@ -111,6 +111,31 @@ class PlanFileTests(unittest.TestCase):
             self.assertIn("Applies from must be 'all' or a walkthrough", problems(head + "## Conventions" + body.replace("| all |", "| 99-nowhere |", 1) + "## Standalone demos" + tail))
             self.assertEqual("", problems(text))
 
+    def test_concept_week_accepts_an_empty_ladder(self):
+        """D-0082: a concept week keeps the Demo ladder header with no rows; any other week still needs rows."""
+        import tempfile
+        cur = curriculum()
+        concept = [p for p in sorted(PLANS.glob("week-*.md"))
+                   if all(d.get("demoFormat") == "none" for d in next(w for w in cur["weeks"] if w["week"] == plan_check.load_plan(p)["week"])["days"]
+                          if d.get("kind") != "holiday")]
+        if not concept:
+            self.skipTest("no concept-week plan on disk")
+        for p in concept:
+            with self.subTest(plan=p.name):
+                plan = plan_check.load_plan(p)
+                self.assertEqual([], plan["ladder"], "a concept week has no ladder rows")
+                problems = plan_check.check_plan(p, metrics()["demos"])
+                self.assertFalse([x for x in problems if "Demo ladder table missing" in x], "\n".join(problems))
+        src = PLANS / "week-02.md"
+        text = src.read_text(encoding="utf-8")
+        head, rest = text.split("## Demo ladder", 1)
+        body, tail = rest.split("## Per-day shape", 1)
+        header = "\n".join(ln for ln in body.splitlines() if not re.match(r"^\|\s*\d+\s*\|", ln))
+        with tempfile.TemporaryDirectory() as td:
+            t = Path(td) / "week-02.md"
+            t.write_text(head + "## Demo ladder" + header + "\n\n## Per-day shape" + tail, encoding="utf-8")
+            self.assertIn("Demo ladder table missing", "\n".join(plan_check.check_plan(t)))
+
 
 class PlanArgsTests(unittest.TestCase):
     def test_plan_args_carry_tiers_and_days(self):

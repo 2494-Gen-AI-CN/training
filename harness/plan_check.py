@@ -357,7 +357,7 @@ def check_plan(path: Path, metrics: dict | None = None, root: Path = ROOT) -> li
     # ladder
     lo, hi = metrics.get("minutesPerBlockMin", 0), metrics.get("minutesPerBlockMax", 10**6)
     ladder = plan["ladder"]
-    if not ladder:
+    if not ladder and not concept_week:
         p.append(f"{name}: Demo ladder table missing (columns {LADDER_COLS})")
     seen: set[str] = set()
     minutes_by: dict[str, int] = {}

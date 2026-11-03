@@ -91,7 +91,7 @@ version-stamps:
 - Adjacent concept: Replication — an ODS is often fed by change replication from the source.
 - Trade-off or limit: an ODS is fresh but short-lived in what it keeps, so it serves today's reports while trend questions go to the warehouse and its marts (the ODS side is the brief author's summary; the AWS page supports only the data-mart side) — [What is a data mart (AWS)](https://aws.amazon.com/what-is/data-mart/)
 - Recognise on sight: a read replica or integrated schema refreshed every few minutes that reports query.
-- Claims (the ODS definition is the brief author's summary; the AWS page is cited only for the data-mart contrast):
+- Claims: (the ODS definition is the brief author's summary; the AWS page is cited only for the data-mart contrast)
   - An operational data store sits between the sources and the warehouse, holding current, frequently refreshed data for short-lived reporting (author's summary); by contrast a data mart is a subject-focused subset of data serving one team — [What is a data mart (AWS)](https://aws.amazon.com/what-is/data-mart/)
   - Contrast: the warehouse and its marts hold the integrated data used for analysis over time — [What is a data mart (AWS)](https://aws.amazon.com/what-is/data-mart/)
 
