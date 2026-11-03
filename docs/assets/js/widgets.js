@@ -13,6 +13,13 @@
                             </div>
       Tasks sit in <section class="practice" hidden>. The reader types a solution, runs it and checks it:
       every top-level assert in task-tests is one check and its message is the label shown.
+   6. Choice task:          <div class="ix-task ix-choice" data-kind="choice" data-id="t2" data-title="..." data-q="...">   (D-0084)
+                              <ol class="task-options"><li><label><input type="radio" name="t2" value="0"> ...</label></li> ...</ol>
+                              <pre class="task-answer" hidden><code>{"answer": 1, "explain": "..."}</code></pre>
+                            </div>
+      A multiple-choice question among the practice tasks, checked here in JavaScript with no Python. The
+      reader picks an option and presses Check; the pick is marked right or wrong, the explanation shows,
+      and Try again clears it. Nothing is saved.
 
    4 and 5 run Python in pyworker.js (Pyodide), fetched on the first Run or Check click, and edit in
    CodeMirror, fetched when an editor is first needed. A load failure is shown as it is; nothing falls back.
@@ -266,11 +273,19 @@
     intro.className = "practice-intro";
     els[0].insertAdjacentElement("beforebegin", intro);
     const progress = () => {
-      intro.innerHTML = `${tasks.length} short tasks, one for each section above. Write the code, run it, then check it. ` +
-        `Your work is kept in this browser. <b>${tasks.filter(t => t.solved).length} of ${tasks.length} solved</b>`;
+      const n = tasks.length, solved = tasks.filter(t => t.solved).length;
+      const code = tasks.some(t => !t.choice), pick = tasks.some(t => t.choice);
+      intro.innerHTML = !pick
+        ? `${n} short tasks, one for each section above. Write the code, run it, then check it. ` +
+          `Your work is kept in this browser. <b>${solved} of ${n} solved</b>`
+        : !code
+          ? `${n} short questions on the sections above. Pick an answer, then check it. <b>${solved} of ${n} right</b>`
+          : `${n} short tasks on the sections above. Write the code or pick an answer, then check it. ` +
+            `Your code is kept in this browser. <b>${solved} of ${n} solved</b>`;
     };
 
     const tasks = els.map((el, i) => {
+      if (el.classList.contains("ix-choice")) return choiceTask(el, i, progress);
       const key = page + ":" + el.dataset.id;
       const starter = el.querySelector(".task-starter").textContent.replace(/^\n/, "").replace(/\s+$/, "");
       const tests = el.querySelector(".task-tests").textContent;
@@ -334,13 +349,86 @@
     });
     progress();
 
-    // fetch the editor when the reader gets near the tasks, not on page load
+    // fetch the editor when the reader gets near the tasks, not on page load; choice tasks need none
+    const coders = tasks.filter(t => !t.choice);
+    if (!coders.length) return;
     const near = new IntersectionObserver((entries) => {
       if (!entries.some(e => e.isIntersecting)) return;
       near.disconnect();
-      loadEditor().then(() => tasks.forEach(t => t.mount()), (err) => tasks.forEach(t => editorFailed(t.host, err)));
+      loadEditor().then(() => coders.forEach(t => t.mount()), (err) => coders.forEach(t => editorFailed(t.host, err)));
     }, { rootMargin: "800px 0px" });
     near.observe(section);
+  }
+
+  // ---- 6. choice tasks (D-0084) ----------------------------------------------------
+  // The same frame as a Python task, with radio options and a Check button that is live once an option is picked.
+  // Check marks the pick right or wrong in the colours the Python checks use and shows the explanation;
+  // Try again clears both. Nothing is stored.
+  function choiceTask(el, i, progress) {
+    const options = Array.from(el.querySelectorAll(".task-options li label")).map(label => {
+      const c = label.cloneNode(true);
+      c.querySelectorAll("input").forEach(x => x.remove());
+      return c.innerHTML.replace(/^\s+/, "");
+    });
+    let key = {};
+    try { key = JSON.parse(el.querySelector(".task-answer").textContent); }
+    catch (e) { console.error("[task] " + el.dataset.id + ": the answer key does not parse"); }
+    const t = { choice: true, solved: false };
+    const name = "tc-choice-" + el.dataset.id;
+
+    el.innerHTML =
+      `<div class="ix-k">Task ${i + 1} <span class="ix-sub">· ${esc(el.dataset.title)}</span><span class="task-state"></span></div>` +
+      `<p class="ix-q">${el.dataset.q || ""}</p>` +
+      `<ol class="task-options">` + options.map((o, j) =>
+        `<li><label><input type="radio" name="${esc(name)}" value="${j}"><span class="task-opt">${o}</span>` +
+        `<span class="task-mark" aria-hidden="true"></span></label></li>`).join("") + `</ol>` +
+      `<div class="run-bar"><button class="ix-btn run-go" type="button" data-act="check" disabled>✓ Check</button>` +
+      `<button class="ix-btn run-alt" type="button" data-act="retry" hidden>Try again</button></div>` +
+      `<ul class="task-checks" aria-live="polite"></ul>` +
+      `<div class="task-explain" hidden></div>`;
+    const list = el.querySelector(".task-options"), items = Array.from(list.children);
+    const inputs = items.map(li => li.querySelector("input"));
+    const check = el.querySelector('[data-act="check"]'), retry = el.querySelector('[data-act="retry"]');
+    const rows = el.querySelector(".task-checks"), explain = el.querySelector(".task-explain");
+    const state = el.querySelector(".task-state");
+    const paint = () => { state.textContent = t.solved ? "Solved ✓" : ""; el.classList.toggle("solved", t.solved); };
+
+    inputs.forEach(x => x.addEventListener("change", () => { check.disabled = !inputs.some(y => y.checked); }));
+    check.addEventListener("click", () => {
+      const j = inputs.findIndex(x => x.checked);
+      if (j < 0) return;
+      const ok = j === key.answer;
+      items[j].classList.add(ok ? "ok" : "bad");
+      items[j].querySelector(".task-mark").textContent = ok ? "✓" : "✗";
+      inputs.forEach(x => { x.disabled = true; });
+      list.classList.add("locked");
+      const li = document.createElement("li");
+      li.className = ok ? "ok" : "bad";
+      li.textContent = ok ? "✓ Right" : "✗ Not this one";
+      rows.textContent = "";
+      rows.appendChild(li);
+      explain.innerHTML = key.explain || "";
+      explain.hidden = false;
+      check.hidden = true;
+      retry.hidden = false;
+      t.solved = ok;
+      paint(); progress();
+    });
+    retry.addEventListener("click", () => {
+      items.forEach(li => { li.classList.remove("ok", "bad"); li.querySelector(".task-mark").textContent = ""; });
+      inputs.forEach(x => { x.checked = false; x.disabled = false; });
+      list.classList.remove("locked");
+      rows.textContent = "";
+      explain.textContent = "";
+      explain.hidden = true;
+      check.hidden = false;
+      check.disabled = true;
+      retry.hidden = true;
+      t.solved = false;
+      paint(); progress();
+    });
+    paint();
+    return t;
   }
 
   // The practice section is hidden in the markup, so it stays out of the way where scripts do not run.

@@ -264,10 +264,10 @@ def practice_args(cur: dict, week: dict, day_nos: list[int], build: bool, today:
     if unknown:
         return None, [f"week {week_no} has no teaching day {unknown}"]
     days, refused, exemplar = [], [], None
-    for w in cur["weeks"]:   # the accepted shape to copy: the first day in the course with built tasks
+    for w in cur["weeks"]:   # the accepted shape to copy: the first day in the course with built Python tasks (D-0084)
         for d in bi.teaching_days(w):
             rel = f"{w['dir']}/{d['slug']}"
-            if exemplar is None and pt.built(pt.load(rel)):
+            if exemplar is None and any(pt.kind_of(t) == "python" for t in pt.built(pt.load(rel))):
                 exemplar = {"day": d["id"], "page": f"docs/weeks/{rel}.html", "file": _fwd(pt.path_for(rel)),
                             "answers": f"trainer/{rel}/solutions/practice.py", "cases": f"trainer/{rel}/solutions/practice_cases.py"}
     for d in teaching:
@@ -303,7 +303,8 @@ def practice_args(cur: dict, week: dict, day_nos: list[int], build: bool, today:
             "spoilerRows": plan_check.day_rows(plan, d["id"]).get("spoilerRows", []) if plan else [],
         }
         if build:
-            day["tasks"] = [{k: t[k] for k in ("id", "title", "step", "idea", "checks")} | {"built": pt.is_built(t)} for t in doc["tasks"] if t["approved"]]
+            day["tasks"] = [{k: t[k] for k in ("id", "title", "step", "idea", "checks")} | {"kind": pt.kind_of(t), "built": pt.is_built(t)}   # kind: D-0084
+                            for t in doc["tasks"] if t["approved"]]
         days.append(day)
     if refused:
         return None, refused + notes

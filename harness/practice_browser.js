@@ -9,21 +9,29 @@
 
    For every task on the page it types the starter, the model answers and every case from /__cases.json into
    the task's editor, clicks Check, and reads what the page shows. "ok" is true when nothing is off AND every
-   task line equals the line CPython produced (data.expected), so the browser and the contract tests agree. */
+   task line equals the line CPython produced (data.expected), so the browser and the contract tests agree.
+
+   A choice task (D-0084, .ix-choice) has no editor: the driver picks each option in turn, presses Check, and
+   expects the page to mark the pick right exactly when it is the option at data.choice[id].answer, wrong
+   otherwise, with the explanation shown; then it presses Try again. Its line comes from the same counts. */
 export default async function practicePass() {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const data = await (await fetch("/__cases.json")).json();
+  const choiceKey = data.choice || {};
   const report = { ok: false, rel: data.rel, runtime: "", runs: 0, seconds: 0, lines: [], problems: [] };
   const problem = (id, what, r) => report.problems.push(
     id + ": " + what + (r ? " | page showed: " + (r.rows.map((x) => x.text).join(" ; ") || "(no rows)").slice(0, 240) + " | output: " + r.out.slice(-120) : ""));
 
   document.querySelector("section.practice").scrollIntoView({ block: "start", behavior: "instant" });
-  const tasks = Array.from(document.querySelectorAll(".ix-task"));
+  const all = Array.from(document.querySelectorAll(".ix-task"));
+  const tasks = all.filter((t) => !t.classList.contains("ix-choice"));
+  const choices = all.filter((t) => t.classList.contains("ix-choice"));
   const t0 = performance.now();
   const editors = () => document.querySelectorAll(".ix-task .CodeMirror").length;
   while (editors() < tasks.length && performance.now() - t0 < 20000) await wait(100);
   if (editors() < tasks.length) problem("page", "the editors did not load: " + (tasks[0] ? tasks[0].querySelector(".run-editor").textContent : "no tasks"));
-  if (tasks.length !== Object.keys(data.cases).length) problem("page", `${tasks.length} tasks on the page, ${Object.keys(data.cases).length} in practice_cases.py`);
+  if (tasks.length !== Object.keys(data.cases).length) problem("page", `${tasks.length} Python tasks on the page, ${Object.keys(data.cases).length} in practice_cases.py`);
+  if (choices.length !== Object.keys(choiceKey).length) problem("page", `${choices.length} choice tasks on the page, ${Object.keys(choiceKey).length} in the practice file`);
 
   // Type code into a task's editor (null = leave what is there), click Check, read the rows the reader would see.
   const check = async (t, code) => {
@@ -78,6 +86,50 @@ export default async function practicePass() {
       report.lines.push(line);
       if (line !== data.expected[id]) problem(id, `differs from CPython, which gave: ${data.expected[id]}`);
       t.querySelector('[data-act="reset"]').click();
+    }
+
+    // Choice tasks (D-0084): every option once, each followed by Try again.
+    for (const t of choices) {
+      const id = t.dataset.id, key = choiceKey[id];
+      if (!key) { problem(id, "no answer key for this choice task in the practice file"); continue; }
+      const items = Array.from(t.querySelectorAll(".task-options li"));
+      const check = t.querySelector('[data-act="check"]'), retry = t.querySelector('[data-act="retry"]');
+      const explain = t.querySelector(".task-explain");
+      const tmp = document.createElement("div");
+      tmp.innerHTML = key.explain;
+      const want = tmp.textContent.trim();
+      if (!check || !retry || !explain) { problem(id, "the choice task has no Check button, Try again button or explanation"); continue; }
+      if (items.length !== key.options) problem(id, `${items.length} options on the page, ${key.options} in the practice file`);
+      const fresh = (when) => {
+        const marked = items.filter((li) => li.classList.contains("ok") || li.classList.contains("bad")).length;
+        const picked = items.filter((li) => li.querySelector("input").checked).length;
+        if (!check.disabled || marked || picked || !explain.hidden || t.classList.contains("solved"))
+          problem(id, `${when}: expected no pick, no mark, a disabled Check and a hidden explanation`);
+      };
+      fresh("before any pick");
+      let rightOk = 0, wrongOk = 0, shown = 0;
+      for (let i = 0; i < items.length; i++) {
+        items[i].querySelector("input").click();
+        if (check.disabled) problem(id, `option ${i}: Check stays disabled after a pick`);
+        check.click();
+        await wait(0);
+        report.runs++;
+        const marks = items.map((li) => (li.classList.contains("ok") ? "ok" : li.classList.contains("bad") ? "bad" : ""));
+        const others = marks.every((m, j) => j === i || m === "");
+        const right = i === key.answer;
+        if (right && marks[i] === "ok" && others && t.classList.contains("solved")) rightOk++;
+        else if (!right && marks[i] === "bad" && others && !t.classList.contains("solved")) wrongOk++;
+        else problem(id, `option ${i} (${right ? "the right one" : "a wrong one"}) was marked: ${marks.map((m) => m || "-").join(" ")}`);
+        if (!explain.hidden && explain.textContent.includes(want) && want) shown++;
+        else problem(id, `option ${i}: the explanation is not shown after Check`);
+        if (retry.hidden) problem(id, `option ${i}: no Try again after Check`);
+        retry.click();
+        fresh(`after Try again on option ${i}`);
+      }
+      const n = items.length;
+      const line = `${id}: choice, ${n} options, right marked ${rightOk}/1, wrong marked ${wrongOk}/${n - 1}, explanation shown ${shown}/${n}`;
+      report.lines.push(line);
+      if (line !== data.expected[id]) problem(id, `differs from the practice file, which gives: ${data.expected[id]}`);
     }
   }
   // A reader's endless recursion kills Pyodide (the browser's stack overflows before Python's limit);

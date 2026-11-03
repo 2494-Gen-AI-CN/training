@@ -349,6 +349,25 @@ details.deep[open] summary { border-bottom: 1px solid var(--line); margin-bottom
 .task-checks li { padding:2px 0; overflow-wrap:anywhere; }
 .task-checks .ok { color:var(--good); }
 .task-checks .bad { color:var(--bad); }
+/* choice tasks (D-0084): radio options checked in the page; the marks reuse the checks' good and bad colours */
+.ix-choice .task-options { list-style:none; margin:4px 0 14px; padding:0; }
+.ix-choice .task-options li { margin:7px 0; }
+.ix-choice .task-options label { display:flex; align-items:baseline; gap:10px; cursor:pointer; border:1.5px solid var(--line); border-radius:9px; background:var(--surface); padding:9px 13px; line-height:1.55; color:var(--ink); transition:border-color .15s, background .15s; }
+.ix-choice .task-options label:hover { border-color:var(--dim); }
+.ix-choice .task-options input { flex:none; margin:0; position:relative; top:2px; accent-color:var(--accent); }
+.ix-choice .task-options .task-opt { flex:1; overflow-wrap:anywhere; }
+.ix-choice .task-options .task-mark { flex:none; font-weight:700; }
+.ix-choice .task-options.locked label { cursor:default; }
+.ix-choice .task-options.locked label:hover { border-color:var(--line); }
+.ix-choice .task-options li.ok label { border-color:var(--good); background:var(--good-soft); }
+.ix-choice .task-options li.bad label { border-color:var(--bad); background:var(--bad-soft); }
+.ix-choice .task-options li.ok .task-mark { color:var(--good); }
+.ix-choice .task-options li.bad .task-mark { color:var(--bad); }
+.ix-choice .run-bar { margin:0 0 12px; }
+.ix-choice .run-bar .ix-btn:disabled { opacity:.5; cursor:default; }
+.ix-choice .run-bar .ix-btn:disabled:hover { background:var(--surface); }
+.ix-choice .task-explain { margin-top:10px; padding:12px 14px; background:var(--surface-2); border:1px solid var(--line); border-radius:9px; font-size:15.5px; line-height:1.6; }
+.ix-choice .task-explain[hidden] { display:none; }
 .ix-k { font-size:12px; text-transform:uppercase; letter-spacing:.1em; font-weight:700; color:var(--accent); margin-bottom:8px; }
 .ix-k.spot { color:#1c7ed6; }
 .ix-k .ix-sub { text-transform:none; letter-spacing:0; font-weight:500; color:var(--ink-soft); }

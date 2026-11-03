@@ -32,6 +32,18 @@ TASKS = [
     {"id": "t2", "title": "Lists", "q": "Write <code>first(items)</code>.",
      "starter": "def first(items):\n    ...", "tests": "rows = [1, 2]\nassert first(rows) == 1, \"returns the first item\"\nassert rows == [1, 2], \"leaves the list alone\""},
 ]
+CHOICE = {"id": "t3", "title": "Pasting & <secrets>", "kind": "choice",
+          "q": "Your <code>.env</code> file holds the key. What do you paste into the assistant? It's \"one\" choice.",
+          "options": ["The whole <code>.env</code> file, so it sees the setting", "The error message and the function, with the key left out",
+                      "A screenshot of the terminal & the key", "Nothing: an assistant never helps with config"],
+          "answer": 1, "explain": "The step's rule: paste the code and the error, never a secret; <code>.env</code> stays on your machine."}
+
+
+def _built_choice(**over) -> dict:
+    """A built choice task as the build writes it into the day's file (D-0084)."""
+    return {"id": "t1", "title": "A", "step": None, "kind": "choice", "idea": "Pick what to paste.", "checks": ["pastes the secret", "pastes a screenshot"],
+            "approved": True, "q": CHOICE["q"], "options": list(CHOICE["options"]), "answer": 1, "explain": CHOICE["explain"],
+            "starter": "", "tests": ""} | over
 
 
 def _proposal(rel: str, day_id: str, approved=None) -> dict:
@@ -69,13 +81,16 @@ class FileTests(unittest.TestCase):
                 self.assertIsNone(pt.in_sync(rel))
 
     def test_bounds_live_in_metrics(self):
-        for key in ("checksPerTaskMin", "checksPerTaskMax", "acceptMin", "starterLinesMax", "modelLinesMax"):
+        for key in ("checksPerTaskMin", "checksPerTaskMax", "acceptMin", "starterLinesMax", "modelLinesMax", "choiceOptionsMin", "choiceOptionsMax"):
             self.assertIsInstance(metrics()["practice"].get(key), int, key)
+        self.assertLessEqual(2, metrics()["practice"]["choiceOptionsMin"])
+        self.assertLessEqual(metrics()["practice"]["choiceOptionsMin"], metrics()["practice"]["choiceOptionsMax"])
 
     def test_critic_spec_names_the_bars_and_the_three_steps(self):
         spec = (HARNESS / "critics" / "practice.md").read_text(encoding="utf-8")
         for needle in ("D-0047", "## The runtime", "## Suitability", "## Build", "checksPerTaskMin", "acceptMin", "modelLinesMax",
-                       "practice_tasks.py validate", "practice_tasks.py verify", "practice_tasks.py insert", "input()"):
+                       "practice_tasks.py validate", "practice_tasks.py verify", "practice_tasks.py insert", "input()",
+                       "## Choice tasks (D-0084", "choiceOptionsMin", "all of the above", "correct answer", "for Python tasks"):
             self.assertIn(needle, spec)
         self.assertIn("practice_tasks.py insert", (HARNESS / "critics" / "notes.md").read_text(encoding="utf-8"))
 
@@ -116,6 +131,47 @@ class SectionTests(unittest.TestCase):
         self.assertTrue(steps)
         self.assertEqual(list(range(len(steps))), [s["step"] for s in steps])
         self.assertNotIn("Check yourself", [s["title"] for s in steps])
+
+    def test_choice_tasks_round_trip_beside_python_tasks(self):
+        """D-0084: both kinds render and read back, in page order, escapes included; insert twice changes nothing."""
+        for tasks in ([CHOICE], [TASKS[0], CHOICE, TASKS[1]], [CHOICE | {"id": "t1"}, CHOICE | {"id": "t2", "answer": 3}]):
+            with self.subTest(ids=[t["id"] for t in tasks]):
+                new = pt.put_section(self.page, tasks)
+                self.assertEqual(tasks, pt.page_tasks(new))
+                self.assertEqual(new, pt.put_section(new, tasks))
+                self.assertEqual(self.page, pt.put_section(new, []))
+
+    def test_python_markup_is_unchanged_by_the_choice_kind(self):
+        """A task with "kind": "python" renders exactly as one without the key, so live pages stay in sync."""
+        self.assertEqual(pt.render(TASKS), pt.render([t | {"kind": "python"} for t in TASKS]))
+        self.assertNotIn("ix-choice", pt.render(TASKS))
+
+    def test_the_browser_sees_the_choice_markup_the_tests_parse(self):
+        from helpers import _Parser
+        import practice_browser as pb
+        p = _Parser()
+        p.feed(pt.put_section(self.page, [TASKS[0], CHOICE]))
+        py, choice = p.root.find_all("div", "ix-task")
+        self.assertEqual((False, True), (pb.is_choice(py), pb.is_choice(choice)))
+        self.assertEqual([(1, py)], pb.python_tasks(p.root), "a choice task keeps its number and runs no Python")
+        self.assertEqual(("choice", CHOICE["id"], CHOICE["q"]), (choice.attrs["data-kind"], choice.attrs["data-id"], choice.attrs["data-q"]))
+        radios = choice.find_all("input")
+        self.assertEqual([("radio", CHOICE["id"], str(i)) for i in range(len(CHOICE["options"]))],
+                         [(r.attrs["type"], r.attrs["name"], r.attrs["value"]) for r in radios])
+        key = choice.find("pre", "task-answer")
+        self.assertIn("hidden", key.attrs)
+        self.assertEqual({"answer": CHOICE["answer"], "explain": CHOICE["explain"]}, json.loads(key.text()))
+        self.assertIsNone(choice.find("pre", "task-starter"))
+
+    def test_widget_and_driver_handle_the_choice_kind(self):
+        widgets = (DOCS / "assets" / "js" / "widgets.js").read_text(encoding="utf-8")
+        driver = (HARNESS / "practice_browser.js").read_text(encoding="utf-8")
+        css = (DOCS / "assets" / "css" / "style.css").read_text(encoding="utf-8")
+        for needle in ("ix-choice", "task-answer", 'data-act="retry"', "task-explain", "D-0084"):
+            self.assertIn(needle, widgets)
+        for needle in (".ix-choice", "data.choice", 'data-act="retry"', "explanation shown"):
+            self.assertIn(needle, driver)
+        self.assertIn(".ix-choice .task-options li.ok", css)
 
 
 class ShapeTests(unittest.TestCase):
@@ -161,6 +217,75 @@ class ShapeTests(unittest.TestCase):
         doc["tasks"][0]["approved"] = False
         self.assertEqual([], pt.built(doc))
 
+    def test_a_built_choice_task_is_approved_and_complete(self):
+        """D-0084: q, options, answer and explain make it built; answer 0 counts; starter and tests stay empty."""
+        self.assertTrue(pt.is_built(_built_choice()))
+        self.assertTrue(pt.is_built(_built_choice(answer=0)))
+        self.assertFalse(pt.is_built(_built_choice(approved=None)))
+        self.assertFalse(pt.is_built(_built_choice(explain="")))
+        self.assertFalse(pt.is_built(_built_choice(options=[])))
+        self.assertFalse(pt.is_built(_built_choice(answer=None)))
+        self.assertFalse(pt.is_built({k: v for k, v in _built_choice().items() if k != "options"}))
+        self.assertEqual("python", pt.kind_of(TASKS[0]))
+
+    def _choice_problems(self, **over) -> list[str]:
+        doc = _proposal(self.REL, "w01dx")
+        doc["tasks"][0] = _built_choice(id="t1", step=0, title="A") | over
+        return pt.problems(doc, self.REL, None, metrics()["practice"])
+
+    def test_a_clean_choice_task_passes(self):
+        self.assertEqual([], self._choice_problems())
+        proposal = {"kind": "choice", "approved": None, "q": "", "options": [], "answer": None, "explain": ""}
+        self.assertEqual([], self._choice_problems(**proposal), "a choice proposal: kind, idea and checks, nothing built")
+        bare = {k: v for k, v in _built_choice(id="t1", step=0, title="A", approved=None, q="").items() if k not in ("options", "answer", "explain")}
+        doc = _proposal(self.REL, "w01dx")
+        doc["tasks"][0] = bare
+        self.assertEqual([], pt.problems(doc, self.REL, None, metrics()["practice"]), "the proposal may leave the built keys out")
+
+    def test_choice_bounds_come_from_metrics(self):
+        b = metrics()["practice"]
+        lo, hi = b["choiceOptionsMin"], b["choiceOptionsMax"]
+        opts = [f"Option {i}" for i in range(hi + 1)]
+        self.assertEqual([], self._choice_problems(options=opts[:lo], answer=0))
+        self.assertEqual([], self._choice_problems(options=opts[:hi], answer=hi - 1))
+        self.assertTrue(any(f"expected {lo} to {hi}" in x for x in self._choice_problems(options=opts[:lo - 1], answer=0)))
+        self.assertTrue(any(f"expected {lo} to {hi}" in x for x in self._choice_problems(options=opts[:hi + 1], answer=0)))
+        tight = pt.problems(_proposal(self.REL, "w01dx") | {"tasks": [_built_choice(id="t1", step=0), _proposal(self.REL, "w01dx")["tasks"][1]]},
+                            self.REL, None, b | {"choiceOptionsMax": 3})
+        self.assertTrue(any("expected" in x and "to 3" in x for x in tight), tight)
+
+    def test_what_the_choice_check_catches(self):
+        opts = CHOICE["options"]
+        cases = [
+            ("two options are the same", dict(options=[opts[0], opts[1], " ".join(opts[0].upper().split())])),
+            ("an option is empty", dict(options=[opts[0], opts[1], "  "])),
+            ("starts or ends with white space", dict(options=[opts[0], opts[1], opts[2] + " "])),
+            ("answer must be the 0-based index", dict(answer=4)),
+            ("answer must be the 0-based index", dict(answer=-1)),
+            ("answer must be the 0-based index", dict(answer=True)),
+            ("answer must be the 0-based index", dict(answer="1")),
+            ("options must be a list of strings", dict(options=[1, 2, 3])),
+            ("q may hold <code> and nothing else", dict(q="Pick <b>one</b>.")),
+            ("option 2 may hold <code> and nothing else", dict(options=[opts[0], opts[1], "A <i>screenshot</i>"])),
+            ("explain may hold <code> and nothing else", dict(explain="See <a href='x'>this</a>.")),
+            ("of the above", dict(options=[opts[0], opts[1], "All of the above"])),
+            ("of the above", dict(options=[opts[0], opts[1], "None of these"])),
+            ("never 'correct answer'", dict(explain="The correct answer is the second one.")),
+            ("written together", dict(explain="")),
+            ("keeps starter and tests empty", dict(starter="def f():\n    ...")),
+            ("without the trainer's approval", dict(approved=None)),
+            ("kind must be one of", dict(kind="essay")),
+        ]
+        for needle, over in cases:
+            with self.subTest(needle=needle, over=over):
+                found = self._choice_problems(**over)
+                self.assertTrue(any(needle in x for x in found), found)
+
+    def test_a_python_task_does_not_carry_choice_keys(self):
+        doc = _proposal(self.REL, "w01dx")
+        doc["tasks"][0].update(options=["a", "b", "c"])
+        self.assertTrue(any("belong to a choice task" in x for x in pt.problems(doc, self.REL, None, metrics()["practice"])))
+
 
 class GateTests(unittest.TestCase):
     """The trainer's answer is the gate between the two runs. Works on a temporary harness/practice/."""
@@ -190,7 +315,8 @@ class GateTests(unittest.TestCase):
         day = next(d for d in out["days"] if d["id"] == self.day["id"])
         self.assertEqual("build", out["mode"])
         self.assertEqual(["t2"], [t["id"] for t in day["tasks"]])
-        self.assertEqual({"id", "title", "step", "idea", "checks", "built"}, set(day["tasks"][0]))
+        self.assertEqual({"id", "title", "step", "idea", "checks", "kind", "built"}, set(day["tasks"][0]))
+        self.assertEqual("python", day["tasks"][0]["kind"], "the build is told each task's kind (D-0084)")
         self.assertFalse(day["tasks"][0]["built"])
         for key in ("pageFile", "practiceFile", "solutionsDir", "spoilerRows", "researchBrief"):
             self.assertIn(key, day)
@@ -232,6 +358,99 @@ class GateTests(unittest.TestCase):
         out, why = args_for.practice_args(self.cur, planned[0], [planned[1]["day"]], False, "2026-10-13", metrics(), CONFIG)
         self.assertIsNone(out)
         self.assertTrue(any("not authored yet" in x for x in why), why)
+
+
+MIXED_MODEL = '"""Model answers."""\n\n\n# Task 2: Lists\ndef first(items):\n    return items[0]\n'
+MIXED_CASES = ('CASES = {"t2": {"accept": ["def first(items):\\n    for x in items:\\n        return x\\n"],\n'
+               '                "reject": [("def first(items):\\n    return items[-1]\\n", "returns the first item"),\n'
+               '                           ("def first(items):\\n    return items.pop(0)\\n", "leaves the list alone")]}}\n')
+
+
+class VerifyTests(unittest.TestCase):
+    """`practice_tasks.py verify` on a temporary day (D-0084): choice tasks are validated only, and the trainer's
+    files are needed only when the day has a Python task. Works on temporary harness/practice/, docs/weeks/ and trainer/."""
+    REL = "week-99/day-9-choice"
+
+    def setUp(self):
+        import practice_browser as pb
+        self.pb = pb
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.root = Path(tmp.name)
+        saved = [(pt, "PRACTICE"), (pt, "page_for"), (pt, "locate"), (pb, "PRACTICE"), (pb, "PAGES"), (pb, "TRAINER")]
+        for mod, name in saved:
+            self.addCleanup(setattr, mod, name, getattr(mod, name))
+        pt.PRACTICE = pb.PRACTICE = self.root / "practice"
+        pb.PAGES = self.root / "weeks"
+        pb.TRAINER = self.root / "trainer"
+        pt.page_for = lambda rel: self.root / "weeks" / f"{rel}.html"
+        pt.locate = lambda w, d: ({}, {}, self.REL)
+        self.exemplar = EXEMPLAR.read_bytes().decode("utf-8")
+
+    def _day(self, tasks: list[dict]) -> None:
+        doc = {"day": "w99d9", "page": f"docs/weeks/{self.REL}.html", "assessed": "2026-11-03", "verdict": "partial",
+               "summary": "A test day.", "steps": [], "tasks": tasks}
+        pt.save(self.REL, doc)
+        pt.write_text(pt.page_for(self.REL), pt.put_section(self.exemplar, pt.built(doc)))
+
+    def _verify(self) -> tuple[int, str]:
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            try:
+                code = pt.cmd_verify(99, 9)
+            except SystemExit as exc:
+                code = f"exit: {exc}"
+        return code, out.getvalue()
+
+    def test_a_day_of_choice_tasks_needs_no_trainer_file(self):
+        self._day([_built_choice()])
+        self.assertFalse(self.pb.TRAINER.exists())
+        code, out = self._verify()
+        self.assertEqual(0, code, out)
+        self.assertIn("1 choice task(s) validated", out)
+        self.assertIn("t1: choice, 4 options, right marked 1/1, wrong marked 3/3, explanation shown 4/4", out)
+        data, problems = self.pb.expected(self.REL)
+        self.assertEqual(([], {}, {}), (problems, data["model"], data["cases"]))
+        self.assertEqual({"t1": {"options": 4, "answer": 1, "explain": CHOICE["explain"]}}, data["choice"])
+
+    def test_a_bad_choice_task_fails_validation(self):
+        self._day([_built_choice(options=CHOICE["options"][:2], answer=0)])
+        code, out = self._verify()
+        self.assertEqual(1, code, out)
+        self.assertIn("2 options, expected", out)
+
+    def _mixed(self) -> None:
+        t2 = TASKS[1] | {"step": None, "idea": "Write first.", "checks": ["one", "two"], "approved": True}
+        self._day([_built_choice(), t2])
+
+    def test_a_mixed_day_runs_the_python_contract_and_needs_the_trainer_files(self):
+        self._mixed()
+        code, out = self._verify()
+        self.assertIn("missing", str(code), "a Python task on the day: practice.py and practice_cases.py are required")
+        sol = self.pb.TRAINER / self.REL / "solutions"
+        pt.write_text(sol / "practice.py", MIXED_MODEL)
+        pt.write_text(sol / "practice_cases.py", MIXED_CASES)
+        code, out = self._verify()
+        self.assertEqual(0, code, out)
+        self.assertIn("t2: starter unsolved, model pass, right 1/1, wrong caught 2/2, per check 1 1", out)
+        self.assertIn("1 task(s) under CPython, 1 choice task(s) validated", out)
+        self.assertEqual(["t1", "t2"], list(self.pb.expected(self.REL)[0]["expected"]), "lines in page order")
+
+    def test_a_mixed_day_numbers_practice_py_by_the_page(self):
+        self._mixed()
+        sol = self.pb.TRAINER / self.REL / "solutions"
+        pt.write_text(sol / "practice.py", MIXED_MODEL.replace("# Task 2:", "# Task 1:"))
+        pt.write_text(sol / "practice_cases.py", MIXED_CASES)
+        code, out = self._verify()
+        self.assertEqual(1, code, out)
+        self.assertIn("numbered 2 in page order", out)
+
+    def test_the_page_is_held_to_the_file(self):
+        self._day([_built_choice()])
+        page = pt.page_for(self.REL)
+        pt.write_text(page, pt.read_text(page).replace('value="3"> ', 'value="3"> Changed: '))
+        code, out = self._verify()
+        self.assertEqual(1, code, out)
+        self.assertIn("differs from harness/practice", out)
 
 
 class CliTests(unittest.TestCase):
@@ -353,6 +572,31 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn("REPASS", out["calls"][2]["prompt"])
         esc = CONFIG["models"]["escalate"]
         self.assertEqual((esc["model"], esc["effort"]), (out["calls"][2]["model"], out["calls"][2]["effort"]), "pass 2 runs on the escalate tier")
+
+    @unittest.skipUnless(node_exe(), "node not found")
+    def test_dry_run_choice_kind(self):
+        """D-0084: the assessor may propose a choice task; a day of choice tasks only writes no trainer file;
+        a mixed day writes them for its Python tasks only; the agent count is unchanged."""
+        out = self._dry(self._base("suitability", [self._day(3)]))
+        self.assertIn('"kind": "choice"', out["calls"][0]["prompt"])
+        self.assertIn('"kind" ("python" or "choice", on every task)', out["calls"][0]["prompt"])
+        choice = {"id": "t1", "title": "A", "step": 0, "idea": "Pick one.", "checks": ["one", "two"], "kind": "choice", "built": False}
+        python = {"id": "t2", "title": "B", "step": 1, "idea": "Write f.", "checks": ["one", "two"], "kind": "python", "built": False}
+        out = self._dry(self._base("build", [self._day(5, [choice])]))
+        self.assertEqual(["w01d5:practice", "w01d5:practice-crit", "record", "verify"], [c["label"] for c in out["calls"]])
+        author, critic = out["calls"][0]["prompt"], out["calls"][1]["prompt"]
+        self.assertIn("write NO file under trainer/week-01/day-5/solutions", author)
+        self.assertNotIn("CASES = {", author)
+        self.assertIn('"options"', author)
+        self.assertIn("Choice tasks (D-0084)", critic)
+        self.assertIn("holds no practice file", critic)
+        record = json.loads(re.search(r"EXACTLY this JSON:\n(\{.*\})\n", out["calls"][2]["prompt"]).group(1))
+        self.assertEqual(4, record["agents"])
+        out = self._dry(self._base("build", [self._day(5, [choice, python])]))
+        author = out["calls"][0]["prompt"]
+        self.assertIn("one model answer per built Python task (t2)", author)
+        self.assertIn("CASES = {", author)
+        self.assertNotIn("write NO file", author)
 
     @unittest.skipUnless(node_exe(), "node not found")
     def test_dry_run_refuses_args_it_was_not_given_by_args_for(self):

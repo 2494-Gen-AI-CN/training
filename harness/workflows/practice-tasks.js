@@ -14,6 +14,10 @@
 //                    harness/critics/practice.md; up to 3 passes, then the day is flagged (never blocks the others).
 //   Workflow({ scriptPath: "harness/workflows/practice-tasks.js", args: <that JSON> })
 //
+// A task is a Python task (run in Pyodide, the default) or a choice task (D-0084): a multiple-choice question the
+// page checks in JavaScript. The assessor writes "kind" on every proposal; the build writes options/answer/explain
+// for a choice task and no trainer file for it, so a day of choice tasks only gets no practice.py or practice_cases.py.
+//
 // Both runs end with Record (run log + work tracker, D-0035) and Verify (contract tests). The browser pass
 // (harness/practice_browser.py, AGENTS.md) is NOT in here: the session drives it with its browser tools after a
 // build, and the stage is not done until it reports ok: true for every built day.
@@ -105,37 +109,48 @@ log(`Mode ${A.mode}: ${DAYS.map(d => d.id).join(', ')}. Model tiers: ${TIER_LABE
 // ---------- SUITABILITY: one assessor per authored page; the trainer is the judge, so there is no critic ----------
 const assess = (d) => agent(
   `You are the PRACTICE SUITABILITY assessor (D-0047). You propose; the trainer decides; a later run builds. ${context(d)}` +
-  `Read, in this order: (1) ${A.critic} — "The runtime" and "Suitability" are your bar; (2) ${ROOT}/${RT.worker || 'docs/assets/js/pyworker.js'} — what a check can see; (3) the notes page, every teaching step (each section.step but the last, Check yourself); (4) the research brief's Pitfalls and Notes depth; (5) the exemplar file and its page section, for the size and voice of a task.\n` +
+  `Read, in this order: (1) ${A.critic} — "The runtime", "Suitability" and "Choice tasks (D-0084)" are your bar; (2) ${ROOT}/${RT.worker || 'docs/assets/js/pyworker.js'} — what a check can see; (3) the notes page, every teaching step (each section.step but the last, Check yourself); (4) the research brief's Pitfalls and Notes depth; (5) the exemplar file and its page section, for the size and voice of a task.\n` +
   `Write ${d.practiceFile} with the Write tool (never echo or a heredoc; it is JSON with quotes in it), with exactly these keys:\n` +
   `- "day": "${d.id}", "page": "${d.pageRel}", "assessed": "${A.today}", "verdict", "summary";\n` +
   `- "steps": one object per teaching step in page order: "step" (the section's data-step number), "title" (its h2 text, exactly), "suitable" (true or false), "reason" (one or two sentences the trainer can act on: what in this step shows up as behaviour a check can see, or which rule of the bar rules a task out), "task" (the task id, or null);\n` +
-  `- "tasks": at most one per suitable step, in step order: "id" (t1, t2, ...), "title", "step", "idea", "checks" (${M.checksPerTaskMin || 2} to ${M.checksPerTaskMax || 4} sentences, one behaviour each, each failed by a mistake the page names), "approved": null, "q": "", "starter": "", "tests": "".\n` +
-  `Judge every step on its own. "partial" and "none" are honest verdicts; do not stretch a step that teaches a convention, a tool or typed input into a task. Do NOT write task text, starters or asserts, do NOT touch the page, the trainer repo or any other file.\n` +
+  `- "tasks": at most one per suitable step, in step order: "id" (t1, t2, ...), "kind" ("python" or "choice", on every task), "title", "step", "idea", "checks", "approved": null, "q": "", "starter": "", "tests": "". For a Python task "checks" is ${M.checksPerTaskMin || 2} to ${M.checksPerTaskMax || 4} sentences, one behaviour each, each failed by a mistake the page names. For a choice task "idea" is the scenario and the right answer, and "checks" is one sentence per wrong option (${(M.choiceOptionsMin || 3) - 1} to ${(M.choiceOptionsMax || 5) - 1} of them): the misconception it catches, as the page names it.\n` +
+  `Two kinds (D-0084). Propose "kind": "python" where the step's teaching shows up as behaviour a check can see. Where a Python task does not fit but the step teaches a judgement the reader can get wrong and the page names the wrong ways (when to paste what, which prompt is better, which generated code has the planted flaw), you may propose "kind": "choice": a multiple-choice question the page checks in JavaScript, no Python. A step that is pure vocabulary recall fits neither.\n` +
+  `Judge every step on its own. "partial" and "none" are honest verdicts; do not stretch a step that teaches a convention, a tool or typed input into a Python task, nor a definition into a choice task. Do NOT write task text, starters, asserts or options, do NOT touch the page, the trainer repo or any other file.\n` +
   `Write plainly (D-0029): present tense, concrete names, no filler, no "not X but Y", no stock AI words.\n` +
   `Before returning, with Bash from ${ROOT}: run "python harness/practice_tasks.py validate ${A.week} ${d.day}" until it prints OK (fix the file, never the checker).\n` +
   `Return verdict, teachingSteps, tasksProposed, validated (true only if the command printed OK), summary (one sentence: what the day lends itself to and what it does not).`,
   { schema: SUIT_SCHEMA, label:`${d.id}:suitability`, phase:'Suitability', ...tier('practice-suitability') })
 
 // ---------- BUILD: author + critic per day; days run side by side (each touches only its own files) ----------
-const build = (d) => gated(
+const kindOf = (t) => t.kind || 'python'
+const build = (d) => {
+  const py = d.tasks.filter(t => kindOf(t) === 'python'), ch = d.tasks.filter(t => kindOf(t) === 'choice')
+  const ids = (ts) => ts.map(t => t.id).join(', ')
+  // Python tasks keep the trainer's answer key; a choice task carries its key in the file, so a day of choice
+  // tasks only writes nothing under solutionsDir (D-0084).
+  const files = py.length
+    ? `2. Write ${ROOT}/${d.solutionsDir}/practice.py: one model answer per built Python task (${ids(py)}) in page order, each under a "# Task N: <title>" comment where N is the number the page shows (choice tasks count in that numbering and get no entry), in one file whose names do not collide.\n` +
+      `3. Write ${ROOT}/${d.solutionsDir}/practice_cases.py: CASES = { "<task id>": { "accept": [other right answers], "reject": [(wrong answer, label of the check that must catch it)] } } with an entry per built Python task and no other. Every check needs a wrong answer that fails it; make the wrong answers the mistakes this page warns about.\n`
+    : `2-3. This day's approved tasks are all choice tasks, which carry their answer key in the practice file: write NO file under ${d.solutionsDir} (no practice.py, no practice_cases.py).\n`
+  return gated(
   (cr, pass) => agent(
     `You are the PRACTICE TASK author (D-0047), pass ${pass}. The trainer approved these tasks of this day; build exactly these and no other: ${J(d.tasks)}\n${context(d)}` +
-    `Read: (1) ${A.critic} — "The runtime" and "Build" are what the critic checks; (2) ${ROOT}/${RT.worker || 'docs/assets/js/pyworker.js'} — the runner: how a check is tried, what raises() does; (3) the notes page, above all the steps these tasks practise; (4) the practice file as it stands; (5) the exemplar: its file (q, starter, tests), its model answers and its cases — copy those three shapes exactly; (6) the research brief's Pitfalls.\n` +
+    `Read: (1) ${A.critic} — "The runtime", "Build" and, for choice tasks, "Choice tasks (D-0084)" are what the critic checks; (2) ${ROOT}/${RT.worker || 'docs/assets/js/pyworker.js'} — the runner: how a check is tried, what raises() does${py.length ? '' : ' (this day has no Python task, so skim it)'}; (3) the notes page, above all the steps these tasks practise; (4) the practice file as it stands; (5) the exemplar: its file (q, starter, tests), its model answers and its cases — copy those three shapes exactly for Python tasks; (6) the research brief's Pitfalls.\n` +
     `Then, with the Write and Edit tools only (never echo or a heredoc: these files carry quotes, backslashes and newlines):\n` +
-    `1. In ${d.practiceFile}, for each approved task fill "q" (the task text, HTML with <code> only), "starter" and "tests" (top-level asserts, each with a message that is the label the reader sees). Change nothing else in the file: steps, reasons, ideas, the trainer's answers and every declined task stay as they are.\n` +
-    `2. Write ${ROOT}/${d.solutionsDir}/practice.py: one model answer per built task in page order, each under a comment naming the task, in one file whose names do not collide.\n` +
-    `3. Write ${ROOT}/${d.solutionsDir}/practice_cases.py: CASES = { "<task id>": { "accept": [other right answers], "reject": [(wrong answer, label of the check that must catch it)] } } with an entry per built task and no other. Every check needs a wrong answer that fails it; make the wrong answers the mistakes this page warns about.\n` +
+    `1. In ${d.practiceFile}, for each approved task: a Python task${py.length ? ` (${ids(py)})` : ''} gets "q" (the task text, HTML with <code> only), "starter" and "tests" (top-level asserts, each with a message that is the label the reader sees); a choice task${ch.length ? ` (${ids(ch)})` : ''} keeps "kind": "choice" and gets "q" (a short scenario in the page's words, <code> only), "options" (${M.choiceOptionsMin || 3} to ${M.choiceOptionsMax || 5} distinct strings, <code> allowed, each wrong one the misconception its "checks" sentence names), "answer" (the 0-based index of the one right option) and "explain" (one or two sentences: why the right option is right, in the step's words), with "starter" and "tests" left as "". Change nothing else in the file: steps, reasons, ideas, the trainer's answers and every declined task stay as they are.\n` +
+    files +
     `4. From ${ROOT}: python harness/practice_tasks.py insert ${A.week} ${d.day}   — it writes section.practice into the page from the file. NEVER edit that section, or anything else on the page, by hand.\n` +
     `5. From ${ROOT}: python harness/practice_tasks.py verify ${A.week} ${d.day}   until it prints OK (after every change to the file, run insert again first). Fix the tasks, the answers or the cases; never the checker, ${RT.worker || 'pyworker.js'} or ${RT.widgets || 'widgets.js'}.\n` +
     `6. From ${ROOT}: python harness/notes_check.py ${d.pageRel} --counts   must still pass, and "git diff --stat -- ${d.pageRel}" must show the practice section as the page's only change.\n` +
-    `Other days are being built beside you: touch only this day's practice file, its page (through insert) and its two files under ${d.solutionsDir}. Do not run the whole test suite; step 5 is this day's share of it.\n` +
-    `Write the task text plainly (D-0029). Return tasksBuilt, checks (asserts across the tasks), rightAnswers and wrongAnswers (entries in practice_cases.py), verifyOutput (the last lines step 5 printed, verbatim), summary (2 sentences).` + fix(cr),
+    `Other days are being built beside you: touch only this day's practice file, its page (through insert)${py.length ? ` and its two files under ${d.solutionsDir}` : ''}. Do not run the whole test suite; step 5 is this day's share of it.\n` +
+    `Write the task text plainly (D-0029). Return tasksBuilt, checks (asserts across the Python tasks plus options across the choice tasks), rightAnswers and wrongAnswers (entries in practice_cases.py; 0 when the day has no Python task), verifyOutput (the last lines step 5 printed, verbatim), summary (2 sentences).` + fix(cr),
     { schema: BUILD_SCHEMA, label:`${d.id}:practice`, phase:'Build', ...tier('practice', pass) }),
   (_r, pass) => agent(
-    `PRACTICE TASK CRITIC (pass ${pass}). Read ${A.critic} and apply every "Build" item to day ${d.id}. The approved tasks were: ${J(d.tasks.map(t => ({ id: t.id, title: t.title, step: t.step, idea: t.idea })))}\n${context(d)}` +
-    `With Bash from ${ROOT}, run and quote verbatim: "python harness/practice_tasks.py verify ${A.week} ${d.day}", "python harness/notes_check.py ${d.pageRel} --counts" and "git diff --stat -- ${d.pageRel}". Read ${d.practiceFile}, the page's section.practice and the steps it practises, ${ROOT}/${d.solutionsDir}/practice.py and practice_cases.py. Solve each task yourself from the task text alone before you read its model answer: if you needed something the page does not teach, or the text left a requirement to guesswork, that is a critique. Change no file.\n` +
+    `PRACTICE TASK CRITIC (pass ${pass}). Read ${A.critic} and apply every "Build" item to day ${d.id}${ch.length ? `; for its choice tasks (${ids(ch)}) apply the "Choice tasks (D-0084)" section and its verify items C1 to C4 in place of Build items 3 to 8 and 10` : ''}. The approved tasks were: ${J(d.tasks.map(t => ({ id: t.id, kind: kindOf(t), title: t.title, step: t.step, idea: t.idea })))}\n${context(d)}` +
+    `With Bash from ${ROOT}, run and quote verbatim: "python harness/practice_tasks.py verify ${A.week} ${d.day}", "python harness/notes_check.py ${d.pageRel} --counts" and "git diff --stat -- ${d.pageRel}". Read ${d.practiceFile}, the page's section.practice and the steps it practises${py.length ? `, ${ROOT}/${d.solutionsDir}/practice.py and practice_cases.py` : ` (the day has no Python task, so ${d.solutionsDir} holds no practice file)`}. Solve each task yourself from the task text alone before you read its model answer or its "answer": if you needed something the page does not teach, the text left a requirement to guesswork, or two options seemed right, that is a critique. Change no file.\n` +
     `Return pass, critiques (task id + what is wrong + the concrete fix), one-sentence summary.`,
     { schema: VERDICT, label:`${d.id}:practice-crit`, phase:'Build', ...tier('critic') }))
+}
 
 phase(BUILD ? 'Build' : 'Suitability')
 const results = await parallel(DAYS.map(d => () => BUILD ? build(d) : assess(d)))
