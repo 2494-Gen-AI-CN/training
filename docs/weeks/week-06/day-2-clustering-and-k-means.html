@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w06d2">
+<title>W6·D2 — Unsupervised learning: clustering | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261116">
+<script src="../../assets/js/theme.js?v=20261116"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="../../exit-criteria/index.html">Exit criteria</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>Unsupervised learning: clustering, distance and k-means</h1>
+        <div class="meta">
+          <span><b>Week 6</b> · Day 2</span>
+          <span>Tue Nov 17, 2026</span>
+          <span>AI/ML fundamentals</span>
+          <span><b>~38 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span class="verified">Sources checked 2026-11-16 · python 3.13.18 · scikit-learn 1.6.1 · scipy 1.16.3 · numpy 2.4.6 · matplotlib 3.10.0</span>
+        </div>
+        <p class="summary">This page assumes one idea from Day 1: a labelled model is trained on part of the data and
+        scored on held-out test data, and a model far better on training data than on test data has overfit. It opens with
+        one more labelled model, the decision tree, then takes the labels away: distance between points and between
+        clusters, hierarchical clustering, the k-means algorithm, choosing K, feature scaling and DBSCAN. Every example is a
+        Colab cell using scikit-learn, SciPy and NumPy on bundled or generated data. Afterwards you can walk an interviewer
+        through one round of k-means, contrast single and complete linkage, and explain why the lowest inertia cannot pick
+        K.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="0">
+        <div class="tag">Supervised contrast</div>
+        <h2>Decision trees: a model that asks questions</h2>
+        <p>Every model on Day 1 learned from labelled data: each row came with the right answer, and the model was
+        scored on answers it had not seen during training. Most of this page is about the opposite case, data with no
+        answers at all. It opens with one more labelled model, the decision tree, so the contrast is clear when the
+        labels disappear in the next step.</p>
+        <p>Every example on this page is a Colab cell. A fresh Colab runtime runs Python
+        3.13.18,<sup class="cite"><a href="#src-1">1</a></sup> and it preinstalls scikit-learn 1.6.1, SciPy 1.16.3, NumPy
+        2.4.6 and Matplotlib 3.10.0,<sup class="cite"><a href="#src-2">2</a></sup> so nothing needs installing. Paste a cell
+        into your own copy of a notebook and run it. A later cell in a step reuses names from the earlier cells of the same
+        step.</p>
+        <h3>How a tree decides</h3>
+        <p>A decision tree predicts by asking a chain of threshold questions, each about one feature, such as "is the
+        temperature at most 0.37?".<sup class="cite"><a href="#src-3">3</a></sup> A sample starts at the top, follows the
+        yes or no branch at each question, and the leaf it lands in gives the prediction. Training means choosing, at each
+        node, the question that leaves the groups below it as pure as possible, ideally one class each.</p>
+        <p>Because each question looks at a single feature, every split is a straight cut parallel to one
+        axis.<sup class="cite"><a href="#src-3">3</a></sup> On a two-feature scatter plot the decision boundary is a
+        staircase of horizontal and vertical edges, never a diagonal line.</p>
+<pre><code># Run in Colab
+from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score
+
+X, y = make_classification(n_samples=250, n_features=2, n_informative=2, n_redundant=0,
+                           n_clusters_per_class=1, class_sep=1.0, random_state=0)
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y)
+
+tree = DecisionTreeClassifier(max_depth=3, random_state=42)
+tree.fit(X_train, y_train)
+print(f"Training accuracy: {accuracy_score(y_train, tree.predict(X_train)):.3f}")
+print(f"Test accuracy:     {accuracy_score(y_test, tree.predict(X_test)):.3f}")
+print("Feature importances:", tree.feature_importances_.round(3))</code></pre>
+<pre class="out">Training accuracy: 0.980
+Test accuracy:     0.960
+Feature importances: [0.963 0.037]</pre>
+        <p>The data is a made-up weather set with two features and a play or do-not-play label. <code>max_depth=3</code>
+        caps the tree at three questions in a row.<sup class="cite"><a href="#src-3">3</a></sup> The two importances say
+        that nearly every useful question was about the first feature, a quick way to explain what the model looks at.</p>
+<pre><code># Run in Colab
+import matplotlib.pyplot as plt
+from sklearn.tree import plot_tree
+
+plt.figure(figsize=(14, 6))
+plot_tree(tree, feature_names=["Temperature-like", "Humidity-like"],
+          class_names=["Do not play", "Play"], filled=True, rounded=True)
+plt.show()</code></pre>
+        <p>The cell prints nothing and draws the fitted tree. Each box shows:</p>
+        <ul>
+          <li>the node's question</li>
+          <li>its gini impurity, a measure of how mixed the node's classes are, which each split tries to shrink</li>
+          <li>the number of training samples that reached it<sup class="cite"><a href="#src-4">4</a></sup></li>
+        </ul>
+        <p>The diagram lets someone who does not write code read the tree's rules. In other people's code a tree shows up as <code>DecisionTreeClassifier</code> with a
+        <code>max_depth</code> argument.</p>
+        <h3>How deep is too deep</h3>
+        <p>The two interlocking half-moons of <code>make_moons</code> cannot be split by one straight cut. The loop trains
+        three trees on the same split, one shallow, one medium and one with no depth limit, and prints training accuracy
+        beside test accuracy.</p>
+<pre><code># Run in Colab
+from sklearn.datasets import make_moons
+
+X_moons, y_moons = make_moons(n_samples=300, noise=0.25, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(
+    X_moons, y_moons, test_size=0.25, random_state=42)
+
+for depth in [1, 4, None]:
+    model = DecisionTreeClassifier(max_depth=depth, random_state=42).fit(X_train, y_train)
+    train_acc = accuracy_score(y_train, model.predict(X_train))
+    test_acc = accuracy_score(y_test, model.predict(X_test))
+    print(f"max_depth={str(depth):&lt;5} train {train_acc:.2f} | test {test_acc:.2f}")</code></pre>
+<pre class="out">max_depth=1     train 0.80 | test 0.83
+max_depth=4     train 0.90 | test 0.91
+max_depth=None  train 1.00 | test 0.88</pre>
+        <p>This is the Day 1 polynomial-degree story told by a tree:</p>
+        <table>
+          <thead><tr><th><code>max_depth</code></th><th>Train</th><th>Test</th><th>What happened</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>0.80</td><td>0.83</td><td>Underfit: one cut cannot follow a curve</td></tr>
+            <tr><td>4</td><td>0.90</td><td>0.91</td><td>A good fit: both scores high and close together</td></tr>
+            <tr><td>None</td><td>1.00</td><td>0.88</td><td>Overfit: the tree memorised noisy training points</td></tr>
+          </tbody>
+        </table>
+        <p>With <code>max_depth=None</code> a tree keeps splitting until its leaves are pure, which is exactly how it
+        memorises noise.<sup class="cite"><a href="#src-3">3</a></sup> A perfect training score is a warning sign, and the
+        test score is the one that counts. Limiting the depth is the simplest fix, and the depth is chosen by the test
+        score, never the training score.</p>
+        <div class="ix-predict" data-q="A tree scores 1.00 on its training data and 0.80 on its test data. What happened, and what would you change?" data-a="It overfit: it grew deep enough to carve a box around every noisy training point. Set max_depth and pick the depth whose test score is best, as depth 4 was on the moons."></div>
+        <h3>Trees can do regression too</h3>
+        <p><code>DecisionTreeRegressor</code> predicts a number instead of a class. Each leaf predicts the mean of the
+        training targets that landed in it, so the output is a staircase of flat pieces.<sup class="cite"><a href="#src-3">3</a></sup></p>
+<pre><code># Run in Colab
+import numpy as np
+from sklearn.tree import DecisionTreeRegressor
+
+rng = np.random.default_rng(42)
+x = np.linspace(0, 10, 200)
+y_wave = np.sin(x) + rng.normal(0, 0.1, x.shape)
+
+stairs = DecisionTreeRegressor(max_depth=2, random_state=42)
+stairs.fit(x.reshape(-1, 1), y_wave)
+predictions = stairs.predict(np.linspace(0, 10, 500).reshape(-1, 1))
+print("Distinct predictions:", np.unique(predictions.round(2)))</code></pre>
+<pre class="out">Distinct predictions: [-0.62  0.19  0.47  0.78]</pre>
+        <p>A depth-2 tree has at most four leaves, so 500 predictions across a whole sine wave take only four values. A
+        deeper tree adds more, smaller steps, and past some depth it starts to follow the noise.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A tree asks one threshold question per node, so its boundaries are axis-aligned.</li>
+          <li>An unlimited tree reaches perfect training accuracy by memorising noise; judge it on test data.</li>
+          <li>A regression tree predicts each leaf's mean, so its output is a staircase.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A decision tree classifies by asking a chain of yes-or-no questions, each one a threshold on a single feature,
+          and the leaf a sample ends up in gives the prediction. Training picks the question at each node that makes the
+          groups underneath as pure as possible.</p>
+          <p>If a tree scores 1.00 on training data and 0.80 on test data, it has overfit: it grew deep enough to memorise
+          noise. I'd set max_depth and choose the depth by the test score, not the training score.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">Subtopic</div>
+        <h2>Unsupervised learning and clustering</h2>
+        <p>The tree needed a label for every training row. Take the labels away and a different family of methods is
+        left, the ones that look for structure in the features alone.</p>
+        <h3>Learning without labels</h3>
+        <p>In supervised learning each training row has features and a label, the model learns to map one to the other,
+        and it is scored against labels it never saw. Unsupervised learning receives only the features. Clustering is its
+        most common task: it groups samples by similarity with no label to check against, so the result is judged by how
+        useful it is and by internal measures, never by accuracy.<sup class="cite"><a href="#src-5">5</a></sup></p>
+        <table>
+          <thead><tr><th></th><th>Supervised</th><th>Unsupervised (clustering)</th></tr></thead>
+          <tbody>
+            <tr><td>What training sees</td><td>features <code>X</code> and labels <code>y</code></td><td>features <code>X</code> only</td></tr>
+            <tr><td>What comes out</td><td>a prediction for each new row</td><td>a group number for each row</td></tr>
+            <tr><td>How it is judged</td><td>accuracy on held-out labels</td><td>usefulness and internal measures</td></tr>
+            <tr><td>Example on this page</td><td>decision tree</td><td>k-means, hierarchical clustering, DBSCAN</td></tr>
+          </tbody>
+        </table>
+        <p>The cell below builds three blobs of points with <code>make_blobs</code>, which generates Gaussian blobs (round clouds
+        of points, dense in the middle) for clustering practice and also returns the blob each point came from.<sup class="cite"><a href="#src-6">6</a></sup>
+        Those labels are kept aside for comparison only. <code>KMeans</code> receives the points and the number of groups,
+        and nothing else.<sup class="cite"><a href="#src-7">7</a></sup></p>
+<pre><code># Run in Colab
+import numpy as np
+from sklearn.datasets import make_blobs
+from sklearn.cluster import KMeans
+
+X_blobs, y_made = make_blobs(n_samples=150, centers=3, cluster_std=1.0, random_state=7)
+
+labels = KMeans(n_clusters=3, n_init=10, random_state=42).fit_predict(X_blobs)
+print("Labels k-means found:  ", labels[:10])
+print("Labels make_blobs made:", y_made[:10])
+print("Points per cluster:    ", np.bincount(labels))</code></pre>
+<pre class="out">Labels k-means found:   [1 2 1 2 0 2 1 0 2 1]
+Labels make_blobs made: [2 0 2 0 1 0 2 1 0 2]
+Points per cluster:     [50 50 50]</pre>
+        <p>The two rows of labels disagree on every number and agree on every grouping. Each point k-means called 1 was made
+        in blob 2, each 2 in blob 0, each 0 in blob 1. Cluster numbers are names, so cluster 2 is not "more" than cluster 1,
+        and a clustering is compared with known groups by who sits together, never by the numbers themselves.</p>
+        <h3>What clustering is used for</h3>
+        <p>Clustering fits wherever there are many unlabelled rows and the question is "which of these
+        belong together?". The scikit-learn guide lists typical uses:<sup class="cite"><a href="#src-5">5</a></sup></p>
+        <ul>
+          <li>customer segments, such as grouping shoppers by income and spending so each group gets its own campaign</li>
+          <li>grouping documents, such as support tickets or articles that share a topic</li>
+          <li>finding structure before any labels exist, so a team can see what groups are there before deciding what to label</li>
+        </ul>
+        <p>In someone else's code, clustering is the fit call with no <code>y</code> in it:
+        <code>KMeans(n_clusters=3, n_init=10, random_state=42).fit_predict(X)</code>. What follows is usually a count of
+        rows per cluster or a scatter plot coloured by cluster, because those are the first two things anyone checks.</p>
+        <h3>Judging a clustering with no answer key</h3>
+        <p>With no ground truth, two algorithms can both be right while drawing different groups, and the number of
+        clusters is a choice someone makes rather than a fact in the data.<sup class="cite"><a href="#src-5">5</a></sup>
+        That leaves two kinds of evidence. One is usefulness: whether the groups help with the job, which only someone who
+        knows the job can say. The other is an internal measure computed from the points and the labels alone.</p>
+<pre><code># Run in Colab
+from sklearn.metrics import silhouette_score
+
+print(f"Silhouette score: {silhouette_score(X_blobs, labels):.3f}")</code></pre>
+        <p>The cell prints <code>Silhouette score: 0.784</code>. The silhouette score is the mean, over all samples, of a
+        value that runs from −1 to +1, where higher means each point sits well inside its own cluster and far from the
+        next one.<sup class="cite"><a href="#src-8">8</a></sup><sup class="cite"><a href="#src-5">5</a></sup> Step 6
+        builds the formula. Usefulness can still overrule it: if marketing can run only four campaigns, four groups may be
+        the right answer whatever the score prefers.</p>
+        <div class="ix-predict" data-q="A teammate clusters customer records and reports '92% accuracy'. What do you ask?" data-a="Accuracy against what? Clustering has no labels to score against. Ask what the 92% was compared with, and ask for an internal measure such as the silhouette score plus a reason the groups are useful."></div>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Supervised learning trains on labels; unsupervised learning sees only the features.</li>
+          <li>Clustering groups rows by similarity, and its cluster numbers are only names.</li>
+          <li>A clustering is judged by usefulness and internal measures, never by accuracy.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Supervised learning trains on rows that come with the right answer and is scored against answers it hasn't
+          seen. Unsupervised learning only gets the features and looks for structure, and clustering, grouping similar rows,
+          is the most common example.</p>
+          <p>Two uses are customer segmentation, so each group of customers gets its own campaign, and grouping documents
+          like support tickets by topic.</p>
+          <p>With no labels there's no accuracy, so I judge a clustering by an internal measure like the silhouette score
+          and by whether the groups are useful to the people who'll act on them.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">Foundation</div>
+        <h2>Distance between two points</h2>
+        <p>Clustering rests on one idea: similar samples sit close together. Every algorithm on this page therefore needs
+        an exact definition of "close", and the definition it uses changes the groups it finds.</p>
+        <h3>Euclidean and Manhattan distance</h3>
+        <p>Each sample is a row of numbers, so it is a point with one coordinate per feature. Euclidean distance is the
+        straight-line distance between two points, the L2 distance: square the difference in each coordinate, add the
+        squares, take the square root. Manhattan distance, also called cityblock or L1, adds the absolute differences
+        instead, like walking a city grid where you can only go along streets.<sup class="cite"><a href="#src-9">9</a></sup></p>
+<pre><code># Run in Colab
+import numpy as np
+
+a = np.array([1, 2])
+b = np.array([4, 6])
+euclidean = np.sqrt(np.sum((a - b) ** 2))   # straight line
+manhattan = np.sum(np.abs(a - b))           # across, then up
+print(f"Euclidean: {euclidean}")
+print(f"Manhattan: {manhattan}")
+print(f"NumPy agrees: {np.linalg.norm(a - b)}")</code></pre>
+<pre class="out">Euclidean: 5.0
+Manhattan: 7
+NumPy agrees: 5.0</pre>
+        <p>The points differ by 3 across and 4 up. The straight line is the hypotenuse of a 3-4-5 triangle, so Euclidean
+        distance is 5.0, and walking across then up covers 3 + 4 = 7. <code>np.linalg.norm</code> of the difference gives
+        the Euclidean length directly, which is the form most code uses.</p>
+        <table>
+          <thead><tr><th>Distance</th><th>Formula</th><th>Other names</th><th>Behaviour</th></tr></thead>
+          <tbody>
+            <tr><td>Euclidean</td><td>square root of the sum of squared differences</td><td>L2, straight-line</td><td>squaring makes one large difference count heavily</td></tr>
+            <tr><td>Manhattan</td><td>sum of absolute differences</td><td>L1, cityblock</td><td>every unit of difference counts the same</td></tr>
+          </tbody>
+        </table>
+        <p>Euclidean is cdist's default metric,<sup class="cite"><a href="#src-9">9</a></sup> and k-means is built on it: its
+        inertia sums squared distances to each cluster's centre.<sup class="cite"><a href="#src-7">7</a></sup></p>
+        <div class="ix-spot" data-snippet="def euclidean(a, b):&#10;    return np.sum(np.abs(a - b))" data-q="The function name and the body disagree. Which distance does the body compute?" data-a="Manhattan (L1): it sums absolute differences. Euclidean squares the differences, sums them and takes the square root, or calls np.linalg.norm(a - b)."></div>
+        <h3>A whole table of distances with cdist</h3>
+        <p>Clustering code rarely measures one pair at a time. <code>scipy.spatial.distance.cdist</code> returns the matrix
+        of distances between every row of one array and every row of another. Its default metric is Euclidean, and
+        <code>metric="cityblock"</code> switches to Manhattan.<sup class="cite"><a href="#src-9">9</a></sup></p>
+<pre><code># Run in Colab
+from scipy.spatial.distance import cdist
+
+points = np.array([[1, 2], [4, 6], [0, 0]])
+print(cdist(points, points).round(2))
+print(cdist(points, points, metric="cityblock"))</code></pre>
+<pre class="out">[[0.   5.   2.24]
+ [5.   0.   7.21]
+ [2.24 7.21 0.  ]]
+[[ 0.  7.  3.]
+ [ 7.  0. 10.]
+ [ 3. 10.  0.]]</pre>
+        <p>Row <code>i</code>, column <code>j</code> holds the distance from point <code>i</code> to point <code>j</code>.
+        Passing the same array twice gives a square table with zeros on the diagonal, mirrored across it. With an array of
+        <code>m</code> rows and another of <code>n</code> rows the table is <code>m</code> by <code>n</code>, which is how
+        k-means measures every point against every centre in one call.</p>
+        <p>Two cautions come with any distance:</p>
+        <ul>
+          <li>It adds up differences across features, so a feature measured in thousands swamps one measured in single
+          digits. Step 7 shows the damage and the fix.</li>
+          <li>Cosine distance, a third option, compares the angle between vectors rather than their
+          length.<sup class="cite"><a href="#src-9">9</a></sup> It is how text embeddings are compared, and week 8 teaches it.</li>
+        </ul>
+        <p>In other people's code you recognise this step by <code>from scipy.spatial.distance import cdist</code>
+        followed by <code>.argmin(axis=1)</code>, which picks the nearest column for every row.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Euclidean distance is the straight line; Manhattan adds the absolute differences.</li>
+          <li>SciPy's cdist measures every row of one array against every row of another.</li>
+          <li>Distances add up across features, so a feature with large numbers dominates.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Euclidean distance is the straight-line distance: square the differences, add them, take the root. Manhattan
+          distance just adds the absolute differences, like walking a city grid. For the points one-two and four-six that's
+          five against seven. Euclidean is the usual default, and k-means is built on it.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="3">
+        <div class="tag">Subtopic</div>
+        <h2>Distance between clusters: linkage and hierarchical clustering</h2>
+        <p>A distance between two points is one number. A distance between two groups of points has several reasonable
+        answers, and the one an algorithm picks shapes every group it builds.</p>
+        <h3>Four ways to measure the gap between two clusters</h3>
+        <p>The rule that turns point distances into a distance between two clusters is called the linkage
+        criterion.<sup class="cite"><a href="#src-5">5</a></sup> SciPy's <code>linkage</code> function accepts each of these
+        as its <code>method</code>.<sup class="cite"><a href="#src-10">10</a></sup></p>
+        <table>
+          <thead><tr><th>Linkage</th><th>Distance between clusters A and B</th><th>Behaviour or limit (scikit-learn guide)</th></tr></thead>
+          <tbody>
+            <tr><td>single</td><td>the closest pair, one point from each</td><td>can chain far-apart points through a line of close ones</td></tr>
+            <tr><td>complete</td><td>the farthest pair</td><td>favours compact clusters</td></tr>
+            <tr><td>average</td><td>the mean over every pair</td><td>no limit named in the guide</td></tr>
+            <tr><td>centroid</td><td>between the two cluster means</td><td>not in the guide (a SciPy method)</td></tr>
+            <tr><td>ward</td><td>the merge that least increases total within-cluster variance</td><td>works with Euclidean distance only</td></tr>
+          </tbody>
+        </table>
+        <p>The first three and Ward are defined in the scikit-learn guide, along with the limits in the last
+        column.<sup class="cite"><a href="#src-5">5</a></sup> Centroid linkage comes from SciPy, where it is one of <code>linkage</code>'s methods.<sup class="cite"><a href="#src-10">10</a></sup></p>
+<pre><code># Run in Colab
+import numpy as np
+from scipy.spatial.distance import cdist
+
+cluster_a = np.array([[1.0, 1.0], [1.5, 2.0], [2.0, 1.2]])
+cluster_b = np.array([[5.0, 4.0], [6.0, 5.5], [5.5, 3.5]])
+
+pairwise = cdist(cluster_a, cluster_b)   # every A point against every B point
+print(pairwise.round(2))
+print(f"Single   (closest pair):   {pairwise.min():.2f}")
+print(f"Complete (farthest pair):  {pairwise.max():.2f}")
+print(f"Average  (all nine pairs): {pairwise.mean():.2f}")
+centre_gap = np.linalg.norm(cluster_a.mean(axis=0) - cluster_b.mean(axis=0))
+print(f"Centroid (centre to centre): {centre_gap:.2f}")</code></pre>
+<pre class="out">[[5.   6.73 5.15]
+ [4.03 5.7  4.27]
+ [4.1  5.87 4.19]]
+Single   (closest pair):   4.03
+Complete (farthest pair):  6.73
+Average  (all nine pairs): 5.00
+Centroid (centre to centre): 4.96</pre>
+        <p>Three of the four answers come out of one 3 by 3 table: its smallest entry, its largest entry and its mean. The
+        centroid distance is the odd one out, because it measures between the two averaged points, which are not in the
+        table. The same two clusters give four different "distances", from 4.03 to 6.73.</p>
+        <h3>Hierarchical clustering and the merge table</h3>
+        <p>Hierarchical, or agglomerative, clustering starts with every point as its own cluster and repeatedly merges the
+        closest pair of clusters, where the linkage decides which pair is
+        closest.<sup class="cite"><a href="#src-5">5</a></sup> <code>scipy.cluster.hierarchy.linkage</code> runs the merges
+        and returns them as a table. Each row records the indices of the two clusters merged, the distance between them and
+        the size of the new cluster.<sup class="cite"><a href="#src-10">10</a></sup></p>
+<pre><code># Run in Colab
+from scipy.cluster.hierarchy import linkage
+from sklearn.datasets import make_blobs
+
+X_small, _ = make_blobs(n_samples=15, centers=3, cluster_std=0.8, random_state=42)
+
+Z = linkage(X_small, method="average")
+print(Z.shape)
+print(Z[:3].round(2))
+for method in ["single", "average", "complete"]:
+    heights = linkage(X_small, method=method)[-4:, 2]
+    print(f"{method:&lt;8} last four merges at {heights.round(2)}")</code></pre>
+<pre class="out">(14, 4)
+[[10.   12.    0.41  2.  ]
+ [ 5.   13.    0.68  2.  ]
+ [ 3.    8.    0.69  2.  ]
+single   last four merges at [ 1.47  1.65  8.09 12.89]
+average  last four merges at [ 2.02  2.2  10.2  15.39]
+complete last four merges at [ 2.71  2.85 11.83 18.25]</pre>
+        <p>Fifteen points need fourteen merges to become one cluster, hence 14 rows. The first row says points 10 and 12
+        merged at distance 0.41 into a cluster of 2. The last four distances show the shape of the whole dataset: merges
+        happen at about 2, then jump to 10 and 15. Those two late merges join groups that are far apart, so the data holds
+        three natural clusters.</p>
+        <p>Changing the linkage moves the numbers and keeps the shape here. Single linkage merges lowest because it uses the
+        closest pair, complete highest because it uses the farthest. On well-separated blobs all three agree; on stringy or
+        touching groups they can disagree a lot.</p>
+        <div class="ix-predict" data-q="On the same 15 points, will single linkage's final merge happen at a lower or higher distance than complete linkage's?" data-a="Lower. Single linkage measures the closest pair between two clusters and complete linkage the farthest, so the same final merge is 12.89 under single and 18.25 under complete."></div>
+        <h3>Reading and cutting a dendrogram</h3>
+<pre><code># Run in Colab
+import matplotlib.pyplot as plt
+from scipy.cluster.hierarchy import dendrogram
+
+dendrogram(Z)
+plt.xlabel("Point index")
+plt.ylabel("Merge distance")
+plt.show()</code></pre>
+        <p>The cell prints nothing and draws the merge tree. A dendrogram puts the points along the bottom, and the height
+        of each horizontal bar is the distance at which two clusters merged.<sup class="cite"><a href="#src-10">10</a></sup>
+        Points joined near the bottom are close neighbours, and tall vertical lines near the top are big jumps in
+        distance.</p>
+        <p>Cutting the tree with a horizontal line at some height gives the clusters that merged below
+        it.<sup class="cite"><a href="#src-11">11</a></sup> A cut anywhere between about 2.2 and 10.2 crosses three
+        vertical lines, so it gives three clusters. The usual place to cut is in the tallest gap, where merging would join
+        groups that clearly do not belong together.</p>
+        <p>One run shows the structure at every level, two groups or five, without
+        choosing a number first. In code it reads
+        <code>Z = linkage(X, method="average")</code> followed by <code>dendrogram(Z)</code>.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Linkage decides the distance between clusters: closest pair, farthest pair, average or centres.</li>
+          <li>Hierarchical clustering merges the closest pair of clusters until one is left.</li>
+          <li>A dendrogram's bar height is the merge distance; cut in the tallest gap.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Single linkage measures the distance between two clusters by their closest pair of points, complete linkage by
+          the farthest pair, and average linkage by the mean over all pairs. Single can chain distant groups through a line
+          of close points; complete keeps clusters compact.</p>
+          <p>In a dendrogram each bar's height is the distance at which two clusters merged. I cut it with a horizontal line
+          in the biggest vertical gap, and the number of lines it crosses is the number of clusters.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">Subtopic</div>
+        <h2>The k-means algorithm by hand</h2>
+        <p>Hierarchical clustering builds a whole tree of merges. K-means works the other way
+        round: you say how many clusters you want, and it moves that many centres until they
+        settle.</p>
+        <h3>Assign, update, repeat</h3>
+        <p>K-means divides n samples into K clusters. Each cluster is described by the mean of its samples, called the
+        centroid, and the algorithm looks for centroids that minimise inertia, the sum of squared distances from each sample
+        to its own centroid.<sup class="cite"><a href="#src-5">5</a></sup> It gets there by alternating two
+        steps:<sup class="cite"><a href="#src-5">5</a></sup></p>
+        <ol>
+          <li>Start with K centroids, for example K of the points themselves.</li>
+          <li>Assign: every point joins the cluster of its nearest centroid.</li>
+          <li>Update: every centroid moves to the mean of the points just assigned to it.</li>
+          <li>Repeat assign and update until the centroids stop moving, or move less than a small tolerance.</li>
+        </ol>
+        <p>Eight points small enough to draw on paper make the loop visible. The two helper functions are the whole
+        algorithm: the first is the assign step, the second the update step. The start is deliberately poor, two
+        neighbouring points in the bottom-left group.</p>
+<pre><code># Run in Colab
+import numpy as np
+from scipy.spatial.distance import cdist
+
+points = np.array([[1, 1], [1, 2], [2, 1], [2, 2],
+                   [6, 5], [7, 5], [6, 6], [7, 6]], dtype=float)
+
+def assign_to_nearest(X, centroids):
+    return cdist(X, centroids).argmin(axis=1)
+
+def move_centroids(X, labels, k):
+    return np.array([X[labels == c].mean(axis=0) for c in range(k)])
+
+centroids = points[[0, 1]]                  # a poor start: two points side by side
+for step in range(1, 6):
+    labels = assign_to_nearest(points, centroids)
+    new_centroids = move_centroids(points, labels, 2)
+    moved = np.linalg.norm(new_centroids - centroids)
+    print(f"Step {step}: labels {labels}, centroids moved {moved:.3f}")
+    centroids = new_centroids
+    if moved == 0:
+        break
+print(centroids)</code></pre>
+<pre class="out">Step 1: labels [0 1 0 1 1 1 1 1], centroids moved 4.515
+Step 2: labels [0 0 0 0 1 1 1 1], centroids moved 2.095
+Step 3: labels [0 0 0 0 1 1 1 1], centroids moved 0.000
+[[1.5 1.5]
+ [6.5 5.5]]</pre>
+        <p>The trace in words:</p>
+        <ul>
+          <li>Step 1 starts with centroids at (1, 1) and (1, 2). Only the two points on the bottom row are nearer the first,
+          so cluster 0 gets two points and cluster 1 gets six, including the whole top-right group. The update pulls
+          centroid 1 to the mean of those six, about (4.83, 4.33), far up and to the right.</li>
+          <li>Step 2 reassigns against the moved centroids. Now the four bottom-left points are nearer centroid 0 and the
+          four top-right points nearer centroid 1, and the centroids move to (1.5, 1.5) and (6.5, 5.5).</li>
+          <li>Step 3 produces the same labels, so the means do not change and the movement is 0. The algorithm has
+          converged.</li>
+        </ul>
+        <p>Even from a poor start, two rounds were enough on data this clean. In other people's code, the assign step is
+        nearly always a distance table followed by <code>argmin(axis=1)</code>, and the update step a mean per label.</p>
+        <h3>Why the starting centroids matter</h3>
+        <p>Convergence only means the loop stopped. K-means can settle in a local minimum, a grouping that no single
+        assign or update step can improve but that is worse than the best one, and which minimum it reaches depends on the
+        starting centroids.<sup class="cite"><a href="#src-7">7</a></sup> The next cell runs the same helpers to
+        convergence on 150 points in three blobs, from two different sets of starting rows.</p>
+<pre><code># Run in Colab
+from sklearn.datasets import make_blobs
+
+X3, _ = make_blobs(n_samples=150, centers=3, cluster_std=1.0, random_state=7)
+
+def run_kmeans(X, start_rows, k):
+    centroids = X[start_rows]
+    while True:
+        labels = assign_to_nearest(X, centroids)
+        new_centroids = move_centroids(X, labels, k)
+        if np.allclose(new_centroids, centroids):
+            return labels, ((X - centroids[labels]) ** 2).sum()
+        centroids = new_centroids
+
+for start in ([0, 1, 2], [3, 4, 5]):
+    labels, inertia = run_kmeans(X3, start, 3)
+    print(f"start rows {start}: inertia {inertia:.1f}, sizes {np.bincount(labels)}")</code></pre>
+<pre class="out">start rows [0, 1, 2]: inertia 1465.9, sizes [ 27 100  23]
+start rows [3, 4, 5]: inertia 271.5, sizes [50 50 50]</pre>
+        <p>Both runs converged. The first lumped two blobs into one cluster of 100 and split the third blob in two, and its
+        inertia is more than five times worse. Nothing inside the loop can notice this, because each step only improves on
+        the step before.</p>
+        <p>scikit-learn deals with it in two ways. It runs the whole algorithm <code>n_init</code> times from different
+        starts and keeps the run with the lowest inertia.<sup class="cite"><a href="#src-7">7</a></sup> Its default
+        starting rule, <code>k-means++</code>, also spreads the first centroids apart instead of picking them purely at
+        random.<sup class="cite"><a href="#src-7">7</a></sup> Passing <code>n_init=10</code> and a fixed
+        <code>random_state</code> is the line you will see in most team code, because it makes the result both good and
+        repeatable.</p>
+        <div class="ix-predict" data-q="KMeans(n_init=2) happens to try the two starts above. Which result does it return?" data-a="The one with inertia 271.5 and three clusters of 50. scikit-learn keeps the run with the lowest inertia out of its n_init runs."></div>
+        <p>Three limits follow k-means everywhere, and the next three steps take them in turn:</p>
+        <ul>
+          <li>it needs K before it starts (step 6)</li>
+          <li>it is sensitive to the scale of the features and to outliers (step 7)</li>
+          <li>it assumes roughly round clusters (step 8)<sup class="cite"><a href="#src-5">5</a></sup></li>
+        </ul>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>K-means alternates two steps: assign each point to the nearest centroid, then move centroids to the means.</li>
+          <li>It stops when the centroids stop moving, which can be a poor local minimum.</li>
+          <li>Several starts with the lowest inertia kept is the standard defence against a bad start.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>One round of k-means has two steps. First every point is assigned to its nearest centroid. Then every centroid
+          moves to the mean of the points assigned to it. I repeat that until the centroids stop moving.</p>
+          <p>The loop always converges, but where it ends up depends on where the centroids started, and a bad start can
+          lump two real groups together. That's why scikit-learn runs it n_init times from different starts and keeps the
+          run with the lowest inertia, and why it uses k-means++ to spread the starting centroids out.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
+        <div class="tag">Subtopic</div>
+        <h2>K-means in scikit-learn, and choosing K</h2>
+        <p>The by-hand loop is what <code>KMeans</code> runs, with better starts and several tries. What remains is reading
+        its results and the question k-means cannot answer for itself: how many clusters.</p>
+        <h3>KMeans, labels_, cluster_centers_ and inertia</h3>
+        <p>Picture customers described by two numbers, an annual income and a spending score, with no segment written
+        anywhere. The cell fakes such data with five blobs of 500 points and asks for five clusters.</p>
+<pre><code># Run in Colab
+from sklearn.datasets import make_blobs
+from sklearn.cluster import KMeans
+
+X_customers, _ = make_blobs(n_samples=500, centers=5, cluster_std=1.2, random_state=10)
+
+kmeans = KMeans(n_clusters=5, n_init=10, random_state=42)
+kmeans.fit(X_customers)
+print("labels_[:10]:", kmeans.labels_[:10])
+print("cluster_centers_ shape:", kmeans.cluster_centers_.shape)
+print(f"inertia_: {kmeans.inertia_:.1f}")</code></pre>
+<pre class="out">labels_[:10]: [1 2 0 1 2 4 1 0 4 3]
+cluster_centers_ shape: (5, 2)
+inertia_: 1256.9</pre>
+        <p>After <code>fit</code>, three attributes hold the answer:<sup class="cite"><a href="#src-7">7</a></sup></p>
+        <ul>
+          <li><code>labels_</code> is the cluster index of every sample, here the first ten customers' segments.</li>
+          <li><code>cluster_centers_</code> holds the centroid coordinates, one row per cluster and one column per feature.</li>
+          <li><code>inertia_</code> is the sum of squared distances from each sample to its closest centre; lower means tighter clusters.</li>
+        </ul>
+        <p>The label numbers are names, as in step 2, so customer 0 in segment 1 and customer 2 in segment 0 says nothing
+        about which segment is bigger or better. <code>fit_predict</code>, used in step 2, fits the model and returns the
+        labels in one call.<sup class="cite"><a href="#src-7">7</a></sup></p>
+        <h3>The elbow method and the silhouette score</h3>
+        <p>Five clusters was a guess backed by knowing how the data was made. Normally nobody knows, and the obvious
+        shortcut fails: inertia always falls as K grows, since more centres always sit closer to their points, so the
+        lowest inertia cannot choose K. The elbow method instead looks for the K after which the drop
+        flattens.<sup class="cite"><a href="#src-5">5</a></sup></p>
+        <p>The silhouette score is the second guide. For one sample, let <code>a</code> be its mean distance to the other
+        points of its own cluster and <code>b</code> its mean distance to the points of the nearest other cluster. Its
+        silhouette coefficient is <code>(b - a) / max(a, b)</code>, which runs from −1 to +1, and higher is
+        better.<sup class="cite"><a href="#src-5">5</a></sup></p>
+        <ul>
+          <li>Near +1: the sample is far closer to its own cluster than to any other.</li>
+          <li>Near 0: it sits on the border between two clusters.</li>
+          <li>Below 0: it is closer to another cluster than to its own, so it is probably misassigned.</li>
+        </ul>
+        <p><code>silhouette_score</code> returns the mean coefficient over all samples, and it needs at least 2 and at most
+        n_samples − 1 distinct labels, so K = 1 cannot be scored.<sup class="cite"><a href="#src-8">8</a></sup> The
+        scikit-learn gallery uses exactly this to choose K for k-means.<sup class="cite"><a href="#src-12">12</a></sup></p>
+<pre><code># Run in Colab
+from sklearn.metrics import silhouette_score
+
+for k in range(2, 9):
+    model = KMeans(n_clusters=k, n_init=10, random_state=42).fit(X_customers)
+    score = silhouette_score(X_customers, model.labels_)
+    print(f"K={k}  inertia {model.inertia_:7.0f}  silhouette {score:.3f}")</code></pre>
+<pre class="out">K=2  inertia   13777  silhouette 0.568
+K=3  inertia    7574  silhouette 0.594
+K=4  inertia    3627  silhouette 0.670
+K=5  inertia    1257  silhouette 0.734
+K=6  inertia    1161  silhouette 0.642
+K=7  inertia    1075  silhouette 0.582
+K=8  inertia     980  silhouette 0.470</pre>
+        <p>Inertia falls at every K, steeply up to 5 and then by less than a hundred per extra cluster: that bend is the
+        elbow. The silhouette score peaks at 0.734, also at K = 5. They agree because the data was built from five clean
+        blobs. A plot of inertia against K makes the elbow easy to see, and in team code it is often a one-liner:
+        <code>inertias = [KMeans(n_clusters=k, n_init=10, random_state=42).fit(X).inertia_ for k in range(1, 9)]</code>.</p>
+        <div class="ix-spot" data-snippet="best_k = min(range(1, 11),&#10;             key=lambda k: KMeans(n_clusters=k, n_init=10).fit(X).inertia_)" data-q="What K will this always pick, and why is that wrong?" data-a="It picks 10, the largest K tried, because inertia always falls as K grows. Look for the elbow in the inertia curve or the peak silhouette score instead, then sanity-check the K against the problem."></div>
+        <h3>A real dataset: iris petals</h3>
+        <p>The iris dataset measures 150 flowers from three species, 50 of each.<sup class="cite"><a href="#src-13">13</a></sup>
+        The next cell pretends the species are unknown, clusters on petal length and petal width only, and scores K from 2
+        to 5.</p>
+<pre><code># Run in Colab
+import numpy as np
+from sklearn.datasets import load_iris
+
+iris = load_iris()
+X_iris = iris.data[:, [2, 3]]          # petal length, petal width
+
+for k in range(2, 6):
+    labels = KMeans(n_clusters=k, n_init=10, random_state=42).fit_predict(X_iris)
+    print(f"K={k}  silhouette {silhouette_score(X_iris, labels):.3f}")
+print("Flowers per species:", np.bincount(iris.target))</code></pre>
+<pre class="out">K=2  silhouette 0.765
+K=3  silhouette 0.660
+K=4  silhouette 0.613
+K=5  silhouette 0.588
+Flowers per species: [50 50 50]</pre>
+        <p>The silhouette score prefers K = 2, yet three species exist. On a scatter plot of the petals the reason is plain:
+        setosa sits on its own, while versicolor and virginica overlap.<sup class="cite"><a href="#src-13">13</a></sup><sup class="cite"><a href="#src-8">8</a></sup>
+        The score describes the shape of the data correctly and still misses the grouping a botanist cares about.</p>
+        <p>The species labels were never given to the algorithm, so it had no way to know. Metrics guide the choice of K,
+        and the person who knows the problem makes the final call.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>After fitting, labels_, cluster_centers_ and inertia_ hold the clusters, the centres and the tightness.</li>
+          <li>Inertia always falls as K grows, so look for the elbow instead of the minimum.</li>
+          <li>The silhouette score compares each point's own cluster with the nearest other one.</li>
+          <li>On iris petals the silhouette prefers two clusters although three species exist.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I can't just take the K with the lowest inertia, because inertia always goes down as K goes up; with one
+          cluster per point it's zero. So I plot inertia against K and look for the elbow where the drop flattens, and I
+          check the silhouette score, which compares how close each point is to its own cluster against the nearest other
+          one.</p>
+          <p>Then I sanity-check against the problem. On the iris petals the silhouette score prefers two clusters even
+          though there are three species, so the metrics guide the choice and a person decides it.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="6">
+        <div class="tag">Adjacent concept</div>
+        <h2>Feature scaling before any distance</h2>
+        <p>Every method so far measures distance, and every linkage is built on a point distance. That makes one
+        preparation step worth doing every time: putting the features on comparable scales.</p>
+        <h3>How one feature takes over</h3>
+        <p>A distance adds up differences across features, so distance-based methods are dominated by the feature with the
+        largest numeric range.<sup class="cite"><a href="#src-14">14</a></sup> K-means is sensitive to scale for exactly
+        this reason.<sup class="cite"><a href="#src-5">5</a></sup> The cell builds customers in real units, income in
+        dollars and a spending score from 1 to 100, from four segments: low or high income crossed with low or high
+        spending.</p>
+<pre><code># Run in Colab
+import numpy as np
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+
+rng = np.random.default_rng(1)
+groups = [(40_000, 20), (40_000, 80), (90_000, 20), (90_000, 80)]   # income $, score 1-100
+X_real = np.vstack([np.column_stack([rng.normal(inc, 6_000, 60), rng.normal(score, 7, 60)])
+                    for inc, score in groups])
+
+raw = KMeans(n_clusters=4, n_init=10, random_state=42).fit(X_real)
+order = raw.cluster_centers_[:, 0].argsort()       # sort by income for reading
+print("Raw centres (income, score):")
+print(raw.cluster_centers_[order].round().astype(int))</code></pre>
+<pre class="out">Raw centres (income, score):
+[[34974    51]
+ [43467    48]
+ [84565    47]
+ [93889    53]]</pre>
+        <p>All four centres have a spending score of about 50, the overall average. K-means sliced the customers into four
+        income bands and ignored spending entirely. In raw units a 60-point gap in spending counts exactly as much as a
+        60-dollar gap in income, which is nothing next to incomes spread over tens of thousands of dollars. On a plot the
+        clusters look like vertical stripes.</p>
+        <p>Nothing warns you when this happens. The code runs and reports an inertia, but the groups are wrong. Any
+        dataset that mixes units, such as dollars with counts or metres with percentages, has the problem until the features
+        are rescaled.</p>
+        <div class="ix-predict" data-q="You cluster employees on salary in dollars and years of experience, with no scaling. Which feature decides the clusters?" data-a="Salary. Its differences run into the thousands while experience differs by a few years, so salary dominates every distance and the clusters become salary bands."></div>
+        <h3>StandardScaler: mean 0, unit variance</h3>
+        <p><code>StandardScaler</code> rescales each feature to mean 0 and unit variance, meaning a typical spread
+        of 1 around that mean, so every feature counts equally.<sup class="cite"><a href="#src-14">14</a></sup> It learns a <code>mean_</code> and a <code>scale_</code>
+        for each column during <code>fit</code> and applies them in <code>transform</code>, which subtracts the mean and
+        divides by the scale.<sup class="cite"><a href="#src-14">14</a></sup> <code>fit_transform</code> does both in one
+        call.</p>
+<pre><code># Run in Colab
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X_real)
+print(f"mean_:  income {scaler.mean_[0]:.0f}, score {scaler.mean_[1]:.1f}")
+print(f"scale_: income {scaler.scale_[0]:.0f}, score {scaler.scale_[1]:.1f}")
+
+scaled = KMeans(n_clusters=4, n_init=10, random_state=42).fit(X_scaled)
+centres = np.array([X_real[scaled.labels_ == c].mean(axis=0) for c in range(4)])
+print("Centres after scaling, in raw units:")
+print(centres[centres[:, 0].argsort()].round().astype(int))</code></pre>
+<pre class="out">mean_:  income 64637, score 49.8
+scale_: income 25755, score 31.0
+Centres after scaling, in raw units:
+[[39301    79]
+ [39707    20]
+ [89255    19]
+ [90287    81]]</pre>
+        <p>One unit of scaled income is now about 25,755 dollars and one unit of scaled score about 31 points, so both
+        features move a point by similar amounts. Clustered on the scaled columns, k-means finds the four real segments:
+        low income with high and low spending, high income with low and high spending. The centres are computed back in raw
+        units so they can be read as dollars and points.</p>
+        <p>Three habits go with the scaler on a team:</p>
+        <ul>
+          <li>Scale before any distance-based method: k-means, hierarchical clustering and DBSCAN alike.</li>
+          <li>Keep the fitted scaler and call <code>transform</code> on new rows, so they get the same mean and scale as
+          the data the clusters were built on.</li>
+          <li>Look for outliers too: scaling does not remove them, and k-means is sensitive to
+          outliers.<sup class="cite"><a href="#src-5">5</a></sup></li>
+        </ul>
+        <p>This page scales numeric columns only. Turning text categories into numbers and handling missing values are
+        feature-engineering topics for week 8. In code, scaling shows up as
+        <code>X_scaled = StandardScaler().fit_transform(X)</code> a line or two before the clustering call.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>The feature with the largest numeric range dominates every distance.</li>
+          <li>StandardScaler gives every feature mean 0 and unit variance so each counts equally.</li>
+          <li>The fitted scaler's mean and scale are reused on new rows with transform.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>K-means works on distances, and a distance adds up differences across features, so the feature with the
+          biggest numbers wins. With income in dollars and a score out of a hundred, k-means just slices by income. I scale
+          first with StandardScaler, which gives each feature mean zero and unit variance, and then both features count.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="7">
+        <div class="tag">Adjacent concept</div>
+        <h2>Where k-means fails, and DBSCAN</h2>
+        <p>Scaling fixes the units but not the shape of the clusters, and shape is k-means' hardest limit.</p>
+        <h3>What k-means assumes about shape</h3>
+        <p>K-means assumes clusters that are roughly convex and of similar size, and it responds poorly to elongated or
+        ring-shaped clusters.<sup class="cite"><a href="#src-5">5</a></sup> A cluster is convex when a straight line
+        between any two of its points stays inside the cluster. The reason is the assign step. Each point
+        joins its nearest centre, so the border between two clusters is always the straight line halfway between their
+        centres. Two rings that share a middle cannot be separated by any straight line.</p>
+<pre><code># Run in Colab
+import numpy as np
+from sklearn.datasets import make_circles
+from sklearn.cluster import DBSCAN, KMeans
+
+X_rings, y_rings = make_circles(n_samples=500, noise=0.05, factor=0.45, random_state=42)
+
+km = KMeans(n_clusters=2, n_init=10, random_state=42).fit_predict(X_rings)
+print(f"K-means agrees with the rings on {max(np.mean(km == y_rings), np.mean(km != y_rings)):.0%} of points")
+
+for eps in [0.1, 0.25, 0.5]:
+    labels = DBSCAN(eps=eps, min_samples=5).fit_predict(X_rings)
+    print(f"eps={eps:&lt;4}  clusters {len(set(labels) - {-1})}  noise {np.sum(labels == -1)}")</code></pre>
+<pre class="out">K-means agrees with the rings on 51% of points
+eps=0.1   clusters 12  noise 11
+eps=0.25  clusters 2  noise 0
+eps=0.5   clusters 1  noise 0</pre>
+        <p><code>make_circles</code> builds an inner ring inside an outer one. K-means with K = 2 matches the rings on 51%
+        of points, no better than a coin toss: it cut both rings in half down the middle. The agreement line takes the
+        better of the two ways to pair cluster numbers with ring numbers, since cluster numbers are only names. DBSCAN with
+        <code>eps=0.25</code> finds exactly two clusters and no noise, which are the two rings.</p>
+        <h3>DBSCAN: dense regions and noise</h3>
+        <p>DBSCAN, density-based clustering, groups points that sit in dense regions. A core point has at least
+        <code>min_samples</code> neighbours within distance <code>eps</code>. A cluster grows from core point to neighbouring
+        core point, and points reachable from no core point get the label −1, meaning
+        noise.<sup class="cite"><a href="#src-5">5</a></sup> Because a cluster grows from neighbour to neighbour, it can
+        follow a curve, and DBSCAN needs no K.<sup class="cite"><a href="#src-5">5</a></sup></p>
+        <table>
+          <thead><tr><th></th><th>K-means</th><th>DBSCAN</th></tr></thead>
+          <tbody>
+            <tr><td>You choose</td><td>K, the number of clusters</td><td><code>eps</code> and <code>min_samples</code></td></tr>
+            <tr><td>Cluster shape</td><td>round, similar-sized blobs</td><td>any shape a chain of dense points can trace</td></tr>
+            <tr><td>Outliers</td><td>forced into the nearest cluster</td><td>labelled −1 as noise</td></tr>
+            <tr><td>Main weakness</td><td>wrong K, unscaled features, odd shapes</td><td>a poor <code>eps</code>, unscaled features</td></tr>
+          </tbody>
+        </table>
+        <p>The noise label is useful on its own. K-means has no way to say "this point belongs nowhere", so an outlier pulls
+        a centroid toward it. DBSCAN sets it aside as −1, which is a quick way to find rows worth a second look. In code,
+        DBSCAN reads <code>DBSCAN(eps=0.25, min_samples=5).fit_predict(X)</code>, usually followed by a count of the
+        clusters with <code>len(set(labels) - {-1})</code> and of the noise with <code>labels == -1</code>.</p>
+        <h3>Turning eps and min_samples</h3>
+        <p>The two knobs pull in opposite directions. Raising <code>eps</code> merges clusters and lowers noise. Lowering
+        <code>eps</code>, or raising <code>min_samples</code>, labels more points −1.<sup class="cite"><a href="#src-15">15</a></sup>
+        The <code>eps</code> loop above showed the first knob; this cell holds <code>eps</code> at 0.1 and turns the
+        second.</p>
+<pre><code># Run in Colab
+for min_samples in [5, 10, 20]:
+    labels = DBSCAN(eps=0.1, min_samples=min_samples).fit_predict(X_rings)
+    print(f"min_samples={min_samples:&lt;3} clusters {len(set(labels) - {-1})}  noise {np.sum(labels == -1)}")</code></pre>
+<pre class="out">min_samples=5   clusters 12  noise 11
+min_samples=10  clusters 3  noise 230
+min_samples=20  clusters 1  noise 479</pre>
+        <table>
+          <thead><tr><th>Setting</th><th>Clusters</th><th>Noise</th><th>What happened</th></tr></thead>
+          <tbody>
+            <tr><td><code>eps=0.1</code>, 5 neighbours</td><td>12</td><td>11</td><td>neighbourhoods too small: the rings break into fragments</td></tr>
+            <tr><td><code>eps=0.25</code>, 5 neighbours</td><td>2</td><td>0</td><td>the two rings</td></tr>
+            <tr><td><code>eps=0.5</code>, 5 neighbours</td><td>1</td><td>0</td><td>neighbourhoods reach across the gap: the rings merge</td></tr>
+            <tr><td><code>eps=0.1</code>, 20 neighbours</td><td>1</td><td>479</td><td>almost nothing counts as dense: nearly all noise</td></tr>
+          </tbody>
+        </table>
+        <p>That sensitivity is DBSCAN's main cost. <code>eps</code> is a distance, so step 7's scaling applies here
+        too.
+        A common rhythm is to scale, try a few values of <code>eps</code>, and check whether the noise count and the number
+        of clusters make sense for the problem.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>K-means draws straight borders between centres, so it cuts rings and long shapes wrongly.</li>
+          <li>DBSCAN grows clusters through dense neighbourhoods and labels isolated points −1.</li>
+          <li>A larger eps merges clusters; a smaller eps or larger min_samples makes more noise.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>K-means assumes round, similar-sized clusters, because every point goes to its nearest centre and the border
+          between two clusters is a straight line. On two rings, one inside the other, it just cuts both in half.</p>
+          <p>DBSCAN works from density instead. A point with at least min_samples neighbours within eps is a core point,
+          clusters grow from core point to core point, and anything that isn't reachable is labelled minus one as noise. I
+          don't pick K, but I do have to tune eps: too small and everything is noise, too large and the clusters merge.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="8">
+        <div class="tag">Check yourself</div>
+        <h2>Check yourself</h2>
+        <p>Nine retrieval questions, at least one per section. Answer each out loud before you open it.</p>
+        <details class="check"><summary>Why is a decision tree's boundary made of straight horizontal and vertical edges?</summary><p>Each node asks a threshold question about a single feature, such as "is feature 1 at most 0.37?". A question about one feature is a cut parallel to that feature's axis, so the boundary is a staircase of axis-aligned edges.</p></details>
+        <details class="check"><summary>A tree scores 1.00 on training data and 0.80 on test data. What happened, and what would you change?</summary><p>It overfit: with no depth limit it kept splitting until every leaf was pure, memorising noisy points. Set <code>max_depth</code> and choose the depth by the test score, as depth 4 did on the moons.</p></details>
+        <details class="check"><summary>How does unsupervised learning differ from supervised learning, and how do you judge a clustering?</summary><p>Supervised learning trains on features with labels and is scored against held-out labels; unsupervised learning gets the features only. A clustering has no accuracy, so it is judged by an internal measure such as the silhouette score and by whether the groups are useful.</p></details>
+        <details class="check"><summary>What are the Euclidean and Manhattan distances between (1, 2) and (4, 6)?</summary><p>Euclidean is the straight line, the square root of 3² + 4², which is 5.0. Manhattan adds the absolute differences, 3 + 4 = 7.</p></details>
+        <details class="check"><summary>What is the difference between single and complete linkage, and where do you cut a dendrogram?</summary><p>Single linkage uses the closest pair of points between two clusters and can chain distant groups together; complete linkage uses the farthest pair and keeps clusters compact. Cut the dendrogram in its tallest vertical gap; the clusters are the branches that merged below the cut.</p></details>
+        <details class="check"><summary>What are k-means' two repeated steps, when does it stop, and what does <code>n_init</code> do?</summary><p>Assign every point to its nearest centroid, then move each centroid to the mean of its points. It stops when the centroids stop moving. Because a bad start can converge to a poor grouping, <code>n_init</code> runs it several times from different starts and keeps the run with the lowest inertia.</p></details>
+        <details class="check"><summary>Why can't you choose K by taking the lowest inertia, and what do you use instead?</summary><p>Inertia always falls as K grows, so the lowest value is always the largest K tried. Look for the elbow where the drop flattens and for the peak silhouette score, then check the choice against the problem, as the iris petals show by preferring 2 clusters for 3 species.</p></details>
+        <details class="check"><summary>Why should you scale features before k-means, and what does <code>StandardScaler</code> do?</summary><p>Distances add up differences across features, so the feature with the largest range, such as income in dollars, dominates and the clusters become bands of that one feature. <code>StandardScaler</code> gives each feature mean 0 and unit variance so every feature counts equally.</p></details>
+        <details class="check"><summary>DBSCAN labels too many points −1. Which way do you turn <code>eps</code> and <code>min_samples</code>?</summary><p>Raise <code>eps</code> or lower <code>min_samples</code>, so more points have enough neighbours to count as dense. Go too far with <code>eps</code> and separate clusters merge, as the two rings did at 0.5.</p></details>
+      </section>
+
+      <section class="reading-sources" aria-label="Sources and deeper dive">
+        <h2>Sources &amp; deeper dive</h2>
+        <ul>
+          <li id="src-1"><a href="https://raw.githubusercontent.com/googlecolab/backend-info/main/os-info.txt" target="_blank" rel="noopener">Colab backend-info: runtime OS and Python</a> — the Python version a fresh Colab runtime runs.</li>
+          <li id="src-2"><a href="https://raw.githubusercontent.com/googlecolab/backend-info/main/pip-freeze.txt" target="_blank" rel="noopener">Colab backend-info: preinstalled packages</a> — the scikit-learn, SciPy, NumPy and Matplotlib versions Colab ships.</li>
+          <li id="src-3"><a href="https://scikit-learn.org/stable/modules/tree.html" target="_blank" rel="noopener">Decision Trees (scikit-learn user guide)</a> — threshold questions, depth, overfitting and regression trees.</li>
+          <li id="src-4"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.tree.plot_tree.html" target="_blank" rel="noopener">sklearn.tree.plot_tree</a> — drawing a fitted tree with each node's question, gini and sample count.</li>
+          <li id="src-5"><a href="https://scikit-learn.org/stable/modules/clustering.html" target="_blank" rel="noopener">Clustering (scikit-learn user guide)</a> — k-means, hierarchical clustering and linkage, the silhouette coefficient and DBSCAN.</li>
+          <li id="src-6"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.datasets.make_blobs.html" target="_blank" rel="noopener">sklearn.datasets.make_blobs</a> — generated blobs for clustering practice, with labels the algorithm never sees.</li>
+          <li id="src-7"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html" target="_blank" rel="noopener">sklearn.cluster.KMeans</a> — <code>n_init</code>, <code>k-means++</code>, <code>labels_</code>, <code>cluster_centers_</code> and <code>inertia_</code>.</li>
+          <li id="src-8"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.metrics.silhouette_score.html" target="_blank" rel="noopener">sklearn.metrics.silhouette_score</a> — the mean silhouette coefficient and how many labels it needs.</li>
+          <li id="src-9"><a href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.distance.cdist.html" target="_blank" rel="noopener">scipy.spatial.distance.cdist</a> — distance tables, the Euclidean default, cityblock and cosine.</li>
+          <li id="src-10"><a href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.cluster.hierarchy.linkage.html" target="_blank" rel="noopener">scipy.cluster.hierarchy.linkage</a> — linkage methods and the layout of the merge table.</li>
+          <li id="src-11"><a href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.cluster.hierarchy.dendrogram.html" target="_blank" rel="noopener">scipy.cluster.hierarchy.dendrogram</a> — drawing the merge tree and what a cut means.</li>
+          <li id="src-12"><a href="https://scikit-learn.org/stable/auto_examples/cluster/plot_kmeans_silhouette_analysis.html" target="_blank" rel="noopener">Silhouette analysis example</a> — choosing K for k-means with silhouette plots.</li>
+          <li id="src-13"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_iris.html" target="_blank" rel="noopener">sklearn.datasets.load_iris</a> — the 150 flowers, three species of 50 each.</li>
+          <li id="src-14"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.StandardScaler.html" target="_blank" rel="noopener">sklearn.preprocessing.StandardScaler</a> — mean 0 and unit variance, <code>mean_</code> and <code>scale_</code>.</li>
+          <li id="src-15"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html" target="_blank" rel="noopener">sklearn.cluster.DBSCAN</a> — <code>eps</code>, <code>min_samples</code> and the noise label.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · after you have read the page</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 6 Day 2</footer>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 2 — goals</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Read a decision tree and tell a well-fitted tree from an overfit one by its training and test scores</li>
+      <li>Explain how unsupervised learning differs from supervised learning, give uses of clustering, and judge a clustering that has no labels</li>
+      <li>Compute Euclidean and Manhattan distances, compare single, complete, average and centroid linkage, and read and cut a dendrogram</li>
+      <li>Walk through the k-means assign-and-update loop, explain starting centroids, <code>n_init</code> and inertia, and choose K with the elbow and the silhouette score</li>
+      <li>Scale features before any distance-based method and say when DBSCAN fits better than k-means</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Day 3 — Introduction to deep learning →", href: "day-3-deep-learning-concepts.html" };
+window.DIAGRAM = {
+  title: "Day 2 · from labels to groups",
+  width: 500, height: 520,
+  nodes: [
+    { id:"tree", step:0, kind:"example", x:24, y:14, w:200, h:52, label:"SUPERVISED\n  decision tree · max_depth", detail:"One threshold question per node, so boundaries are axis-aligned. Depth 1 underfits, depth 4 fits, no limit memorises noise (train 1.00, test 0.88). A regression tree predicts leaf means: stair steps." },
+    { id:"unsup", step:1, x:276, y:14, w:200, h:52, label:"UNSUPERVISED\n  X only · no answer key", detail:"Clustering groups rows by similarity. Cluster numbers are names. Judge by usefulness and internal measures such as the silhouette score, never by accuracy." },
+    { id:"points", step:2, x:24, y:92, w:452, h:48, label:"Point distance\n  Euclidean 5.0 · Manhattan 7 · cdist table", detail:"Euclidean is the straight line (L2); Manhattan adds absolute differences (L1, cityblock). cdist measures every row of one array against every row of another; Euclidean by default." },
+    { id:"linkage", step:3, x:24, y:166, w:200, h:60, label:"Linkage\n  single · complete · average\n  centroid · ward", detail:"Single: closest pair, can chain. Complete: farthest pair, compact. Average: mean over all pairs. Centroid: between the means. Ward: least increase in variance, Euclidean only." },
+    { id:"hier", step:3, x:276, y:166, w:200, h:60, label:"Hierarchical\n  merge table · dendrogram\n  cut in the tallest gap", detail:"Start with every point alone, merge the closest pair until one cluster is left. Each linkage row: two cluster indices, distance, new size. Bar height is the merge distance." },
+    { id:"kmeans", step:4, x:24, y:252, w:200, h:60, label:"K-means loop\n  assign → update\n  until nothing moves", detail:"Assign every point to its nearest centroid, move each centroid to the mean of its points, repeat. A bad start can converge to a poor grouping, so n_init keeps the lowest-inertia run." },
+    { id:"choosek", step:5, x:276, y:252, w:200, h:60, label:"Choosing K\n  inertia elbow · silhouette\n  iris: 2 vs 3 species", detail:"labels_, cluster_centers_, inertia_. Inertia always falls as K grows: find the elbow. Silhouette (b - a) / max(a, b) peaks at the best-separated K. Metrics guide K; a person decides." },
+    { id:"scale", step:6, x:24, y:338, w:452, h:44, label:"StandardScaler\n  mean 0 · unit variance · before any distance", detail:"Unscaled, income in dollars swamps a 1-100 score and k-means slices income bands. Scaled, it finds the four real segments. mean_ and scale_ are reused on new rows." },
+    { id:"dbscan", step:7, x:24, y:408, w:452, h:48, label:"DBSCAN\n  eps · min_samples · −1 = noise", detail:"Core points have min_samples neighbours within eps; clusters grow through them and can follow rings. Larger eps merges clusters; smaller eps or larger min_samples means more noise." },
+    { id:"check", step:8, x:24, y:474, w:452, h:40, label:"CHECK YOURSELF\n  answer out loud, then open" }
+  ],
+  edges: [
+    { id:"e1", step:1, from:"tree", to:"unsup", label:"drop the labels" },
+    { id:"e2", step:2, from:"unsup", to:"points", label:"similar = close" },
+    { id:"e3", step:3, from:"points", to:"linkage", label:"points to groups" },
+    { id:"e4", step:3, from:"linkage", to:"hier", label:"decides merges" },
+    { id:"e5", step:4, from:"points", to:"kmeans", label:"nearest centroid" },
+    { id:"e6", step:5, from:"kmeans", to:"choosek", label:"which K?" },
+    { id:"e7", step:6, from:"scale", to:"kmeans", label:"fix the units" },
+    { id:"e8", step:7, from:"kmeans", to:"dbscan", label:"fails on rings" },
+    { id:"e9", step:8, from:"dbscan", to:"check", dir:"-" }
+  ],
+  captions: [
+    "A labelled model first: a decision tree asks threshold questions, and its depth decides whether it underfits, fits or overfits. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "Take the labels away: clustering groups rows by similarity and is judged without an answer key.",
+    "Every clustering method starts from a distance between two points, Euclidean or Manhattan, often as a cdist table.",
+    "Linkage turns point distances into a distance between clusters, and hierarchical clustering merges by it into a dendrogram.",
+    "K-means alternates assign and update until the centroids stop moving; several starts guard against a poor one.",
+    "scikit-learn's KMeans reports labels, centres and inertia; the elbow and the silhouette score guide the choice of K.",
+    "Distances need comparable units, so StandardScaler comes before any distance-based method.",
+    "Where k-means draws straight borders and fails, DBSCAN follows dense regions and labels the rest as noise.",
+    "You can now explain trees, clustering, linkage, k-means, choosing K, scaling and DBSCAN without looking."
+  ]
+};
+window.QUIZ = {
+  id: "w06-d2",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "After fitting KMeans, which attribute holds the sum of squared distances from each sample to its closest centre?",
+      options: ["labels_", "cluster_centers_", "inertia_", "n_init"], answer: 2,
+      explain: "inertia_ is that sum, and lower means tighter clusters. labels_ holds each sample's cluster index, cluster_centers_ the centroid coordinates, and n_init is an argument, not a result." },
+    { type: "scq", stem: "Which linkage measures the distance between two clusters by their closest pair of points?",
+      options: ["Single", "Complete", "Average", "Ward"], answer: 0,
+      explain: "Single linkage uses the closest pair and can chain distant groups through a line of close points. Complete uses the farthest pair, average the mean over all pairs, and Ward the smallest increase in variance." },
+    { type: "tf", stem: "The K with the lowest inertia is the best number of clusters.", answer: false,
+      explain: "Inertia always falls as K grows, so the lowest value is simply the largest K tried. Look for the elbow and the silhouette score, then check the choice against the problem." },
+    { type: "mcq", stem: "Which of these are true of DBSCAN? Select all that apply.",
+      options: ["It needs the number of clusters before it starts", "Points reachable from no core point get the label -1", "Raising eps tends to merge clusters and lower noise", "It can follow ring-shaped clusters that k-means cuts in half"], answer: [1, 2, 3],
+      explain: "DBSCAN needs eps and min_samples, not K. Unreachable points are noise (-1), a larger eps merges clusters, and growing clusters through dense neighbours lets it follow rings." },
+    { type: "match", stem: "Match each tool to what it does.",
+      pairs: [
+        { l: "StandardScaler", r: "gives each feature mean 0 and unit variance" },
+        { l: "cdist", r: "measures every row of one array against every row of another" },
+        { l: "silhouette_score", r: "averages (b - a) / max(a, b) over all samples" },
+        { l: "max_depth", r: "caps how many questions a tree asks in a row" }
+      ],
+      explain: "StandardScaler fixes units before a distance. cdist builds the distance table. silhouette_score compares each point's own cluster with the nearest other one. max_depth is the tree's guard against overfitting." },
+    { type: "open", stem: "In two or three sentences: walk through one round of k-means, and say why scikit-learn runs it n_init times.",
+      hint: "Two steps, one stopping rule, one weakness of the start.",
+      model: "Each point is assigned to its nearest centroid, then each centroid moves to the mean of the points assigned to it, and the two steps repeat until the centroids stop moving. The result depends on the starting centroids and a bad start can converge to a poor grouping, so scikit-learn runs it n_init times from different starts and keeps the run with the lowest inertia." }
+  ]
+};
+</script>
+
+<script src="../../assets/js/diagram.js?v=20261116"></script>
+<script src="../../assets/js/scrolly.js?v=20261116"></script>
+<script src="../../assets/js/modals.js?v=20261116"></script>
+<script src="../../assets/js/quiz.js?v=20261116"></script>
+<script src="../../assets/js/widgets.js?v=20261116"></script>
+<script src="../../assets/js/glossary.js?v=20261116"></script>
+</body>
+</html>

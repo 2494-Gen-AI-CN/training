@@ -9,7 +9,7 @@ import subprocess
 import sys
 import unittest
 
-from helpers import HARNESS, ROOT, live_days
+from helpers import HARNESS, ROOT, all_days, live_days
 
 ARGS_FOR = HARNESS / "args_for.py"
 FANOUT = (HARNESS / "workflows" / "day-fanout.js").read_text(encoding="utf-8")
@@ -38,9 +38,13 @@ class ArgsForTests(unittest.TestCase):
         self.assertEqual(2, _args("1", "2", "--template", "harness/templates/missing.html", "--today", "2026-10-13").returncode)
 
     def test_notes_only_needs_the_brief(self):
-        # a day with no committed brief: week 6 is not authored yet (weeks 2-5 briefs exist)
-        r = _args("6", "1", "--no-plan", "--notes-only", "--today", "2026-10-13")
-        self.assertEqual(2, r.returncode)
+        # the first teaching day with no brief on disk, so the test does not go stale as weeks get authored
+        target = next(((w, d) for w, d, rel in all_days() if not (HARNESS / "research" / f"{rel}.md").is_file()), None)
+        if target is None:
+            self.skipTest("every teaching day already has a research brief")
+        w, d = target
+        r = _args(str(w["week"]), str(d["day"]), "--no-plan", "--notes-only", "--today", "2026-10-13")
+        self.assertEqual(2, r.returncode, r.stdout[:300] + r.stderr)
         self.assertIn("--notes-only needs an existing brief", r.stderr)
 
 

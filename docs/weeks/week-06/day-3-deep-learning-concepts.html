@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w06d3">
+<title>W6·D3 — Introduction to deep learning | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261116">
+<script src="../../assets/js/theme.js?v=20261116"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="../../exit-criteria/index.html">Exit criteria</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>Introduction to deep learning: neurons, layers, convolutions and text as numbers</h1>
+        <div class="meta">
+          <span><b>Week 6</b> · Day 3</span>
+          <span>Wed Nov 18, 2026</span>
+          <span>AI/ML fundamentals</span>
+          <span><b>~39 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span class="verified">Sources checked 2026-11-16 · python 3.13.18 · numpy 2.4.6 · scipy 1.16.3 · scikit-learn 1.6.1 · matplotlib 3.10.0</span>
+        </div>
+        <p class="summary">This page builds on the classifiers of Monday and Tuesday: a model fitted on a
+        <code>train_test_split</code> and scored with <code>accuracy_score</code>. It explains what deep learning changes,
+        the main types of neural network, and how neurons, layers and parameters work, with a forward pass built in numpy.
+        It then opens up a convolutional network's kernels and pooling on handwritten digits and a photograph, and turns
+        support-ticket titles into numbers with bag of words, TF-IDF and n-grams. Afterwards you can count a layer's
+        parameters, explain why a CNN beats a flat classifier on large images, and describe a text-classification pipeline
+        in an interview.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="0">
+        <div class="tag">Concept</div>
+        <h2>Deep learning: models that learn their own features</h2>
+        <p>The models of Monday and Tuesday learned from columns that someone had already chosen. Deep learning changes who
+        chooses them, and most of its other differences follow from that.</p>
+        <h3>Where deep learning sits</h3>
+        <p>Week 5 drew artificial intelligence as nested circles. The outer ring is AI, any program that does something
+        people would call intelligent. Inside it sits machine learning, programs that learn a rule from examples instead of
+        having the rule written by hand. Deep learning is the innermost ring: machine learning done with neural networks
+        that stack several layers of simple units.</p>
+        <p>Each unit, called a neuron, takes a weighted sum of its inputs, adds a bias and passes the result through an
+        activation function. Neurons are arranged in layers, and the layers between the input and the output are called
+        hidden layers.<sup class="cite"><a href="#src-5">5</a></sup> "Deep" refers to having several hidden layers, one
+        after another, each working on the output of the one before.</p>
+        <h3>Hand-made features against learned features</h3>
+        <p>A feature is one column of the table a model learns from. The datasets of the last two days came with their
+        columns ready-made: a petal length, a tumour's radius, a patient's blood pressure. Someone decided those
+        measurements were worth recording. That decision is called feature engineering, and for images or free text it is
+        the hard part. Which numbers describe "this photo shows a cat" or "this ticket is about a refund"?</p>
+        <p>A deep network takes the raw input instead, every pixel of an image or every word of a sentence, and its layers
+        learn their own features while it trains. Nobody writes those detectors by hand. Step 4 shows a hand-made edge
+        detector, which is exactly the kind of thing a convolutional network learns for itself, and step 5 shows how its
+        layers stack.</p>
+        <table>
+          <thead><tr><th></th><th>Classical machine learning</th><th>Deep learning</th></tr></thead>
+          <tbody>
+            <tr><td>Input</td><td>A table of chosen columns</td><td>Raw pixels, words or audio samples</td></tr>
+            <tr><td>Who makes the features</td><td>A person, before training</td><td>The network's layers, during training</td></tr>
+            <tr><td>Data it needs</td><td>Hundreds to thousands of rows can be enough</td><td>Large labelled datasets</td></tr>
+            <tr><td>Explaining an answer</td><td>Coefficients or tree splits you can read</td><td>Thousands of weights, hard to read</td></tr>
+          </tbody>
+        </table>
+        <h3>A baseline on raw pixels</h3>
+        <p>Every example on this page is a Google Colab cell. Colab's runtime ships Python 3.13.18 with scikit-learn
+        1.6.1, numpy 2.4.6, scipy 1.16.3 and matplotlib 3.10.0, so nothing needs installing.<sup class="cite"><a href="#src-4">4</a></sup>
+        The first dataset is <code>load_digits</code>: 1,797 handwritten digits, each an 8 by 8 greyscale image with pixel
+        values from 0 to 16, in 10 classes.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <p>The loader also returns each image flattened to 64 numbers, one per pixel.<sup class="cite"><a href="#src-1">1</a></sup>
+        Because a pixel already is a number, a linear classifier can be fitted on the raw pixels with no hand-made features
+        at all. That gives a baseline, the score any image model has to beat.</p>
+<pre><code># Run in Colab
+from sklearn.datasets import load_digits
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
+
+digits = load_digits()
+X, y = digits.data, digits.target
+print(digits.images.shape, X.shape, X.min(), X.max())
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.25, random_state=42, stratify=y)
+model = LogisticRegression(max_iter=5000)
+model.fit(X_train, y_train)
+print("train:", round(accuracy_score(y_train, model.predict(X_train)), 3))
+print("test: ", round(accuracy_score(y_test, model.predict(X_test)), 3))</code></pre>
+<pre class="out">(1797, 8, 8) (1797, 64) 0.0 16.0
+train: 1.0
+test:  0.962</pre>
+        <p>The model gets every training image right and 96.2 percent of the held-back test images. Comparing the two
+        scores with <code>accuracy_score</code> before trusting a model is the habit from Monday.<sup class="cite"><a href="#src-3">3</a></sup>
+        <code>LogisticRegression</code> defaults to <code>max_iter=100</code>, and on these unscaled pixels its lbfgs
+        solver, the algorithm that adjusts the weights step by step, stops early and prints a <code>ConvergenceWarning</code>.<sup class="cite"><a href="#src-2">2</a></sup>
+        Raising <code>max_iter</code> to 5000 lets the solver finish without scaling the features first.<sup class="cite"><a href="#src-2">2</a></sup></p>
+        <p>In someone else's notebook, a <code>LogisticRegression</code> fitted on flattened image pixels is almost always
+        this baseline. It is cheap to train, and its test score is the number a bigger model has to beat.</p>
+        <h3>Why it took off, and where it does not fit</h3>
+        <p>Neural networks are an old idea. They became the default for images, speech and text after about 2012, when
+        three things arrived together:</p>
+        <ul>
+          <li>much larger labelled datasets of photos, recordings and text</li>
+          <li>graphics cards (GPUs), which run a network's many multiplications in parallel</li>
+          <li>better training methods, which let deeper networks learn at all</li>
+        </ul>
+        <p>scikit-learn has a neural network of its own, and its documentation says it is not meant for large-scale
+        applications and has no GPU support.<sup class="cite"><a href="#src-5">5</a></sup> That is one reason deep-learning
+        work runs on GPU frameworks such as TensorFlow, which Day 4 introduces.</p>
+        <p>The same page names the costs. A deep network needs a large labelled dataset and the compute to train on it, and
+        its many weights are much harder to explain than a small linear model.<sup class="cite"><a href="#src-5">5</a></sup>
+        So Monday's and Tuesday's models stay the better choice for a small table of a few thousand rows, and wherever
+        someone must be told why the model decided what it did, such as a refused loan.</p>
+        <div class="ix-predict" data-q="A lender has 3,000 past applications with 12 columns each and must give every refused applicant a reason. Deep network or logistic regression?" data-a="Logistic regression, or a decision tree. The table is small and already has meaningful columns, and each coefficient or split can be read out as a reason. A deep network would need far more data and would be hard to explain."></div>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Deep learning is machine learning with neural networks of several stacked layers.</li>
+          <li>A deep network learns its own features from raw pixels or words.</li>
+          <li>Logistic regression on raw digit pixels is the baseline an image model must beat.</li>
+          <li>Small tables and decisions that need explaining still suit classical models.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Deep learning is machine learning with neural networks that have several layers. The big difference from
+          classical models is features: with logistic regression or a tree, a person chooses the columns, while a deep
+          network takes raw pixels or text and learns its own features while it trains.</p>
+          <p>It took off around 2012 because large labelled datasets, GPUs and better training methods arrived together.
+          I'd still pick logistic regression or a tree for a small table, or when I have to explain each decision, because
+          a deep network needs much more data and compute and is hard to interpret.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">Concept</div>
+        <h2>Types of neural networks</h2>
+        <p>Every neural network is built from the same neurons. The types differ in how those neurons are wired, and the
+        wiring follows the shape of the input the network is meant to read.</p>
+        <h3>Feedforward networks</h3>
+        <p>In a feedforward network data flows one way: from the input layer, through the hidden layers, to the output.
+        Each neuron in a layer is connected to every neuron in the next, which is why such a layer is called dense or
+        fully connected. scikit-learn's <code>MLPClassifier</code>, a multi-layer perceptron, is a feedforward
+        network.<sup class="cite"><a href="#src-6">6</a></sup></p>
+        <p>A feedforward network suits a table row: a fixed-length list of numbers where the order of the columns means
+        nothing. Fed an image, it has to flatten the grid into one long row first, and it loses the fact that two pixels
+        were neighbours. Step 5 shows what that costs. Step 3 builds a small feedforward network by hand.</p>
+        <h3>Convolutional and recurrent networks</h3>
+        <p>A convolutional network (CNN) slides small grids of weights across a grid-shaped input, so the same pattern
+        detector is reused at every position. It suits grid data such as images, and its models are recognisable by
+        convolution and pooling layers.<sup class="cite"><a href="#src-7">7</a></sup> Steps 4 and 5 open one up.</p>
+        <p>A recurrent network (RNN) reads a sequence one element at a time and carries a memory of what came before into
+        the next step. The long short-term memory layer, <code>LSTM</code>, is one recurrent layer Keras
+        provides.<sup class="cite"><a href="#src-8">8</a></sup> It suits data where order matters: sensor readings over time,
+        a sentence read word by word. The limit is speed. Processing a sequence step by step is slow to train compared with
+        attention over the whole sequence at once.<sup class="cite"><a href="#src-10">10</a></sup></p>
+        <h3>Transformers</h3>
+        <p>A transformer replaces step-by-step reading with attention. Every position in the sequence looks at every
+        other position in one go and decides how much each one matters to it. Keras names the layer
+        <code>MultiHeadAttention</code>, and transformers are the architecture underneath large language
+        models.<sup class="cite"><a href="#src-9">9</a></sup> The models used through week 5 are transformers.</p>
+        <p>Because the whole sequence is handled together, it trains faster than a recurrent network that waits for each
+        word in turn.<sup class="cite"><a href="#src-10">10</a></sup> Calling a large language model from your own code waits for
+        week 9.</p>
+        <h3>Autoencoders</h3>
+        <p>An autoencoder is trained to rebuild its own input after squeezing it through a narrow middle
+        layer.<sup class="cite"><a href="#src-11">11</a></sup> The narrow middle forces the network to keep a compact
+        summary of the input and drop the rest. Because the target is the input itself, it needs no labels, so it suits
+        unlabelled data you want to compress. Autoencoders get their own lesson in week 7.</p>
+        <h3>Architecture follows the shape of the data</h3>
+        <p>The quickest way to choose a type is to ask what one input looks like. The table pairs each type with the input
+        it reads best, one kind of product built on it, and the layer names that give it away in a model definition.</p>
+        <table>
+          <thead><tr><th>Type</th><th>Reads best</th><th>A product built on it</th><th>Layer names you see</th></tr></thead>
+          <tbody>
+            <tr><td>Feedforward</td><td>A table row</td><td>A risk score from an application form</td><td><code>Dense</code></td></tr>
+            <tr><td>Convolutional</td><td>An image</td><td>Photo tagging, spotting defects on a production line</td><td><code>Conv2D</code>, <code>MaxPooling2D</code></td></tr>
+            <tr><td>Recurrent</td><td>A sequence in order</td><td>Forecasting next hour's demand from past readings</td><td><code>LSTM</code></td></tr>
+            <tr><td>Transformer</td><td>Text at scale</td><td>Chat assistants built on large language models</td><td><code>MultiHeadAttention</code></td></tr>
+            <tr><td>Autoencoder</td><td>Unlabelled data to compress</td><td>Compressing images to a short code</td><td>A narrow layer in the middle</td></tr>
+          </tbody>
+        </table>
+        <p>Real models mix types. An image captioner can put a convolutional network in front of a text model, and a
+        transformer still contains dense layers inside it. The layer names are how you read someone else's model, and Keras uses
+        exactly these names.</p>
+        <div class="ix-spot" data-snippet="Model layers, in order:&#10;  Conv2D&#10;  MaxPooling2D&#10;  Conv2D&#10;  MaxPooling2D&#10;  Flatten&#10;  Dense" data-q="Which type of network is this, and what input does it expect?" data-a="A convolutional network. Conv2D and MaxPooling2D give it away, so it expects grid input such as an image; Flatten and Dense turn the result into a class at the end."></div>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Feedforward networks suit table rows; convolutional networks suit images.</li>
+          <li>Recurrent networks read sequences step by step, which makes them slow to train.</li>
+          <li>Transformers use attention over the whole sequence and underlie large language models.</li>
+          <li>An autoencoder rebuilds its input through a narrow middle, so it needs no labels.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I'd name five: feedforward networks for table rows, convolutional networks for images, recurrent networks
+          like LSTMs for sequences, transformers for text at scale, and autoencoders for compressing unlabelled data. The
+          shape of the input usually decides which one fits.</p>
+          <p>A recurrent network reads a sequence one step at a time, so it's slow to train. A transformer uses attention,
+          so every position looks at every other position at once, which trains in parallel. That's the architecture
+          behind large language models.</p>
+          <p>An autoencoder learns to rebuild its input through a narrow middle layer, so it needs no labels and ends up
+          with a compact summary of the data.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">Mechanics</div>
+        <h2>An artificial neural network: neurons, layers and a forward pass</h2>
+        <p>An artificial neural network is a few matrix multiplications with a simple function between them, and numpy is
+        enough to build one and run an input through it.</p>
+        <h3>One neuron</h3>
+        <p>A neuron does three things, in order:</p>
+        <ol>
+          <li>the weighted sum of its inputs: each input times its own weight, added up</li>
+          <li>add the bias</li>
+          <li>apply the activation function to the total</li>
+        </ol>
+        <p>A Keras dense layer documents exactly this calculation:
+        the activation of the dot product of input and weights, plus the bias.<sup class="cite"><a href="#src-12">12</a></sup>
+        A weight says how much one input matters, and the bias shifts the total up or down.</p>
+<pre><code># Run in Colab
+import numpy as np
+
+x = np.array([2.0, 1.0, 3.0])     # three inputs
+w = np.array([0.5, -1.0, 0.25])   # one weight per input
+b = 0.5                           # the bias
+
+z = x @ w + b                     # weighted sum plus bias
+print("z =", z)
+print("relu:", np.maximum(0, z))
+print("sigmoid:", round(1 / (1 + np.exp(-z)), 3))</code></pre>
+<pre class="out">z = 1.25
+relu: 1.25
+sigmoid: 0.777</pre>
+        <p>On paper the sum is 2 × 0.5 + 1 × (−1) + 3 × 0.25 + 0.5, which is 1.25. In numpy, <code>@</code> between two
+        arrays is a dot product, or a matrix multiplication when the arrays are two-dimensional.<sup class="cite"><a href="#src-25">25</a></sup> The two activations get one
+        line each here, and Day 5 covers them properly:</p>
+        <ul>
+          <li>ReLU returns max(0, x): negatives become zero and positives pass unchanged.<sup class="cite"><a href="#src-14">14</a></sup></li>
+          <li>Sigmoid squashes any number into the range 0 to 1, so 1.25 becomes 0.777.<sup class="cite"><a href="#src-13">13</a></sup></li>
+        </ul>
+        <h3>A layer is many neurons at once</h3>
+        <p>A layer is a row of neurons that all read the same inputs. Instead of looping over them, the layer stores every
+        neuron's weights as the columns of one matrix. A dense layer's weight matrix has the shape (inputs, units) and its
+        bias has the shape (units,).<sup class="cite"><a href="#src-12">12</a></sup> The network below reads the 64 pixels
+        of a digit, has a hidden layer of 16 neurons, and ends in 10 outputs, one per digit.</p>
+<pre><code># Run in Colab (after the baseline cell and the neuron cell)
+rng = np.random.default_rng(42)
+W1 = rng.normal(0, 0.1, size=(64, 16))
+b1 = np.zeros(16)
+W2 = rng.normal(0, 0.1, size=(16, 10))
+b2 = np.zeros(10)
+
+X_batch = X_test[:5]
+h = np.maximum(0, X_batch @ W1 + b1)   # hidden layer, ReLU
+logits = h @ W2 + b2                   # output layer, one score per digit
+print("input: ", X_batch.shape)
+print("hidden:", h.shape)
+print("output:", logits.shape)
+print("params:", W1.size + b1.size + W2.size + b2.size)</code></pre>
+<pre class="out">input:  (5, 64)
+hidden: (5, 16)
+output: (5, 10)
+params: 1210</pre>
+        <p>Running an input through the layers in order like this is a forward pass, and nothing is learned during it.
+        Follow the shapes: five images of 64 pixels times a (64, 16) matrix gives five rows of 16 hidden values, and
+        those times a (16, 10) matrix give five rows of 10 scores. The inner numbers have to match: 64 with 64, then 16
+        with 16.</p>
+        <p>Store the first matrix as (16, 64) instead and the inner numbers no longer match, so the multiplication
+        fails. The 10 raw scores are often called logits, and the highest one is the network's
+        guess. In someone else's code the pattern looks like <code>h = np.maximum(0, X @ W1 + b1)</code> followed by
+        <code>logits = h @ W2 + b2</code>.</p>
+        <h3>Counting parameters</h3>
+        <p>A parameter is one number training is allowed to change: every weight and every bias. A dense layer has
+        inputs × units weights plus one bias per unit.<sup class="cite"><a href="#src-12">12</a></sup> For this network:</p>
+        <ul>
+          <li>hidden layer: 64 × 16 + 16 = 1,040</li>
+          <li>output layer: 16 × 10 + 10 = 170</li>
+          <li>total: 1,210, the number the cell printed</li>
+        </ul>
+        <p>Interviewers ask for this count because it shows you understand what a layer stores. It also explains why
+        networks grow so fast: the weight count is a product, so doubling the hidden layer to 32 neurons doubles both
+        matrices.</p>
+        <h3>Random weights guess at chance</h3>
+        <p>The weights above came from a random number generator. <code>default_rng(42)</code> fixes the seed, so the same
+        "random" weights come out on every run and the numbers on this page hold.<sup class="cite"><a href="#src-15">15</a></sup>
+        Random weights mean the network has learned nothing yet, which the next cell measures.</p>
+<pre><code># Run in Colab (after the cell above)
+h_all = np.maximum(0, X_test @ W1 + b1)
+guesses = (h_all @ W2 + b2).argmax(axis=1)
+print("guesses:", guesses[:10])
+print("accuracy:", round(accuracy_score(y_test, guesses), 3))</code></pre>
+<pre class="out">guesses: [4 4 6 6 4 4 9 6 6 6]
+accuracy: 0.093</pre>
+        <p><code>argmax(axis=1)</code> picks the position of the highest score in each row.<sup class="cite"><a href="#src-26">26</a></sup> The untrained network is right
+        9.3 percent of the time, about one in ten, which is what guessing among ten classes gives. scikit-learn's
+        <code>DummyClassifier</code> exists to measure exactly this kind of chance baseline.<sup class="cite"><a href="#src-16">16</a></sup>
+        Only training fixes it by adjusting all 1,210 parameters, and that algorithm, backpropagation, is week 7's
+        subject.</p>
+        <div class="ix-predict" data-q="The hidden layer grows from 16 neurons to 32, everything else the same. How many parameters does the network have now?" data-a="64 × 32 + 32 = 2,080 for the hidden layer and 32 × 10 + 10 = 330 for the output layer, so 2,410 in total."></div>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A neuron computes a weighted sum, adds a bias and applies an activation.</li>
+          <li>A dense layer stores weights as an (inputs, units) matrix and a (units,) bias.</li>
+          <li>Parameters per dense layer are inputs times units plus units.</li>
+          <li>A network with random weights scores about chance until it is trained.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A neuron multiplies each input by a weight, sums them, adds a bias and passes the result through an
+          activation like ReLU. A dense layer does that for many neurons at once with one matrix multiplication.</p>
+          <p>To count a dense layer's parameters I multiply inputs by units and add one bias per unit. A 64 to 16 layer is
+          1,040, and a 16 to 10 layer is 170, so 1,210 in total.</p>
+          <p>Shapes have to line up because each layer is a matrix multiplication: the number of columns coming out of one
+          layer must equal the number of inputs the next layer's weight matrix expects.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="3">
+        <div class="tag">Mechanics</div>
+        <h2>How a CNN reads an image: kernels, convolution and pooling</h2>
+        <p>A convolutional network looks at small patches of an image, asks the same question of every patch, and records
+        where the answer was yes. This step builds that by hand with numpy and scipy.</p>
+        <h3>A kernel slides over the image</h3>
+        <p>A kernel is a small grid of weights, often 3 by 3. Lay it over the top-left 3 by 3 patch of the image, multiply
+        each pixel by the weight on top of it, and add the nine products: that is one output number. Slide the kernel one
+        pixel to the right and repeat, row after row. The grid of results is called a feature map, and it is large wherever
+        the patch looks like the pattern the kernel encodes.</p>
+        <p>The kernel below has −1 down its left column, 0 in the middle and +1 down its right. Over a flat patch the
+        left and right cancel and the result is 0. Over a patch that is dark on the left and bright on the right the result
+        is large and positive. It is a vertical-edge detector.</p>
+<pre><code># Run in Colab
+import numpy as np
+from scipy.signal import correlate2d
+
+img = np.array([[0, 0, 9, 9],
+                [0, 0, 9, 9],
+                [0, 0, 9, 9],
+                [0, 0, 9, 9]])
+kernel = np.array([[-1, 0, 1],
+                   [-1, 0, 1],
+                   [-1, 0, 1]])
+print(correlate2d(img, kernel, mode="valid"))
+print(correlate2d(img, np.flip(kernel), mode="valid"))</code></pre>
+<pre class="out">[[27 27]
+ [27 27]]
+[[-27 -27]
+ [-27 -27]]</pre>
+        <p>Every 3 by 3 patch of this toy image straddles the dark-to-bright edge, so each scores 3 × 9 = 27. The second
+        line flips the kernel left to right and top to bottom first, and the same edge now scores −27.</p>
+        <h3>Convolution in deep learning is cross-correlation</h3>
+        <p>That flip is the whole difference between two operations with confusingly similar names. In mathematics,
+        convolution flips the kernel before sliding it. SciPy's <code>correlate2d</code> slides the kernel as written, and
+        its <code>convolve2d</code> flips it first.<sup class="cite"><a href="#src-17">17</a></sup></p>
+        <p>The convolution layer in deep-learning frameworks, Keras's <code>Conv2D</code>, slides its kernel unflipped. Strictly
+        that is cross-correlation, but deep learning calls it convolution anyway.<sup class="cite"><a href="#src-18">18</a></sup>
+        So <code>correlate2d</code> computes what a <code>Conv2D</code> layer computes. Reach for <code>convolve2d</code>
+        and a left-dark, right-bright edge comes out negative, as if it were the opposite edge.</p>
+        <h3>Output size, and a real photograph</h3>
+        <p>With <code>mode="valid"</code>, the kernel only visits positions where it fits entirely inside the image. A k by
+        k kernel over an n by n image gives an output n − k + 1 on each side. A 3 by 3 kernel on an 8 by 8 digit
+        therefore gives 6 by 6.<sup class="cite"><a href="#src-17">17</a></sup></p>
+<pre><code># Run in Colab (after the baseline cell and the cell above)
+digit = digits.images[0]
+print(digit.astype(int))
+edges = correlate2d(digit, kernel, mode="valid")
+print(digit.shape, "->", edges.shape)
+print(edges.astype(int))</code></pre>
+<pre class="out">[[ 0  0  5 13  9  1  0  0]
+ [ 0  0 13 15 10 15  5  0]
+ [ 0  3 15  2  0 11  8  0]
+ [ 0  4 12  0  0  8  8  0]
+ [ 0  5  8  0  0  9  8  0]
+ [ 0  4 11  0  1 12  7  0]
+ [ 0  2 14  5 10 12  0  0]
+ [ 0  0  6 13 10  0  0  0]]
+(8, 8) -> (6, 6)
+[[ 33  27 -14  -3  -6 -27]
+ [ 40  10 -30  17  11 -34]
+ [ 35 -10 -35  26  24 -28]
+ [ 31 -13 -30  29  22 -29]
+ [ 33  -6 -22  28   4 -33]
+ [ 31  12 -10   6 -14 -24]]</pre>
+        <p>The first image is a zero. Its left stroke is a dark-to-bright edge read left to right, so the first column of
+        the feature map is strongly positive. Its right stroke goes from bright back to dark, so the last column is
+        strongly negative. The hole in the middle gives a negative column and a positive one for the same reason.</p>
+        <p>The same kernel works on a photograph. <code>load_sample_image("china.jpg")</code> returns a 427 by 640 colour
+        image as a <code>uint8</code> array bundled with scikit-learn.<sup class="cite"><a href="#src-19">19</a></sup>
+        Averaging its three colour channels gives a greyscale grid, and the transpose of the kernel,
+        <code>kernel.T</code> (its rows become its columns, so the −1s run along the top row and the +1s along the
+        bottom), detects horizontal edges instead.<sup class="cite"><a href="#src-17">17</a></sup></p>
+<pre><code># Run in Colab (after the cell above)
+import matplotlib.pyplot as plt
+from sklearn.datasets import load_sample_image
+
+china = load_sample_image("china.jpg")
+grey = china.mean(axis=2)
+vertical = correlate2d(grey, kernel, mode="valid")
+horizontal = correlate2d(grey, kernel.T, mode="valid")
+print(china.shape, china.dtype, "->", grey.shape, "->", vertical.shape)
+
+fig, axes = plt.subplots(1, 3, figsize=(12, 3))
+for ax, im, title in zip(axes, [grey, np.abs(vertical), np.abs(horizontal)],
+                         ["grey", "vertical edges", "horizontal edges"]):
+    ax.imshow(im, cmap="gray")
+    ax.set_title(title)
+    ax.axis("off")
+plt.show()</code></pre>
+<pre class="out">(427, 640, 3) uint8 -> (427, 640) -> (425, 638)</pre>
+        <p>Below the printed line, three panels appear: the greyscale photo, the vertical-edge map and the horizontal-edge
+        map. Upright outlines are bright in the second panel and level outlines in the third. Areas of flat colour stay
+        dark in both, because nothing changes there.</p>
+        <h3>ReLU and max pooling</h3>
+        <p>A convolution layer is usually followed by ReLU, which turns every negative value in the feature map into
+        0.<sup class="cite"><a href="#src-14">14</a></sup> Then comes pooling. A 2 by 2 max pooling with a stride of 2
+        walks over the map in non-overlapping 2 by 2 windows and keeps only the largest value of each, which halves the
+        height and the width.<sup class="cite"><a href="#src-20">20</a></sup></p>
+<pre><code># Run in Colab (after the digit cell)
+feature_map = np.maximum(0, edges)                          # ReLU
+pooled = feature_map.reshape(3, 2, 3, 2).max(axis=(1, 3))   # 2 by 2 max pooling
+print(feature_map.shape, "->", pooled.shape)
+print(pooled.astype(int))</code></pre>
+<pre class="out">(6, 6) -> (3, 3)
+[[40 17 11]
+ [35 29 24]
+ [33 28  4]]</pre>
+        <p>The <code>reshape</code> groups the 6 by 6 map into a 3 by 3 grid of 2 by 2 windows without changing any
+        values,<sup class="cite"><a href="#src-27">27</a></sup> and <code>max</code> over the window axes keeps each
+        window's largest value.<sup class="cite"><a href="#src-28">28</a></sup> The top-left window held 33, 27, 40 and 10, so it keeps 40.</p>
+        <p>Pooling is a trade. It shrinks the map, so later layers have less to process, and it tolerates small shifts,
+        since an edge one pixel to the side usually lands in the same window. It also throws away exactly where inside the
+        window the edge was.<sup class="cite"><a href="#src-20">20</a></sup></p>
+        <div class="ix-predict" data-q="A 5 by 5 kernel runs over an 8 by 8 digit in valid mode, then 2 by 2 max pooling follows. What shape comes out?" data-a="The convolution gives 8 − 5 + 1 = 4, so 4 by 4. Pooling halves each side, so 2 by 2."></div>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A kernel is a small grid of weights slid over the image to make a feature map.</li>
+          <li>Deep learning's convolution is cross-correlation: the kernel slides unflipped, as in correlate2d.</li>
+          <li>A valid convolution of n by n with a k by k kernel gives n − k + 1 square.</li>
+          <li>Max pooling halves each side and keeps the strongest response, losing exact position.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A convolution layer slides small kernels, little grids of weights, across the image. At each position it
+          multiplies the patch by the kernel and sums, so the output map lights up wherever that pattern appears, like a
+          vertical edge. Strictly it's cross-correlation, because the kernel isn't flipped.</p>
+          <p>Pooling shrinks the feature map. Max pooling keeps the largest value in each two by two window, which cuts the
+          work for later layers and tolerates small shifts, but it throws away the exact position of the feature.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">Mechanics</div>
+        <h2>Image classification: pixels, a baseline and what a CNN adds</h2>
+        <p>Image classification means giving a picture one label from a fixed list: which digit, which animal, defective
+        or not. Step 1 already did it with a flat classifier. This step shows where that approach runs out and what the
+        convolutional stack from step 4 changes.</p>
+        <h3>Pixels as features</h3>
+        <p>To a classifier, an image is a grid of numbers. <code>load_digits</code> gives each digit both ways: as an 8 by
+        8 grid in <code>images</code> and as a row of 64 features in <code>data</code>.<sup class="cite"><a href="#src-1">1</a></sup>
+        Flattening reads the grid row by row into one long row, and a colour photograph has three numbers per pixel.</p>
+<pre><code># Run in Colab (after the baseline and photograph cells)
+print(digits.images[0].reshape(-1).shape)
+print(np.array_equal(digits.images[0].reshape(-1), digits.data[0]))
+print(china.reshape(-1).shape)</code></pre>
+<pre class="out">(64,)
+True
+(819840,)</pre>
+        <p><code>reshape(-1)</code> flattens an array to one dimension,<sup class="cite"><a href="#src-27">27</a></sup> and the flattened grid is exactly the row the
+        baseline was trained on. The 427 by 640 photograph flattens to 819,840 numbers, one per pixel per colour
+        channel.</p>
+        <h3>Where the flat baseline breaks</h3>
+        <p>The flat model treats each pixel position as its own column with its own weight. It learns something like "pixel
+        27 is usually bright in a zero". Nothing in it knows that pixel 27 sits next to pixel 28, so moving the same digit
+        one pixel to the right puts the bright pixels in columns that mean something else.</p>
+<pre><code># Run in Colab (after the baseline cell and the neuron cell)
+shifted = np.roll(X_test.reshape(-1, 8, 8), 1, axis=2).reshape(-1, 64)
+print("original:", round(accuracy_score(y_test, model.predict(X_test)), 3))
+print("shifted: ", round(accuracy_score(y_test, model.predict(shifted)), 3))</code></pre>
+<pre class="out">original: 0.962
+shifted:  0.444</pre>
+        <p><code>np.roll</code> moves every test image one column to the right, wrapping the almost empty last column
+        round to the front.<sup class="cite"><a href="#src-29">29</a></sup> A person reads every shifted digit just as easily, but the baseline drops from 96.2 to 44.4
+        percent.</p>
+        <p>Size is the second problem. A dense layer of 16 neurons on the flattened greyscale photograph would need 427 ×
+        640 × 16 + 16 = 4,372,496 parameters, by the inputs-times-units rule.<sup class="cite"><a href="#src-12">12</a></sup>
+        A 3 by 3 kernel has 9 weights and one bias, and it reuses those same 10 numbers at every position.</p>
+        <table>
+          <thead><tr><th></th><th>Flat classifier on pixels</th><th>Convolutional network</th></tr></thead>
+          <tbody>
+            <tr><td>What one weight looks at</td><td>One fixed pixel position</td><td>A small patch, at every position</td></tr>
+            <tr><td>Neighbouring pixels</td><td>Unrelated columns</td><td>Read together by each kernel</td></tr>
+            <tr><td>Digit moved one pixel</td><td>Accuracy falls sharply</td><td>Same kernels still fire; pooling absorbs small shifts</td></tr>
+            <tr><td>Weights for a large photo</td><td>Millions in the first layer</td><td>A few per kernel, shared</td></tr>
+          </tbody>
+        </table>
+        <h3>The CNN stack</h3>
+        <p>A convolutional network for image classification stacks its layers in a recognisable
+        order:<sup class="cite"><a href="#src-7">7</a></sup></p>
+        <ol>
+          <li>a convolution layer with many kernels, each producing its own feature map</li>
+          <li>ReLU on every feature map</li>
+          <li>a max pooling layer that halves each map</li>
+          <li>more convolution and pooling pairs</li>
+          <li>a flatten step that turns the last maps into one row</li>
+          <li>dense layers, the last with one output per class</li>
+        </ol>
+        <p>Each pooling step means one value of the next map summarises a larger patch of the original image. So the first
+        kernels see edges, and later kernels see combinations of edges spread over a wider area. In a model definition the
+        layer names give it away: <code>Conv2D</code> and <code>MaxPooling2D</code> pairs, then <code>Flatten</code> and
+        <code>Dense</code>.<sup class="cite"><a href="#src-7">7</a></sup></p>
+        <h3>Why a CNN learns its kernels</h3>
+        <p>The edge kernel of step 4 was hand-made: someone chose −1, 0 and 1. In a CNN each kernel is just nine more
+        weights. They start random, like the weights of step 3, and training adjusts them until they pick out whatever
+        patterns separate the classes.<sup class="cite"><a href="#src-18">18</a></sup> A hand-made kernel finds only the
+        patterns a person thought of. Learned kernels find useful ones nobody would design.</p>
+        <p>The costs are those of all deep learning, from the step 1 table:</p>
+        <ul>
+          <li>more labelled images</li>
+          <li>more compute</li>
+          <li>kernels that are hard to interpret one by one</li>
+        </ul>
+        <p>On 64-pixel digits the flat baseline already scores 96 percent, so a CNN earns its place on
+        larger images, where the flat model's parameter count explodes and objects move around the frame.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A flat classifier ties each weight to one pixel position, so shifted images confuse it.</li>
+          <li>A CNN shares small kernels across the image, so it needs far fewer weights.</li>
+          <li>The stack is convolution, ReLU, pooling, repeated, then flatten and dense output layers.</li>
+          <li>A CNN learns its kernel weights during training instead of using hand-made ones.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A flat classifier gives every pixel position its own weight, so a large image needs millions of weights in
+          the first layer and a shifted object looks like a different input. A CNN slides small shared kernels across the
+          image, so it needs far fewer weights, keeps neighbouring pixels together, and with pooling it tolerates small
+          shifts.</p>
+          <p>The layers go convolution, ReLU, pooling, repeated a few times, then flatten and dense layers ending in one
+          output per class. The kernels aren't hand-made; they start random and training learns them.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
+        <div class="tag">Mechanics</div>
+        <h2>NLP techniques: tokens, bag of words, TF-IDF and n-grams</h2>
+        <p>Natural language processing, NLP, is the work of getting programs to handle human language. Every model on
+        this page needs numbers, so the first job of any NLP system is turning text into numbers. The techniques here do
+        that with counting, and they are still the baseline a team tries first.</p>
+        <h3>Tokens and a vocabulary</h3>
+        <p>Tokenizing splits a text into pieces called tokens, usually words. The vocabulary is the set of distinct tokens
+        across all the training texts, each given its own column. scikit-learn's <code>CountVectorizer</code> does both
+        jobs and returns a document-term matrix: one row per text, one column per vocabulary word, each cell a
+        count.<sup class="cite"><a href="#src-21">21</a></sup></p>
+<pre><code># Run in Colab
+from sklearn.feature_extraction.text import CountVectorizer
+
+titles = ["Login page returns 500",
+          "Typo on pricing page",
+          "Invoice PDF is blank"]
+cv = CountVectorizer()
+counts = cv.fit_transform(titles)
+print(cv.get_feature_names_out())
+print(counts.toarray())</code></pre>
+<pre class="out">['500' 'blank' 'invoice' 'is' 'login' 'on' 'page' 'pdf' 'pricing'
+ 'returns' 'typo']
+[[1 0 0 0 1 0 1 0 0 1 0]
+ [0 0 0 0 0 1 1 0 1 0 1]
+ [0 1 1 1 0 0 0 1 0 0 0]]</pre>
+        <p><code>get_feature_names_out()</code> lists the learned vocabulary, here 11 words in alphabetical
+        order.<sup class="cite"><a href="#src-21">21</a></sup> The first row has a 1 under <code>500</code>,
+        <code>login</code>, <code>page</code> and <code>returns</code>. Everything came out lower case, because by default
+        the vectorizer lowercases and keeps only tokens of two or more word characters, so a lone "a" or "I" is
+        dropped.<sup class="cite"><a href="#src-21">21</a></sup> The result is a sparse matrix that stores only the
+        non-zero cells, which is why the cell calls <code>toarray()</code> to print it.</p>
+        <h3>Bag of words and its blind spot</h3>
+        <p>Each row of counts is called a bag of words: it records how often each vocabulary word appears and nothing
+        about the order.<sup class="cite"><a href="#src-21">21</a></sup> That keeps it simple and fast, and it is often
+        enough to tell a billing complaint from a bug report. It also means two texts with opposite meanings can get
+        identical rows.</p>
+<pre><code># Run in Colab
+bag = CountVectorizer()
+rows = bag.fit_transform(["Refund blocked, login works",
+                          "Login blocked, refund works"])
+print(bag.get_feature_names_out())
+print(rows.toarray())</code></pre>
+<pre class="out">['blocked' 'login' 'refund' 'works']
+[[1 1 1 1]
+ [1 1 1 1]]</pre>
+        <p>The two tickets describe different problems, and the model sees the same four counts for both. The second weakness
+        shows up at prediction time. A word that was not in the training vocabulary has no column, so it is silently
+        dropped from any new text.<sup class="cite"><a href="#src-21">21</a></sup> Step 7 shows what that does to a
+        prediction.</p>
+        <h3>TF-IDF</h3>
+        <p>Raw counts treat a word that appears in every text the same as a rare, telling one. TF-IDF, short for term
+        frequency times inverse document frequency, weights a word up when it is frequent in this text and down when it
+        appears in many texts.<sup class="cite"><a href="#src-22">22</a></sup> <code>TfidfVectorizer</code> is a
+        <code>CountVectorizer</code> followed by a TF-IDF step, with a smoothed IDF and each row scaled to length 1 by
+        default.<sup class="cite"><a href="#src-22">22</a></sup></p>
+<pre><code># Run in Colab (after the CountVectorizer cell)
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+tf = TfidfVectorizer()
+weights = tf.fit_transform(titles)
+print(weights.toarray().round(2))</code></pre>
+<pre class="out">[[0.53 0.   0.   0.   0.53 0.   0.4  0.   0.   0.53 0.  ]
+ [0.   0.   0.   0.   0.   0.53 0.4  0.   0.53 0.   0.53]
+ [0.   0.5  0.5  0.5  0.   0.   0.   0.5  0.   0.   0.  ]]</pre>
+        <p>The columns are the same 11 words. <code>page</code> appears in two of the three titles, so it scores 0.4 where
+        the words unique to one title score 0.53. The third title shares no word with the others, so its four words split
+        the weight evenly at 0.5. On a few thousand real tickets, words such as "is" and "on" turn up everywhere and fade
+        towards zero.</p>
+        <h3>N-grams</h3>
+        <p>An n-gram is a run of n neighbouring words treated as one vocabulary entry, and a bigram is two.
+        <code>ngram_range=(1, 2)</code> keeps the single words and adds every adjacent pair to the
+        vocabulary.<sup class="cite"><a href="#src-23">23</a></sup></p>
+<pre><code># Run in Colab
+bi = CountVectorizer(ngram_range=(1, 2))
+bi.fit(["Login page returns 500"])
+print(bi.get_feature_names_out())</code></pre>
+<pre class="out">['500' 'login' 'login page' 'page' 'page returns' 'returns' 'returns 500']</pre>
+        <p>Four words give four unigrams and three bigrams, so the title contributes <code>login</code>, <code>page</code>
+        and the bigram <code>login page</code> among others.<sup class="cite"><a href="#src-22">22</a></sup> Bigrams
+        bring back a little word order, enough to tell "not working" from "working". The price is a much larger vocabulary
+        in which most pairs appear only once.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A tokenizer splits text into tokens, and the vocabulary gives each distinct token a column.</li>
+          <li>Bag of words counts words and ignores their order.</li>
+          <li>TF-IDF down-weights words that appear in many texts.</li>
+          <li>Bigrams add neighbouring word pairs, keeping a little order at the cost of a bigger vocabulary.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Bag of words turns each text into a row of word counts over a fixed vocabulary. It's simple and often good
+          enough, but it ignores word order, so "refund blocked, login works" and "login blocked, refund works" look
+          identical, and any word missing from the training vocabulary is dropped.</p>
+          <p>TF-IDF starts from those counts and down-weights words that appear in many documents, so common words like
+          "is" count for little and distinctive words count for more. Adding bigrams keeps some local word order.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="6">
+        <div class="tag">Practice</div>
+        <h2>NLP components and applications: routing ticket titles</h2>
+        <p>The techniques of step 6 become useful once they are joined to a model. This step builds the smallest complete
+        text classifier, one that decides whether a support ticket goes to the billing team or the technical team.</p>
+        <h3>The text pipeline</h3>
+        <p>A text classifier has four components, in the order the text flows through them:</p>
+        <ul>
+          <li>a tokenizer, which splits each text into tokens</li>
+          <li>a vocabulary, learned from the training texts, which gives each token a column</li>
+          <li>a vectorizer, which turns one text into a row of counts or TF-IDF weights</li>
+          <li>a model, a classifier that learns from those rows and labels new ones</li>
+        </ul>
+        <p>In scikit-learn the first three live inside one <code>TfidfVectorizer</code>. <code>make_pipeline</code> chains
+        the vectorizer and the classifier, so <code>fit</code> and <code>predict</code> take raw strings and the steps run
+        in order.<sup class="cite"><a href="#src-24">24</a></sup> In someone else's code a text model very often starts
+        as <code>make_pipeline(TfidfVectorizer(ngram_range=(1, 2)), LogisticRegression(max_iter=5000))</code>.</p>
+        <h3>A classifier on 24 ticket titles</h3>
+        <p>The data is 24 short ticket titles, each labelled <code>billing</code> or <code>technical</code>, 12 of each.
+        Six titles are borrowed from the ticket desk's seed data. The other 18 titles and every label are new, written for
+        this example, because the seed data has no such label.</p>
+<pre><code># Run in Colab
+from sklearn.pipeline import make_pipeline
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+
+tickets = [
+    ("Login page returns 500", "technical"), ("Invoice PDF is blank", "billing"),
+    ("Typo on pricing page", "technical"), ("Checkout button frozen", "technical"),
+    ("Export is missing rows", "technical"), ("Add dark mode", "technical"),
+    ("Charged twice this month", "billing"), ("Refund not received yet", "billing"),
+    ("Update credit card on file", "billing"), ("Invoice shows wrong amount", "billing"),
+    ("Cancel my subscription", "billing"), ("Need a receipt for March", "billing"),
+    ("Question about my plan price", "billing"), ("Discount code not applied", "billing"),
+    ("Payment declined at renewal", "billing"), ("Tax missing from invoice", "billing"),
+    ("Change billing address", "billing"), ("App crashes on startup", "technical"),
+    ("Password reset email never arrives", "technical"), ("Search returns no results", "technical"),
+    ("Dashboard loads very slowly", "technical"), ("Error 404 on settings page", "technical"),
+    ("Cannot upload profile photo", "technical"), ("Sync fails after update", "technical"),
+]
+texts = [title for title, label in tickets]
+labels = [label for title, label in tickets]
+
+clf = make_pipeline(TfidfVectorizer(ngram_range=(1, 2)),
+                    LogisticRegression(max_iter=5000))
+clf.fit(texts, labels)
+new = ["Refund for a double charge", "Settings page crashes", "Blank invoice"]
+print(clf.predict(new))
+print(clf.predict_proba(new).round(2))</code></pre>
+<pre class="out">['billing' 'technical' 'billing']
+[[0.55 0.45]
+ [0.41 0.59]
+ [0.59 0.41]]</pre>
+        <p>The two list comprehensions split the pairs into a list of titles and a list of labels. All three new titles get
+        the label a person would give them. The probability columns follow the class order, billing then technical, and
+        every pair sits close to 0.5.</p>
+        <p>That closeness fits the data: with 24 titles and invented labels this is a toy that shows the pipeline
+        working end to end, and it says nothing about how well ticket routing would work. A real
+        router would be trained on thousands of labelled tickets and judged on a held-out test set, the way step 1 judged
+        the digit baseline.</p>
+        <h3>New text goes through transform</h3>
+        <p>The vectorizer learns its vocabulary from the training text only. A new title must go through
+        <code>transform</code>, which reuses that vocabulary, and never through <code>fit_transform</code>, which would
+        build a fresh vocabulary from the new title alone.<sup class="cite"><a href="#src-23">23</a></sup> The pipeline's
+        <code>predict</code> does the right thing for you. The cell below takes the fitted vectorizer out of the pipeline to
+        look inside.</p>
+<pre><code># Run in Colab (after the cell above)
+vec = clf.named_steps["tfidfvectorizer"]
+print(len(vec.vocabulary_))
+print(vec.transform(["Quantum flux capacitor"]).nnz)
+print(clf.predict_proba(["Quantum flux capacitor"]).round(2))</code></pre>
+<pre class="out">155
+0
+[[0.5 0.5]]</pre>
+        <p><code>make_pipeline</code> names each step after its class in lower case, which is how
+        <code>named_steps</code> finds the vectorizer.<sup class="cite"><a href="#src-24">24</a></sup> The vocabulary
+        holds 155 single words and word pairs. None of them appears in the new title, so its row has no non-zero entries,
+        and the model can only answer 50/50.<sup class="cite"><a href="#src-21">21</a></sup></p>
+        <h3>Where NLP shows up</h3>
+        <p>The same components sit under most everyday language features.</p>
+        <table>
+          <thead><tr><th>Application</th><th>Input</th><th>Output</th></tr></thead>
+          <tbody>
+            <tr><td>Spam filtering</td><td>An email</td><td>Spam or not</td></tr>
+            <tr><td>Sentiment analysis</td><td>A product review</td><td>Positive or negative</td></tr>
+            <tr><td>Ticket routing</td><td>A ticket title</td><td>The team that should handle it</td></tr>
+            <tr><td>Translation</td><td>A sentence</td><td>The same sentence in another language</td></tr>
+            <tr><td>Chat assistants</td><td>A conversation so far</td><td>The next reply</td></tr>
+          </tbody>
+        </table>
+        <p>The first three are classification, and word-count or TF-IDF features feeding a fast linear model, like the
+        pipeline above, are a standard first document classifier for each.<sup class="cite"><a href="#src-23">23</a></sup>
+        Translation and chat need models that read word order at scale, the transformers of step 2. Word embeddings and
+        named entity recognition, two more NLP components, are week 8's subject.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A text classifier is a tokenizer, a vocabulary, a vectorizer and a model, in that order.</li>
+          <li>make_pipeline lets fit and predict take raw strings.</li>
+          <li>New text is transformed with the training vocabulary, never refitted.</li>
+          <li>Twenty-four invented labels only demonstrate the pipeline; a real router needs thousands of tickets.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>To route support tickets I'd start with a baseline: a TF-IDF vectorizer with unigrams and bigrams feeding a
+          logistic regression, chained in a pipeline. I'd train it on past tickets labelled with the team that solved
+          them, check accuracy on a held-out test set, and only reach for a bigger model if that baseline falls short.</p>
+          <p>The pipeline is tokenizer, vocabulary, vectorizer and model. The vocabulary comes from training text only, so
+          new tickets go through transform, and any word the model never saw is simply ignored.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="7">
+        <div class="tag">Check yourself</div>
+        <h2>Check yourself</h2>
+        <p>Nine retrieval questions, at least one per section. Answer each out loud before you open it.</p>
+        <details class="check"><summary>What is the main difference between a deep network and logistic regression, and when would you still choose logistic regression?</summary><p>Logistic regression learns from columns a person chose, while a deep network takes raw pixels or words and learns its own features. Logistic regression or a tree is still the better choice for a small table, or when each decision has to be explained.</p></details>
+        <details class="check"><summary>Which network type reads each of these best: an image, sensor readings in time order, text at large scale, unlabelled data you want to compress?</summary><p>A convolutional network for the image, a recurrent network such as an LSTM for the time series, a transformer for text at scale, and an autoencoder for the unlabelled data.</p></details>
+        <details class="check"><summary>A dense layer reads 64 inputs and has 16 units. What shapes are its weights and bias, and how many parameters does it hold?</summary><p>The weight matrix is (64, 16) and the bias is (16,). That is 64 × 16 + 16 = 1,040 parameters.</p></details>
+        <details class="check"><summary>Why does the 64-16-10 network with random weights score about 0.1 on the digits?</summary><p>Its weights are random, so its guesses carry no information and it does about as well as picking one of ten classes by chance. Only training, which is week 7's backpropagation, changes that.</p></details>
+        <details class="check"><summary>Why does the page run its edge kernel with <code>correlate2d</code> and not <code>convolve2d</code>?</summary><p><code>correlate2d</code> slides the kernel unflipped, which is what a <code>Conv2D</code> layer computes. <code>convolve2d</code> flips the kernel first, so a left-dark, right-bright edge comes out negative, as if it were the opposite edge.</p></details>
+        <details class="check"><summary>What does 2 by 2 max pooling do to a 6 by 6 feature map, and what does it give up?</summary><p>It keeps the largest value of each non-overlapping 2 by 2 window, giving a 3 by 3 map. It loses the exact position of each feature inside its window, in exchange for less work and some tolerance of small shifts.</p></details>
+        <details class="check"><summary>Moving every test digit one pixel to the right dropped the baseline from 0.962 to 0.444. Why, and why would a CNN cope better?</summary><p>The flat model ties each weight to one pixel position, so shifted strokes land on columns that meant something else. A CNN applies the same kernels at every position and pools away small shifts.</p></details>
+        <details class="check"><summary>"Refund blocked, login works" and "Login blocked, refund works" get identical bag-of-words rows. Why, and what keeps some of the order?</summary><p>Bag of words records only how often each word appears, not where. Adding bigrams with <code>ngram_range=(1, 2)</code> keeps neighbouring pairs such as "refund blocked", which brings back some local order.</p></details>
+        <details class="check"><summary>A teammate calls <code>fit_transform</code> on a new ticket title before predicting. What goes wrong?</summary><p>It builds a fresh vocabulary from that one title, so the columns no longer match the ones the model was trained on. New text should go through <code>transform</code>, which the pipeline's <code>predict</code> does automatically.</p></details>
+      </section>
+
+      <section class="reading-sources" aria-label="Sources and deeper dive">
+        <h2>Sources &amp; deeper dive</h2>
+        <ul>
+          <li id="src-1"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_digits.html" target="_blank" rel="noopener">scikit-learn — load_digits</a> — 1,797 8 by 8 digit images, 64 features, 10 classes.</li>
+          <li id="src-2"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html" target="_blank" rel="noopener">scikit-learn — LogisticRegression</a> — the <code>max_iter</code> default and the lbfgs solver.</li>
+          <li id="src-3"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.metrics.accuracy_score.html" target="_blank" rel="noopener">scikit-learn — accuracy_score</a> — the score used for the training and test comparison.</li>
+          <li id="src-4"><a href="https://github.com/googlecolab/backend-info" target="_blank" rel="noopener">Colab backend-info</a> — the runtime manifests behind the version stamps on this page.</li>
+          <li id="src-5"><a href="https://scikit-learn.org/stable/modules/neural_networks_supervised.html" target="_blank" rel="noopener">scikit-learn — Neural network models (supervised)</a> — hidden layers, and the limits of scikit-learn's own network.</li>
+          <li id="src-6"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPClassifier.html" target="_blank" rel="noopener">scikit-learn — MLPClassifier</a> — a feedforward multi-layer perceptron.</li>
+          <li id="src-7"><a href="https://www.tensorflow.org/tutorials/images/cnn" target="_blank" rel="noopener">TensorFlow — Convolutional Neural Network (CNN) tutorial</a> — the convolution, pooling, flatten and dense stack.</li>
+          <li id="src-8"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/layers/LSTM" target="_blank" rel="noopener">TensorFlow — tf.keras.layers.LSTM</a> — the common recurrent layer.</li>
+          <li id="src-9"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/layers/MultiHeadAttention" target="_blank" rel="noopener">TensorFlow — tf.keras.layers.MultiHeadAttention</a> — the attention layer inside transformers.</li>
+          <li id="src-10"><a href="https://www.tensorflow.org/text/tutorials/transformer" target="_blank" rel="noopener">TensorFlow Text — Neural machine translation with a Transformer and Keras</a> — attention against step-by-step recurrent reading.</li>
+          <li id="src-11"><a href="https://www.tensorflow.org/tutorials/generative/autoencoder" target="_blank" rel="noopener">TensorFlow — Intro to Autoencoders</a> — rebuilding the input through a narrow middle.</li>
+          <li id="src-12"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/layers/Dense" target="_blank" rel="noopener">TensorFlow — tf.keras.layers.Dense</a> — what a dense layer computes and the shapes of its weights.</li>
+          <li id="src-13"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/activations/sigmoid" target="_blank" rel="noopener">TensorFlow — tf.keras.activations.sigmoid</a> — squashing a value into 0 to 1.</li>
+          <li id="src-14"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/activations/relu" target="_blank" rel="noopener">TensorFlow — tf.keras.activations.relu</a> — max(0, x), applied elementwise.</li>
+          <li id="src-15"><a href="https://numpy.org/doc/stable/reference/random/generator.html" target="_blank" rel="noopener">NumPy — Random Generator</a> — <code>default_rng</code> and seeded, repeatable random numbers.</li>
+          <li id="src-16"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.dummy.DummyClassifier.html" target="_blank" rel="noopener">scikit-learn — DummyClassifier</a> — chance-level baselines.</li>
+          <li id="src-17"><a href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.correlate2d.html" target="_blank" rel="noopener">SciPy — scipy.signal.correlate2d</a> — sliding a kernel unflipped, and the valid output size.</li>
+          <li id="src-18"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/layers/Conv2D" target="_blank" rel="noopener">TensorFlow — tf.keras.layers.Conv2D</a> — the convolution layer and its learned kernel.</li>
+          <li id="src-19"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_sample_image.html" target="_blank" rel="noopener">scikit-learn — load_sample_image</a> — the bundled china.jpg photograph.</li>
+          <li id="src-20"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/layers/MaxPooling2D" target="_blank" rel="noopener">TensorFlow — tf.keras.layers.MaxPooling2D</a> — 2 by 2 max pooling and what it keeps.</li>
+          <li id="src-21"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.CountVectorizer.html" target="_blank" rel="noopener">scikit-learn — CountVectorizer</a> — tokens, vocabulary and the bag-of-words count matrix.</li>
+          <li id="src-22"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.TfidfVectorizer.html" target="_blank" rel="noopener">scikit-learn — TfidfVectorizer</a> — TF-IDF weights, smoothing and row normalisation.</li>
+          <li id="src-23"><a href="https://scikit-learn.org/stable/modules/feature_extraction.html#text-feature-extraction" target="_blank" rel="noopener">scikit-learn — Text feature extraction</a> — n-grams, unseen words ignored by transform, and linear document classifiers.</li>
+          <li id="src-24"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.pipeline.make_pipeline.html" target="_blank" rel="noopener">scikit-learn — make_pipeline</a> — chaining a vectorizer and a classifier.</li>
+          <li id="src-25"><a href="https://numpy.org/doc/stable/reference/generated/numpy.matmul.html" target="_blank" rel="noopener">NumPy — numpy.matmul</a> — what <code>@</code> does with one- and two-dimensional arrays.</li>
+          <li id="src-26"><a href="https://numpy.org/doc/stable/reference/generated/numpy.argmax.html" target="_blank" rel="noopener">NumPy — numpy.argmax</a> — the position of the largest value along an axis.</li>
+          <li id="src-27"><a href="https://numpy.org/doc/stable/reference/generated/numpy.reshape.html" target="_blank" rel="noopener">NumPy — numpy.reshape</a> — a new shape for the same data, and -1 for an inferred size.</li>
+          <li id="src-28"><a href="https://numpy.org/doc/stable/reference/generated/numpy.max.html" target="_blank" rel="noopener">NumPy — numpy.max</a> — the maximum over one axis or several.</li>
+          <li id="src-29"><a href="https://numpy.org/doc/stable/reference/generated/numpy.roll.html" target="_blank" rel="noopener">NumPy — numpy.roll</a> — shifting elements along an axis, with wrap-around.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · after you have read the page</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 6 Day 3</footer>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 3 — goals</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Explain what deep learning changes from classical machine learning, why it took off, and when a classical model is still the better choice</li>
+      <li>Name the main types of neural network and the kind of input each reads best</li>
+      <li>Run a forward pass through a small network in numpy, follow its shapes and count its parameters</li>
+      <li>Explain how a convolutional network reads an image with kernels and max pooling, and why it beats a flat classifier on large images</li>
+      <li>Turn text into numbers with bag of words, TF-IDF and n-grams, and describe a text-classification pipeline</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Day 4 — TensorFlow introduction →", href: "day-4-tensorflow-introduction.html" };
+window.DIAGRAM = {
+  title: "Day 3 · from raw input to a learned answer",
+  width: 500, height: 560,
+  nodes: [
+    { id:"rings", step:0, x:14, y:14, w:472, h:50, label:"AI ⊃ MACHINE LEARNING ⊃ DEEP LEARNING\n  raw pixels or words · learned features", detail:"A deep network learns its own features from raw input. Logistic regression on 64 raw digit pixels scores 0.962 on the test set and is the baseline to beat." },
+    { id:"types", step:1, x:24, y:84, w:452, h:48, label:"Network types\n  feedforward · CNN · RNN · transformer · autoencoder", detail:"Table row: feedforward. Image: convolutional. Sequence: recurrent (LSTM). Text at scale: transformer (attention). Unlabelled data to compress: autoencoder." },
+    { id:"neuron", step:2, x:24, y:156, w:200, h:48, label:"Neuron\n  x · w + b → activation", detail:"Weighted sum plus bias, then ReLU (max(0, x)) or sigmoid (0 to 1). 2 × 0.5 + 1 × (−1) + 3 × 0.25 + 0.5 = 1.25." },
+    { id:"layers", step:2, x:276, y:156, w:200, h:48, label:"Layers 64 → 16 → 10\n  1,210 parameters", detail:"Weights (inputs, units), bias (units,). 64 × 16 + 16 = 1,040 and 16 × 10 + 10 = 170. Random weights score about 0.1." },
+    { id:"kernel", step:3, x:24, y:232, w:200, h:48, label:"Kernel + correlate2d\n  feature map n − k + 1", detail:"A 3 by 3 grid of weights slides unflipped over the image, as a Conv2D layer does. 8 by 8 digit → 6 by 6 map." },
+    { id:"pool", step:3, x:276, y:232, w:200, h:48, label:"ReLU + 2 × 2 max pool\n  6 × 6 → 3 × 3", detail:"ReLU zeroes negatives; max pooling keeps the largest value per window, halves each side, and loses exact position." },
+    { id:"cnn", step:4, x:24, y:308, w:452, h:48, label:"CNN stack\n  conv · pool · repeat · flatten · dense", detail:"Shared kernels instead of one weight per pixel. A one-pixel shift drops the flat baseline from 0.962 to 0.444; pooling absorbs small shifts." },
+    { id:"tokens", step:5, x:24, y:384, w:200, h:48, label:"Tokens → vocabulary\n  bag of words", detail:"CountVectorizer lowercases, builds a vocabulary and counts words. Word order is lost." },
+    { id:"tfidf", step:5, x:276, y:384, w:200, h:48, label:"TF-IDF + n-grams\n  common words weigh less", detail:"TfidfVectorizer down-weights words found in many texts; ngram_range=(1, 2) adds word pairs." },
+    { id:"pipe", step:6, x:24, y:456, w:452, h:44, label:"TEXT PIPELINE\n  tokenizer · vocabulary · vectorizer · model", detail:"make_pipeline(TfidfVectorizer, LogisticRegression) labels ticket titles billing or technical; new text goes through transform." },
+    { id:"check", step:7, x:24, y:516, w:452, h:36, label:"CHECK YOURSELF\n  answer out loud, then open" }
+  ],
+  edges: [
+    { id:"e1", step:1, from:"rings", to:"types", label:"wiring follows input" },
+    { id:"e2", step:2, from:"types", to:"neuron", label:"built from" },
+    { id:"e3", step:2, from:"neuron", to:"layers", label:"many at once" },
+    { id:"e4", step:3, from:"neuron", to:"kernel", label:"weights on a patch" },
+    { id:"e5", step:3, from:"kernel", to:"pool", label:"then" },
+    { id:"e6", step:4, from:"kernel", to:"cnn", dir:"-" },
+    { id:"e7", step:4, from:"pool", to:"cnn", dir:"-" },
+    { id:"e8", step:5, from:"tokens", to:"tfidf", label:"reweight" },
+    { id:"e9", step:6, from:"tokens", to:"pipe", dir:"-" },
+    { id:"e10", step:6, from:"tfidf", to:"pipe", dir:"-" },
+    { id:"e11", step:7, from:"pipe", to:"check", dir:"-" }
+  ],
+  captions: [
+    "Deep learning is the innermost ring: networks that learn their own features from raw pixels or words. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "Five network types, each wired for one shape of input: rows, images, sequences, text at scale, unlabelled data.",
+    "A neuron is a weighted sum plus a bias through an activation; a layer is a matrix, and 64-16-10 holds 1,210 parameters.",
+    "A kernel slides unflipped over the image to make a feature map; ReLU and max pooling then shrink it.",
+    "A CNN stacks convolution and pooling before dense layers, and learns its kernels instead of using hand-made ones.",
+    "Text becomes numbers: tokens and a vocabulary give bag of words, TF-IDF reweights it, bigrams keep some order.",
+    "The pipeline joins tokenizer, vocabulary, vectorizer and model, and routes ticket titles from raw strings.",
+    "You can now explain learned features, network types, a forward pass, convolution and pooling, and a text pipeline without looking."
+  ]
+};
+window.QUIZ = {
+  id: "w06-d3",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "What does a deep-learning convolution layer such as Conv2D compute as it slides a kernel over an image?",
+      options: ["A true convolution, with the kernel flipped first", "A cross-correlation: the kernel slides unflipped, as in scipy's correlate2d", "The average of each patch, ignoring the kernel", "The largest value in each window"], answer: 1,
+      explain: "Deep learning calls it convolution, but the kernel is not flipped, which makes it cross-correlation. convolve2d flips the kernel; taking the largest value per window is max pooling." },
+    { type: "scq", stem: "A dense layer reads 64 inputs and has 16 units. How many parameters does it have?",
+      options: ["1,024", "1,040", "80", "1,210"], answer: 1,
+      explain: "Inputs times units plus one bias per unit: 64 × 16 + 16 = 1,040. 1,210 is the whole 64-16-10 network." },
+    { type: "tf", stem: "A 64-16-10 network with random weights should classify the digits well, because it already has 1,210 parameters.", answer: false,
+      explain: "Random weights carry no information, so it scores about 0.1, the same as guessing among ten classes. Only training changes the weights." },
+    { type: "mcq", stem: "Which statements about TF-IDF and TfidfVectorizer are true? Select all that apply.",
+      options: ["It down-weights words that appear in many texts", "TfidfVectorizer is a CountVectorizer followed by a TF-IDF step", "It keeps the full word order of each text", "By default each row is scaled to length 1"], answer: [0, 1, 3],
+      explain: "TF-IDF reweights counts so common words count for less, and rows are L2-normalised by default. It still starts from a bag of words, so word order is lost; bigrams keep only a little of it." },
+    { type: "match", stem: "Match each network type to the input it reads best.",
+      pairs: [
+        { l: "Convolutional network", r: "an image" },
+        { l: "Recurrent network (LSTM)", r: "a sequence read in order" },
+        { l: "Transformer", r: "text at large scale" },
+        { l: "Autoencoder", r: "unlabelled data to compress" }
+      ],
+      explain: "Architecture follows the shape of the data: grids for CNNs, ordered sequences for RNNs, attention over whole texts for transformers, and rebuilding the input for autoencoders." },
+    { type: "open", stem: "In two or three sentences: why does a convolutional network beat a flat classifier on large images?",
+      hint: "Think about one weight per pixel, shared kernels, and a shifted object.",
+      model: "A flat classifier gives each pixel position its own weight, so a large image needs millions of weights and a shifted object lands on different columns. A CNN slides small shared kernels across the image, so it needs few weights, keeps neighbouring pixels together, and with pooling tolerates small shifts. It also learns its kernels from data instead of relying on hand-made features." }
+  ]
+};
+</script>
+
+<script src="../../assets/js/diagram.js?v=20261116"></script>
+<script src="../../assets/js/scrolly.js?v=20261116"></script>
+<script src="../../assets/js/modals.js?v=20261116"></script>
+<script src="../../assets/js/quiz.js?v=20261116"></script>
+<script src="../../assets/js/widgets.js?v=20261116"></script>
+<script src="../../assets/js/glossary.js?v=20261116"></script>
+</body>
+</html>

@@ -65,15 +65,20 @@ def _structure_checks(tc: unittest.TestCase, page: ParsedPage, day_id: str | Non
         if week_no >= exit_criteria.registry()["fromWeek"]:
             group = exit_criteria.group_for_week(week_no)
             tc.assertIsNotNone(group, f"week {week_no} belongs to no exit-criteria group")
-            stem = Path(group["source"]).stem
             spans = r.find("div", "lede").find("div", "meta").find_all("span", "exit")
-            tc.assertEqual(1, len(spans), "the lede meta carries one span.exit (D-0063)")
-            link = spans[0].find("a")
-            tc.assertIsNotNone(link)
-            tc.assertEqual(f"../../exit-criteria/{stem}.html#{day_id}", link.attrs.get("href"))
-            target = DOCS / "exit-criteria" / f"{stem}.html"
-            tc.assertTrue(target.is_file(), f"{target} missing: is {group['id']} published?")
-            tc.assertIn(f'id="{day_id}"', target.read_text(encoding="utf-8"))
+            if not group["exists"]:
+                # the group's source is not published yet (D-0085: week 6 is planned without an exit map):
+                # no group page to link to, so the lede carries no span.exit
+                tc.assertEqual([], spans, f"{group['id']} is not published, so the lede meta carries no span.exit")
+            else:
+                stem = Path(group["source"]).stem
+                tc.assertEqual(1, len(spans), "the lede meta carries one span.exit (D-0063)")
+                link = spans[0].find("a")
+                tc.assertIsNotNone(link)
+                tc.assertEqual(f"../../exit-criteria/{stem}.html#{day_id}", link.attrs.get("href"))
+                target = DOCS / "exit-criteria" / f"{stem}.html"
+                tc.assertTrue(target.is_file(), f"{target} missing: is {group['id']} published?")
+                tc.assertIn(f'id="{day_id}"', target.read_text(encoding="utf-8"))
     tc.assertIsNotNone(r.find("button", "activity-card", data_modal="quiz-modal"))
     tc.assertIsNotNone(r.find("a", "snav-next"))
     tc.assertIsNotNone(r.find("div", id="quiz-modal"))

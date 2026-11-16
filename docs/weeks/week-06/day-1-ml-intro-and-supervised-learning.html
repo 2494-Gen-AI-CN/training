@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w06d1">
+<title>W6·D1 — ML introduction &amp; supervised learning | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261116">
+<script src="../../assets/js/theme.js?v=20261116"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="../../exit-criteria/index.html">Exit criteria</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>Machine learning and supervised learning: fitting a line, drawing a boundary</h1>
+        <div class="meta">
+          <span><b>Week 6</b> · Day 1</span>
+          <span>Mon Nov 16, 2026</span>
+          <span>AI/ML fundamentals</span>
+          <span><b>~41 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span class="verified">Sources checked 2026-11-16 · python 3.13.18 · numpy 2.4.6 · scikit-learn 1.6.1 · matplotlib 3.10.0</span>
+        </div>
+        <p class="summary">Week 5 placed machine learning as one ring inside artificial intelligence, with deep learning a
+        smaller ring inside it, and this page assumes only that picture. It teaches what a model learns from labelled
+        examples, how supervised and unsupervised learning differ, and the two supervised tasks: regression, which
+        predicts a number, and classification, which predicts a category. Every example is a cell to run in Google
+        Colab, a notebook in the browser, using scikit-learn's bundled datasets. Afterwards you can fit and score a line, explain train and test scores, spot
+        underfitting and overfitting, and say why 95 percent accuracy can be a bad result.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="0">
+        <div class="tag">Concepts</div>
+        <h2>Machine learning: algorithms and use cases</h2>
+        <p>Machine learning is a way of getting a program's rule from data instead of from a person. This step covers
+        the vocabulary the rest of the week uses, the three families of problems, and the two method calls almost every
+        scikit-learn model shares.</p>
+        <h3>A rule written by hand against a rule learned from examples</h3>
+        <p>An ordinary program applies a rule someone wrote. A support desk might flag a ticket as urgent when its title
+        contains "outage" or "down". A person chose those words, the program applies them exactly, and anyone can read the
+        rule and test it. When a rule is easy to state, writing it by hand is the right tool.</p>
+        <p>Many useful rules are not easy to state. Nobody can write the exact formula linking a house's floor area, age and
+        street to its sale price, or the pattern of measurements that makes a tumour likely to be malignant. Machine
+        learning takes the other route. You collect examples whose answers are known, and an algorithm finds the rule that
+        best reproduces those answers. The learned rule is a set of numbers, not lines of code you wrote.</p>
+        <p>The limit comes with the method. A learned model is only as good as its examples, and on data unlike them it
+        still returns an answer, with no error and no warning.<sup class="cite"><a href="#src-1">1</a></sup> That is why
+        a model is always scored on examples kept apart from the ones it learned from, so the score estimates how it will
+        do on new data.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <h3>Sample, feature, label, model</h3>
+        <p>Every machine-learning conversation uses the same small set of words. Picture a table of houses, one row per
+        house:</p>
+        <table>
+          <thead><tr><th>Term</th><th>Meaning</th><th>In the table of houses</th></tr></thead>
+          <tbody>
+            <tr><td>sample</td><td>one example, one row</td><td>one house</td></tr>
+            <tr><td>feature</td><td>an input measured for every sample, one column</td><td>floor area, age</td></tr>
+            <tr><td>label</td><td>the answer to predict, also called the target</td><td>sale price</td></tr>
+            <tr><td>model</td><td>the rule learned from samples and their labels</td><td>price from area and age</td></tr>
+            <tr><td>training</td><td>fitting the model to labelled samples</td><td>finding that rule</td></tr>
+            <tr><td>prediction</td><td>the model's answer for a sample</td><td>a price for a house not yet sold</td></tr>
+            <tr><td>test set</td><td>labelled samples held back to score the model</td><td>sold houses the model never saw</td></tr>
+          </tbody>
+        </table>
+        <p>In scikit-learn the features are a 2-D array named <code>X</code>, shaped (n_samples, n_features), with one row
+        per sample and one column per feature. The labels are a 1-D array named <code>y</code> with one value per
+        row.<sup class="cite"><a href="#src-2">2</a></sup> The capital letter is a convention borrowed from maths for a
+        table, and the lower-case one for a single column.</p>
+        <h3>Three families and where teams use them</h3>
+        <p>This week's algorithms fall into three families, and naming the family is the first step in choosing
+        one.<sup class="cite"><a href="#src-3">3</a></sup></p>
+        <table>
+          <thead><tr><th>Family</th><th>Predicts</th><th>A workplace use</th></tr></thead>
+          <tbody>
+            <tr><td>regression</td><td>a number</td><td>hours until a support ticket is closed</td></tr>
+            <tr><td>classification</td><td>a category</td><td>whether an incoming email is spam</td></tr>
+            <tr><td>clustering</td><td>groups, with no label given</td><td>customer segments from purchase history</td></tr>
+          </tbody>
+        </table>
+        <p>scikit-learn's "Choosing the right estimator" map groups its algorithms by these tasks, and it is the quickest
+        answer to "what do I use for this?"<sup class="cite"><a href="#src-4">4</a></sup> Regression and classification
+        fill this page; clustering is Tuesday's subject.</p>
+        <h3>The fit and predict pattern</h3>
+        <p>The examples on this page are Colab cells. Google Colab is a notebook that runs in the browser on a Google
+        machine, signed in with the Google account set up in week 4.<sup class="cite"><a href="#src-5">5</a></sup> A
+        notebook is a page of code cells you run one at a time, and each cell's output appears under
+        it.<sup class="cite"><a href="#src-5">5</a></sup> Colab runs its own Python, 3.13.18 at the time of writing,
+        separate from the course's 3.15, with numpy, scikit-learn and matplotlib
+        preinstalled.<sup class="cite"><a href="#src-6">6</a></sup><sup class="cite"><a href="#src-7">7</a></sup></p>
+        <p>Every scikit-learn estimator follows one pattern: construct it, call <code>fit(X, y)</code> on training data,
+        then call <code>predict</code> on new rows.<sup class="cite"><a href="#src-2">2</a></sup> The datasets ship inside
+        scikit-learn, so nothing is downloaded or uploaded.<sup class="cite"><a href="#src-8">8</a></sup></p>
+<pre><code># Run in Colab
+from sklearn.datasets import make_regression
+from sklearn.linear_model import LinearRegression
+
+X, y = make_regression(n_samples=100, n_features=1, noise=15, random_state=42)
+print(X.shape, y.shape)
+print(X[:3].round(2))
+print(y[:3].round(1))
+
+model = LinearRegression()        # 1. construct
+model.fit(X, y)                   # 2. learn from labelled rows
+print(model.predict([[0.5], [1.0]]).round(1))   # 3. answer for new rows</code></pre>
+<pre class="out">(100, 1) (100,)
+[[ 0.93]
+ [ 0.09]
+ [-1.06]]
+[ 56.7 -16.9 -30.3]
+[24.6 47.5]</pre>
+        <p><code>X</code> has 100 rows and one column, and <code>y</code> has 100 values. The model was asked about two new
+        rows and returned two predictions. Swapping in a different algorithm changes the construct line only, because the
+        <code>fit</code> and <code>predict</code> calls stay the same.<sup class="cite"><a href="#src-2">2</a></sup></p>
+        <p>The commonest first error is passing one column as a 1-D array. <code>X</code> must be 2-D even when there is a
+        single feature, and a 1-D array raises a shape error.<sup class="cite"><a href="#src-2">2</a></sup></p>
+<pre><code># Run in Colab (after the cell above)
+x = X[:, 0]                       # the one column pulled out: shape (100,)
+try:
+    LinearRegression().fit(x, y)
+except ValueError as err:
+    print(str(err).splitlines()[0])
+print(x.reshape(-1, 1).shape)     # back to one column, 2-D</code></pre>
+<pre class="out">Expected 2D array, got 1D array instead:
+(100, 1)</pre>
+        <p>In <code>reshape(-1, 1)</code> the <code>-1</code> means "as many rows as needed" and the <code>1</code> means
+        one column. <code>x[:, None]</code> does the same job, and you will see both in other people's code.</p>
+        <h3>Parameters and hyperparameters</h3>
+        <p>The first fit already shows two kinds of number. The slope and intercept the model found are parameters: the
+        algorithm learns them from the data during <code>fit</code>. A setting you choose before fitting, such as the
+        degree of a polynomial or the iteration limit of a solver, is a hyperparameter. No amount of data sets it; a
+        person does, usually by trying several values and comparing scores on held-back data.</p>
+        <p>In code the split is visible on sight. Hyperparameters are the arguments inside the constructor's brackets.
+        Learned parameters are attributes of the fitted model: a <code>LinearRegression</code> keeps its slopes in
+        <code>coef_</code> and its intercept in <code>intercept_</code>.<sup class="cite"><a href="#src-9">9</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A learned model is a rule found from labelled examples instead of written by a person.</li>
+          <li>Samples are rows, features are columns of X, and the label is y.</li>
+          <li>Regression predicts a number, classification a category, clustering finds groups with no label.</li>
+          <li>Parameters are learned during fit; hyperparameters are chosen before it.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A hand-written rule is logic a person decided, like flagging any ticket that says "outage". A learned model
+          gets its rule from labelled examples: I give it rows of features with the right answer, and the algorithm finds
+          the numbers that reproduce those answers best.</p>
+          <p>A sample is one row, a feature is one input column, the label is the answer I want predicted, and the model is
+          the rule fitted from them. I keep a test set apart because a score on the training rows only shows how well the
+          model memorised; the test score estimates how it does on data it has never seen.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">Concepts</div>
+        <h2>Supervised and unsupervised learning</h2>
+        <p>The first question to ask of any machine-learning problem is whether the data comes with answers. The
+        answer splits the field in two.</p>
+        <h3>Supervised: every example carries its answer</h3>
+        <p>Supervised learning learns from labelled examples: every training row comes with the correct answer, so the
+        model can be scored against it.<sup class="cite"><a href="#src-3">3</a></sup> The type of label then picks the
+        task. A continuous number makes it regression, and a discrete category makes it
+        classification.<sup class="cite"><a href="#src-3">3</a></sup> Two datasets bundled with scikit-learn show both
+        kinds of label.</p>
+<pre><code># Run in Colab
+import numpy as np
+from sklearn.datasets import load_diabetes, load_breast_cancer
+
+diabetes = load_diabetes()
+cancer = load_breast_cancer()
+print(diabetes.target[:5])
+print(len(np.unique(diabetes.target)))
+print(np.unique(cancer.target), cancer.target_names)</code></pre>
+<pre class="out">[151.  75. 141. 206. 135.]
+214
+[0 1] ['malignant' 'benign']</pre>
+        <p>The diabetes target is a disease-progression measure for each patient, and it takes 214 different values, so
+        predicting it is regression.<sup class="cite"><a href="#src-10">10</a></sup> The breast cancer target has exactly
+        two values, 0 and 1, named malignant and benign, so predicting it is binary
+        classification.<sup class="cite"><a href="#src-11">11</a></sup> The features could be identical in both cases; only
+        the label decides the task.</p>
+        <h3>Unsupervised: structure with no answer key</h3>
+        <p>Unsupervised learning works on data with no target and looks for structure in it, such as natural
+        groups.<sup class="cite"><a href="#src-12">12</a></sup> Clustering is the standard unsupervised task, and Tuesday
+        covers its algorithms.<sup class="cite"><a href="#src-13">13</a></sup> The trade-off between the two kinds is
+        about the label. Supervised learning needs labelled data, often the expensive part of the project. Unsupervised
+        learning needs none, but it has no answer key, so there is no single right score to check it
+        against.<sup class="cite"><a href="#src-12">12</a></sup></p>
+        <p>You can tell them apart in code at a glance. A supervised estimator's <code>fit</code> takes both
+        <code>X</code> and <code>y</code>; an unsupervised one takes <code>X</code>
+        only.<sup class="cite"><a href="#src-3">3</a></sup></p>
+        <div class="ix-spot" data-snippet="pricer.fit(X_train, y_train)&#10;segmenter.fit(X_customers)&#10;router.fit(ticket_features, ticket_team)" data-q="Which of these three estimators is unsupervised, and how can you tell without knowing the algorithms?" data-a="segmenter. Its fit receives the features only, with no label array. pricer and router both receive a y, so they learn from answers and are supervised."></div>
+        <p>Sorting problems by hand is good practice. For each one, ask whether a recorded answer exists, and name it:</p>
+        <table>
+          <thead><tr><th>Problem</th><th>Label?</th><th>The label, if any</th></tr></thead>
+          <tbody>
+            <tr><td>Estimate a used car's sale price</td><td>yes</td><td>the price it sold for (regression)</td></tr>
+            <tr><td>Flag fraudulent card payments</td><td>yes</td><td>fraud or not fraud (classification)</td></tr>
+            <tr><td>Route a ticket to the billing or technical team</td><td>yes</td><td>the team that closed it (classification)</td></tr>
+            <tr><td>Predict tomorrow's energy demand</td><td>yes</td><td>the demand actually measured (regression)</td></tr>
+            <tr><td>Group customers by buying habits, no groups defined</td><td>no</td><td>none: unsupervised</td></tr>
+            <tr><td>Find themes in thousands of uncategorised tickets</td><td>no</td><td>none: unsupervised</td></tr>
+          </tbody>
+        </table>
+        <h3>Where labels come from, and what they cost</h3>
+        <p>In practice a label arrives in one of three ways, and each has a price:</p>
+        <ul>
+          <li>a record the business already keeps, such as the price a house sold for, which is cheap</li>
+          <li>an event that confirms the answer later, such as a chargeback weeks after a fraudulent payment, which is slow</li>
+          <li>a person labelling by hand, such as a doctor reading a scan, which costs expert hours for every row</li>
+        </ul>
+        <p>Label quality matters as much as label quantity. If one label in ten is wrong, the model learns the mistakes
+        along with the pattern, and no algorithm can score better than the labels it is checked against. Where no affordable
+        source of labels exists, unsupervised methods, which need none, are the option left.<sup class="cite"><a href="#src-12">12</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Supervised learning trains on rows that carry the right answer; unsupervised learning has no answer.</li>
+          <li>A continuous label means regression; a discrete label means classification.</li>
+          <li>fit(X, y) is supervised; fit(X) with no y is unsupervised.</li>
+          <li>Labels are often the expensive part, and wrong labels cap what any model reaches.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I check whether every training example comes with the answer I want predicted. If it does, it's supervised:
+          predicting a used car's price, or whether a payment is fraud. If there's no answer and I'm looking for
+          structure, like grouping customers nobody has categorised, it's unsupervised.</p>
+          <p>Labels come from business records, from events that confirm the answer later, or from people labelling by
+          hand. The hand-labelled kind is slow and expensive, and noisy labels put a ceiling on how good any model can
+          get.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">Use cases</div>
+        <h2>Applications of regression</h2>
+        <p>Regression is the supervised task whose label is a continuous number.<sup class="cite"><a href="#src-3">3</a></sup>
+        Before any code, it helps to see how many everyday business questions have that shape.</p>
+        <h3>Problems that predict a number</h3>
+        <p>A team reaches for regression whenever the answer is a quantity. Framing the problem means naming the features
+        you would have at prediction time and the number you want back:</p>
+        <table>
+          <thead><tr><th>Problem</th><th>Features</th><th>Label</th></tr></thead>
+          <tbody>
+            <tr><td>Delivery time</td><td>distance, time of day, weather, order size</td><td>minutes until delivered</td></tr>
+            <tr><td>Energy demand</td><td>temperature, day of week, holiday flag</td><td>megawatt-hours used tomorrow</td></tr>
+            <tr><td>House price</td><td>floor area, age, bedrooms, neighbourhood</td><td>sale price</td></tr>
+            <tr><td>Ticket effort</td><td>category, priority, length of description</td><td>hours until the ticket is closed</td></tr>
+          </tbody>
+        </table>
+        <p>The features must be things known when the prediction is made. A delivery's actual route is known only after
+        the delivery, so it cannot be a feature for predicting delivery time. In someone else's code you recognise a
+        regression by a <code>LinearRegression().fit(X, y)</code> call where <code>y</code> holds prices, hours or
+        amounts.<sup class="cite"><a href="#src-9">9</a></sup></p>
+        <h3>A real regression dataset: diabetes progression</h3>
+        <p>The diabetes dataset in scikit-learn is a regression dataset whose target is a measure of disease
+        progression for each patient.<sup class="cite"><a href="#src-10">10</a></sup> It is small enough to inspect
+        whole.</p>
+<pre><code># Run in Colab
+from sklearn.datasets import load_diabetes
+
+data = load_diabetes()
+print(data.data.shape)
+print(data.feature_names)
+print(data.target.min(), data.target.max())</code></pre>
+<pre class="out">(442, 10)
+['age', 'sex', 'bmi', 'bp', 's1', 's2', 's3', 's4', 's5', 's6']
+25.0 346.0</pre>
+        <p>There are 442 patients and 10 feature columns, among them age, body-mass index (<code>bmi</code>) and blood
+        pressure (<code>bp</code>), and the target runs from 25 to 346. Using all ten columns at once is multiple
+        regression, which returns one coefficient per column.<sup class="cite"><a href="#src-9">9</a></sup> Step 6 fits
+        it.</p>
+        <h3>Limit: a straight line keeps going</h3>
+        <p>A linear model draws a straight line, and a straight line does not stop at the edge of the data. Asked about
+        an input far outside the training range, linear regression extends the line and can return an impossible value,
+        such as a negative price.<sup class="cite"><a href="#src-14">14</a></sup> One diabetes column is enough to see
+        it.</p>
+<pre><code># Run in Colab (after the cell above)
+from sklearn.linear_model import LinearRegression
+
+bmi = data.data[:, [2]]           # column 2 is bmi; [2] keeps it 2-D
+model = LinearRegression().fit(bmi, data.target)
+print(bmi.min().round(3), bmi.max().round(3))
+print(model.predict([[-0.3], [0.0], [0.3]]).round(1))</code></pre>
+<pre class="out">-0.09 0.171
+[-132.7  152.1  437. ]</pre>
+        <p>The <code>bmi</code> values in the data run from -0.09 to 0.171. Inside that range the prediction is sensible.
+        At -0.3 the line predicts a progression of -132.7, a value no patient can have, and at 0.3 it predicts 437, above
+        the largest target in the data. The model gives no sign that it is guessing. Checking that new inputs fall inside
+        the training range is the caller's job.</p>
+        <h3>From a number to a category</h3>
+        <p>Regression and classification blur at the edges. "How many hours will this ticket take?" is regression, while
+        "will this ticket be closed within two days?" is classification, because the answer is yes or no. You can turn
+        any numeric label into categories by choosing a threshold.</p>
+<pre><code># Run in Colab (after the cell above)
+high = (data.target &gt; 140).astype(int)    # 1 when progression is above 140
+print(high[:8])
+print(high.mean().round(2))</code></pre>
+<pre class="out">[1 0 1 1 0 0 0 0]
+0.5</pre>
+        <p>The comparison gives <code>True</code> or <code>False</code> per patient, and <code>astype(int)</code> turns
+        those into 1 and 0. Half the patients land above the threshold. The cost is information: a patient at 141 and one
+        at 340 now share a label. The business question decides which framing is right. A team scheduling staff needs the
+        hours; a team promising a two-day turnaround needs the yes or no.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Regression fits any question whose answer is a quantity: time, demand, price, hours.</li>
+          <li>Features must be known at prediction time, before the answer exists.</li>
+          <li>A straight line extends past the data and can predict impossible values.</li>
+          <li>A threshold turns a number into a category, at the cost of detail.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Regression problems predict a number: delivery time, tomorrow's energy demand, a house price. For delivery
+          time the label is minutes until delivered, and the features are what I know when the order is placed, like
+          distance, time of day and order size.</p>
+          <p>"How many hours will this ticket take" is regression because the answer is a number. "Will it close within
+          two days" is classification, because the answer is yes or no. I can get the second from the first with a
+          threshold, but I lose detail doing it.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="3">
+        <div class="tag">Code</div>
+        <h2>Fitting the line</h2>
+        <p>Linear regression is the simplest regression model and the one every other model is compared with. This step
+        fits one line to one feature and reads every number it produces.</p>
+        <h3>Slope and intercept</h3>
+        <p><code>LinearRegression</code> fits a linear model by ordinary least squares. After <code>fit</code>, the slope
+        is stored in <code>coef_</code> and the intercept in <code>intercept_</code>.<sup class="cite"><a href="#src-9">9</a></sup>
+        For a line <code>y = 2x + 5</code>, the slope 2 says each extra unit of x adds 2 to the prediction, and the
+        intercept 5 is the prediction when x is 0.</p>
+        <p>The data is synthetic. <code>make_regression</code> builds a linear relationship, <code>noise=15</code> adds
+        Gaussian noise with standard deviation 15 to the target, and <code>random_state</code> makes the same numbers come
+        back on every run.<sup class="cite"><a href="#src-15">15</a></sup></p>
+<pre><code># Run in Colab
+from sklearn.datasets import make_regression
+from sklearn.linear_model import LinearRegression
+
+X, y = make_regression(n_samples=100, n_features=1, noise=15, random_state=42)
+model = LinearRegression().fit(X, y)
+print(f"slope: {model.coef_[0]:.2f}")
+print(f"intercept: {model.intercept_:.2f}")</code></pre>
+<pre class="out">slope: 45.79
+intercept: 1.75</pre>
+        <p>The fitted line is roughly <code>y = 45.79x + 1.75</code>. Each one-unit increase in the feature raises the
+        prediction by 45.79. You can check it against step 1: at x = 0.5 the line gives 1.75 + 22.9, about 24.6, the
+        first prediction printed there. <code>coef_</code> is an array because a model can have many features, which is
+        why the code reads element 0.</p>
+        <h3>Residuals and least squares</h3>
+        <p>A residual is the true value minus the prediction for one sample. Least squares picks the line that makes the
+        sum of the squared residuals as small as possible.<sup class="cite"><a href="#src-16">16</a></sup> In plain words,
+        it is the line with the smallest sum of squared misses. Squaring stops misses above and below the line from
+        cancelling out, and it punishes one large miss more than several small ones.</p>
+<pre><code># Run in Colab (after the cell above)
+pred = model.predict(X)
+residuals = y - pred
+print(residuals[:3].round(1))
+print(f"sum of squared residuals: {(residuals ** 2).sum():.0f}")
+nudged = pred + 5                 # same slope, line moved up by 5
+print(f"line moved up by 5: {((y - nudged) ** 2).sum():.0f}")</code></pre>
+<pre class="out">[ 12.3 -22.6  16.4]
+sum of squared residuals: 17562
+line moved up by 5: 20062</pre>
+        <p>The first sample sits 12.3 above the line and the second 22.6 below it. Moving the fitted line up by 5 raises
+        the total from 17562 to 20062, and any other change to the slope or intercept also raises it, which is what "least"
+        squares means. A picture makes the misses visible:</p>
+<pre><code># Run in Colab (after the cell above)
+import matplotlib.pyplot as plt
+
+order = X[:, 0].argsort()         # sort by x so the line draws left to right
+plt.scatter(X[:, 0], y, s=12, label="samples")
+plt.plot(X[order, 0], pred[order], color="red", label="fitted line")
+plt.vlines(X[:, 0], pred, y, color="gray", linewidth=0.8, label="residuals")
+plt.xlabel("Feature 1")
+plt.ylabel("Target")
+plt.legend()
+plt.show()</code></pre>
+        <p>The cell draws the 100 samples as dots, the fitted line in red, and a thin grey vertical segment from each dot
+        to the line. Each grey segment is one residual, and least squares chose the red line to make the squares of those
+        lengths add up to the smallest total.</p>
+        <p>Ordinary least squares has a closed-form solution, so <code>fit</code> computes the line in one step, with no
+        repeated small corrections.<sup class="cite"><a href="#src-16">16</a></sup> Learning by repeated corrections
+        arrives on Friday with the perceptron.</p>
+        <h3>Mean squared error and R²</h3>
+        <p>Two numbers summarise how well the line fits. <code>mean_squared_error</code> averages the squared differences
+        between true and predicted values.<sup class="cite"><a href="#src-17">17</a></sup> <code>r2_score</code>, the
+        coefficient of determination, is 1 minus the ratio of the residual sum of squares to the total sum of
+        squares.<sup class="cite"><a href="#src-18">18</a></sup> A regression model's <code>score</code> method returns
+        the same R²; 1.0 is a perfect fit, and on unseen data it can be
+        negative.<sup class="cite"><a href="#src-9">9</a></sup></p>
+<pre><code># Run in Colab (after the cell above)
+from sklearn.metrics import mean_squared_error, r2_score
+
+print(f"MSE: {mean_squared_error(y, pred):.1f}")
+print(f"R2: {r2_score(y, pred):.3f}")
+print(f"score: {model.score(X, y):.3f}")</code></pre>
+<pre class="out">MSE: 175.6
+R2: 0.907
+score: 0.907</pre>
+        <p>The MSE of 175.6 is the sum of squared residuals, 17562, divided by 100 samples. The R² of 0.907 says the line
+        accounts for about 91 percent of the spread in the target, and <code>score</code> gives the identical number. The
+        two metrics answer different questions:</p>
+        <table>
+          <thead><tr><th>Metric</th><th>Units</th><th>Best value</th><th>Useful for</th></tr></thead>
+          <tbody>
+            <tr><td>MSE</td><td>the target's units, squared</td><td>0</td><td>comparing models on the same data</td></tr>
+            <tr><td>R²</td><td>none</td><td>1.0</td><td>a scale-free sense of fit; always predicting the mean scores 0, so negative is worse than that<sup class="cite"><a href="#src-18">18</a></sup></td></tr>
+          </tbody>
+        </table>
+        <p>MSE in squared minutes or squared dollars is hard to say out loud, which is why people often quote its square
+        root. R² reads the same on any dataset, though a "good" R² still depends on how noisy the problem is.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>coef_ holds the slope and intercept_ the intercept of the fitted line.</li>
+          <li>A residual is the true value minus the prediction.</li>
+          <li>Least squares picks the line with the smallest sum of squared residuals, in one step.</li>
+          <li>MSE averages squared misses; R² is 1.0 for a perfect fit and can go negative.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Least squares minimises the sum of the squared residuals, where a residual is the true value minus the
+          prediction. Squaring keeps misses above and below the line from cancelling and punishes big misses hardest.</p>
+          <p>For y equals 2x plus 5, the slope 2 means every extra unit of x adds 2 to the prediction, and the intercept 5
+          is the prediction when x is zero. In scikit-learn those come back as coef_ and intercept_, and I'd judge the fit
+          with mean squared error or R².</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">Code</div>
+        <h2>Train and test</h2>
+        <p>The R² of 0.907 in step 4 was measured on the same 100 rows the line was fitted to. That number says how well
+        the model describes data it has seen, which is not the question anyone paying for a model asks.</p>
+        <h3>Why a model is scored on rows it never saw</h3>
+        <p>Scoring a model on the data it was fitted on rewards memorising. A held-out test set, rows the model never saw
+        during <code>fit</code>, estimates how it will perform on new data.<sup class="cite"><a href="#src-1">1</a></sup>
+        It is the difference between a student who has seen the exam questions in advance and one who has not. Only the
+        second score tells you what the student can do.</p>
+        <p>The test rows must stay out of everything that shapes the model, including choices
+        like the polynomial degree. If you keep adjusting a model until its test score looks good, the test set has
+        become training data, and the score is optimistic again.</p>
+        <h3>Splitting with train_test_split</h3>
+        <p><code>train_test_split</code> shuffles the rows and then splits them. <code>test_size=0.2</code> holds out 20
+        percent for testing, and <code>random_state</code> fixes the shuffle so the split is the same on every
+        run.<sup class="cite"><a href="#src-19">19</a></sup></p>
+<pre><code># Run in Colab
+from sklearn.datasets import make_regression
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+
+X, y = make_regression(n_samples=100, n_features=1, noise=15, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+print(X_train.shape, X_test.shape)
+
+model = LinearRegression().fit(X_train, y_train)    # fit on the 80 only
+print(f"train R2: {model.score(X_train, y_train):.3f}")
+print(f"test R2:  {model.score(X_test, y_test):.3f}")</code></pre>
+<pre class="out">(80, 1) (20, 1)
+train R2: 0.912
+test R2:  0.874</pre>
+        <p>The model trained on 80 rows and was tested on the other 20. The test score is a little lower than the
+        training score, which is normal: the line was tuned to the training rows. A small gap like this one is healthy.
+        A large gap, such as 0.9 on training and 0.2 on test, means the model learned the training rows' noise and fails
+        on new data, the overfitting that step 6 shows.</p>
+        <p>The four names on the left are the convention you will see in almost every scikit-learn codebase. They come
+        back in a fixed order:</p>
+        <ol>
+          <li><code>X_train</code>, the features to fit on</li>
+          <li><code>X_test</code>, the features to score on</li>
+          <li><code>y_train</code>, the labels for the training rows</li>
+          <li><code>y_test</code>, the labels for the test rows</li>
+        </ol>
+        <p>Swapping two of them does not raise an error when the shapes happen to fit. It gives a model trained on the
+        wrong rows, which is a bug a reviewer looks for.</p>
+        <h3>random_state and stratify</h3>
+        <p>A single split is one draw from many possible ones, so its test score carries some luck. Changing only the
+        seed shows how much:</p>
+<pre><code># Run in Colab (after the cell above)
+for seed in [0, 1, 2]:
+    Xa, Xb, ya, yb = train_test_split(X, y, test_size=0.2, random_state=seed)
+    m = LinearRegression().fit(Xa, ya)
+    print(f"random_state={seed}: test R2 {m.score(Xb, yb):.3f}")</code></pre>
+<pre class="out">random_state=0: test R2 0.837
+random_state=1: test R2 0.826
+random_state=2: test R2 0.922</pre>
+        <p>Same data, same model, and the test R² moves between 0.826 and 0.922. Fixing <code>random_state</code> makes a
+        result repeatable, so the numbers in a report match the next run; it does not make the estimate more accurate.
+        Leaving it out is a common slip, and the printed scores then change on every run. Averaging over several splits
+        is cross-validation, which week 8 covers.</p>
+        <p>For classification there is one more argument. <code>stratify=y</code> keeps the class proportions of the
+        whole dataset in both parts.<sup class="cite"><a href="#src-19">19</a></sup> The breast cancer data shows the
+        effect on the share of class 1 in the test set:</p>
+<pre><code># Run in Colab
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import train_test_split
+
+X, y = load_breast_cancer(return_X_y=True)
+print(f"whole dataset: {y.mean():.3f}")
+for seed in range(5):
+    _, _, _, plain = train_test_split(X, y, test_size=0.2, random_state=seed)
+    _, _, _, strat = train_test_split(X, y, test_size=0.2, random_state=seed, stratify=y)
+    print(f"random_state={seed}: plain {plain.mean():.3f}, stratified {strat.mean():.3f}")</code></pre>
+<pre class="out">whole dataset: 0.627
+random_state=0: plain 0.588, stratified 0.632
+random_state=1: plain 0.632, stratified 0.632
+random_state=2: plain 0.605, stratified 0.632
+random_state=3: plain 0.649, stratified 0.632
+random_state=4: plain 0.702, stratified 0.632</pre>
+        <p>The underscores throw away the three arrays this cell does not need. Without stratifying, the test share of
+        class 1 swings from 0.588 to 0.702. With <code>stratify=y</code> it stays at 0.632 every time, as close to the
+        whole dataset's 0.627 as 114 test rows allow.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A score on training rows rewards memorising; a held-out test set estimates new data.</li>
+          <li>test_size=0.2 holds out 20 percent; random_state makes the split repeatable.</li>
+          <li>A large gap between training and test scores signals overfitting.</li>
+          <li>stratify=y keeps class proportions the same in both parts.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I keep a test set apart because scoring on the training data rewards memorising. train_test_split shuffles
+          and holds out, say, 20 percent; I fix random_state so the split is repeatable, and for classification I pass
+          stratify so both parts keep the same class balance.</p>
+          <p>An R² of 0.9 on training and 0.2 on test tells me the model has overfitted: it learned the noise in the
+          training rows and doesn't generalise. I'd simplify the model or get more data before trusting it.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
+        <div class="tag">Code</div>
+        <h2>Types of regression: multiple and polynomial</h2>
+        <p>The line so far had one feature and was straight. Real problems have many features, and real relationships
+        bend. Both are handled by the same <code>LinearRegression</code>, given different columns.</p>
+        <h3>Multiple regression on ten features</h3>
+        <p>Multiple regression uses several feature columns and returns one coefficient per
+        column.<sup class="cite"><a href="#src-9">9</a></sup> The diabetes data from step 3 has ten.</p>
+<pre><code># Run in Colab
+from sklearn.datasets import load_diabetes
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+
+X, y = load_diabetes(return_X_y=True)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+model = LinearRegression().fit(X_train, y_train)
+print(len(model.coef_))
+print(model.coef_.round(1))
+print(f"intercept: {model.intercept_:.1f}")
+print(f"train R2: {model.score(X_train, y_train):.3f}")
+print(f"test R2:  {model.score(X_test, y_test):.3f}")</code></pre>
+<pre class="out">10
+[  37.9 -242.   542.4  347.7 -931.5  518.1  163.4  275.3  736.2   48.7]
+intercept: 151.3
+train R2: 0.528
+test R2:  0.453</pre>
+        <p><code>return_X_y=True</code> hands back the features and target directly instead of the bundle step 2 used.
+        The model has ten coefficients, one for each column in column order, and one intercept, as the
+        documentation says it will.<sup class="cite"><a href="#src-9">9</a></sup> A test R² of 0.453 is modest: a flat
+        weighted sum of these ten measurements explains under half of the variation in disease progression.</p>
+        <h3>Reading the coefficients</h3>
+        <p>Each coefficient is the change in the prediction for a one-unit increase in that feature, with all the other
+        features held fixed.<sup class="cite"><a href="#src-16">16</a></sup> The third entry, 542.4, belongs to
+        <code>bmi</code>: raising body-mass index by one unit of this dataset's scale, with age, blood pressure and the
+        rest unchanged, raises the prediction by 542.4. A negative coefficient, such as -242.0 for <code>sex</code>,
+        lowers it.</p>
+        <p>Two cautions come with reading them. Comparing sizes across features only works when the features share a
+        scale; a coefficient on age in years and one on income in dollars cannot be ranked against each other. And "held
+        fixed" is an idealisation: when features are correlated, the least-squares estimate becomes highly sensitive to
+        random errors in the target, so the coefficients can swing widely.<sup class="cite"><a href="#src-16">16</a></sup></p>
+        <h3>Polynomial regression: powers as new columns</h3>
+        <p><code>PolynomialFeatures(degree=d)</code> adds powers of the input as new columns, so a plain
+        <code>LinearRegression</code> fitted on those columns draws a degree-d curve. The model is still linear, because
+        it is linear in its coefficients.<sup class="cite"><a href="#src-20">20</a></sup> The transform on its own is
+        easy to see:</p>
+<pre><code># Run in Colab
+from sklearn.preprocessing import PolynomialFeatures
+
+print(PolynomialFeatures(degree=3).fit_transform([[2.0]]))</code></pre>
+        <p>It prints <code>[[1. 2. 4. 8.]]</code>: the value 2 becomes a constant column, 2, 2 squared and 2 cubed. The
+        regression then finds one coefficient for each of those columns, which together describe a cubic curve. In real
+        code the two steps are chained with <code>make_pipeline(PolynomialFeatures(3), LinearRegression())</code>, so one
+        <code>fit</code> call runs both.<sup class="cite"><a href="#src-20">20</a></sup></p>
+        <h3>Underfitting and overfitting</h3>
+        <p>The degree is a hyperparameter, and choosing it badly fails in two opposite ways. An underfit model is too
+        simple to follow the pattern and scores poorly on both training and test data. An overfit model follows the
+        noise as well, scoring well on training data and poorly on test data. A degree 1 against a degree 15 polynomial is
+        the standard illustration.<sup class="cite"><a href="#src-21">21</a></sup> The data below is a curve of known
+        shape, <code>0.5 * x**3 - x</code>, with noise added.</p>
+        <div class="ix-predict" data-q="Degrees 1, 3 and 15 are fitted to 30 noisy points from a cubic curve. Which degree will have the highest training score, and which the highest test score?" data-a="Degree 15 has the highest training score, because more powers let the curve bend toward every training point. Degree 3 has the highest test score, because it matches the true shape without chasing the noise."></div>
+<pre><code># Run in Colab
+import numpy as np
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import PolynomialFeatures
+
+rng = np.random.default_rng(42)
+x = np.sort(rng.uniform(-3, 3, 40))
+y = 0.5 * x**3 - x + rng.normal(0, 2, 40)
+X_train, X_test, y_train, y_test = train_test_split(x.reshape(-1, 1), y, test_size=0.25, random_state=42)
+for degree in [1, 3, 15]:
+    model = make_pipeline(PolynomialFeatures(degree), LinearRegression()).fit(X_train, y_train)
+    print(f"degree {degree:2}: train R2 {model.score(X_train, y_train):.3f}, test R2 {model.score(X_test, y_test):.3f}")</code></pre>
+<pre class="out">degree  1: train R2 0.474, test R2 0.507
+degree  3: train R2 0.814, test R2 0.870
+degree 15: train R2 0.842, test R2 0.679</pre>
+        <p>The scores read as three verdicts:</p>
+        <ul>
+          <li>Degree 1 underfits: a straight line cannot follow a cubic, so both scores sit near 0.5.</li>
+          <li>Degree 3 fits: it matches the true shape and has the best test score, 0.870.</li>
+          <li>Degree 15 overfits: the training score rises to 0.842 while the test score falls to 0.679.</li>
+        </ul>
+        <p>That pattern, training error falling as test error rises, is the trade-off a high polynomial degree
+        brings.<sup class="cite"><a href="#src-21">21</a></sup> It is also why a training score alone proves nothing. The
+        regularised types of linear regression, ridge and lasso, are built to rein in overfitting and come in week
+        8.<sup class="cite"><a href="#src-22">22</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Multiple regression returns one coefficient per feature column, in column order.</li>
+          <li>A coefficient is the change in prediction per unit of its feature, others held fixed.</li>
+          <li>PolynomialFeatures adds powers as columns; the model stays linear in its coefficients.</li>
+          <li>Too low a degree underfits; too high a degree overfits.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Multiple regression fits one coefficient per feature. Each one is how much the prediction changes for one
+          unit of that feature with the others held fixed, though I'd only compare sizes when the features share a
+          scale.</p>
+          <p>Polynomial regression adds powers of the input as extra columns and fits an ordinary linear regression on
+          them, so it's still linear in the coefficients. A low degree underfits, scoring badly on train and test; a high
+          degree overfits, scoring well on train and badly on test. I pick the degree by a score on held-out data,
+          never the training one.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="6">
+        <div class="tag">Code</div>
+        <h2>Classification with logistic regression</h2>
+        <p>Classification predicts a category instead of a number. The first classifier most teams try is logistic
+        regression, and interviewers often check whether its name fools you.</p>
+        <h3>A classifier despite its name</h3>
+        <p><code>LogisticRegression</code> is a classifier, despite its name. scikit-learn's user guide files it with the
+        linear models because its decision boundary is linear: with two features, the line between the classes is
+        straight.<sup class="cite"><a href="#src-23">23</a></sup> Its output is a class, plus a probability for each class
+        when you ask for one.</p>
+        <p>The example data is synthetic and has two features, so it can be drawn. <code>make_classification</code>
+        defaults to <code>n_features=20</code>; setting <code>n_features=2</code> keeps two columns, so a two-column grid
+        of points can be passed to <code>predict</code> for a boundary plot.<sup class="cite"><a href="#src-24">24</a></sup></p>
+        <h3>predict, predict_proba and accuracy_score</h3>
+<pre><code># Run in Colab
+from sklearn.datasets import make_classification
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split
+
+X, y = make_classification(n_samples=200, n_features=2, n_informative=2, n_redundant=0,
+                           n_clusters_per_class=1, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+clf = LogisticRegression(max_iter=5000).fit(X_train, y_train)
+print(clf.predict(X_test[:3]))
+print(clf.predict_proba(X_test[:3]).round(3))
+print(f"test accuracy: {accuracy_score(y_test, clf.predict(X_test)):.3f}")</code></pre>
+<pre class="out">[0 0 1]
+[[0.951 0.049]
+ [0.778 0.222]
+ [0.219 0.781]]
+test accuracy: 0.850</pre>
+        <p><code>predict</code> returns one class per row. <code>predict_proba</code> returns one column per class, and
+        each row sums to 1.<sup class="cite"><a href="#src-25">25</a></sup> The first test row is class 0 with probability
+        0.951. The second is also class 0, but at 0.778 the model is far less sure, and in this output each predicted class
+        is the one with the larger probability. When a decision has a cost, such as escalating a ticket, the probability
+        is often more useful than the bare class.</p>
+        <p><code>accuracy_score</code> is the fraction of predictions equal to the true labels, a number between 0 and
+        1.<sup class="cite"><a href="#src-26">26</a></sup> Here 0.850 means 34 of the 40 test rows were classified
+        correctly.</p>
+        <p>About <code>max_iter=5000</code>: <code>LogisticRegression</code> defaults to
+        <code>max_iter=100</code> with the lbfgs solver, which can stop early with a <code>ConvergenceWarning</code> on
+        unscaled features. Raising <code>max_iter</code> or scaling the features fixes
+        it.<sup class="cite"><a href="#src-25">25</a></sup> The warning means the
+        solver ran out of steps, and the code is fine. Here 5000 lets it finish, and Tuesday shows scaling.</p>
+        <h3>The decision boundary</h3>
+        <p>To see the boundary, ask the model for a prediction at every point of a fine grid and colour the grid by the
+        answer.</p>
+<pre><code># Run in Colab (after the cell above)
+import numpy as np
+import matplotlib.pyplot as plt
+
+xx, yy = np.meshgrid(np.linspace(X[:, 0].min() - 1, X[:, 0].max() + 1, 200),
+                     np.linspace(X[:, 1].min() - 1, X[:, 1].max() + 1, 200))
+grid = np.c_[xx.ravel(), yy.ravel()]          # 40,000 points, 2 columns
+zz = clf.predict(grid).reshape(xx.shape)
+plt.contourf(xx, yy, zz, alpha=0.3)
+plt.scatter(X[:, 0], X[:, 1], c=y, s=15, edgecolor="k")
+plt.xlabel("Feature 1")
+plt.ylabel("Feature 2")
+plt.show()</code></pre>
+        <p><code>np.meshgrid</code> builds every (x, y) pair on a 200-by-200 grid, and <code>ravel</code> flattens each
+        to one long array. <code>np.c_</code> stacks the two into columns for <code>predict</code>, and
+        <code>contourf</code> shades each grid point by its predicted class.</p>
+        <p>The plot shows two shaded regions split by one straight, steep line just right of feature 1 = 0, with class 0
+        points mostly on the left and class 1 mostly on the right. A few points of each class sit on the wrong side;
+        those are the misclassified rows behind the 0.850.</p>
+        <p>No setting of a logistic regression can bend that
+        line,<sup class="cite"><a href="#src-23">23</a></sup> which is its main limit: classes that curl around each
+        other need a different model, and Tuesday starts on those.</p>
+        <h3>A real dataset: breast cancer</h3>
+        <p>The breast cancer dataset is a binary classification set of 569 samples with 30 numeric features
+        each.<sup class="cite"><a href="#src-11">11</a></sup> The same three calls apply.</p>
+<pre><code># Run in Colab
+import numpy as np
+from sklearn.datasets import load_breast_cancer
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split
+
+X, y = load_breast_cancer(return_X_y=True)
+print(X.shape, np.bincount(y))
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+clf = LogisticRegression(max_iter=5000).fit(X_train, y_train)    # lets lbfgs finish on unscaled features
+print(f"train accuracy: {accuracy_score(y_train, clf.predict(X_train)):.3f}")
+print(f"test accuracy:  {accuracy_score(y_test, clf.predict(X_test)):.3f}")</code></pre>
+<pre class="out">(569, 30) [212 357]
+train accuracy: 0.956
+test accuracy:  0.965</pre>
+        <p><code>np.bincount</code> counts each class: 212 malignant (class 0) and 357 benign (class 1). Test accuracy is
+        0.965, slightly above training accuracy, which happens with only 114 test rows and is luck of the split. Step 8
+        compares that number with a baseline.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>LogisticRegression is a classifier with a straight decision boundary.</li>
+          <li>predict returns a class; predict_proba returns one probability per class, summing to 1.</li>
+          <li>accuracy_score is the fraction of predictions that match the true labels.</li>
+          <li>max_iter=5000 lets the solver finish on unscaled features; a ConvergenceWarning is not a crash.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Logistic regression is a classification model despite the name. It draws a linear decision boundary, so with
+          two features the split between classes is a straight line. predict gives me the class, and predict_proba gives
+          me a probability for each class, which helps when a wrong answer has a cost.</p>
+          <p>If I see a ConvergenceWarning, the lbfgs solver hit its default limit of 100 iterations, usually because the
+          features aren't scaled. I'd scale the features or raise max_iter; the code itself isn't broken.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="7">
+        <div class="tag">Use cases</div>
+        <h2>Applications of classification</h2>
+        <p>Classification is the supervised task whose label is a discrete
+        category.<sup class="cite"><a href="#src-3">3</a></sup> Framing one well means naming the classes, the features,
+        and what each kind of mistake costs, because that last part decides how the model is judged.</p>
+        <h3>Problems that predict a category</h3>
+        <table>
+          <thead><tr><th>Problem</th><th>Classes</th><th>Features</th><th>The costly mistake</th></tr></thead>
+          <tbody>
+            <tr><td>Spam filter</td><td>spam, not spam</td><td>sender, words, links</td><td>a real email hidden in spam</td></tr>
+            <tr><td>Card fraud</td><td>fraud, genuine</td><td>amount, merchant, location, time</td><td>a fraud let through</td></tr>
+            <tr><td>Diagnosis</td><td>malignant, benign</td><td>measurements of the sample</td><td>a malignant case called benign</td></tr>
+            <tr><td>Customer churn</td><td>leaves, stays</td><td>usage, complaints, contract length</td><td>a leaving customer nobody contacted</td></tr>
+            <tr><td>Ticket priority</td><td>low, medium, high</td><td>title words, product, customer tier</td><td>an outage filed as low</td></tr>
+          </tbody>
+        </table>
+        <p>The first four have two classes, which is binary classification; ticket priority has three. In code, a
+        classification problem looks like <code>LogisticRegression(max_iter=5000).fit(X_train, y_train)</code> followed
+        by <code>accuracy_score(y_test, model.predict(X_test))</code>, with a <code>y</code> of class
+        labels.<sup class="cite"><a href="#src-26">26</a></sup></p>
+        <h3>What a wrong answer costs</h3>
+        <p>Every binary classifier can be wrong in two directions. It can raise a false alarm, calling a genuine payment
+        fraud, or it can miss, letting a fraud through. The two rarely cost the same. A false alarm on a payment costs a
+        phone call; a miss costs the full amount. In diagnosis a false alarm costs a further test, while a miss can cost a
+        life.</p>
+        <p>Accuracy ignores that difference, because it treats every error as
+        equal.<sup class="cite"><a href="#src-26">26</a></sup> Two models with the same accuracy can make very different
+        mistakes, one raising false alarms and the other missing real cases. The fuller metrics that count each kind of
+        error separately, precision, recall, F1 and the confusion matrix, are week 8's subject. On this page, the habit to
+        build is asking "which mistake is worse here?" before reading any score.</p>
+        <h3>Class imbalance: when accuracy misleads</h3>
+        <p>Fraud, diagnosis and churn share a shape: one class is much rarer than the other. With class imbalance, a
+        model that always predicts the common class scores a high accuracy while missing every rare
+        case.<sup class="cite"><a href="#src-26">26</a></sup> A do-nothing baseline makes this concrete.</p>
+<pre><code># Run in Colab (after the breast cancer cell in step 7)
+always_benign = np.ones_like(y_test)        # predict class 1 for every row
+print(f"always benign: {accuracy_score(y_test, always_benign):.3f}")
+
+y_fraud = np.array([1] * 10 + [0] * 990)    # 10 frauds in 1,000 payments
+never_fraud = np.zeros(1000, dtype=int)     # a "model" that never says fraud
+print(f"never fraud:   {accuracy_score(y_fraud, never_fraud):.3f}")</code></pre>
+<pre class="out">always benign: 0.632
+never fraud:   0.990</pre>
+        <p>Calling every breast cancer test sample benign scores 0.632 without looking at a single feature, so the
+        model's 0.965 is a real gain over that baseline. In the fraud case, a "model" that never flags fraud
+        scores 0.990 and catches none of the ten frauds. The same arithmetic is why 95 percent accuracy can be a bad
+        result: if 95 percent of rows are the common class, predicting it every time gets there.</p>
+        <p>Three checks follow from this, and each takes one line of code:</p>
+        <ul>
+          <li>count the classes first, as <code>np.bincount(y)</code> did in step 7</li>
+          <li>compare any accuracy with the share of the most common class, the score of always guessing it</li>
+          <li>split with <code>stratify=y</code> so the rare class appears in the test set in its true
+          proportion<sup class="cite"><a href="#src-19">19</a></sup></li>
+        </ul>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Framing a classification problem means naming classes, features and the cost of each mistake.</li>
+          <li>Accuracy treats a false alarm and a miss as equal, though they rarely cost the same.</li>
+          <li>On imbalanced data, always predicting the common class can score high accuracy.</li>
+          <li>Compare every accuracy with the majority-class baseline before trusting it.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Spam filtering, card fraud and diagnosis are all classification: spam or not, fraud or genuine, malignant or
+          benign. In spam the costly mistake is hiding a real email; in fraud it's letting a fraud through, which costs
+          the whole amount, while a false alarm only costs a phone call.</p>
+          <p>Ninety-five percent accuracy can be bad when one class is rare. If 95 percent of payments are genuine, a
+          model that never flags fraud scores 95 percent and catches nothing. So I check the class counts, compare against
+          that baseline, and look at metrics like recall that count the misses.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="8">
+        <div class="tag">Check yourself</div>
+        <h2>Check yourself</h2>
+        <p>Ten retrieval questions, at least one for every section. Answer each out loud before you open it.</p>
+        <details class="check"><summary>What is the difference between a hand-written rule and a learned model, and what are X and y in scikit-learn?</summary><p>A hand-written rule is logic a person chose; a learned model's rule is a set of numbers fitted from labelled examples. <code>X</code> is the 2-D feature table, one row per sample and one column per feature, and <code>y</code> is the 1-D array of labels.</p></details>
+        <details class="check"><summary>How do you tell from code whether an estimator is supervised or unsupervised?</summary><p>A supervised estimator's <code>fit</code> takes both <code>X</code> and <code>y</code>, because it learns from answers. An unsupervised one takes <code>X</code> only, because there is no label to learn from.</p></details>
+        <details class="check"><summary>"Will this ticket close within two days?" and "How many hours will this ticket take?": which is regression and which is classification?</summary><p>The hours question is regression, because the answer is a number. The two-day question is classification, because the answer is yes or no; a threshold on the hours turns one into the other, at the cost of detail.</p></details>
+        <details class="check"><summary>A line fitted to <code>bmi</code> values between -0.09 and 0.171 predicts a negative disease progression at -0.3. What went wrong?</summary><p>Nothing in the code: a straight line extends past the training range, and the input was far outside it. Linear regression extrapolates without warning, so checking that new inputs fall inside the training range is the caller's job.</p></details>
+        <details class="check"><summary>What does least squares minimise, and what do slope 2 and intercept 5 mean in <code>y = 2x + 5</code>?</summary><p>It minimises the sum of squared residuals, where a residual is the true value minus the prediction. The slope 2 adds 2 to the prediction for each unit of x, and the intercept 5 is the prediction at x = 0; scikit-learn stores them in <code>coef_</code> and <code>intercept_</code>.</p></details>
+        <details class="check"><summary>A model scores R² 0.9 on training data and 0.2 on test data. What does that tell you?</summary><p>It has overfitted: it learned the noise in the training rows and does not generalise. The training score alone proved nothing, which is why the test rows are kept out of training and every choice about the model.</p></details>
+        <details class="check"><summary>Why pass <code>random_state</code> and <code>stratify=y</code> to <code>train_test_split</code>?</summary><p><code>random_state</code> fixes the shuffle, so the split and the printed scores are the same on every run. <code>stratify=y</code> keeps the class proportions of the whole dataset in both parts, which matters most when one class is rare.</p></details>
+        <details class="check"><summary>Degrees 1, 3 and 15 are fitted to noisy cubic data. Which underfits, which overfits, and why is polynomial regression still a linear model?</summary><p>Degree 1 underfits, scoring poorly on training and test data; degree 15 overfits, with the highest training score and a falling test score. It is still linear because <code>PolynomialFeatures</code> only adds powers as columns, and the model stays linear in its coefficients.</p></details>
+        <details class="check"><summary>What is the difference between <code>predict</code> and <code>predict_proba</code> on a <code>LogisticRegression</code>, and what does a <code>ConvergenceWarning</code> mean?</summary><p><code>predict</code> returns one class per row; <code>predict_proba</code> returns one probability per class, each row summing to 1. The warning means the lbfgs solver stopped at its iteration limit, usually on unscaled features; raising <code>max_iter</code> or scaling fixes it.</p></details>
+        <details class="check"><summary>Why can 95 percent accuracy be a bad result?</summary><p>When 95 percent of rows belong to the common class, always predicting that class scores 95 percent and catches none of the rare cases. Compare every accuracy with that majority-class baseline, and remember accuracy treats a miss and a false alarm as equal.</p></details>
+      </section>
+
+      <section class="reading-sources" aria-label="Sources and deeper dive">
+        <h2>Sources &amp; deeper dive</h2>
+        <ul>
+          <li id="src-1"><a href="https://scikit-learn.org/stable/modules/cross_validation.html" target="_blank" rel="noopener">Cross-validation: evaluating estimator performance</a> — why a model is scored on held-out data.</li>
+          <li id="src-2"><a href="https://scikit-learn.org/stable/getting_started.html" target="_blank" rel="noopener">scikit-learn Getting Started</a> — the fit and predict pattern and the shape of X and y.</li>
+          <li id="src-3"><a href="https://scikit-learn.org/stable/supervised_learning.html" target="_blank" rel="noopener">Supervised learning</a> — regression and classification, and what makes a problem supervised.</li>
+          <li id="src-4"><a href="https://scikit-learn.org/stable/machine_learning_map.html" target="_blank" rel="noopener">Choosing the right estimator</a> — the map of algorithms grouped by task.</li>
+          <li id="src-5"><a href="https://research.google.com/colaboratory/faq.html" target="_blank" rel="noopener">Google Colab FAQ</a> — what Colab is: a hosted notebook service that runs in the browser.</li>
+          <li id="src-6"><a href="https://raw.githubusercontent.com/googlecolab/backend-info/main/os-info.txt" target="_blank" rel="noopener">Colab backend-info: os-info.txt</a> — the Python version of the current Colab runtime.</li>
+          <li id="src-7"><a href="https://raw.githubusercontent.com/googlecolab/backend-info/main/pip-freeze.txt" target="_blank" rel="noopener">Colab backend-info: pip-freeze.txt</a> — the preinstalled numpy, scipy, scikit-learn and matplotlib versions.</li>
+          <li id="src-8"><a href="https://scikit-learn.org/stable/datasets.html" target="_blank" rel="noopener">Dataset loading utilities</a> — the bundled toy and generated datasets used on this page.</li>
+          <li id="src-9"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html" target="_blank" rel="noopener">LinearRegression</a> — <code>coef_</code>, <code>intercept_</code> and <code>score</code>.</li>
+          <li id="src-10"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_diabetes.html" target="_blank" rel="noopener">load_diabetes</a> — the regression dataset and its disease-progression target.</li>
+          <li id="src-11"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_breast_cancer.html" target="_blank" rel="noopener">load_breast_cancer</a> — the binary classification dataset of 569 samples and 30 features.</li>
+          <li id="src-12"><a href="https://scikit-learn.org/stable/unsupervised_learning.html" target="_blank" rel="noopener">Unsupervised learning</a> — learning from data with no target.</li>
+          <li id="src-13"><a href="https://scikit-learn.org/stable/modules/clustering.html" target="_blank" rel="noopener">Clustering</a> — the standard unsupervised task, Tuesday's subject.</li>
+          <li id="src-14"><a href="https://scikit-learn.org/stable/modules/linear_model.html" target="_blank" rel="noopener">Linear Models user guide</a> — the family of linear models and their limits.</li>
+          <li id="src-15"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.datasets.make_regression.html" target="_blank" rel="noopener">make_regression</a> — the synthetic regression data, its noise and its seed.</li>
+          <li id="src-16"><a href="https://scikit-learn.org/stable/modules/linear_model.html#ordinary-least-squares" target="_blank" rel="noopener">Linear Models: Ordinary Least Squares</a> — residuals, the squared-error objective and reading coefficients.</li>
+          <li id="src-17"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.metrics.mean_squared_error.html" target="_blank" rel="noopener">mean_squared_error</a> — the average squared miss.</li>
+          <li id="src-18"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.metrics.r2_score.html" target="_blank" rel="noopener">r2_score</a> — the coefficient of determination and its formula.</li>
+          <li id="src-19"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.train_test_split.html" target="_blank" rel="noopener">train_test_split</a> — <code>test_size</code>, <code>random_state</code> and <code>stratify</code>.</li>
+          <li id="src-20"><a href="https://scikit-learn.org/stable/modules/linear_model.html#polynomial-regression-extending-linear-models-with-basis-functions" target="_blank" rel="noopener">Linear Models: Polynomial regression</a> — powers as new columns, still linear in the coefficients.</li>
+          <li id="src-21"><a href="https://scikit-learn.org/stable/auto_examples/model_selection/plot_underfitting_overfitting.html" target="_blank" rel="noopener">Underfitting vs. Overfitting</a> — degree 1 against degree 15, the standard illustration.</li>
+          <li id="src-22"><a href="https://scikit-learn.org/stable/modules/linear_model.html#ridge-regression-and-classification" target="_blank" rel="noopener">Linear Models: Ridge regression</a> — the regularised type of linear regression week 8 covers.</li>
+          <li id="src-23"><a href="https://scikit-learn.org/stable/modules/linear_model.html#logistic-regression" target="_blank" rel="noopener">Linear Models: Logistic regression</a> — a linear classifier and its straight boundary.</li>
+          <li id="src-24"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.datasets.make_classification.html" target="_blank" rel="noopener">make_classification</a> — the synthetic classification data and its <code>n_features</code> default.</li>
+          <li id="src-25"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html" target="_blank" rel="noopener">LogisticRegression</a> — <code>predict_proba</code>, <code>max_iter</code> and the lbfgs solver.</li>
+          <li id="src-26"><a href="https://scikit-learn.org/stable/modules/model_evaluation.html#accuracy-score" target="_blank" rel="noopener">Metrics and scoring: accuracy_score</a> — accuracy, and why it misleads on imbalanced classes.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · after you have read the page</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 6 Day 1</footer>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 1 — goals</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Tell a hand-written rule from a learned model and use sample, feature, label, model and test set correctly</li>
+      <li>Sort a problem into supervised or unsupervised, then regression or classification, and name its label and features</li>
+      <li>Fit a <code>LinearRegression</code>, read its slope and intercept, and score it with MSE and R² on a held-out test set</li>
+      <li>Fit multiple and polynomial regressions and recognise underfitting and overfitting from training and test scores</li>
+      <li>Train a <code>LogisticRegression</code>, read <code>predict</code> against <code>predict_proba</code>, and explain when accuracy misleads</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Day 2 — Unsupervised learning: clustering →", href: "day-2-clustering-and-k-means.html" };
+window.DIAGRAM = {
+  title: "Day 1 · from labelled examples to a line and a boundary",
+  width: 500, height: 520,
+  nodes: [
+    { id:"ml", step:0, kind:"example", x:14, y:14, w:472, h:50, label:"MACHINE LEARNING\n  a rule learned from samples, features and labels", detail:"Samples are rows, features are columns of X, the label is y. Construct, fit(X, y), predict. Regression, classification and clustering are the three families." },
+    { id:"sup", step:1, x:24, y:86, w:200, h:48, label:"Supervised\n  fit(X, y) · every row has a label", detail:"A continuous label means regression; a discrete label means classification. Labels are often the expensive part." },
+    { id:"unsup", step:1, x:276, y:86, w:200, h:48, label:"Unsupervised\n  fit(X) · no label", detail:"Finds structure such as groups. No answer key to score against. Clustering is Tuesday." },
+    { id:"reg", step:2, x:24, y:158, w:200, h:48, label:"Regression\n  price · hours · demand", detail:"Features known at prediction time, a number back. A straight line extrapolates past the data to impossible values." },
+    { id:"line", step:3, x:24, y:230, w:200, h:56, label:"Fitting the line\n  coef_ · intercept_\n  least squares · MSE · R²", detail:"Least squares minimises the sum of squared residuals, in one step. On the make_regression data: slope 45.79, intercept 1.75, R² 0.907." },
+    { id:"split", step:4, x:276, y:230, w:200, h:56, label:"Train and test\n  train_test_split · test_size=0.2\n  random_state · stratify", detail:"Score on rows the model never saw. Train R² 0.912 against test R² 0.874 is a healthy gap; 0.9 against 0.2 is overfitting." },
+    { id:"types", step:5, x:24, y:310, w:200, h:56, label:"Types of regression\n  multiple · polynomial\n  degree 1 · 3 · 15", detail:"One coefficient per feature. PolynomialFeatures adds powers. Degree 1 underfits, degree 15 overfits: train 0.842, test 0.679." },
+    { id:"clf", step:6, x:276, y:310, w:200, h:56, label:"Logistic regression\n  predict · predict_proba\n  straight boundary", detail:"A classifier despite its name. accuracy_score is the fraction correct. max_iter=5000 lets lbfgs finish on unscaled features." },
+    { id:"apps", step:7, x:276, y:390, w:200, h:56, label:"Classification uses\n  spam · fraud · diagnosis\n  check the baseline", detail:"A miss and a false alarm rarely cost the same. Never flagging 10 frauds in 1,000 payments still scores 0.990 accuracy." },
+    { id:"check", step:8, x:24, y:470, w:452, h:40, label:"CHECK YOURSELF\n  answer out loud, then open" }
+  ],
+  edges: [
+    { id:"e1", step:1, from:"ml", to:"sup", label:"has a label" },
+    { id:"e2", step:1, from:"ml", to:"unsup", label:"no label" },
+    { id:"e3", step:2, from:"sup", to:"reg", label:"a number" },
+    { id:"e4", step:3, from:"reg", to:"line", label:"one feature" },
+    { id:"e5", step:4, from:"line", to:"split", label:"unseen rows" },
+    { id:"e6", step:5, from:"split", to:"types", label:"more columns" },
+    { id:"e7", step:6, from:"split", to:"clf", label:"a category" },
+    { id:"e8", step:7, from:"clf", to:"apps", label:"what errors cost" },
+    { id:"e9", step:8, from:"types", to:"check", dir:"-" },
+    { id:"e10", step:8, from:"apps", to:"check", dir:"-" }
+  ],
+  captions: [
+    "Machine learning finds a rule from labelled examples; every scikit-learn model is constructed, fitted, then asked to predict. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "The first question is whether the data has a label: fit(X, y) is supervised, fit(X) is unsupervised.",
+    "Regression answers with a number, from features known before the answer exists.",
+    "Least squares picks the line with the smallest sum of squared residuals; MSE and R² say how well it fits.",
+    "A model is scored on rows it never saw; random_state makes the split repeatable and stratify keeps the class balance.",
+    "More columns give multiple and polynomial regression; too low a degree underfits and too high a degree overfits.",
+    "Logistic regression classifies with a straight boundary, a class from predict and probabilities from predict_proba.",
+    "A classifier is judged by what its mistakes cost, and accuracy is compared with the majority-class baseline.",
+    "You can now frame a problem, fit and score a line, spot overfitting, and say when accuracy misleads."
+  ]
+};
+window.QUIZ = {
+  id: "w06-d1",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "What does LinearRegression's score(X, y) return?",
+      options: ["The mean squared error", "R², the coefficient of determination", "The fraction of exact predictions", "The sum of squared residuals"], answer: 1,
+      explain: "A regression model's score returns R²: 1.0 is a perfect fit and it can be negative on unseen data. MSE comes from mean_squared_error." },
+    { type: "tf", stem: "LogisticRegression is a regression model: it predicts a continuous number.", answer: false,
+      explain: "It is a classifier despite its name. predict returns a class and predict_proba one probability per class, and its decision boundary is linear." },
+    { type: "mcq", stem: "Which of these problems are supervised? Select all that apply.",
+      options: ["Predicting a used car's sale price from past sales", "Flagging fraudulent payments using confirmed chargebacks", "Grouping customers by buying habits when no groups are defined", "Routing tickets to the team that closed similar tickets before"], answer: [0, 1, 3],
+      explain: "Price, fraud and team each come from a recorded answer, so those three are supervised. Grouping customers with no defined groups has no label, so it is unsupervised." },
+    { type: "match", stem: "Match each term to what it means.",
+      pairs: [
+        { l: "residual", r: "the true value minus the model's prediction for one sample" },
+        { l: "underfitting", r: "too simple a model: poor scores on training and test data" },
+        { l: "overfitting", r: "a model that learned the noise: good on training, poor on test" },
+        { l: "hyperparameter", r: "a setting chosen before fit, such as the polynomial degree" }
+      ],
+      explain: "Least squares minimises the squared residuals. Degree 1 on cubic data underfits, degree 15 overfits, and the degree itself is a hyperparameter chosen by a person." },
+    { type: "scq", stem: "A polynomial model scores R² 0.842 on training data and 0.679 on test data, while a simpler model scores 0.814 and 0.870. What is the best reading?",
+      options: ["The first model is better because its training score is higher", "The first model overfits: it follows the noise in the training rows", "Both underfit because neither training score reaches 0.9", "The test set is broken because a test score beat a training score"], answer: 1,
+      explain: "Training score up and test score down is the sign of overfitting. The model with the better test score is the one to trust." },
+    { type: "open", stem: "In two or three sentences: a fraud model scores 99 percent accuracy. Why might it still be useless, and what would you check?",
+      hint: "Think about how rare fraud is and what always guessing the common class scores.",
+      model: "If only 1 percent of payments are fraud, a model that never flags fraud scores 99 percent and catches nothing. I would count the classes, compare the accuracy with that majority-class baseline, and look at how many real frauds it misses, since a missed fraud costs far more than a false alarm." }
+  ]
+};
+</script>
+
+<script src="../../assets/js/diagram.js?v=20261116"></script>
+<script src="../../assets/js/scrolly.js?v=20261116"></script>
+<script src="../../assets/js/modals.js?v=20261116"></script>
+<script src="../../assets/js/quiz.js?v=20261116"></script>
+<script src="../../assets/js/widgets.js?v=20261116"></script>
+<script src="../../assets/js/glossary.js?v=20261116"></script>
+</body>
+</html>

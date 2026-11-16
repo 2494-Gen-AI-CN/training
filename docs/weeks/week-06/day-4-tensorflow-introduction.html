@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w06d4">
+<title>W6·D4 — TensorFlow introduction | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261116">
+<script src="../../assets/js/theme.js?v=20261116"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="../../exit-criteria/index.html">Exit criteria</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>TensorFlow introduction: tensors, graphs and reductions in TensorFlow 2</h1>
+        <div class="meta">
+          <span><b>Week 6</b> · Day 4</span>
+          <span>Thu Nov 19, 2026</span>
+          <span>AI/ML fundamentals</span>
+          <span><b>~34 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span class="verified">Sources checked 2026-11-16 · python 3.15 · colab-python 3.12.x · tensorflow 2.21.x · keras 3.15.x</span>
+        </div>
+        <p class="summary">The page assumes Wednesday's picture of a neural network as layers of array arithmetic, run in
+        numpy. It moves that arithmetic into TensorFlow 2 in Google Colab: what the library is and where it came from,
+        tensors with their rank, shape and dtype, graphs built with <code>tf.function</code> and the tracing behind them,
+        reductions over any set of axes on a batch of MNIST images, and how TensorFlow 1's sessions became TensorBoard's
+        Graphs tab. Afterwards you can explain eager against graph execution, say why a function retraced, predict the shape
+        a reduction returns, and read an old <code>tf.Session</code> tutorial as history.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="0">
+        <div class="tag">Library</div>
+        <h2>TensorFlow in Colab: tensors, operations and Keras on top</h2>
+        <p>Wednesday's network was plain numpy: arrays of weights, a multiply, an add and a function applied to each value.
+        TensorFlow does the same arithmetic in a library built for training networks, so this step is about what that
+        library is and how to get it running.</p>
+        <h3>What TensorFlow is</h3>
+        <p>TensorFlow is an open-source library for numerical computation on tensors, with Keras as its high-level
+        model-building API.<sup class="cite"><a href="#src-1">1</a></sup> A tensor is a multi-dimensional array with one
+        uniform dtype, the type every element shares. Its rank is the number of axes it has, and its shape is the length of
+        each axis.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <p>An operation takes tensors in and gives tensors back. Examples of operations:</p>
+        <ul>
+          <li>addition</li>
+          <li>matrix multiplication (<code>tf.matmul</code>)</li>
+          <li>a sum over one axis (<code>tf.reduce_sum</code>)</li>
+          <li>a type conversion (<code>tf.cast</code>)</li>
+        </ul>
+        <p>A TensorFlow program is a chain of them, and the library's job is to run that chain quickly, on a CPU or a
+        GPU.</p>
+        <p>The everyday name for the module is <code>tf</code>. You build a tensor with <code>tf.constant</code>, and
+        <code>.numpy()</code> copies its values into a NumPy array, which is how you hand results to matplotlib or
+        scikit-learn.<sup class="cite"><a href="#src-1">1</a></sup></p>
+<pre><code># Run in Colab
+import tensorflow as tf
+
+x = tf.constant([[1., 2.], [3., 4.]])
+print(x)
+print(type(x.numpy()).__name__)</code></pre>
+<pre class="out">tf.Tensor(
+[[1. 2.]
+ [3. 4.]], shape=(2, 2), dtype=float32)
+ndarray</pre>
+        <p>The printout carries the values, the shape and the dtype together. The dots after the numbers mean they are
+        floats, which is why TensorFlow picked <code>float32</code>.</p>
+        <p>One difference from NumPy shows up the first time you try to edit a value. Tensors made with
+        <code>tf.constant</code> are immutable: you never change one in place, you build a new tensor
+        instead.<sup class="cite"><a href="#src-2">2</a></sup></p>
+<pre><code># Run in Colab
+try:
+    x[0, 0] = 5.0
+except TypeError as err:
+    print(type(err).__name__)</code></pre>
+<pre class="out">TypeError</pre>
+        <p>A NumPy array would have accepted that assignment. State that changes, such as a network's weights during
+        training, lives in a <code>tf.Variable</code>, and Friday sets the two side by
+        side.<sup class="cite"><a href="#src-2">2</a></sup> A tensor is also strictly typed, so it gives up the in-place
+        editing a NumPy array allows.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <h3>Keras, the layer teams write models in</h3>
+        <p>Very little production code builds a network from raw tensor operations. Teams write models in Keras, the
+        high-level API that sits on top of TensorFlow and is reached as <code>tf.keras</code>. From TensorFlow 2.16,
+        <code>tf.keras</code> is Keras 3, which can train on a TensorFlow, JAX or PyTorch
+        backend.<sup class="cite"><a href="#src-3">3</a></sup></p>
+        <p>The layers stack like this:</p>
+        <ul>
+          <li>tensors hold the numbers</li>
+          <li>operations such as add, matmul and reduce_sum compute with them</li>
+          <li>Keras layers and models bundle many operations and their weights into named pieces</li>
+        </ul>
+        <p>This page stays at the bottom two layers, because they are what a Keras model turns into when it runs. Friday
+        builds the first Keras model. In someone else's code, <code>import tensorflow as tf</code> followed by
+        <code>tf.keras.Sequential</code> or <code>tf.keras.layers.Dense</code> means Keras on TensorFlow, while bare
+        <code>tf.constant</code> and <code>tf.matmul</code> calls mean someone is working at the operation level.</p>
+        <h3>Running it in Colab</h3>
+        <p>TensorFlow publishes no wheel for the course's Python 3.15, so this week runs in Google Colab. Colab ships
+        TensorFlow preinstalled and runs on a CPU unless you choose a GPU runtime.<sup class="cite"><a href="#src-4">4</a></sup> A CPU is plenty for everything on this page. Nothing gets
+        installed with <code>pip</code>, and nothing is uploaded.</p>
+        <p>The first cell of any TensorFlow notebook should say which versions it is running on:</p>
+<pre><code># Run in Colab
+import tensorflow as tf
+
+print(tf.__version__)
+print(tf.keras.__version__)
+print(tf.config.list_physical_devices())</code></pre>
+        <p>The first line prints the TensorFlow 2 version Colab ships and the second a Keras 3 version, since
+        <code>tf.keras</code> is Keras 3 from TensorFlow 2.16.<sup class="cite"><a href="#src-3">3</a></sup> The last
+        prints the devices TensorFlow can see, a CPU unless you picked a GPU runtime.<sup class="cite"><a href="#src-4">4</a></sup>
+        Exact numbers move whenever Colab updates its image, which is why a shared notebook prints them in its first cell
+        rather than quoting them in a comment.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A tensor is a multi-dimensional array with one dtype, a rank and a shape.</li>
+          <li>Tensors from tf.constant are immutable; changing state belongs in a tf.Variable.</li>
+          <li>Keras is the high-level API on top; tf.keras is Keras 3 from TensorFlow 2.16.</li>
+          <li>Colab ships TensorFlow preinstalled and runs on a CPU by default.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A tensor is TensorFlow's version of a NumPy array: a multi-dimensional array where every element has the same
+          dtype. The big differences are that a constant tensor is immutable, so I build a new one instead of editing it,
+          and that TensorFlow can run the same operations on a GPU or export them as a graph.</p>
+          <p>Rank is how many axes the tensor has, shape is the length of each axis, and dtype is the element type. Those
+          three tell me almost everything about whether two tensors can be combined.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">History</div>
+        <h2>History of TensorFlow</h2>
+        <p>TensorFlow's programming model changed between version 1 and version 2, and most material online was
+        written for version 1. The timeline tells you whether a tutorial still works or fails on its first line.</p>
+        <h3>From DistBelief to an open-source release</h3>
+        <p>TensorFlow came out of Google Brain as its second-generation system for machine learning, the successor to an
+        internal system called DistBelief.<sup class="cite"><a href="#src-5">5</a></sup> Its API and a reference
+        implementation were released as open source under the Apache 2.0 licence in November
+        2015.<sup class="cite"><a href="#src-5">5</a></sup></p>
+        <p>The paper that describes the system is titled for large-scale machine learning on heterogeneous distributed
+        systems.<sup class="cite"><a href="#src-5">5</a></sup></p>
+        <h3>TensorFlow 1, TensorFlow 2 and Keras 3</h3>
+        <p>The releases that matter for reading code are these:</p>
+        <table>
+          <thead><tr><th>Release</th><th>Date</th><th>What changed for the person writing code</th></tr></thead>
+          <tbody>
+            <tr><td>Open-source release</td><td>November 2015</td><td>The API and reference implementation published under Apache 2.0</td></tr>
+            <tr><td>TensorFlow 1.0.0</td><td>February 2017</td><td>Build a graph first, then run it in a session</td></tr>
+            <tr><td>TensorFlow 2.0.0</td><td>September 2019</td><td>Eager execution by default; Keras the main high-level API</td></tr>
+            <tr><td>TensorFlow 2.16</td><td>Later 2.x line</td><td><code>tf.keras</code> becomes Keras 3, which also trains on JAX or PyTorch</td></tr>
+          </tbody>
+        </table>
+        <p>TensorFlow 1.0.0 was released in February 2017.<sup class="cite"><a href="#src-6">6</a></sup> In TensorFlow 1
+        you built a graph first and then ran it in a session, so writing a line such as <code>y = x * 2</code> computed
+        nothing yet.<sup class="cite"><a href="#src-25">25</a></sup> Version 2's eager execution, where each line runs as
+        Python reaches it, is easy to debug by comparison.<sup class="cite"><a href="#src-13">13</a></sup></p>
+        <p>TensorFlow 2.0.0 followed in September 2019.<sup class="cite"><a href="#src-8">8</a></sup> It made eager
+        execution the default and Keras the main high-level API.<sup class="cite"><a href="#src-9">9</a></sup> A line ran
+        when Python reached it, the way NumPy does, and graphs moved behind a decorator that this page covers in step 4.
+        From TensorFlow 2.16, <code>tf.keras</code> is Keras 3.<sup class="cite"><a href="#src-3">3</a></sup></p>
+        <h3>PyTorch and JAX alongside it</h3>
+        <p>TensorFlow is one of three open-source frameworks you will hear about in machine-learning teams. PyTorch is a
+        deep-learning framework that runs eagerly. JAX is Google's NumPy-style library with composable <code>jit</code>,
+        <code>grad</code> and <code>vmap</code> transformations.<sup class="cite"><a href="#src-10">10</a></sup><sup class="cite"><a href="#src-11">11</a></sup></p>
+        <table>
+          <thead><tr><th>Framework</th><th>Style</th><th>How you recognise it</th></tr></thead>
+          <tbody>
+            <tr><td>TensorFlow 2</td><td>Eager by default, graphs through <code>tf.function</code>, Keras on top</td><td><code>import tensorflow as tf</code></td></tr>
+            <tr><td>PyTorch</td><td>Eager deep-learning framework</td><td><code>import torch</code></td></tr>
+            <tr><td>JAX</td><td>NumPy-style arrays with <code>jit</code> and <code>grad</code> transformations</td><td><code>import jax.numpy as jnp</code></td></tr>
+          </tbody>
+        </table>
+        <p>Keras 3 blurs the line between them, because the same Keras model can train on any of the three
+        training backends (TensorFlow, JAX, PyTorch).<sup class="cite"><a href="#src-3">3</a></sup> For a junior developer the useful point is that the ideas
+        on this page carry across. Every framework has tensors with a shape and a dtype, operations on them, and some way
+        to compile a function for speed.</p>
+        <h3>Why tutorials still show Session</h3>
+        <p>Most TensorFlow material online, including blog posts, answers on forums and older courses, predates 2019. It
+        uses <code>tf.Session</code> and <code>tf.placeholder</code>, and you will meet it every time you search for an
+        error message. You recognise it on sight by a line such as <code>sess = tf.Session()</code> or a
+        <code>feed_dict</code> argument.</p>
+        <p>That code does not run unchanged on TensorFlow 2. The old API survives under <code>tf.compat.v1</code>, and it
+        exists as a migration bridge for teams moving old code forward.<sup class="cite"><a href="#src-7">7</a></sup> For
+        new code the right move is to read a TensorFlow 1 tutorial for its idea, then write the TensorFlow 2 version, with
+        eager calls and <code>tf.function</code> in place of the session.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Google Brain open-sourced TensorFlow under Apache 2.0 in November 2015, after DistBelief.</li>
+          <li>TensorFlow 1 built a graph and ran it in a session; TensorFlow 2 runs eagerly.</li>
+          <li>PyTorch and JAX are the other common frameworks, and Keras 3 trains on all three.</li>
+          <li>A tutorial with tf.Session is TensorFlow 1 history and fails on TensorFlow 2.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>TensorFlow came out of Google Brain as the successor to their internal DistBelief system, and it was
+          open-sourced in November 2015. Version 1 arrived in 2017 and version 2 in 2019.</p>
+          <p>The big change in version 2 was eager execution. In version 1 you built a graph and then ran it inside a
+          session, so nothing computed until the session ran. In version 2 operations run immediately, Keras is the main
+          API, and you opt into a graph with tf.function when you want the speed.</p>
+          <p>PyTorch is the other big eager framework, and JAX is Google's NumPy-style library built around jit and grad.
+          Keras 3 can now train on any of the three as a backend.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">Tensors</div>
+        <h2>Tensors: rank, shape, dtype and arithmetic</h2>
+        <p>Most bugs in TensorFlow code come down to a shape or a dtype. Three properties describe any
+        tensor, and reading them off a printout is the first habit to build.</p>
+        <h3>Rank, shape and dtype</h3>
+        <p>Rank is the number of axes.<sup class="cite"><a href="#src-1">1</a></sup> The shape gives the length along
+        each axis, so a shape of <code>(2, 3)</code> is two rows of three.</p>
+        <table>
+          <thead><tr><th>Rank</th><th>What it is</th><th>Example shape</th></tr></thead>
+          <tbody>
+            <tr><td>0</td><td>a single number</td><td><code>()</code></td></tr>
+            <tr><td>1</td><td>a list</td><td><code>(3,)</code></td></tr>
+            <tr><td>2</td><td>a grid</td><td><code>(2, 3)</code></td></tr>
+            <tr><td>3</td><td>a stack of grids (a batch of greyscale images)</td><td><code>(60000, 28, 28)</code></td></tr>
+          </tbody>
+        </table>
+        <p><code>tf.constant</code> infers the dtype from the Python values you give it. Python floats become
+        <code>float32</code> and Python ints become <code>int32</code>.<sup class="cite"><a href="#src-1">1</a></sup></p>
+<pre><code># Run in Colab
+scalar = tf.constant(7)
+vector = tf.constant([1.0, 2.0, 3.0])
+matrix = tf.constant([[1, 2], [3, 4]])
+
+for name, t in [("scalar", scalar), ("vector", vector), ("matrix", matrix)]:
+    print(name, t.ndim, t.shape, t.dtype.name)</code></pre>
+<pre class="out">scalar 0 () int32
+vector 1 (3,) float32
+matrix 2 (2, 2) int32</pre>
+        <p>A rank-0 tensor has the empty shape <code>()</code>, and a rank-1 shape is written with a trailing comma, as a
+        Python tuple of one item is. Reading a shape aloud is a useful habit: <code>(2, 2)</code> is "two by two", and
+        <code>(60000, 28, 28)</code> later on this page is "sixty thousand images of twenty-eight by twenty-eight".</p>
+        <h3>One dtype per tensor, and tf.cast</h3>
+        <p>A tensor holds one dtype for all its elements. When an operation receives two tensors of different dtypes,
+        TensorFlow raises an error instead of converting one of them quietly, and <code>tf.cast</code> is how you convert
+        on purpose.<sup class="cite"><a href="#src-12">12</a></sup></p>
+<pre><code># Run in Colab
+ints = tf.constant([1, 2])
+floats = tf.constant([0.5, 0.5])
+
+try:
+    ints + floats
+except Exception as err:
+    print(type(err).__name__)
+
+print((tf.cast(ints, tf.float32) + floats).numpy())</code></pre>
+<pre class="out">InvalidArgumentError
+[1.5 2.5]</pre>
+        <p>The addition failed because one input was <code>int32</code> and the other <code>float32</code>. NumPy would have promoted the integers to floats without a word. The strictness costs a cast now and then,
+        and in return a dtype mix-up fails loudly on the line that caused it rather than producing quietly rounded
+        numbers.<sup class="cite"><a href="#src-12">12</a></sup></p>
+        <p>You see this pattern constantly in real code. Images arrive as integers from 0 to 255, and the first line after
+        loading them is nearly always a cast to <code>float32</code> and a divide by 255. Step 6 shows why that cast matters
+        for a mean.</p>
+        <h3>Elementwise arithmetic, broadcasting and matmul</h3>
+        <p>The arithmetic operators work element by element on tensors of the same shape. When the shapes differ,
+        broadcasting stretches an axis of length 1, or an axis that is missing, so the two can be combined. Matrix
+        multiplication is a separate operation, <code>tf.matmul</code>.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <p>The broadcasting rule lines the shapes up from the right:</p>
+        <ul>
+          <li>two axes are compatible when their lengths are equal or one of them is 1</li>
+          <li>a missing axis on the left counts as length 1</li>
+          <li>the result takes the larger length on every axis</li>
+        </ul>
+<pre><code># Run in Colab
+x = tf.constant([[1.0, 2.0], [3.0, 4.0]])
+row = tf.constant([10.0, 20.0])
+column = tf.constant([[1.0], [2.0], [3.0]])
+
+print((x + row).numpy())
+print((x * 2).numpy())
+print(tf.matmul(x, x).numpy())
+print((tf.constant([1.0, 2.0, 3.0]) + column).shape)</code></pre>
+<pre class="out">[[11. 22.]
+ [13. 24.]]
+[[2. 4.]
+ [6. 8.]]
+[[ 7. 10.]
+ [15. 22.]]
+(3, 3)</pre>
+        <p>The row of shape <code>(2,)</code> was added to each row of <code>x</code>, and the plain number 2 was stretched
+        to every element. <code>tf.matmul</code> did rows times columns, so its top-left value is 1 × 1 + 2 × 3 = 7. The
+        last line is the limit of broadcasting: a vector of shape <code>(3,)</code> plus a column of shape
+        <code>(3, 1)</code> gives a full <code>(3, 3)</code> grid, with no error, which is rarely what the author
+        meant.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <p>When a result has more elements than you expected, print the shapes of both inputs before anything else. In
+        Wednesday's numpy network, a layer's forward pass was a matrix product plus a bias row, and in TensorFlow that is
+        <code>tf.matmul(inputs, weights) + bias</code>, with broadcasting adding the bias to every row.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Rank counts axes, shape gives each axis's length, and dtype is the one element type.</li>
+          <li>Python floats become float32 and Python ints become int32 in tf.constant.</li>
+          <li>Mixing dtypes raises an error; tf.cast converts on purpose.</li>
+          <li>Broadcasting stretches length-1 or missing axes, which can silently grow a result.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>tf.constant infers the dtype from the values, so floats become float32 and ints become int32. If I add an int
+          tensor to a float tensor, TensorFlow raises an error instead of promoting one of them, so I cast explicitly
+          with tf.cast. That strictness catches mistakes that NumPy would hide.</p>
+          <p>Arithmetic operators are elementwise and broadcast: an axis of length one gets stretched to match. Matrix
+          multiplication is tf.matmul. When a result has an unexpected shape, the first thing I check is whether
+          broadcasting stretched something I didn't mean it to.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="3">
+        <div class="tag">Graphs</div>
+        <h2>Implementing basic graphs with tf.function</h2>
+        <p>"Implementing basic graphs" in TensorFlow 2 means writing an ordinary Python function of tensors and asking
+        TensorFlow to turn it into a graph. Both ways of running it give the same numbers, so the interesting part is what
+        changes underneath.</p>
+        <h3>Eager execution</h3>
+        <p>TensorFlow 2 runs operations eagerly by default: each one executes as soon as Python reaches it and returns a
+        concrete value.<sup class="cite"><a href="#src-13">13</a></sup> Every example so far on this page ran this way,
+        which is why you could print a result on the next line.</p>
+<pre><code># Run in Colab
+def affine(x, w, b):
+    return x * w + b
+
+x = tf.constant([1.0, 2.0, 3.0])
+w = tf.constant(2.0)
+b = tf.constant(1.0)
+print(affine(x, w, b).numpy())</code></pre>
+<pre class="out">[3. 5. 7.]</pre>
+        <p>Eager execution is easy to debug.<sup class="cite"><a href="#src-13">13</a></sup> You can put a breakpoint or
+        a print on any line and see real numbers. The cost is that Python itself drives every operation, one call at a
+        time.</p>
+        <h3>The same function as a graph</h3>
+        <p><code>tf.function</code> traces a Python function into a <code>tf.Graph</code>. The graph is a set of
+        <code>tf.Operation</code> nodes joined by <code>tf.Tensor</code> edges, and TensorFlow can optimise it and run it
+        without Python.<sup class="cite"><a href="#src-13">13</a></sup> You can wrap an existing function, as below, or
+        write <code>@tf.function</code> on the line above <code>def</code>, which does the same thing.</p>
+<pre><code># Run in Colab
+graph_affine = tf.function(affine)
+print(graph_affine(x, w, b).numpy())</code></pre>
+<pre class="out">[3. 5. 7.]</pre>
+        <p>The answer is identical. On the first call TensorFlow ran the Python body once to record
+        each operation it met, then ran the recorded graph. Later calls with the same kind of input skip the Python body
+        and run the graph directly.<sup class="cite"><a href="#src-14">14</a></sup></p>
+        <p>The two modes trade against each other:</p>
+        <table>
+          <thead><tr><th>Mode</th><th>Good at</th><th>Watch out for</th></tr></thead>
+          <tbody>
+            <tr><td>Eager</td><td>Debugging line by line, printing real values</td><td>Python drives every operation</td></tr>
+            <tr><td>Graph (<code>tf.function</code>)</td><td>Optimisation, and export to run without Python</td><td>Python side effects run only while tracing</td></tr>
+          </tbody>
+        </table>
+        <p>Graphs allow optimisation and export.<sup class="cite"><a href="#src-13">13</a></sup> The price is that
+        Python side effects, such as a <code>print</code> or appending to a list, run only while the function is being
+        traced, not on every call.<sup class="cite"><a href="#src-14">14</a></sup></p>
+        <h3>What is inside the graph</h3>
+        <p><code>get_concrete_function</code> returns the traced graph for one input
+        signature.<sup class="cite"><a href="#src-14">14</a></sup> Its <code>graph.get_operations()</code> lists the nodes,
+        each with a type.</p>
+<pre><code># Run in Colab
+concrete = graph_affine.get_concrete_function(x, w, b)
+print([op.type for op in concrete.graph.get_operations()])</code></pre>
+<pre class="out">['Placeholder', 'Placeholder', 'Placeholder', 'Mul', 'AddV2', 'Identity']</pre>
+        <p>There is one node per input, one for the multiply, one for the add, and one for the returned value. A traced
+        graph's nodes have types such as <code>Placeholder</code>, <code>Const</code>, <code>AddV2</code> and
+        <code>Identity</code>.<sup class="cite"><a href="#src-13">13</a></sup> Here each <code>Placeholder</code> is the
+        node for one of the function's input arguments. It is not TensorFlow 1's <code>tf.placeholder</code> API, which
+        step 7 covers as history.</p>
+        <p>A <code>Const</code> node appears when a plain Python number ends up inside the graph, for example writing
+        <code>x * 2.0</code> instead of passing <code>w</code> as a tensor. In someone else's code, the two signs that a
+        graph is involved are <code>@tf.function</code> above a <code>def</code> and a call to
+        <code>get_concrete_function</code> when somebody is inspecting one.</p>
+        <h3>AutoGraph: Python control flow in a graph</h3>
+        <p>The follow-up question is usually about <code>if</code> and <code>for</code>. A graph has no Python in it, so a
+        Python <code>if</code> on a tensor's value cannot simply be recorded. AutoGraph is the part of
+        <code>tf.function</code> that rewrites Python <code>if</code> and <code>for</code> statements that depend on tensors
+        into graph operations, which is why ordinary control flow still works inside a decorated
+        function.<sup class="cite"><a href="#src-14">14</a></sup></p>
+        <p>The limit comes from the same mechanism. Anything that is not a TensorFlow operation, such as a Python
+        <code>print</code> or appending to a Python list, runs only while the function is being traced, and the graph has no
+        record of it.<sup class="cite"><a href="#src-14">14</a></sup> The next step shows that happening.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>TensorFlow 2 runs operations eagerly by default, which makes code easy to debug.</li>
+          <li>tf.function traces a Python function into a graph of operations joined by tensors.</li>
+          <li>get_concrete_function(...).graph.get_operations() lists the nodes of one traced graph.</li>
+          <li>AutoGraph turns tensor-dependent if and for statements into graph operations.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Eager execution runs each operation as soon as Python reaches it and gives me a real value, so it's easy to
+          debug. Graph execution records the operations first and then runs the recorded graph, which TensorFlow can
+          optimise and export without Python.</p>
+          <p>Putting tf.function on a Python function makes TensorFlow trace it. On the first call it runs the Python body
+          once to record the operations into a graph, and later calls with the same kind of input run that graph directly.
+          That recording pass is what people mean by a trace.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">Graphs</div>
+        <h2>Tracing and retracing</h2>
+        <p>Tracing is the first call of a <code>tf.function</code> for a new kind of input, when Python runs the body once
+        to record the graph. Most surprises with <code>tf.function</code> come from forgetting that the Python body runs at
+        trace time and the graph runs every time.</p>
+        <h3>Python print against tf.print</h3>
+        <p>During tracing a Python <code>print</code> runs once. <code>tf.print</code> becomes an operation in the graph,
+        so it prints on every call.<sup class="cite"><a href="#src-14">14</a></sup> Putting both in one function shows the
+        two moments apart.</p>
+<pre><code># Run in Colab
+@tf.function
+def double(x):
+    print("Python print: tracing with shape", x.shape)
+    tf.print("tf.print: running with", x)
+    return x * 2
+
+for t in [tf.constant([1.0, 2.0]), tf.constant([3.0, 4.0]), tf.constant([1.0, 2.0, 3.0])]:
+    double(t)</code></pre>
+<pre class="out">Python print: tracing with shape (2,)
+tf.print: running with [1 2]
+tf.print: running with [3 4]
+Python print: tracing with shape (3,)
+tf.print: running with [1 2 3]</pre>
+        <p>Read the output in order:</p>
+        <ul>
+          <li>the first call traced, so the Python <code>print</code> ran, and then the graph ran, so <code>tf.print</code> ran</li>
+          <li>the second call had the same shape and dtype, so only the graph ran</li>
+          <li>the third call had a new shape, <code>(3,)</code>, so TensorFlow traced a second graph</li>
+        </ul>
+        <p>The Python <code>print</code> also showed a shape and never a value. While tracing, <code>x</code> is
+        a symbolic tensor that stands for any input of that shape, so there is no value to show yet. <code>tf.print</code>
+        is the graph-safe way to print tensor values.<sup class="cite"><a href="#src-14">14</a></sup> A Python
+        <code>print</code> inside a decorated function that seems to fire only once is the most common way people discover
+        tracing.</p>
+        <h3>New shapes and dtypes trace new graphs</h3>
+        <p>A <code>tf.function</code> retraces when it sees a new input shape or dtype, or a new Python value as an
+        argument.<sup class="cite"><a href="#src-14">14</a></sup> Each trace produces a new concrete function, and the
+        <code>tf.function</code> keeps them all and picks the right one per call.<sup class="cite"><a href="#src-14">14</a></sup>
+        Python values are the trap, because a plain number is baked into the graph as a constant.</p>
+<pre><code># Run in Colab
+@tf.function
+def scale(x, factor):
+    print("tracing for factor", factor)
+    return x * factor
+
+v = tf.constant([1.0, 2.0])
+for factor in [2.0, 2.0, 3.0]:
+    scale(v, factor)</code></pre>
+<pre class="out">tracing for factor 2.0
+tracing for factor 3.0</pre>
+        <p>The repeated 2.0 reused its graph, and 3.0 needed a new one. Call <code>scale</code> inside a loop over a
+        thousand different Python floats and you pay for a thousand traces, each one a full run of the Python body.
+        Passing <code>tf.constant(3.0)</code> instead keeps one graph, because a tensor
+        argument becomes an input node rather than a constant.</p>
+        <p>The same applies to dtypes. Calling <code>double</code> above with <code>tf.constant([1, 2])</code>, an
+        <code>int32</code> tensor, would trace a third graph next to the two <code>float32</code>
+        ones.<sup class="cite"><a href="#src-14">14</a></sup></p>
+        <h3>Fixing the signature with input_signature</h3>
+        <p>When you know what a function will receive, you can say so. Passing <code>input_signature</code> with a
+        <code>tf.TensorSpec</code> fixes the shape and dtype the function accepts, so it stops
+        retracing.<sup class="cite"><a href="#src-14">14</a></sup> A <code>None</code> in the shape means that axis can have
+        any length.</p>
+<pre><code># Run in Colab
+@tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=tf.float32)])
+def double_any_length(x):
+    print("tracing")
+    return x * 2
+
+for t in [tf.constant([1.0, 2.0]), tf.constant([1.0, 2.0, 3.0])]:
+    print(double_any_length(t).numpy())</code></pre>
+<pre class="out">tracing
+[2. 4.]
+[2. 4. 6.]</pre>
+        <p>One trace served both lengths. The signature acts as a contract, so the function accepts only the
+        shape and dtype it names.<sup class="cite"><a href="#src-14">14</a></sup>
+        You recognise the pattern by <code>@tf.function(input_signature=[...])</code> above a function that a team serves
+        or exports, where one stable graph matters more than flexibility.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A Python print runs once while tracing; tf.print runs on every call.</li>
+          <li>A new shape, dtype or Python value as argument makes tf.function trace again.</li>
+          <li>Pass tensors, not Python numbers, to avoid a trace per value.</li>
+          <li>input_signature with tf.TensorSpec fixes the accepted shape and dtype and stops retracing.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A trace is the first call of a tf.function with a new kind of input. Python runs the body once to record
+          the operations, so a Python print fires only then, while tf.print is part of the graph and prints every
+          call.</p>
+          <p>A function retraces when it sees a new shape, a new dtype or a new Python value. Every retrace runs the Python body again,
+          so I pass tensors instead of Python numbers, and if the inputs vary in length I give it an
+          input signature with a TensorSpec.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
+        <div class="tag">Reductions</div>
+        <h2>Reducing tensors of arbitrary shape</h2>
+        <p>A reduction collapses one or more axes of a tensor into fewer values: a sum, a mean or a maximum. The same three
+        functions work on a tensor of any rank, and the <code>axis</code> argument decides which axes disappear.</p>
+        <h3>Reducing every element, one axis or several</h3>
+        <p><code>tf.reduce_sum</code>, <code>tf.reduce_mean</code> and <code>tf.reduce_max</code> reduce over
+        <code>axis</code>. With <code>axis=None</code>, the default, they reduce every element to a rank-0
+        tensor.<sup class="cite"><a href="#src-15">15</a></sup> The axis can be an int or a tuple or list of ints, and a
+        negative axis counts from the end, so <code>-1</code> is always the last
+        axis.<sup class="cite"><a href="#src-15">15</a></sup></p>
+<pre><code># Run in Colab
+t = tf.constant([[[1., 2., 3.], [4., 5., 6.]],
+                 [[7., 8., 9.], [10., 11., 12.]]])   # shape (2, 2, 3)
+
+print(tf.reduce_sum(t).numpy())
+print(tf.reduce_sum(t, axis=0).numpy())
+print(tf.reduce_sum(t, axis=-1).numpy())
+print(tf.reduce_sum(t, axis=(1, 2)).numpy())</code></pre>
+<pre class="out">78.0
+[[ 8. 10. 12.]
+ [14. 16. 18.]]
+[[ 6. 15.]
+ [24. 33.]]
+[21. 57.]</pre>
+        <p>The reduced axes disappear from the shape.<sup class="cite"><a href="#src-15">15</a></sup> Think of
+        <code>t</code> as two blocks of two rows of three:</p>
+        <ul>
+          <li><code>axis=0</code> adds the two blocks together, leaving shape <code>(2, 3)</code></li>
+          <li><code>axis=-1</code> adds along each row, leaving shape <code>(2, 2)</code></li>
+          <li><code>axis=(1, 2)</code> adds everything inside each block, leaving one total per block, shape <code>(2,)</code></li>
+        </ul>
+        <h3>keepdims and broadcasting back</h3>
+        <p><code>keepdims=True</code> keeps each reduced axis with length 1 instead of removing
+        it.<sup class="cite"><a href="#src-15">15</a></sup> This matters when you combine the result with
+        the original: a reduced result with its length-1 axes still in place broadcasts straight back against the tensor it
+        came from.</p>
+<pre><code># Run in Colab
+row_means = tf.reduce_mean(t, axis=-1, keepdims=True)
+print(row_means.shape)
+print((t - row_means).numpy()[0])</code></pre>
+<pre class="out">(2, 2, 1)
+[[-1.  0.  1.]
+ [-1.  0.  1.]]</pre>
+        <p>Each row had its own mean subtracted. Without <code>keepdims</code> the means would have shape
+        <code>(2, 2)</code>, and lining that up against <code>(2, 2, 3)</code> from the right fails, because 2 and 3 do not
+        match. Centring or normalising data row by row is where you see this in real code.</p>
+        <h3>argmax returns positions</h3>
+        <p><code>tf.argmax</code> looks like a fourth reducer and behaves differently in four
+        ways:<sup class="cite"><a href="#src-16">16</a></sup></p>
+        <ul>
+          <li>it takes a single integer axis, never a tuple</li>
+          <li>its default axis is 0: its signature shows <code>axis=None</code>, which argmax treats as axis 0, so leaving <code>axis</code> out does not search the whole tensor</li>
+          <li>it has no <code>keepdims</code></li>
+          <li>it returns indices, not values</li>
+        </ul>
+<pre><code># Run in Colab
+m = tf.constant([[3., 9., 2.], [8., 1., 7.]])
+print(tf.argmax(m).numpy())
+print(tf.argmax(m, axis=1).numpy())
+print(tf.reduce_max(m, axis=1).numpy())</code></pre>
+<pre class="out">[1 0 1]
+[1 0]
+[9. 8.]</pre>
+        <p>With no axis, <code>argmax</code> went down each column and reported which row won. Along axis 1 it reported
+        that the largest value of row 0 sits at position 1 and the largest of row 1 at position 0, while
+        <code>reduce_max</code> gave the values themselves, 9 and 8. A classifier's prediction is this pattern: the position
+        of the highest score in each row is the predicted class.</p>
+        <h3>Reducing a batch of MNIST images</h3>
+        <p><code>tf.keras.datasets.mnist.load_data()</code> returns <code>uint8</code> arrays: 60000 training images of 28
+        by 28 and 10000 test images.<sup class="cite"><a href="#src-17">17</a></sup> Cast integers before taking a mean,
+        because <code>tf.reduce_mean</code> on an integer tensor returns a truncated integer
+        mean.<sup class="cite"><a href="#src-18">18</a></sup></p>
+<pre><code># Run in Colab
+counts = tf.constant([1, 2])
+print(tf.reduce_mean(counts).numpy())
+print(tf.reduce_mean(tf.cast(counts, tf.float32)).numpy())</code></pre>
+<pre class="out">1
+1.5</pre>
+        <p>So the images are cast to <code>float32</code> and divided by 255 first, which also puts every pixel between 0
+        and 1. <code>tf.reshape</code> with <code>-1</code> infers one axis from the others, which turns each 28 by 28 image
+        into a row of 784.<sup class="cite"><a href="#src-19">19</a></sup></p>
+<pre><code># Run in Colab
+(x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+print(x_train.shape, x_train.dtype)
+
+images = tf.cast(x_train, tf.float32) / 255.0
+mean_image = tf.reduce_mean(images, axis=0)
+brightest = tf.reduce_max(images, axis=(1, 2))
+position = tf.argmax(tf.reshape(images, (-1, 784)), axis=1)
+print(mean_image.shape, brightest.shape, position.shape)</code></pre>
+        <p>After a one-time download message, the cell prints <code>(60000, 28, 28) uint8</code> and then
+        <code>(28, 28) (60000,) (60000,)</code>. Reducing over axis 0 gives one 28 by 28 mean image, and reducing over
+        <code>(1, 2)</code> gives one value per image.<sup class="cite"><a href="#src-20">20</a></sup> People often mix
+        those two up, and printing the shape settles it.</p>
+        <h3>One reducer for any shape</h3>
+        <p><code>tf.TensorSpec(shape=None, dtype=tf.float32)</code> accepts any shape in one traced
+        graph.<sup class="cite"><a href="#src-14">14</a></sup> That gives a single compiled function for a scalar, a vector,
+        a matrix or the whole image batch.</p>
+<pre><code># Run in Colab
+@tf.function(input_signature=[tf.TensorSpec(shape=None, dtype=tf.float32)])
+def summarize(x):
+    print("tracing")
+    return tf.reduce_sum(x), tf.reduce_mean(x), tf.reduce_max(x)
+
+for x in [tf.constant(4.0), tf.constant([1.0, 2.0, 6.0]), tf.constant([[1.0, 2.0], [3.0, 10.0]])]:
+    total, mean, largest = summarize(x)
+    print(x.shape, total.numpy(), mean.numpy(), largest.numpy())</code></pre>
+<pre class="out">tracing
+() 4.0 4.0 4.0
+(3,) 9.0 3.0 6.0
+(2, 2) 16.0 4.0 10.0</pre>
+        <p>One trace served three ranks, and <code>summarize(images)</code> runs on the same graph. The limit is the dtype
+        in the signature: this reducer accepts <code>float32</code> only, so the raw <code>uint8</code> MNIST arrays must be
+        cast before they reach it.<sup class="cite"><a href="#src-14">14</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>axis=None reduces everything; an int or tuple of axes removes just those axes.</li>
+          <li>keepdims=True keeps reduced axes at length 1 so the result broadcasts back.</li>
+          <li>tf.argmax takes one integer axis, defaults to 0, and returns positions.</li>
+          <li>Cast uint8 images to float32 before a mean, or the mean is truncated.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>On a batch of images shaped batch by height by width, axis zero is the batch, so reducing over axis zero gives
+          one average image. Reducing over axes one and two gives one number per image. keepdims keeps the reduced axes
+          with length one so I can broadcast the result back against the original.</p>
+          <p>reduce_max gives me the largest value; argmax gives me where it is. argmax takes a single axis, defaults to
+          axis zero rather than the whole tensor, and has no keepdims, so I always pass the axis explicitly.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="6">
+        <div class="tag">Graphs</div>
+        <h2>Graphs, sessions and TensorBoard</h2>
+        <p>The curriculum's phrase "graphs, sessions, TensorBoard" comes from TensorFlow 1. Graphs are still here, behind
+        <code>tf.function</code>. Sessions are gone, and TensorBoard is still how you look at a graph.</p>
+        <h3>TensorFlow 1 sessions, as history</h3>
+        <p>In TensorFlow 1 you built a static graph with <code>tf.placeholder</code> standing in for the inputs, then ran it
+        in a <code>tf.Session</code>, passing the real values in a <code>feed_dict</code>.<sup class="cite"><a href="#src-25">25</a></sup>
+        The graph was evaluated by <code>session.run</code>, given the output tensors you wanted back and the inputs to
+        feed.<sup class="cite"><a href="#src-25">25</a></sup> This is what the pattern looked like:</p>
+<pre><code># TensorFlow 1 (history, do not run)
+x = tf.placeholder(tf.float32, shape=[None])
+y = x * 2.0 + 1.0
+with tf.Session() as sess:
+    print(sess.run(y, feed_dict={x: [1.0, 2.0, 3.0]}))</code></pre>
+        <p>On TensorFlow 1 this printed <code>[3. 5. 7.]</code>. On TensorFlow 2 the first line stops with an
+        <code>AttributeError</code>, so read a block like this for its idea and do not reach for
+        <code>tf.compat.v1</code> to make it run.<sup class="cite"><a href="#src-7">7</a></sup> In TensorFlow 2 a
+        <code>tf.function</code> replaces the session, and ordinary function arguments replace
+        placeholders.<sup class="cite"><a href="#src-9">9</a></sup> You define neither a placeholder nor a
+        <code>tf.Session</code>.<sup class="cite"><a href="#src-13">13</a></sup></p>
+<pre><code># Run in Colab
+@tf.function
+def affine_tf2(x):
+    return x * 2.0 + 1.0
+
+print(affine_tf2(tf.constant([1.0, 2.0, 3.0])).numpy())</code></pre>
+<pre class="out">[3. 5. 7.]</pre>
+        <p>The pieces map one to one:</p>
+        <table>
+          <thead><tr><th>TensorFlow 1</th><th>TensorFlow 2</th></tr></thead>
+          <tbody>
+            <tr><td><code>tf.placeholder</code> for each input</td><td>A function argument</td></tr>
+            <tr><td>Graph built line by line before running</td><td>Graph traced from a <code>tf.function</code></td></tr>
+            <tr><td><code>sess.run(y, feed_dict=...)</code></td><td>Calling the function with tensors</td></tr>
+            <tr><td>Values available only after the session ran</td><td>Eager values on every line outside <code>tf.function</code></td></tr>
+          </tbody>
+        </table>
+        <h3>Writing a graph for TensorBoard</h3>
+        <p>TensorBoard is a browser dashboard that reads log files. Its Graphs tab shows a traced function when you call
+        <code>tf.summary.trace_on(graph=True)</code>, run the function, then call <code>tf.summary.trace_export</code> under a
+        default writer.<sup class="cite"><a href="#src-21">21</a></sup> <code>trace_export</code> must run with a default
+        writer, so it sits inside <code>with writer.as_default():</code>.<sup class="cite"><a href="#src-22">22</a></sup></p>
+<pre><code># Run in Colab
+@tf.function
+def basic_graph(x, w, b):
+    return x * w + b
+
+writer = tf.summary.create_file_writer("logs/graph")
+tf.summary.trace_on(graph=True)
+basic_graph(tf.constant([1.0, 2.0, 3.0]), tf.constant(2.0), tf.constant(1.0))
+with writer.as_default():
+    tf.summary.trace_export(name="basic_graph", step=0)</code></pre>
+        <p>The cell prints nothing. It leaves an event file under <code>logs/graph</code>, and the order matters: switch
+        tracing on, make exactly one call, then export inside the writer. In Colab, TensorBoard loads with
+        <code>%load_ext tensorboard</code> and then <code>%tensorboard --logdir logs</code>, two notebook commands that
+        start with <code>%</code> rather than Python.<sup class="cite"><a href="#src-23">23</a></sup></p>
+<pre><code># Run in Colab
+%load_ext tensorboard
+%tensorboard --logdir logs</code></pre>
+        <p>The dashboard opens inside the cell's output area. On its Graphs tab you find the three inputs feeding a
+        multiply, then an add, the same nodes <code>get_operations()</code> listed in step 4. If the tab is empty, the
+        usual causes are an export outside the <code>with</code> block or <code>%tensorboard</code> run before
+        <code>%load_ext</code>.</p>
+        <p>The Graphs tab shows structure, not training behaviour.<sup class="cite"><a href="#src-21">21</a></sup> It
+        answers "what does this function compute and in what order" and says nothing about whether the model is learning.
+        Loss and accuracy curves are a different TensorBoard view, and week 7 uses them during training.</p>
+        <h3>Names and scopes in the Graphs tab</h3>
+        <p>A real model's graph has thousands of nodes, so names are how you find your way around it. Every operation gets a
+        name. <code>tf.name_scope(name)</code> adds a prefix to the names of operations created inside it, and the Graphs
+        tab groups operations that share a scope into one collapsible node.<sup class="cite"><a href="#src-24">24</a></sup><sup class="cite"><a href="#src-21">21</a></sup></p>
+<pre><code># Run in Colab
+@tf.function
+def scaled_shift(x):
+    with tf.name_scope("scale"):
+        y = x * 2.0
+    with tf.name_scope("shift"):
+        z = y + 1.0
+    return z
+
+ops = scaled_shift.get_concrete_function(tf.TensorSpec([3], tf.float32)).graph.get_operations()
+print(sorted({op.name.split("/")[0] for op in ops}))</code></pre>
+<pre class="out">['Identity', 'scale', 'shift', 'x']</pre>
+        <p>The multiply and its constant now live under <code>scale/</code>, and the add under <code>shift/</code>. In
+        TensorBoard each scope is drawn as one box you can expand.<sup class="cite"><a href="#src-21">21</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>TensorFlow 1 fed placeholders through a feed_dict into Session.run; that code fails on TensorFlow 2.</li>
+          <li>In TensorFlow 2, tf.function replaces the session and arguments replace placeholders.</li>
+          <li>Trace on, one call, then trace_export inside the writer puts a graph in TensorBoard.</li>
+          <li>tf.name_scope prefixes operation names, and the Graphs tab groups each scope into one node.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>In TensorFlow 1 you built the graph with placeholders for the inputs, then ran it in a session, feeding the
+          values through a feed dict. TensorFlow 2 dropped sessions: operations run eagerly, and when I want a graph I
+          wrap the function in tf.function and pass the inputs as normal arguments.</p>
+          <p>To look at a graph I create a summary file writer, turn tracing on, call the function once, and export the
+          trace inside the writer's context. Then in Colab I load the TensorBoard extension and point it at the log
+          folder, and the Graphs tab shows the operations.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="7">
+        <div class="tag">Check yourself</div>
+        <h2>Check yourself</h2>
+        <p>Eight retrieval questions, at least one per section. Answer each out loud before you open it.</p>
+        <details class="check"><summary>What is a tensor, and how is it different from a NumPy array?</summary><p>A tensor is a multi-dimensional array whose elements all share one dtype, described by its rank and shape. Unlike a NumPy array, a tensor made with <code>tf.constant</code> is immutable, so you build a new tensor instead of assigning into one, and mixing dtypes raises an error instead of promoting.</p></details>
+        <details class="check"><summary>What changed between TensorFlow 1 and TensorFlow 2, and when?</summary><p>TensorFlow 1.0.0 came out in February 2017 and built a graph first, then ran it in a session. TensorFlow 2.0.0 came out in September 2019, made eager execution the default and made Keras the main high-level API.</p></details>
+        <details class="check"><summary>You add <code>tf.constant([1, 2])</code> to <code>tf.constant([0.5, 0.5])</code>. What happens, and how do you fix it?</summary><p>The first tensor is <code>int32</code> and the second <code>float32</code>, so the addition raises an error. Cast one side on purpose, for example <code>tf.cast(ints, tf.float32)</code>, and the sum is <code>[1.5 2.5]</code>.</p></details>
+        <details class="check"><summary>What does <code>@tf.function</code> do to a Python function, and what does eager execution give up?</summary><p>It traces the function into a graph of operations joined by tensors, which TensorFlow can optimise and export, and later calls with the same kind of input run that graph. Eager execution runs each operation at once and is easier to debug, but Python drives every operation.</p></details>
+        <details class="check"><summary>A Python <code>print</code> inside a decorated function fires on the first call and then never again. Why, and what should you use?</summary><p>The Python body runs only while the function is traced, and later calls run the recorded graph. <code>tf.print</code> is an operation in the graph, so it prints on every call.</p></details>
+        <details class="check"><summary>Name three things that make a <code>tf.function</code> trace again, and one way to stop it.</summary><p>A new input shape, a new dtype, or a new Python value as an argument. Passing tensors instead of Python numbers helps, and an <code>input_signature</code> of <code>tf.TensorSpec</code> fixes what the function accepts.</p></details>
+        <details class="check"><summary>The MNIST training images have shape <code>(60000, 28, 28)</code>. What shapes come back from reducing over <code>axis=0</code> and over <code>axis=(1, 2)</code>, and what must happen to the images first?</summary><p>Axis 0 gives <code>(28, 28)</code>, one mean image; axes 1 and 2 give <code>(60000,)</code>, one value per image. The arrays are <code>uint8</code>, so they are cast to <code>float32</code> and divided by 255 first, or <code>reduce_mean</code> returns a truncated integer mean.</p></details>
+        <details class="check"><summary>How do you show a traced function in TensorBoard's Graphs tab, and what will the tab not tell you?</summary><p>Create a writer with <code>tf.summary.create_file_writer</code>, call <code>tf.summary.trace_on(graph=True)</code>, call the function once, then run <code>tf.summary.trace_export</code> inside <code>with writer.as_default():</code>. Load TensorBoard with <code>%load_ext tensorboard</code> and <code>%tensorboard --logdir logs</code>. The Graphs tab shows structure, not whether a model is learning.</p></details>
+      </section>
+
+      <section class="reading-sources" aria-label="Sources and deeper dive">
+        <h2>Sources &amp; deeper dive</h2>
+        <ul>
+          <li id="src-1"><a href="https://www.tensorflow.org/guide/tensor" target="_blank" rel="noopener">Introduction to Tensors</a> — rank, shape, dtype, <code>.numpy()</code>, broadcasting and immutability.</li>
+          <li id="src-2"><a href="https://www.tensorflow.org/guide/variable" target="_blank" rel="noopener">Introduction to Variables</a> — why changing state lives in a <code>tf.Variable</code>, not a constant.</li>
+          <li id="src-3"><a href="https://keras.io/keras_3/" target="_blank" rel="noopener">Keras 3 announcement</a> — <code>tf.keras</code> as Keras 3 and its TensorFlow, JAX and PyTorch training backends.</li>
+          <li id="src-4"><a href="https://research.google.com/colaboratory/faq.html" target="_blank" rel="noopener">Colab FAQ</a> — what Colab ships and its CPU and GPU runtimes.</li>
+          <li id="src-5"><a href="https://arxiv.org/abs/1603.04467" target="_blank" rel="noopener">TensorFlow: Large-Scale Machine Learning on Heterogeneous Distributed Systems</a> — the system paper: DistBelief and the November 2015 release.</li>
+          <li id="src-6"><a href="https://github.com/tensorflow/tensorflow/releases/tag/v1.0.0" target="_blank" rel="noopener">tensorflow v1.0.0 release</a> — the February 2017 release notes.</li>
+          <li id="src-7"><a href="https://www.tensorflow.org/guide/migrate" target="_blank" rel="noopener">Migrate to TF2</a> — <code>tf.compat.v1</code> as the migration bridge.</li>
+          <li id="src-8"><a href="https://github.com/tensorflow/tensorflow/releases/tag/v2.0.0" target="_blank" rel="noopener">tensorflow v2.0.0 release</a> — the September 2019 release notes.</li>
+          <li id="src-9"><a href="https://www.tensorflow.org/guide/effective_tf2" target="_blank" rel="noopener">Effective TensorFlow 2</a> — eager by default, Keras first, <code>tf.function</code> in place of sessions.</li>
+          <li id="src-10"><a href="https://pytorch.org/docs/stable/index.html" target="_blank" rel="noopener">PyTorch documentation</a> — the other widely used eager framework.</li>
+          <li id="src-11"><a href="https://docs.jax.dev/en/latest/" target="_blank" rel="noopener">JAX documentation</a> — NumPy-style arrays with <code>jit</code>, <code>grad</code> and <code>vmap</code>.</li>
+          <li id="src-12"><a href="https://www.tensorflow.org/api_docs/python/tf/cast" target="_blank" rel="noopener">tf.cast</a> — converting a tensor to another dtype on purpose.</li>
+          <li id="src-13"><a href="https://www.tensorflow.org/guide/intro_to_graphs" target="_blank" rel="noopener">Introduction to graphs and tf.function</a> — eager against graph execution and what a graph holds.</li>
+          <li id="src-14"><a href="https://www.tensorflow.org/guide/function" target="_blank" rel="noopener">Better performance with tf.function</a> — tracing, retracing, <code>tf.print</code>, AutoGraph and <code>input_signature</code>.</li>
+          <li id="src-15"><a href="https://www.tensorflow.org/api_docs/python/tf/math/reduce_sum" target="_blank" rel="noopener">tf.math.reduce_sum</a> — <code>axis</code>, negative axes and <code>keepdims</code>.</li>
+          <li id="src-16"><a href="https://www.tensorflow.org/api_docs/python/tf/math/argmax" target="_blank" rel="noopener">tf.math.argmax</a> — one integer axis, default 0, indices returned.</li>
+          <li id="src-17"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/datasets/mnist/load_data" target="_blank" rel="noopener">tf.keras.datasets.mnist.load_data</a> — the MNIST arrays, their shapes and their <code>uint8</code> dtype.</li>
+          <li id="src-18"><a href="https://www.tensorflow.org/api_docs/python/tf/math/reduce_mean" target="_blank" rel="noopener">tf.math.reduce_mean</a> — why an integer tensor gives a truncated mean.</li>
+          <li id="src-19"><a href="https://www.tensorflow.org/api_docs/python/tf/reshape" target="_blank" rel="noopener">tf.reshape</a> — reshaping with <code>-1</code> to infer one axis.</li>
+          <li id="src-20"><a href="https://www.tensorflow.org/api_docs/python/tf/math/reduce_max" target="_blank" rel="noopener">tf.math.reduce_max</a> — the maximum over one axis or several.</li>
+          <li id="src-21"><a href="https://www.tensorflow.org/tensorboard/graphs" target="_blank" rel="noopener">Examining the TensorFlow Graph</a> — tracing a function into TensorBoard's Graphs tab.</li>
+          <li id="src-22"><a href="https://www.tensorflow.org/api_docs/python/tf/summary/trace_export" target="_blank" rel="noopener">tf.summary.trace_export</a> — why the export needs a default writer.</li>
+          <li id="src-23"><a href="https://www.tensorflow.org/tensorboard/get_started" target="_blank" rel="noopener">Get started with TensorBoard</a> — loading TensorBoard inside a notebook.</li>
+          <li id="src-24"><a href="https://www.tensorflow.org/api_docs/python/tf/name_scope" target="_blank" rel="noopener">tf.name_scope</a> — prefixing operation names so a graph groups them.</li>
+          <li id="src-25"><a href="https://www.tensorflow.org/guide/migrate/tf1_vs_tf2" target="_blank" rel="noopener">TF1.x vs TF2: behaviors and APIs</a> — TensorFlow 1's sessions, placeholders and <code>feed_dict</code> set against TensorFlow 2's functions.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · after you have read the page</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 6 Day 4</footer>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 4 — goals</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Explain what TensorFlow is, how Keras sits on top of it, and the history from DistBelief through TensorFlow 1 and 2</li>
+      <li>Create tensors in Colab and read their rank, shape and dtype, cast between dtypes and predict a broadcast result</li>
+      <li>Implement a basic graph with <code>tf.function</code>, list its operations, and explain tracing and retracing</li>
+      <li>Reduce tensors of any shape over chosen axes with and without <code>keepdims</code>, and tell <code>tf.argmax</code> apart from <code>tf.reduce_max</code></li>
+      <li>Describe TensorFlow 1 sessions as history and show a traced function in TensorBoard's Graphs tab</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Day 5 — Perceptrons & TensorFlow basics →", href: "day-5-perceptrons-and-tensorflow-basics.html" };
+window.DIAGRAM = {
+  title: "Day 4 · from a tensor to a graph you can see",
+  width: 500, height: 520,
+  nodes: [
+    { id:"lib", step:0, kind:"example", x:14, y:14, w:472, h:50, label:"TENSORFLOW IN COLAB\n  tensors · operations · Keras on top", detail:"A tensor is a multi-dimensional array with one dtype. Operations compute with tensors; Keras (tf.keras, Keras 3 from 2.16) bundles them into layers and models. Colab ships TensorFlow and runs on a CPU by default." },
+    { id:"tf1", step:1, x:24, y:86, w:200, h:48, label:"TensorFlow 1 (2017)\n  build a graph · run a session", detail:"Open-sourced November 2015 after DistBelief. Version 1.0.0 in February 2017: placeholders, then Session.run with a feed_dict." },
+    { id:"tf2", step:1, x:276, y:86, w:200, h:48, label:"TensorFlow 2 (2019)\n  eager by default · Keras", detail:"Version 2.0.0 in September 2019 made eager execution the default and Keras the main API. PyTorch and JAX are the other common frameworks." },
+    { id:"tensor", step:2, x:24, y:162, w:200, h:56, label:"Tensors\n  rank · shape · dtype\n  broadcast · matmul", detail:"Floats become float32 and ints int32. Mixed dtypes raise an error; tf.cast converts. Broadcasting stretches length-1 or missing axes." },
+    { id:"graph", step:3, x:276, y:162, w:200, h:56, label:"tf.function\n  Placeholder → Mul → AddV2\n  → Identity", detail:"tf.function traces a Python function into a graph of operations joined by tensors. get_concrete_function(...).graph.get_operations() lists the nodes." },
+    { id:"trace", step:4, x:276, y:246, w:200, h:56, label:"Tracing\n  print once · tf.print always\n  new shape → new graph", detail:"A new shape, dtype or Python value retraces. input_signature with tf.TensorSpec fixes what the function accepts." },
+    { id:"reduce", step:5, x:24, y:246, w:200, h:56, label:"Reductions\n  axis=None · 0 · (1, 2)\n  keepdims · argmax", detail:"MNIST (60000, 28, 28), cast to float32 / 255: axis 0 gives a (28, 28) mean image; axes (1, 2) give one value per image. argmax takes one axis and returns positions." },
+    { id:"board", step:6, x:24, y:330, w:452, h:56, label:"TENSORBOARD GRAPHS TAB\n  create_file_writer · trace_on · one call · trace_export\n  %load_ext tensorboard · %tensorboard --logdir logs", detail:"trace_export runs inside with writer.as_default(). tf.name_scope groups operations into one box. The tab shows structure, not training." },
+    { id:"check", step:7, x:24, y:410, w:452, h:40, label:"CHECK YOURSELF\n  answer out loud, then open" }
+  ],
+  edges: [
+    { id:"e1", step:1, from:"tf1", to:"tf2", label:"2019" },
+    { id:"e2", step:2, from:"tf2", to:"tensor", label:"eager values" },
+    { id:"e3", step:3, from:"tensor", to:"graph", label:"wrap in tf.function" },
+    { id:"e4", step:4, from:"graph", to:"trace", label:"first call traces" },
+    { id:"e5", step:5, from:"tensor", to:"reduce", label:"collapse axes" },
+    { id:"e6", step:6, from:"trace", to:"board", label:"export the trace" },
+    { id:"e7", step:6, from:"tf1", to:"board", dir:"-" },
+    { id:"e8", step:7, from:"board", to:"check", dir:"-" }
+  ],
+  captions: [
+    "TensorFlow in Colab: tensors hold the numbers, operations compute with them, and Keras sits on top. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "History: TensorFlow 1 built a graph and ran it in a session; TensorFlow 2 runs eagerly with Keras as its main API.",
+    "Tensors: rank, shape and dtype describe every tensor, and broadcasting decides what shapes can combine.",
+    "Basic graphs: tf.function traces a Python function into operations you can list.",
+    "Tracing: the Python body runs once per new shape, dtype or Python value, and tf.print runs every call.",
+    "Reductions: the axis argument decides which axes collapse, and argmax returns positions, not values.",
+    "Graphs, sessions, TensorBoard: sessions are history, and a traced function shows up in the Graphs tab.",
+    "You can now explain tensors, eager against graph execution, tracing, reductions over any axes and TensorBoard's graph view."
+  ]
+};
+window.QUIZ = {
+  id: "w06-d4",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "images has shape (60000, 28, 28). What shape does tf.reduce_mean(images, axis=0) return?",
+      options: ["(60000,)", "(28, 28)", "(60000, 28)", "(), a single number"], answer: 1,
+      explain: "Axis 0 is the batch axis, so it disappears and leaves one 28 by 28 mean image. Reducing over axis=(1, 2) would give (60000,), one value per image." },
+    { type: "tf", stem: "Inside a function decorated with @tf.function, a Python print runs on every call.", answer: false,
+      explain: "A Python print runs only while the function is traced. tf.print becomes an operation in the graph and prints on every call." },
+    { type: "mcq", stem: "Which of these make a tf.function trace a new graph? Select all that apply.",
+      options: ["Calling it with a tensor of a new shape", "Calling it with a tensor of a new dtype", "Calling it with a new Python float as an argument", "Calling it twice with tensors of the same shape and dtype"], answer: [0, 1, 2],
+      explain: "A new shape, a new dtype or a new Python value retraces. The same shape and dtype reuse the existing graph." },
+    { type: "match", stem: "Match each TensorFlow 1 idea to what replaces it in TensorFlow 2.",
+      pairs: [
+        { l: "tf.placeholder", r: "an ordinary function argument" },
+        { l: "Session.run", r: "calling the function" },
+        { l: "a graph built before running", r: "a graph traced by tf.function" },
+        { l: "values only after the session ran", r: "eager values on every line" }
+      ],
+      explain: "TensorFlow 2 runs eagerly; tf.function replaces the session and arguments replace placeholders." },
+    { type: "scq", stem: "m = tf.constant([[3., 9., 2.], [8., 1., 7.]]). What does tf.argmax(m).numpy() print?",
+      options: ["1, the flat position of 9", "[1 0 1]", "[9. 8. 7.]", "[1 0]"], answer: 1,
+      explain: "argmax defaults to axis 0, so it goes down each column and returns the winning row: 8 beats 3, 9 beats 1, 7 beats 2. It does not flatten the tensor, and it returns positions rather than values." },
+    { type: "open", stem: "In two or three sentences: why do the MNIST images get cast with tf.cast(x_train, tf.float32) / 255.0 before any mean is taken?",
+      hint: "The dtype of the raw arrays, and what reduce_mean does with it.",
+      model: "load_data returns uint8 arrays, and tf.reduce_mean on an integer tensor returns a truncated integer mean, so the average would be wrong. Casting to float32 gives a real mean, and dividing by 255 puts every pixel between 0 and 1. A reducer whose signature accepts float32 only would also reject the raw arrays." }
+  ]
+};
+</script>
+
+<script src="../../assets/js/diagram.js?v=20261116"></script>
+<script src="../../assets/js/scrolly.js?v=20261116"></script>
+<script src="../../assets/js/modals.js?v=20261116"></script>
+<script src="../../assets/js/quiz.js?v=20261116"></script>
+<script src="../../assets/js/widgets.js?v=20261116"></script>
+<script src="../../assets/js/glossary.js?v=20261116"></script>
+</body>
+</html>

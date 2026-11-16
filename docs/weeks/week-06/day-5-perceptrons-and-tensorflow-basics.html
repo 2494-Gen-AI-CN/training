@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w06d5">
+<title>W6·D5 — Perceptrons &amp; TensorFlow basics | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261116">
+<script src="../../assets/js/theme.js?v=20261116"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="../../exit-criteria/index.html">Exit criteria</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>Perceptrons &amp; TensorFlow basics: one neuron that learns its own weights</h1>
+        <div class="meta">
+          <span><b>Week 6</b> · Day 5</span>
+          <span>Fri Nov 20, 2026</span>
+          <span>AI/ML fundamentals</span>
+          <span><b>~41 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span class="verified">Sources checked 2026-11-16 · python 3.13.18 · tensorflow 2.21.0 · keras 3.13.2 · numpy 2.4.6 · scikit-learn 1.6.1 · matplotlib 3.10.0</span>
+        </div>
+        <p class="summary">Wednesday's neuron ran with weights chosen by hand, and this page assumes only that idea: a
+        neuron multiplies its inputs by weights and adds them up. It teaches activation functions, the perceptron and its
+        learning rule, TensorFlow tensors, constants and variables (with placeholders as TensorFlow 1 history), a
+        one-neuron Keras model on scaled breast-cancer data, and two ways to look at a model's structure. Every example is
+        a Colab cell. Afterwards you can trace a perceptron epoch on paper, explain why a perceptron needs separable
+        classes, and talk an interviewer through <code>compile</code>, <code>fit</code>, <code>evaluate</code> and
+        <code>predict</code>.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="0">
+        <div class="tag">Neurons</div>
+        <h2>Activation functions: what a neuron does with its sum</h2>
+        <p>A neuron does two things. It adds up its inputs, each multiplied by a weight, adds a bias, and then passes
+        that sum through an activation function. This step covers the second half.</p>
+        <h3>What an activation function does</h3>
+        <p>Call the weighted sum <code>z</code>. On its own it can be any real number, large and negative or large and
+        positive. The activation function takes <code>z</code> and returns the neuron's output, and its shape decides what
+        that output can mean: a probability, a signed signal or a plain on-off answer. Each neuron in a network applies a
+        weighted linear sum followed by a non-linear activation.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <p>In TensorFlow the activations live in one module. <code>tf.keras.activations</code> provides
+        <code>sigmoid</code>, <code>tanh</code>, <code>relu</code> and <code>softmax</code>, and it has no step
+        function.<sup class="cite"><a href="#src-2">2</a></sup></p>
+        <h3>Sigmoid, tanh and ReLU</h3>
+        <p>The first three differ mainly in the range of values they return.</p>
+        <table>
+          <thead><tr><th>Function</th><th>What it computes</th><th>Output range</th><th>Worth knowing</th></tr></thead>
+          <tbody>
+            <tr><td>sigmoid</td><td>1 / (1 + e<sup>−z</sup>)</td><td>between 0 and 1</td><td>the usual output for a yes-or-no label<sup class="cite"><a href="#src-3">3</a></sup></td></tr>
+            <tr><td>tanh</td><td>the hyperbolic tangent of z</td><td>between −1 and 1</td><td>centred on 0<sup class="cite"><a href="#src-4">4</a></sup></td></tr>
+            <tr><td>ReLU</td><td>max(0, z)</td><td>0 and upwards</td><td>cheap to compute; 0 for every negative input<sup class="cite"><a href="#src-5">5</a></sup></td></tr>
+          </tbody>
+        </table>
+        <p>The cell below runs each Keras function on three values of <code>z</code> and compares it with the formula
+        written in numpy. <code>np.allclose</code> prints <code>True</code> when two arrays agree to within rounding, and
+        <code>.numpy()</code> turns a TensorFlow tensor into a numpy array so the two can be compared.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>import numpy as np
+import tensorflow as tf
+
+z = tf.constant([-2.0, 0.0, 2.0])
+sig = tf.keras.activations.sigmoid(z).numpy()
+tanh = tf.keras.activations.tanh(z).numpy()
+relu = tf.keras.activations.relu(z).numpy()
+
+print("sigmoid", sig.round(3), np.allclose(sig, 1 / (1 + np.exp(-z.numpy()))))
+print("tanh   ", tanh.round(3), np.allclose(tanh, np.tanh(z.numpy())))
+print("relu   ", relu.round(3), np.allclose(relu, np.maximum(0, z.numpy())))</code></pre>
+<pre class="out">sigmoid [0.119 0.5   0.881] True
+tanh    [-0.964  0.     0.964] True
+relu    [0. 0. 2.] True</pre>
+        <p>Sigmoid of 0 is exactly 0.5, the midpoint of its range, and it pushes −2 and 2 towards 0 and 1 without reaching
+        either. Tanh is symmetric around 0. ReLU passes the positive input through unchanged and turns the negative one into
+        0.</p>
+        <p>Each has a cost. Sigmoid and tanh flatten out at large positive or negative inputs, so a big change in
+        <code>z</code> barely moves the output there. ReLU is cheap to compute but outputs 0 for every negative
+        input.<sup class="cite"><a href="#src-6">6</a></sup> Plotting the curves makes the flat ends easy to
+        see.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>import matplotlib.pyplot as plt
+
+zs = np.linspace(-4, 4, 200).astype("float32")
+plt.plot(zs, tf.keras.activations.sigmoid(zs), label="sigmoid")
+plt.plot(zs, tf.keras.activations.tanh(zs), label="tanh")
+plt.plot(zs, tf.keras.activations.relu(zs), label="relu")
+plt.plot(zs, np.where(zs &gt;= 0, 1, 0), "--", label="step")
+plt.ylim(-1.5, 2)
+plt.legend()
+plt.title("Activation functions")
+plt.show()</code></pre>
+        <p>The chart shows four lines over <code>z</code> from −4 to 4. Sigmoid and tanh are S-shaped and nearly flat at
+        both ends, ReLU is flat at 0 and then rises in a straight line, and the dashed step jumps from 0 to 1 at zero.</p>
+        <h3>The step function and the rule at zero</h3>
+        <p>The perceptron's activation is the step: it outputs 1 when the sum is at or above zero and 0 below it.
+        Because <code>tf.keras.activations</code> has no step function, the step is written in
+        numpy.<sup class="cite"><a href="#src-2">2</a></sup> <code>np.where(condition, a, b)</code> picks
+        <code>a</code> wherever the condition is true and <code>b</code> everywhere else.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>def step(z):
+    return np.where(z &gt;= 0, 1, 0)
+
+print(step(np.array([-0.5, 0.0, 0.5])))</code></pre>
+<pre class="out">[0 1 1]</pre>
+        <p>The middle value is the one to remember. With <code>z &gt;= 0</code> as the condition, a sum of exactly 0
+        outputs 1. Every perceptron on this page uses that convention.</p>
+        <p>A fixed rule matters because training changes the weights only after a wrong answer. A row whose sum lands
+        exactly on 0 is right under one convention and wrong under the other, so two people working the same table with
+        different rules end the first epoch with different weights. Starting from zero weights, the very first row has a
+        sum of 0, so the convention decides the first update.</p>
+        <div class="ix-predict" data-q="A perceptron starts with weights [0, 0] and bias 0. What does it output for the input (0, 0), and is that right for the AND table?" data-a="The sum is 0, so the step outputs 1. AND of 0 and 0 is 0, so the very first row is a mistake and the first weight update happens at once."></div>
+        <h3>Softmax for more than two classes</h3>
+        <p>A single sigmoid answers one yes-or-no question. When a label has three or more classes, the network needs one
+        score per class and a way to turn those scores into a probability for each. Softmax turns a vector of scores into
+        probabilities that sum to 1,<sup class="cite"><a href="#src-7">7</a></sup> which makes it the
+        multi-class counterpart of one sigmoid output.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>scores = tf.constant([[1.0, 2.0, 3.0]])
+probs = tf.keras.activations.softmax(scores)
+print(probs.numpy().round(3))
+print(round(float(tf.reduce_sum(probs)), 6))</code></pre>
+<pre class="out">[[0.09  0.245 0.665]]
+1.0</pre>
+        <p>The largest score gets the largest probability and the order of the scores is kept. The three values add up to
+        1, so the output reads as "how likely is each class".</p>
+        <h3>Why the activation has to be non-linear</h3>
+        <p>Linear operations applied to linear operations are still linear. Without a non-linear activation between them,
+        extra weighted sums add no expressive power.<sup class="cite"><a href="#src-1">1</a></sup> Two weighted sums
+        in a row collapse into a single weighted sum with different numbers, so a stack of them can still only draw a
+        straight boundary. Networks with more than one layer are week 7's subject, and this is the reason each of their
+        layers carries an activation.</p>
+        <p>In someone else's code you recognise an activation in three common shapes:</p>
+        <ul>
+          <li><code>tf.keras.layers.Dense(1, activation="sigmoid")</code>, the string form inside a layer</li>
+          <li><code>tf.keras.activations.relu(z)</code>, a direct call on a tensor</li>
+          <li><code>np.where(z &gt;= 0, 1, 0)</code>, a hand-written step in numpy</li>
+        </ul>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>An activation function turns a neuron's weighted sum into its output.</li>
+          <li>Sigmoid gives a value between 0 and 1 and suits a yes-or-no label.</li>
+          <li>The step on this page outputs 1 at z = 0, and every perceptron uses that rule.</li>
+          <li>Without a non-linear activation, stacked weighted sums collapse into one.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>An activation function takes the neuron's weighted sum and decides the output. Without a non-linear one,
+          stacking layers gives you nothing, because linear on linear is still linear. For a yes-or-no output I'd use a
+          sigmoid, since it squashes any number into the range zero to one and reads as a probability.</p>
+          <p>The perceptron's step outputs one when the sum is at or above zero and zero below. You have to fix what
+          happens at exactly zero, because the training rule only updates on mistakes, and a different convention gives
+          different weights after the same epoch.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">Perceptron</div>
+        <h2>The perceptron: illustration and parameters</h2>
+        <p>Wednesday's neuron ran with weights chosen by hand. A perceptron is the same kind of neuron with the step as
+        its activation, and it finds its own weights from labelled examples.</p>
+        <h3>A weighted sum, a bias and a step</h3>
+        <p>Take a perceptron with two inputs, <code>x1</code> and <code>x2</code>. It holds one weight per input and one
+        bias, and it computes its answer in three stages:</p>
+        <ol>
+          <li>multiply each input by its weight</li>
+          <li>add the products together with the bias to get the sum z</li>
+          <li>pass z through the step: 1 if z is at or above 0, otherwise 0</li>
+        </ol>
+        <p>A weight says how much its input counts and in which direction. The bias shifts the sum up or down for every
+        input alike, which moves the point where the answer flips. The inputs where z is exactly 0 form the decision
+        boundary, and with two inputs that boundary is a straight line. Everything on one side gets a 1 and everything on
+        the other side gets a 0.</p>
+        <h3>The AND table with weights picked by hand</h3>
+        <p>The AND truth table is the smallest useful example. It has four rows, and the label is 1 only when both inputs
+        are 1.</p>
+        <table>
+          <thead><tr><th>x1</th><th>x2</th><th>AND</th></tr></thead>
+          <tbody>
+            <tr><td>0</td><td>0</td><td>0</td></tr>
+            <tr><td>0</td><td>1</td><td>0</td></tr>
+            <tr><td>1</td><td>0</td><td>0</td></tr>
+            <tr><td>1</td><td>1</td><td>1</td></tr>
+          </tbody>
+        </table>
+        <p>Weights of 1 and 1 with a bias of −1.5 solve it. In numpy, <code>X @ w</code> multiplies each row of
+        <code>X</code> by the weights and adds the products, giving one weighted sum per row.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>import numpy as np
+
+X = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])
+y = np.array([0, 0, 0, 1])
+w = np.array([1.0, 1.0])
+b = -1.5
+
+z = X @ w + b
+print(z)
+print(np.where(z &gt;= 0, 1, 0), y)</code></pre>
+<pre class="out">[-1.5 -0.5 -0.5  0.5]
+[0 0 0 1] [0 0 0 1]</pre>
+        <p>Only the last row's sum reaches 0, so only the last row outputs 1, and the predictions match the labels. The
+        boundary here is the line where <code>x1 + x2</code> equals 1.5, which runs between the point (1, 1) and the
+        other three. Many other lines would separate them just as well, which is why training can land on different
+        weights that are all correct.</p>
+        <h3>Parameters and hyperparameters</h3>
+        <p>Interviewers often ask which numbers a model learns and which ones you choose. Parameters such as the weights
+        and the bias are learned from the data. Hyperparameters are not learnt by the estimator; the person sets them
+        before training.<sup class="cite"><a href="#src-8">8</a></sup><sup class="cite"><a href="#src-9">9</a></sup></p>
+        <table>
+          <thead><tr><th>Number</th><th>Kind</th><th>What it controls</th></tr></thead>
+          <tbody>
+            <tr><td>weights</td><td>parameter, learned</td><td>how much each input counts, and in which direction</td></tr>
+            <tr><td>bias</td><td>parameter, learned</td><td>where the boundary sits</td></tr>
+            <tr><td>learning rate</td><td>hyperparameter, set by you</td><td>the size of each correction</td></tr>
+            <tr><td>epochs</td><td>hyperparameter, set by you</td><td>how many full passes over the data training makes</td></tr>
+          </tbody>
+        </table>
+        <p>In scikit-learn's <code>Perceptron</code> the same settings appear under other
+        names.<sup class="cite"><a href="#src-10">10</a></sup></p>
+        <table>
+          <thead><tr><th>Perceptron argument</th><th>What it sets</th></tr></thead>
+          <tbody>
+            <tr><td><code>eta0</code></td><td>the learning rate</td></tr>
+            <tr><td><code>max_iter</code></td><td>the cap on the number of epochs</td></tr>
+            <tr><td><code>random_state</code></td><td>the seed</td></tr>
+          </tbody>
+        </table>
+        <p>Those arguments in a constructor are a perceptron's settings.</p>
+        <h3>Learning AND from zero, one row at a time</h3>
+        <p>Training starts with weights of 0, a bias of 0 and a learning rate of 1. An epoch is one pass over all four
+        rows. For each row the perceptron predicts, and only when the prediction is wrong does it change anything. The
+        next step explains the rule in full; the loop below applies it and prints the weights and bias at the end of each
+        epoch until a whole epoch passes with no mistakes.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>w, b, lr = np.zeros(2), 0.0, 1.0
+
+for epoch in range(1, 11):
+    errors = 0
+    for xi, target in zip(X, y):
+        pred = 1 if xi @ w + b &gt;= 0 else 0
+        if pred != target:
+            w += lr * (target - pred) * xi
+            b += lr * (target - pred)
+            errors += 1
+    print(f"epoch {epoch}: w={w.tolist()} b={b} errors={errors}")
+    if errors == 0:
+        break</code></pre>
+<pre class="out">epoch 1: w=[1.0, 1.0] b=0.0 errors=2
+epoch 2: w=[2.0, 1.0] b=-1.0 errors=3
+epoch 3: w=[2.0, 1.0] b=-2.0 errors=3
+epoch 4: w=[2.0, 2.0] b=-2.0 errors=2
+epoch 5: w=[2.0, 1.0] b=-3.0 errors=1
+epoch 6: w=[2.0, 1.0] b=-3.0 errors=0</pre>
+        <p>A few pieces of Python syntax carry the loop:</p>
+        <ul>
+          <li><code>zip(X, y)</code> walks the rows and the labels in pairs</li>
+          <li><code>w += …</code> adds to <code>w</code> in place</li>
+          <li>the <code>f</code> before the string fills each pair of braces with the current value</li>
+        </ul>
+        <p>Epoch 1 is worth tracing on paper. Row (0, 0) has a sum of 0, so the step says 1 and the label says 0: the
+        bias drops to −1, and the weights stay put because both inputs are 0. Rows (0, 1) and (1, 0) now sum to −1 and
+        are right. Row (1, 1) sums to −1 and is wrong the other way, so both weights rise to 1 and the bias returns to
+        0.</p>
+        <p>Training stops in epoch 6 with weights [2, 1] and a bias of −3. Those are not the hand-picked weights, yet they
+        also put only (1, 1) on the positive side, because any line that separates the classes is a correct answer.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A perceptron computes a weighted sum plus a bias and passes it through the step.</li>
+          <li>Weights and bias are learned parameters; learning rate and epochs are hyperparameters you set.</li>
+          <li>From zero, AND training ends in epoch 6 with weights [2, 1] and bias −3.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A perceptron multiplies each input by a weight, adds them up with a bias, and passes the sum through a step
+          function: one if the sum is at least zero, zero otherwise. Geometrically that's a straight line, and the
+          perceptron says which side of the line each point is on.</p>
+          <p>The weights and the bias are parameters, so training learns them. The learning rate and the number of epochs
+          are hyperparameters: I choose them before training, and they control how big each correction is and how many
+          passes the training makes.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">Perceptron</div>
+        <h2>Training a perceptron: the rule, epochs and the learning rate</h2>
+        <p>Monday's regression line came out of one calculation. The perceptron is the week's first model that learns by
+        repeated small corrections, and the same pattern of predict, compare and adjust runs through every neural network
+        that follows.</p>
+        <h3>The perceptron learning rule</h3>
+        <p>For each training row the perceptron predicts, then compares the prediction with the label. The difference
+        <code>target - pred</code> can take only three values, and each one says what to do:</p>
+        <ul>
+          <li>0 when the prediction is right, so nothing changes</li>
+          <li>+1 when it said 0 but the label is 1, so the sum must rise: add the input to the weights and add 1 to the bias</li>
+          <li>−1 when it said 1 but the label is 0, so the sum must fall: subtract the input and subtract 1</li>
+        </ul>
+        <p>The learning rate multiplies every one of those corrections. scikit-learn's perceptron works the same way: it
+        updates its model only on mistakes.<sup class="cite"><a href="#src-11">11</a></sup> In code the
+        rule is two lines inside a loop over the rows, and you recognise it by the shape
+        <code>w += lr * (y - y_pred) * x</code> followed by <code>b += lr * (y - y_pred)</code>.</p>
+        <p>Adding the input on a "should have been 1" mistake raises that row's own sum by the
+        learning rate times (the input's squared length plus 1), so the next time the row comes round its sum is higher.
+        Each correction
+        nudges the boundary towards getting the misclassified row right, without any guarantee about the other rows.</p>
+        <h3>What the learning rate changes, and when it changes nothing</h3>
+        <p>The learning rate is the size of each correction. Starting from zero weights and bias, it changes nothing that
+        matters, even though a smaller one sounds more careful. Every update adds the learning rate
+        times the same plus-or-minus input, so the final weights and bias are just the learning-rate-1 values scaled
+        down.<sup class="cite"><a href="#src-11">11</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>def train_and(lr, epochs=10):
+    w, b = np.zeros(2), 0.0
+    for epoch in range(1, epochs + 1):
+        errors = 0
+        for xi, target in zip(X, y):
+            pred = 1 if xi @ w + b &gt;= 0 else 0
+            w += lr * (target - pred) * xi
+            b += lr * (target - pred)
+            errors += int(pred != target)
+        if errors == 0:
+            return w.tolist(), float(b), epoch
+
+print(train_and(1.0))
+print(train_and(0.5))
+print(train_and(0.01))</code></pre>
+<pre class="out">([2.0, 1.0], -3.0, 6)
+([1.0, 0.5], -1.5, 6)
+([0.02, 0.01], -0.03, 6)</pre>
+        <p>Each line holds the weights, the bias and the epoch with no mistakes. Halving the rate halves every number, and
+        the run still stops in epoch 6. Multiplying a sum by a positive number never changes its sign, so every
+        prediction and the boundary line are the same at any rate. That is why scikit-learn notes that its perceptron
+        does not require a learning rate by default.<sup class="cite"><a href="#src-11">11</a></sup></p>
+        <div class="ix-predict" data-q="Run train_and(0.25). What does it print?" data-a="([0.5, 0.25], -0.75, 6): every number is a quarter of the learning-rate-1 result, and training still finishes in epoch 6."></div>
+        <h3>Two blobs from a seeded random start</h3>
+        <p>The learning rate starts to matter once the weights begin somewhere other than zero, because the starting
+        weights are not scaled along with the corrections. The function below starts from small random weights drawn with
+        a fixed seed, trains on a two-class dataset from <code>make_blobs</code>, and returns the mistakes made in each
+        epoch.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>from sklearn.datasets import make_blobs
+
+def train_perceptron(X, y, lr=1.0, epochs=5, seed=42):
+    rng = np.random.default_rng(seed)
+    w, b = rng.normal(0, 0.1, X.shape[1]), 0.0
+    errors = []
+    for epoch in range(epochs):
+        mistakes = 0
+        for xi, target in zip(X, y):
+            pred = 1 if xi @ w + b &gt;= 0 else 0
+            w += lr * (target - pred) * xi
+            b += lr * (target - pred)
+            mistakes += int(pred != target)
+        errors.append(mistakes)
+    return w, b, errors
+
+X_blobs, y_blobs = make_blobs(n_samples=100, centers=2, random_state=42)
+w, b, errors = train_perceptron(X_blobs, y_blobs, lr=1.0)
+print(errors)
+print(train_perceptron(X_blobs, y_blobs, lr=0.01)[2])</code></pre>
+<pre class="out">[2, 0, 0, 0, 0]
+[1, 0, 0, 0, 0]</pre>
+        <p>The two blobs are far apart, so both runs separate them after a single epoch. The learning rate still changed
+        the path: at 1.0 the first epoch made two mistakes, and at 0.01 it made one, because small corrections leave the
+        random start with more say. On harder data that difference in path becomes a difference in how many epochs
+        training needs.</p>
+        <h3>scikit-learn's Perceptron</h3>
+        <p>scikit-learn's <code>Perceptron</code> implements the same rule as a linear classifier trained with
+        stochastic gradient descent, a perceptron loss and a constant learning
+        rate.<sup class="cite"><a href="#src-11">11</a></sup> Stochastic gradient descent here means a small
+        correction to the weights after each training row, which is what the loop above does. Its <code>score</code> method returns the
+        mean accuracy on the data you pass it.<sup class="cite"><a href="#src-10">10</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>from sklearn.linear_model import Perceptron
+
+ours = np.where(X_blobs @ w + b &gt;= 0, 1, 0)
+clf = Perceptron(random_state=42).fit(X_blobs, y_blobs)
+print(clf.score(X_blobs, y_blobs), (clf.predict(X_blobs) == ours).mean())</code></pre>
+<pre class="out">1.0 1.0</pre>
+        <p>The first number says the library model classifies every point correctly. The second says it agrees with the
+        hand-written loop on every point. The two lines need not be identical, since many lines separate these blobs, but
+        they put each point on the same side.</p>
+        <h3>Linear separability: when the rule never settles</h3>
+        <p>The rule converges only when a straight line can separate the classes. On overlapping classes the boundary keeps
+        moving.<sup class="cite"><a href="#src-10">10</a></sup> Raising <code>cluster_std</code> spreads each blob
+        until they overlap, and the mistakes per epoch stop falling.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>X_wide, y_wide = make_blobs(n_samples=100, centers=2, cluster_std=5.0, random_state=42)
+print(train_perceptron(X_wide, y_wide, epochs=10)[2])</code></pre>
+<pre class="out">[21, 22, 20, 20, 20, 23, 21, 22, 21, 23]</pre>
+        <p>Ten epochs, and the count wanders between 20 and 23 instead of reaching 0. Some points sit on
+        the wrong side of every possible line, each one triggers a correction, and each correction knocks a different
+        point out of place. A perceptron can draw only one straight boundary, and week 7 starts from that limit.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>The rule changes weights and bias only on a mistake, by the learning rate times the input.</li>
+          <li>From zero weights the learning rate only rescales the result; predictions stay identical.</li>
+          <li>From a random start the learning rate changes the path training takes.</li>
+          <li>On overlapping classes the mistakes never reach zero and the boundary keeps moving.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>The perceptron goes through the rows one at a time. If it gets a row wrong, it adds the learning rate times
+          the error times the input to the weights, and the same times the error to the bias. If it gets it right,
+          nothing changes. One full pass is an epoch.</p>
+          <p>It stops when an epoch has no mistakes, and that can only happen if a straight line separates the classes.
+          If the classes overlap, every epoch has mistakes, every mistake moves the line, and it never settles, so you cap
+          the number of epochs.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="3">
+        <div class="tag">TensorFlow</div>
+        <h2>TensorFlow basics: tensors and operations in one place</h2>
+        <p>The perceptron so far ran in numpy. TensorFlow does the same kind of arithmetic on its own array type, the
+        tensor, and adds the machinery a neural network needs. Colab ships TensorFlow 2.21.0 with Keras 3.13.2,
+        reached as <code>tf.keras</code>.<sup class="cite"><a href="#src-12">12</a></sup> It runs them on Python 3.13.18,
+        not the course's 3.15, because TensorFlow has no 3.15 wheel.<sup class="cite"><a href="#src-13">13</a></sup>
+        Every example on this page is TensorFlow 2.</p>
+        <h3>Rank, shape and dtype</h3>
+        <p>A tensor is a multi-dimensional array. It has a shape and a dtype, and when you write plain decimal numbers the
+        default float type is <code>float32</code>.<sup class="cite"><a href="#src-14">14</a></sup> The rank is the
+        number of axes, which is the length of the shape.</p>
+        <table>
+          <thead><tr><th>Rank</th><th>Common name</th><th>Example</th><th>Shape</th></tr></thead>
+          <tbody>
+            <tr><td>0</td><td>scalar</td><td><code>tf.constant(3.0)</code></td><td>()</td></tr>
+            <tr><td>1</td><td>vector</td><td><code>tf.constant([1.0, 2.0])</code></td><td>(2,)</td></tr>
+            <tr><td>2</td><td>matrix</td><td><code>tf.constant([[1.0, 2.0], [3.0, 4.0]])</code></td><td>(2, 2)</td></tr>
+          </tbody>
+        </table>
+        <p>A batch of breast-cancer rows is a rank-2 tensor of shape (rows, 30), and a batch of greyscale images is rank 3.
+        The cell below builds a 2 by 2 matrix and prints its shape, dtype and rank, then runs two operations on it.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>import tensorflow as tf
+
+m = tf.constant([[1.0, 2.0], [3.0, 4.0]])
+print(m.shape, m.dtype, m.ndim)
+print(m + 1)
+print(tf.matmul(m, m))</code></pre>
+<pre class="out">(2, 2) &lt;dtype: 'float32'&gt; 2
+tf.Tensor(
+[[2. 3.]
+ [4. 5.]], shape=(2, 2), dtype=float32)
+tf.Tensor(
+[[ 7. 10.]
+ [15. 22.]], shape=(2, 2), dtype=float32)</pre>
+        <p><code>m + 1</code> adds 1 to every element, the way numpy does, and <code>tf.matmul</code> is the matrix
+        product. Every printed tensor carries its values, its shape and its dtype, which is the first place to look when
+        an operation complains.</p>
+        <h3>Eager execution</h3>
+        <p>TensorFlow 2 runs operations eagerly by default: each operation executes at once and returns a concrete
+        value.<sup class="cite"><a href="#src-15">15</a></sup> That is why <code>print(m + 1)</code> above shows
+        numbers. Operations such as <code>tf.matmul</code> and <code>+</code> run eagerly and return
+        tensors.<sup class="cite"><a href="#src-15">15</a></sup></p>
+        <p>Eager code reads and debugs like ordinary Python. You can print any intermediate value, step through it, and
+        mix it with Python <code>if</code> statements and loops. A <code>tf.Tensor</code> is immutable, so every operation
+        returns a new tensor and leaves its inputs alone.<sup class="cite"><a href="#src-16">16</a></sup>
+        TensorFlow 1 worked the other way round, building a graph first and computing values later, and the next step
+        covers that history.</p>
+        <h3>From NumPy and back</h3>
+        <p>TensorFlow and numpy pass data back and forth. <code>tf.constant</code> accepts a numpy array, and the
+        <code>.numpy()</code> method converts an eager tensor into a numpy
+        array.<sup class="cite"><a href="#src-14">14</a></sup> The same arithmetic reads the same in both.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>import numpy as np
+
+a = np.array([[1, 2], [3, 4]])
+t = tf.constant(a)
+print(t.dtype, tf.constant([1.5, 2.5]).dtype)
+print(type(t.numpy()).__name__, (t * 2).numpy().tolist())
+print(np.array_equal(a + a, (t + t).numpy()))</code></pre>
+<pre class="out">&lt;dtype: 'int64'&gt; &lt;dtype: 'float32'&gt;
+ndarray [[2, 4], [6, 8]]
+True</pre>
+        <p>The dtype follows the data. A numpy array of whole numbers becomes an <code>int64</code> tensor, while a list of
+        decimals becomes <code>float32</code>, so check the dtype whenever data arrives from numpy. The last line confirms that adding in TensorFlow and adding in numpy give the same
+        array.</p>
+        <h3>tf.function: the route to a graph</h3>
+        <p><code>tf.function</code> traces a Python function into a <code>tf.Graph</code> that TensorFlow can optimise and
+        reuse, and it is the TensorFlow 2 route to a graph.<sup class="cite"><a href="#src-15">15</a></sup>
+        Tracing runs the Python body once per new input signature. A plain <code>print</code> inside it therefore fires
+        only while tracing, while <code>tf.print</code> fires on every call.<sup class="cite"><a href="#src-17">17</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>@tf.function
+def weighted_sum(x, w, b):
+    print("tracing")
+    return tf.reduce_sum(x * w) + b
+
+x = tf.constant([1.0, 1.0])
+w = tf.constant([2.0, 1.0])
+print(weighted_sum(x, w, tf.constant(-3.0)).numpy())
+print(weighted_sum(x, w, tf.constant(-2.0)).numpy())
+print(weighted_sum(tf.constant([1.0, 1.0, 1.0]), tf.constant([1.0, 1.0, 1.0]), tf.constant(0.0)).numpy())</code></pre>
+<pre class="out">tracing
+0.0
+1.0
+tracing
+3.0</pre>
+        <p>The function is a perceptron's weighted sum. The first call traces it, so "tracing" appears once. The second
+        call has the same shapes and reuses the graph. The third passes vectors of length 3, a new input signature, so
+        TensorFlow traces again.</p>
+        <p>TensorFlow can optimise and reuse a graph, but tracing costs time, and new shapes or new
+        Python values cause retracing.<sup class="cite"><a href="#src-17">17</a></sup> A function that
+        retraces on every call pays that cost every time. You recognise the feature by <code>@tf.function</code>
+        on the line above a <code>def</code>.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A tensor has a shape, a dtype and a rank; decimal values default to float32.</li>
+          <li>TensorFlow 2 runs each operation eagerly and returns a value at once.</li>
+          <li>The numpy method turns a tensor into a numpy array, and tf.constant goes the other way.</li>
+          <li>tf.function traces a Python function into a graph, once per new input signature.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A tensor is TensorFlow's multi-dimensional array. Its rank is the number of axes, its shape is the size of
+          each axis, and its dtype is the element type, float32 by default for decimals.</p>
+          <p>TensorFlow 2 runs eagerly, so each operation computes its result straight away and I can print and debug it
+          like normal Python. When I want speed, I put tf.function on a function. It traces the Python into a graph once
+          per input signature and reuses it, but a new shape triggers another trace, so I watch for retracing.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">TensorFlow</div>
+        <h2>Constants, variables and placeholders</h2>
+        <p>The curriculum names three kinds of value: constants, placeholders and variables. Two of them are everyday
+        TensorFlow 2. The third belongs to TensorFlow 1, and you need to recognise it because old tutorials and older
+        codebases still use it.</p>
+        <h3>tf.constant: a value that never changes</h3>
+        <p><code>tf.constant</code> creates an immutable tensor, and there is no way to assign a new value to
+        it.<sup class="cite"><a href="#src-14">14</a></sup> Every tensor in the previous step was one. Data you
+        feed a model, such as a batch of rows or a lookup table, fits that description: it is read, never updated in
+        place.</p>
+        <p>The perceptron loop earlier on this page kept its weights in a numpy array and overwrote them after every
+        mistake. A constant cannot do that job. Something has to hold the weights between calls and accept changes,
+        which is what a variable is for.</p>
+        <h3>tf.Variable: state you can assign</h3>
+        <p>A <code>tf.Variable</code> is a tensor-like object whose value can be changed with <code>assign</code>,
+        <code>assign_add</code> and <code>assign_sub</code>.<sup class="cite"><a href="#src-16">16</a></sup>
+        A variable is how a model keeps its weights from one call to the next. The cell below changes a variable twice and
+        then tries the same on a constant. A <code>try</code> block runs code that may fail, and its <code>except</code>
+        clause catches the named error instead of stopping the cell.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>c = tf.constant([1.0, 2.0])
+v = tf.Variable([1.0, 2.0])
+v.assign([5.0, 6.0])
+v.assign_add([1.0, 1.0])
+print(v.numpy(), c.numpy())
+
+try:
+    c.assign([5.0, 6.0])
+except AttributeError as err:
+    print("constant:", type(err).__name__)</code></pre>
+<pre class="out">[6. 7.] [1. 2.]
+constant: AttributeError</pre>
+        <p>The variable went from [1, 2] to [5, 6] and then to [6, 7]. The constant has no <code>assign</code> method at
+        all, so the attempt fails with <code>AttributeError</code> and the constant keeps its value.</p>
+        <p>A variable is changeable only within limits. <code>assign</code> keeps the shape and dtype fixed, so a value of
+        another shape raises an error.<sup class="cite"><a href="#src-16">16</a></sup> You can replace the
+        numbers in a weight vector, but you cannot turn two weights into three.</p>
+        <h3>Trainable or not</h3>
+        <p>A <code>tf.Variable</code> created with <code>trainable=False</code> is left out of the variables a gradient
+        step updates.<sup class="cite"><a href="#src-16">16</a></sup> A gradient step is the optimizer's small
+        correction to the weights during training, the same job the perceptron's update did. Training changes the trainable ones,
+        such as weights and biases. A counter of how many steps have run is state too, but no training step should ever
+        nudge it, so it is created with <code>trainable=False</code>.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>steps_seen = tf.Variable(0, trainable=False)
+w = tf.Variable([0.0, 0.0])
+print(w.trainable, steps_seen.trainable)
+
+try:
+    w.assign([1.0, 2.0, 3.0])
+except ValueError as err:
+    print("new shape:", type(err).__name__)
+print(w.shape, w.dtype)</code></pre>
+<pre class="out">True False
+new shape: ValueError
+(2,) &lt;dtype: 'float32'&gt;</pre>
+        <p>Variables are trainable unless you say otherwise, which is why <code>w</code> prints <code>True</code>. The
+        three-number assignment fails with <code>ValueError</code>, and <code>w</code> still has shape (2,) and dtype
+        <code>float32</code> afterwards.</p>
+        <h3>Placeholders and sessions: TensorFlow 1 history</h3>
+        <p>TensorFlow 1 placeholders and sessions belong to its graph mode. You first built a graph with an empty slot for
+        the input, then ran it inside a session and filled the slot through <code>feed_dict</code>. TensorFlow 2 replaces
+        them with function arguments and eager execution, and the migration guide lists the replacement for
+        each.<sup class="cite"><a href="#src-18">18</a></sup></p>
+        <p class="run-label">TensorFlow 1 (history, do not run)</p>
+<pre><code>x = tf.placeholder(tf.float32, shape=[None])
+doubled = x * 2.0
+with tf.Session() as sess:
+    print(sess.run(doubled, feed_dict={x: [1.0, 2.0]}))</code></pre>
+        <p>In TensorFlow 1 this printed the doubled values. <code>doubled</code> held no numbers until
+        <code>sess.run</code> computed it, and <code>feed_dict</code> supplied the value for the placeholder. In TensorFlow
+        2 the slot becomes an ordinary argument.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>@tf.function
+def double(x):
+    return x * 2.0
+
+print(double(tf.constant([1.0, 2.0])).numpy())</code></pre>
+<pre class="out">[2. 4.]</pre>
+        <p>The pattern to watch for is an old tutorial built on the TensorFlow 1 names below. Under TensorFlow 2 that
+        code fails, or runs only through <code>tf.compat.v1</code>.<sup class="cite"><a href="#src-18">18</a></sup>
+        Rewrite it with eager values, <code>tf.function</code> arguments and <code>tf.Variable</code>, or find a newer
+        tutorial.</p>
+        <table>
+          <thead><tr><th>TensorFlow 1 name</th><th>TensorFlow 2 replacement</th></tr></thead>
+          <tbody>
+            <tr><td><code>tf.placeholder</code></td><td>an argument of a function</td></tr>
+            <tr><td><code>tf.Session</code> and <code>sess.run</code></td><td>eager execution, with <code>tf.function</code> when you want a graph</td></tr>
+            <tr><td><code>feed_dict</code></td><td>the value passed in the call</td></tr>
+            <tr><td><code>tf.global_variables_initializer()</code></td><td>a <code>tf.Variable</code> created with its starting value</td></tr>
+          </tbody>
+        </table>
+        <div class="ix-spot" data-snippet="init = tf.global_variables_initializer()&#10;with tf.Session() as sess:&#10;    sess.run(init)&#10;    out = sess.run(y, feed_dict={x: batch})" data-q="Which TensorFlow version was this written for, and what replaces each piece today?" data-a="TensorFlow 1. In TensorFlow 2 there is no session or initializer: variables hold values as soon as they exist, x becomes an argument of a function (with tf.function for a graph), and y is simply that function's return value."></div>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A tf.constant is immutable; a tf.Variable changes through assign and assign_add.</li>
+          <li>Assign keeps a variable's shape and dtype fixed.</li>
+          <li>Variables made with trainable=False are skipped by training.</li>
+          <li>Placeholders and sessions are TensorFlow 1; function arguments replace them.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A tf.constant is an immutable tensor. A tf.Variable holds state that changes, through assign or assign_add,
+          which is how a model keeps its weights between calls. The shape and dtype stay fixed. Training updates only the
+          trainable variables, and I'd mark something like a step counter trainable equals false.</p>
+          <p>A placeholder was TensorFlow 1's empty input slot in a graph that you filled with feed_dict inside a session.
+          TensorFlow 2 runs eagerly, so the placeholder becomes a plain function argument, and tf.function turns the
+          function into a graph when I need one.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
+        <div class="tag">Keras</div>
+        <h2>Creating a model with Keras</h2>
+        <p>This step builds the smallest useful Keras model, one sigmoid neuron, and trains it on scikit-learn's
+        breast-cancer dataset: 30 measurements per tumour and a two-class label.</p>
+        <h3>Split and scale the data first</h3>
+        <p>The data is split into training and test rows with Monday's <code>train_test_split</code>, then scaled.
+        <code>StandardScaler</code> rescales each feature to mean 0 and standard deviation 1, which lets sigmoid units and
+        gradient-based optimisers converge in few epochs.<sup class="cite"><a href="#src-19">19</a></sup> The
+        scaler is fitted on the training rows only, so nothing about the test rows leaks into training.
+        <code>tf.keras.utils.set_random_seed</code> seeds Python, NumPy and TensorFlow together, so the starting weights
+        repeat on every run.<sup class="cite"><a href="#src-20">20</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>import numpy as np
+import tensorflow as tf
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+
+tf.keras.utils.set_random_seed(42)
+X, y = load_breast_cancer(return_X_y=True)
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y)
+scaler = StandardScaler().fit(X_train)
+X_train = scaler.transform(X_train)
+X_test = scaler.transform(X_test)
+print(X_train.shape, X_test.shape)
+print(np.allclose(X_train.mean(axis=0), 0), np.allclose(X_train.std(axis=0), 1))</code></pre>
+<pre class="out">(455, 30) (114, 30)
+True True</pre>
+        <p>There are 455 training rows and 114 test rows, each with 30 features, and every training column now has mean 0
+        and standard deviation 1. Skipping the scaler is a common mistake here. The raw features make the single neuron
+        train slowly with a poor first epoch, and the model gets the blame.</p>
+        <h3>Sequential, Input and Dense</h3>
+        <p>A <code>tf.keras.Sequential</code> model is a stack of layers with one input and one output per
+        layer.<sup class="cite"><a href="#src-21">21</a></sup> <code>tf.keras.Input(shape=(30,))</code>
+        declares the input, so the weights exist before training starts.<sup class="cite"><a href="#src-21">21</a></sup>
+        A <code>Dense</code> layer computes, for each of its outputs, a weighted sum of all the inputs plus a bias, passed
+        through its activation.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>model = tf.keras.Sequential([
+    tf.keras.Input(shape=(30,)),
+    tf.keras.layers.Dense(1, activation="sigmoid"),
+])
+print(model.count_params())</code></pre>
+        <p>It prints 31. <code>Dense(1, activation="sigmoid")</code> on a 30-feature input holds a kernel of shape
+        (30, 1) and a bias of shape (1,), which makes 31 trainable
+        parameters.<sup class="cite"><a href="#src-22">22</a></sup> That is the perceptron again, with one weight
+        per input and one bias, and a sigmoid in place of the step. You recognise this model on sight by that
+        two-item list inside <code>Sequential</code>.</p>
+        <h3>compile: optimizer, loss and metrics</h3>
+        <p><code>model.compile</code> takes an optimizer, a loss and a list of
+        metrics.<sup class="cite"><a href="#src-23">23</a></sup> Two of the names below are week 7's subject,
+        so here is one line on each:</p>
+        <ul>
+          <li><code>"adam"</code> is the rule that nudges the weights a little after each batch to lower the loss, a
+          refined version of the perceptron's correction</li>
+          <li><code>"binary_crossentropy"</code> is the loss for a yes-or-no label, a number that grows as the predicted
+          probability moves away from the true label</li>
+          <li><code>["accuracy"]</code> asks Keras to report the share of rows classified correctly alongside the loss</li>
+        </ul>
+        <h3>fit, evaluate and predict</h3>
+        <p>After <code>compile</code>, three methods do the work.<sup class="cite"><a href="#src-23">23</a></sup></p>
+        <table>
+          <thead><tr><th>Method</th><th>What it does</th><th>What it returns</th></tr></thead>
+          <tbody>
+            <tr><td><code>fit</code></td><td>trains for a number of epochs</td><td>a History object holding the loss and metrics of each epoch</td></tr>
+            <tr><td><code>evaluate</code></td><td>scores the model on held-out data</td><td>the loss and the metrics</td></tr>
+            <tr><td><code>predict</code></td><td>runs the model on new inputs</td><td>the model's outputs</td></tr>
+          </tbody>
+        </table>
+        <p>Passing <code>verbose=0</code> keeps the progress lines out of the cell's output.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
+history = model.fit(X_train, y_train, epochs=50, verbose=0)
+print(len(history.history["loss"]), sorted(history.history))
+print(model.evaluate(X_test, y_test, verbose=0))
+
+probs = model.predict(X_test[:5], verbose=0)
+print(probs.shape)
+print((probs &gt;= 0.5).astype(int).ravel(), y_test[:5])</code></pre>
+        <p>The first line prints <code>50 ['accuracy', 'loss']</code>: one entry per epoch for each tracked figure. The
+        second prints a list of two numbers, <code>[test loss, test accuracy]</code>. The third prints <code>(5, 1)</code>, one probability per row, and the last prints the thresholded
+        predictions next to the true labels.</p>
+        <p>A sigmoid output lies between 0 and 1, so it reads as the probability of class 1, and this page thresholds it
+        at 0.5.<sup class="cite"><a href="#src-3">3</a></sup> Two mistakes are common at this point. One is
+        reading the printed loss as accuracy. The other is quoting training accuracy, which overstates how well the model
+        generalises; the figure to quote is <code>evaluate</code> on the held-out
+        split.<sup class="cite"><a href="#src-23">23</a></sup></p>
+        <h3>The layer's kernel and bias</h3>
+        <p>The trained weights sit on the layer. In Keras 3 a layer's <code>kernel</code> and <code>bias</code> are Keras
+        <code>Variable</code>s. Each is a container for state with <code>assign</code>, <code>trainable</code>,
+        <code>path</code> and <code>value</code> attributes.<sup class="cite"><a href="#src-24">24</a></sup> A Keras
+        <code>Variable</code>'s <code>.value</code> returns its backing
+        tensor.<sup class="cite"><a href="#src-24">24</a></sup> In the TensorFlow backend that backing tensor is a
+        <code>tf.Variable</code> like the ones in the previous step, as the cell below prints.
+        <code>get_weights()</code> returns a Dense layer's kernel, then its bias, as NumPy
+        arrays.<sup class="cite"><a href="#src-25">25</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>layer = model.layers[0]
+print(layer.kernel.path, layer.kernel.shape, layer.bias.shape)
+print(isinstance(layer.kernel, tf.Variable), isinstance(layer.kernel.value, tf.Variable))
+kernel, bias = layer.get_weights()
+print(type(kernel).__name__, kernel.shape, bias.shape, model.count_params())</code></pre>
+<pre class="out">sequential/dense/kernel (30, 1) (1,)
+False True
+ndarray (30, 1) (1,) 31</pre>
+        <p>The second line is the one to remember: the kernel itself is a Keras <code>Variable</code>, and its
+        <code>.value</code> is the <code>tf.Variable</code> underneath.</p>
+        <h3>One sigmoid neuron is logistic regression</h3>
+        <p>One sigmoid neuron trained on log loss is logistic
+        regression.<sup class="cite"><a href="#src-26">26</a></sup> Log loss is the same yes-or-no loss Keras calls
+        <code>"binary_crossentropy"</code>. Monday's <code>LogisticRegression</code>
+        fitted on the same scaled rows holds the same number of parameters.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>from sklearn.linear_model import LogisticRegression
+
+logreg = LogisticRegression(max_iter=5000).fit(X_train, y_train)
+print(logreg.coef_.shape, logreg.intercept_.shape)</code></pre>
+<pre class="out">(1, 30) (1,)</pre>
+        <p>Thirty coefficients and one intercept, the same 31 numbers as the Dense layer. The two models reach their
+        numbers by different routes, and both draw a single flat boundary through the 30-dimensional space. That is the
+        limit of a one-layer sigmoid model: it is logistic regression and can only draw a
+        line.<sup class="cite"><a href="#src-23">23</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Scale the features first; StandardScaler gives each one mean 0 and standard deviation 1.</li>
+          <li>Sequential with Input(shape=(30,)) and Dense(1, sigmoid) holds 31 trainable parameters.</li>
+          <li>Compile, fit, evaluate on held-out rows, then predict probabilities.</li>
+          <li>One sigmoid neuron trained on binary cross-entropy is logistic regression.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I'd build it as a Sequential model: an Input with shape thirty, then one Dense layer with one unit and a
+          sigmoid. Compile sets the optimizer, the loss and the metrics. Fit trains and returns a History of the loss per
+          epoch, evaluate gives me loss and accuracy on the test split, and predict gives probabilities I threshold at
+          one half.</p>
+          <p>I scale the features first with a standard scaler fitted on the training rows, because unscaled features make
+          training slow. And I'd point out that one sigmoid neuron is just logistic regression, so it can only draw a
+          straight boundary.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="6">
+        <div class="tag">Keras</div>
+        <h2>Graph visualization: seeing a model's structure</h2>
+        <p>A computation graph is a description of a calculation as nodes joined by edges: each node is an operation or a
+        layer, and each edge carries a tensor from one node to the next. Before you trust or share a model, you want to
+        see its structure. Keras gives two views of it, a printed table and a drawn graph, and TensorBoard gives a third,
+        lower-level one.</p>
+        <h3>model.summary()</h3>
+        <p><code>model.summary()</code> prints each layer with its type, its output shape and its parameter
+        count.<sup class="cite"><a href="#src-21">21</a></sup> It needs nothing installed beyond Keras, so
+        it is the first thing to run on any model you did not write.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>model.summary()</code></pre>
+        <p>For the trained model from the previous step it prints a table with one row, the Dense layer, with output
+        shape <code>(None, 1)</code> and 31 parameters, all of them trainable.</p>
+        <p>The <code>None</code> in the output shape is the batch size, which the model leaves open so it can take any
+        number of rows. Reading a summary is mostly arithmetic. A Dense layer with n inputs and k units holds n × k weights
+        plus k biases, so 30 inputs and 1 unit give 31. A parameter count that does not match your expectation usually
+        means an input shape is wrong.</p>
+        <h3>plot_model</h3>
+        <p><code>tf.keras.utils.plot_model</code> draws the layer graph as an image, and it needs pydot and graphviz
+        installed.<sup class="cite"><a href="#src-27">27</a></sup> <code>show_shapes=True</code> adds the
+        input and output shapes to each node.<sup class="cite"><a href="#src-27">27</a></sup> Colab ships
+        both dependencies, pydot 4.0.1 as a Python package and the graphviz 2.42.2 system package that provides the
+        <code>dot</code> program, so no install line is needed.<sup class="cite"><a href="#src-12">12</a></sup><sup class="cite"><a href="#src-28">28</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>tf.keras.utils.plot_model(model, show_shapes=True)</code></pre>
+        <p>The cell displays an image of the model with a box for each layer. The Dense box shows its name and type, an
+        input shape of <code>(None, 30)</code> and an output shape of <code>(None, 1)</code>. For a one-layer model that
+        is a small picture, and the value grows with the model: a drawing shows at a glance which layer feeds which.</p>
+        <p>The limit is the dependency. On a laptop without pydot or the graphviz program, <code>plot_model</code> raises
+        an error that asks you to install them.<sup class="cite"><a href="#src-27">27</a></sup> That error
+        says nothing about whether your model is right. Fall back to
+        <code>model.summary()</code>, which needs nothing extra.</p>
+        <h3>Model structure against the execution graph</h3>
+        <p><code>plot_model</code> and <code>summary</code> show the model's structure: layers and how they connect.
+        TensorBoard's Graphs tab shows something else, the operations TensorFlow traced when the model actually ran. To
+        export that graph you create a writer, call <code>tf.summary.trace_on(graph=True)</code>, run the traced function
+        once, and then call <code>tf.summary.trace_export</code> inside
+        <code>with writer.as_default():</code>.<sup class="cite"><a href="#src-29">29</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>writer = tf.summary.create_file_writer("logs/graph")
+
+@tf.function
+def forward(x):
+    return model(x)
+
+tf.summary.trace_on(graph=True)
+forward(tf.constant(X_test[:1], dtype=tf.float32))
+with writer.as_default():
+    tf.summary.trace_export(name="basic_graph", step=0)
+
+%load_ext tensorboard
+%tensorboard --logdir logs</code></pre>
+        <p>The Python lines print nothing; they write an event file under <code>logs/graph</code>. The two lines that
+        start with <code>%</code> are notebook commands, not Python: they load TensorBoard and open it inside the cell's
+        output, where the Graphs tab shows the traced operations of the forward pass.</p>
+        <p>Each view answers a different question.</p>
+        <table>
+          <thead><tr><th>View</th><th>Shows</th><th>Needs</th><th>Use it to</th></tr></thead>
+          <tbody>
+            <tr><td><code>model.summary()</code></td><td>layers, output shapes, parameter counts</td><td>nothing extra</td><td>check shapes and sizes quickly</td></tr>
+            <tr><td><code>plot_model</code></td><td>layers as boxes joined by arrows</td><td>pydot and graphviz</td><td>see which layer feeds which</td></tr>
+            <tr><td>TensorBoard Graphs tab</td><td>the traced operations</td><td>a trace and a log directory</td><td>inspect what actually ran</td></tr>
+          </tbody>
+        </table>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>model.summary() lists each layer, its output shape and its parameter count.</li>
+          <li>plot_model draws the layer graph and needs pydot and graphviz, both on Colab.</li>
+          <li>TensorBoard's Graphs tab shows traced operations, a different picture from the layer graph.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A computation graph is the calculation written as nodes and edges: operations or layers as nodes, tensors
+          flowing along the edges. To inspect a Keras model I start with model dot summary, which lists every layer with
+          its output shape and parameter count, and I use plot_model with show_shapes when I want a picture.</p>
+          <p>TensorBoard's Graphs tab is a different view. It shows the operations TensorFlow traced when a tf.function
+          ran, so it tells me what actually executed rather than how the layers are stacked.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="7">
+        <div class="tag">Check yourself</div>
+        <h2>Check yourself</h2>
+        <p>Ten retrieval questions, at least one per section. Answer each out loud before you open it.</p>
+        <details class="check"><summary>Why does a network need a non-linear activation, and which activation suits a yes-or-no output?</summary><p>Linear operations applied to linear operations stay linear, so stacked weighted sums without a non-linear activation collapse into one. For a yes-or-no output, a sigmoid fits, because it maps any sum into the range 0 to 1 and reads as a probability.</p></details>
+        <details class="check"><summary>What does <code>np.where(z &gt;= 0, 1, 0)</code> return for z = 0, and why does a perceptron need one fixed rule there?</summary><p>It returns 1. Training changes the weights only after a mistake, and a row whose sum is exactly 0 is right under one convention and wrong under the other, so two different rules give different weights after the same epoch.</p></details>
+        <details class="check"><summary>Which numbers in a perceptron are parameters and which are hyperparameters?</summary><p>The weights and the bias are parameters, learned from the data. The learning rate and the number of epochs are hyperparameters, set before training; scikit-learn's <code>Perceptron</code> calls them <code>eta0</code> and <code>max_iter</code>.</p></details>
+        <details class="check"><summary>Run the first epoch of the AND table by hand from weights [0, 0], bias 0 and learning rate 1. Where do the weights and bias end up?</summary><p>Weights [1, 1] and bias 0. Row (0, 0) sums to 0, outputs 1 and is wrong, so the bias drops to −1. Rows (0, 1) and (1, 0) are then right. Row (1, 1) sums to −1, outputs 0 and is wrong, so both weights rise to 1 and the bias returns to 0.</p></details>
+        <details class="check"><summary>Starting from zero weights, what changes when you lower the learning rate from 1 to 0.01? And from a seeded random start?</summary><p>From zero, only the scale: every weight and the bias are a hundredth of the learning-rate-1 values, so every prediction, the boundary and the number of epochs stay the same. From a random start the starting weights are not scaled, so the rate changes the path training takes.</p></details>
+        <details class="check"><summary>You raise <code>cluster_std</code> until two blobs overlap, and the perceptron's mistakes per epoch never reach 0. Is that a bug?</summary><p>No. The rule converges only when a straight line separates the classes. With overlapping classes every epoch has mistakes, every mistake moves the boundary, and training never settles, so you cap the epochs.</p></details>
+        <details class="check"><summary>What does <code>tf.function</code> give you, and what does it cost?</summary><p>It traces a Python function into a graph that TensorFlow can optimise and reuse. Tracing takes time, and a new input shape or Python value triggers another trace; a plain <code>print</code> inside runs only while tracing.</p></details>
+        <details class="check"><summary>How do <code>tf.constant</code> and <code>tf.Variable</code> differ, and what replaced the TensorFlow 1 placeholder?</summary><p>A constant is immutable. A variable can be changed with <code>assign</code>, <code>assign_add</code> or <code>assign_sub</code>, keeps its shape and dtype, and is skipped by training when created with <code>trainable=False</code>. The placeholder became an ordinary function argument.</p></details>
+        <details class="check"><summary>What do <code>compile</code>, <code>fit</code>, <code>evaluate</code> and <code>predict</code> each do, and which accuracy do you quote?</summary><p><code>compile</code> sets the optimizer, loss and metrics; <code>fit</code> trains and returns a History of per-epoch loss and metrics; <code>evaluate</code> returns loss and metrics on held-out data; <code>predict</code> returns outputs, here probabilities. Quote the accuracy from <code>evaluate</code> on the test split, never the training accuracy.</p></details>
+        <details class="check"><summary>When do you reach for <code>model.summary()</code>, <code>plot_model</code> and TensorBoard's Graphs tab?</summary><p><code>model.summary()</code> first, for layers, output shapes and parameter counts with nothing extra installed. <code>plot_model</code> when you want a drawing of which layer feeds which, if pydot and graphviz are present. The Graphs tab when you want the operations a traced function actually ran.</p></details>
+      </section>
+
+      <section class="reading-sources" aria-label="Sources and deeper dive">
+        <h2>Sources &amp; deeper dive</h2>
+        <ul>
+          <li id="src-1"><a href="https://scikit-learn.org/stable/modules/neural_networks_supervised.html" target="_blank" rel="noopener">Neural network models (supervised), scikit-learn user guide</a> — a neuron as a weighted linear sum followed by a non-linear activation, and why the activation must be non-linear.</li>
+          <li id="src-2"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/activations" target="_blank" rel="noopener">tf.keras.activations</a> — the activation functions Keras provides, and the missing step function.</li>
+          <li id="src-3"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/activations/sigmoid" target="_blank" rel="noopener">tf.keras.activations.sigmoid</a> — sigmoid's range and its use as a yes-or-no output.</li>
+          <li id="src-4"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/activations/tanh" target="_blank" rel="noopener">tf.keras.activations.tanh</a> — tanh's range, centred on 0.</li>
+          <li id="src-5"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/activations/relu" target="_blank" rel="noopener">tf.keras.activations.relu</a> — ReLU as max(0, x).</li>
+          <li id="src-6"><a href="https://developers.google.com/machine-learning/crash-course/neural-networks/activation-functions" target="_blank" rel="noopener">Neural networks: Activation functions, Google ML Crash Course</a> — where sigmoid and tanh flatten, and the cost and limit of ReLU.</li>
+          <li id="src-7"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/activations/softmax" target="_blank" rel="noopener">tf.keras.activations.softmax</a> — scores turned into probabilities that sum to 1.</li>
+          <li id="src-8"><a href="https://scikit-learn.org/stable/modules/grid_search.html" target="_blank" rel="noopener">Tuning the hyper-parameters of an estimator, scikit-learn user guide</a> — hyperparameters as the settings an estimator does not learn.</li>
+          <li id="src-9"><a href="https://developers.google.com/machine-learning/crash-course/linear-regression/hyperparameters" target="_blank" rel="noopener">Linear regression: Hyperparameters, Google ML Crash Course</a> — learning rate and epochs as hyperparameters set before training.</li>
+          <li id="src-10"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Perceptron.html" target="_blank" rel="noopener">sklearn.linear_model.Perceptron</a> — eta0, max_iter, random_state, score, and the separability limit.</li>
+          <li id="src-11"><a href="https://scikit-learn.org/stable/modules/linear_model.html#perceptron" target="_blank" rel="noopener">Linear models: Perceptron, scikit-learn user guide</a> — updates only on mistakes, and why no learning rate is required.</li>
+          <li id="src-12"><a href="https://raw.githubusercontent.com/googlecolab/backend-info/main/pip-freeze.txt" target="_blank" rel="noopener">Colab runtime package list (googlecolab/backend-info)</a> — the TensorFlow, Keras, numpy, scikit-learn and pydot versions Colab ships.</li>
+          <li id="src-13"><a href="https://raw.githubusercontent.com/googlecolab/backend-info/main/os-info.txt" target="_blank" rel="noopener">Colab runtime OS and Python (googlecolab/backend-info)</a> — the Python version Colab runs.</li>
+          <li id="src-14"><a href="https://www.tensorflow.org/guide/tensor" target="_blank" rel="noopener">Introduction to Tensors</a> — shape, dtype, the float32 default, tf.constant and .numpy().</li>
+          <li id="src-15"><a href="https://www.tensorflow.org/guide/intro_to_graphs" target="_blank" rel="noopener">Introduction to graphs and tf.function</a> — eager execution and tf.function as the TensorFlow 2 route to a graph.</li>
+          <li id="src-16"><a href="https://www.tensorflow.org/guide/variable" target="_blank" rel="noopener">Introduction to Variables</a> — immutable tensors, assign, assign_add, fixed shape and trainable=False.</li>
+          <li id="src-17"><a href="https://www.tensorflow.org/guide/function" target="_blank" rel="noopener">Better performance with tf.function</a> — tracing, retracing, and print against tf.print.</li>
+          <li id="src-18"><a href="https://www.tensorflow.org/guide/migrate" target="_blank" rel="noopener">Migrate to TensorFlow 2</a> — placeholders and sessions as TensorFlow 1, and their replacements.</li>
+          <li id="src-19"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.StandardScaler.html" target="_blank" rel="noopener">StandardScaler</a> — rescaling each feature to mean 0 and standard deviation 1.</li>
+          <li id="src-20"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/utils/set_random_seed" target="_blank" rel="noopener">tf.keras.utils.set_random_seed</a> — one call that seeds Python, NumPy and TensorFlow.</li>
+          <li id="src-21"><a href="https://www.tensorflow.org/guide/keras/sequential_model" target="_blank" rel="noopener">The Sequential model</a> — Sequential, Input and model.summary().</li>
+          <li id="src-22"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/layers/Dense" target="_blank" rel="noopener">Dense layer API</a> — the kernel and bias of a Dense layer.</li>
+          <li id="src-23"><a href="https://www.tensorflow.org/guide/keras/training_with_built_in_methods" target="_blank" rel="noopener">Training and evaluation with the built-in methods</a> — compile, fit, evaluate and predict, and what each returns.</li>
+          <li id="src-24"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/Variable" target="_blank" rel="noopener">tf.keras.Variable</a> — Keras 3 variables, their path and their backing value.</li>
+          <li id="src-25"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/Layer" target="_blank" rel="noopener">tf.keras.Layer</a> — get_weights() and a layer's weights as NumPy arrays.</li>
+          <li id="src-26"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html" target="_blank" rel="noopener">sklearn.linear_model.LogisticRegression</a> — logistic regression, the model one sigmoid neuron reproduces.</li>
+          <li id="src-27"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/utils/plot_model" target="_blank" rel="noopener">plot_model API</a> — drawing the layer graph, show_shapes, and the pydot and graphviz requirement.</li>
+          <li id="src-28"><a href="https://raw.githubusercontent.com/googlecolab/backend-info/main/apt-list.txt" target="_blank" rel="noopener">Colab runtime system packages (googlecolab/backend-info)</a> — the graphviz system package that provides dot.</li>
+          <li id="src-29"><a href="https://www.tensorflow.org/tensorboard/graphs" target="_blank" rel="noopener">Examining the TensorFlow Graph</a> — tracing a graph into TensorBoard's Graphs tab.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · after you have read the page</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 6 Day 5</footer>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 5 — goals</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Explain what an activation function does, compare sigmoid, tanh, ReLU and softmax, and apply the step rule at zero</li>
+      <li>Trace the perceptron learning rule on the AND table and say which numbers are parameters and which are hyperparameters</li>
+      <li>Work with tensors, <code>tf.function</code>, <code>tf.constant</code> and <code>tf.Variable</code> in TensorFlow 2, and say what replaced placeholders and sessions</li>
+      <li>Build, train, evaluate and inspect a one-neuron Keras classifier, and show its structure with <code>model.summary()</code> and <code>plot_model</code></li>
+    </ul>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Back to program →", href: "../../index.html" };
+window.DIAGRAM = {
+  title: "Day 5 · from one neuron to a Keras model",
+  width: 500, height: 520,
+  nodes: [
+    { id:"act", step:0, kind:"example", x:14, y:14, w:472, h:50, label:"ACTIVATION\n  sigmoid · tanh · ReLU · softmax · step (1 at z = 0)", detail:"Sigmoid maps into (0, 1) and suits a yes-or-no output; tanh into (-1, 1); ReLU is max(0, z). tf.keras.activations has no step, so it is np.where(z >= 0, 1, 0)." },
+    { id:"perc", step:1, x:24, y:86, w:200, h:56, label:"Perceptron\n  weighted sum + bias\n  then the step", detail:"z = w1*x1 + w2*x2 + b, output step(z). The points where z = 0 form a straight boundary. Weights [1, 1] and bias -1.5 solve AND." },
+    { id:"params", step:1, x:276, y:86, w:200, h:56, label:"Parameters vs hyperparameters\n  w, b: learned\n  lr, epochs: you set", detail:"scikit-learn's Perceptron calls the learning rate eta0 and caps epochs with max_iter. AND from zero ends in epoch 6 with w = [2, 1], b = -3." },
+    { id:"rule", step:2, x:24, y:164, w:200, h:56, label:"Learning rule\n  w += lr*(y - pred)*x\n  only on mistakes", detail:"From zero weights the learning rate only rescales w and b, so predictions are identical at any rate. From a random start it changes the path." },
+    { id:"sep", step:2, x:276, y:164, w:200, h:56, label:"Linear separability\n  separable: settles\n  overlapping: never settles", detail:"With cluster_std raised to 5.0 the mistakes per epoch wander between 20 and 23 instead of reaching 0." },
+    { id:"tensor", step:3, x:24, y:242, w:200, h:56, label:"Tensors\n  shape · dtype · rank\n  eager · tf.function", detail:"Operations run eagerly and return values at once. tf.function traces a graph once per input signature; a new shape retraces." },
+    { id:"var", step:4, x:276, y:242, w:200, h:56, label:"Constants & variables\n  tf.constant · tf.Variable\n  placeholder = TF1", detail:"A constant is immutable; a variable changes with assign and assign_add but keeps its shape and dtype. trainable=False keeps training off it. Placeholders became function arguments." },
+    { id:"model", step:5, kind:"example", x:24, y:320, w:452, h:56, label:"KERAS MODEL\n  Input(30) -> Dense(1, sigmoid): 31 parameters\n  compile · fit · evaluate · predict", detail:"Scaled breast-cancer rows, adam and binary_crossentropy. The kernel and bias are Keras Variables; .value is the tf.Variable underneath. One sigmoid neuron is logistic regression." },
+    { id:"summary", step:6, x:24, y:398, w:200, h:48, label:"model.summary()\n  layers · shapes · params", detail:"Needs nothing extra. One row, dense (Dense), output (None, 1), 31 parameters." },
+    { id:"plot", step:6, x:276, y:398, w:200, h:48, label:"plot_model / TensorBoard\n  layer graph · traced ops", detail:"plot_model needs pydot and graphviz, both on Colab. TensorBoard's Graphs tab shows the operations a traced function ran." },
+    { id:"check", step:7, x:24, y:468, w:452, h:40, label:"CHECK YOURSELF\n  answer out loud, then open" }
+  ],
+  edges: [
+    { id:"e1", step:1, from:"act", to:"perc", label:"the step" },
+    { id:"e2", step:1, from:"perc", to:"params", label:"its numbers" },
+    { id:"e3", step:2, from:"perc", to:"rule", label:"train" },
+    { id:"e4", step:2, from:"rule", to:"sep", label:"settles if" },
+    { id:"e5", step:3, from:"rule", to:"tensor", label:"same sums in TF" },
+    { id:"e6", step:4, from:"tensor", to:"var", label:"state" },
+    { id:"e7", step:5, from:"var", to:"model", label:"weights live here" },
+    { id:"e8", step:5, from:"tensor", to:"model", label:"data in" },
+    { id:"e9", step:6, from:"model", to:"summary", label:"inspect" },
+    { id:"e10", step:6, from:"model", to:"plot", label:"draw" },
+    { id:"e11", step:7, from:"summary", to:"check", dir:"-" },
+    { id:"e12", step:7, from:"plot", to:"check", dir:"-" }
+  ],
+  captions: [
+    "An activation function turns a neuron's weighted sum into its output; the perceptron's step outputs 1 at z = 0. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "A perceptron is a weighted sum, a bias and a step. Weights and bias are learned; learning rate and epochs are set by you.",
+    "The learning rule corrects only mistakes. It settles when a line separates the classes and keeps moving when they overlap.",
+    "TensorFlow does the same sums on tensors, eagerly, and tf.function traces them into a graph when asked.",
+    "Constants never change; variables hold state such as weights. Placeholders were TensorFlow 1's input slots.",
+    "A Keras Sequential model with one sigmoid Dense unit: compile, fit, evaluate, predict, and its 31 weights in Keras Variables.",
+    "model.summary() and plot_model show the model's layers; TensorBoard's Graphs tab shows the operations that ran.",
+    "You can now explain activations, train a perceptron by hand, and build, train and inspect a one-neuron Keras model."
+  ]
+};
+window.QUIZ = {
+  id: "w06-d5",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "A perceptron has weights [0, 0], bias 0 and the step rule used on this page. What does it output for the input (0, 0)?",
+      options: ["0, because both inputs are 0", "1, because the sum is 0 and the step outputs 1 at zero", "0.5, the midpoint of the step", "It cannot decide and raises an error"], answer: 1,
+      explain: "The sum is 0 and the rule is np.where(z >= 0, 1, 0), so the output is 1. For AND that is a mistake, so training updates on the very first row." },
+    { type: "tf", stem: "Starting from zero weights and bias, lowering a perceptron's learning rate from 1 to 0.01 changes which AND rows it classifies correctly.", answer: false,
+      explain: "From zero, every update is the learning rate times the same plus-or-minus input, so the weights and bias are just rescaled. The sign of every sum, and so every prediction, stays the same." },
+    { type: "mcq", stem: "Which of these does a perceptron learn during training? Select all that apply.",
+      options: ["The weights", "The bias", "The learning rate", "The number of epochs"], answer: [0, 1],
+      explain: "Weights and bias are parameters, learned from the data. The learning rate and the number of epochs are hyperparameters you set before training." },
+    { type: "match", stem: "Match each TensorFlow name to what it is.",
+      pairs: [
+        { l: "tf.constant", r: "an immutable tensor" },
+        { l: "tf.Variable", r: "state you change with assign, keeping shape and dtype" },
+        { l: "tf.placeholder", r: "a TensorFlow 1 input slot filled through feed_dict" },
+        { l: "tf.function", r: "traces a Python function into a graph" }
+      ],
+      explain: "Constants never change, variables hold weights, placeholders are TensorFlow 1 history replaced by function arguments, and tf.function is the TensorFlow 2 route to a graph." },
+    { type: "scq", stem: "How many trainable parameters does tf.keras.Sequential([tf.keras.Input(shape=(30,)), tf.keras.layers.Dense(1, activation=\"sigmoid\")]) hold?",
+      options: ["30", "31", "60", "1"], answer: 1,
+      explain: "A kernel of shape (30, 1) plus a bias of shape (1,): 30 weights and 1 bias, 31 in all." },
+    { type: "open", stem: "In two or three sentences: a perceptron trained on two overlapping classes never reaches an epoch with zero mistakes. Why, and what do you do about it?",
+      hint: "One straight line, mistakes, a cap.",
+      model: "The perceptron rule converges only when a straight line separates the classes. With overlap, some points are on the wrong side of every line, so each epoch has mistakes and each mistake moves the boundary again. You cap the number of epochs and accept the limit of a single linear boundary." }
+  ]
+};
+</script>
+
+<script src="../../assets/js/diagram.js?v=20261116"></script>
+<script src="../../assets/js/scrolly.js?v=20261116"></script>
+<script src="../../assets/js/modals.js?v=20261116"></script>
+<script src="../../assets/js/quiz.js?v=20261116"></script>
+<script src="../../assets/js/widgets.js?v=20261116"></script>
+<script src="../../assets/js/glossary.js?v=20261116"></script>
+</body>
+</html>
