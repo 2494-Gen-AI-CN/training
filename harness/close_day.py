@@ -23,6 +23,12 @@ harness/workflows/demo-series.js). This script is the ONLY writer of `taught` in
      splices the index block (as harness/build_index.py does), records a `manual` run in harness/runs.jsonl,
      rebuilds the tracker once, then prints the STATUS.md log line to paste.
 
+A `demoFormat: "notebook"` day (D-0085) has no block: its demo is one prepared notebook in the demo repo
+(`notebooks/week-WW/NN_<weekday>_<slug>.ipynb` on main, harness/notebook_check.py), run live in Google Colab. Its
+close skips the prep diff and the walkthrough records: delivery.json carries `"format": "notebook"`, the notebook's
+path and the last commit touching it by the end of the taught date (null, with a warning line, when the file is
+missing or not committed); then the runbook Delivery record, `taught` and the same tail steps (5) as above.
+
 Re-running with --apply converges: delivery.json is rewritten, the records are not duplicated. A `demoFormat:
 "none"` day has nothing to close and is refused. A day that is not live (planned, or authored but its week not yet
 released by harness/release_week.py) is refused too: taught implies live (D-0052). Nothing is published to the
@@ -47,6 +53,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import build_index as bi  # noqa: E402
+import notebook_check  # noqa: E402
 import plan_check  # noqa: E402
 
 ROOT = bi.ROOT
@@ -60,7 +67,7 @@ STATES = ("reached", "diverged", "not reached")
 
 # ---------------------------------------------------------------- lookup
 def locate(week_no: int, day_no: int):
-    """(cur, week, day, rel, cfg) for a walkthrough day; refuses `none` days and unreleased days."""
+    """(cur, week, day, rel, cfg) for a walkthrough or notebook day; refuses `none` days and unreleased days."""
     cfg = json.loads((ROOT / "harness" / "config.json").read_text(encoding="utf-8"))
     cur = bi.load_curriculum()
     week = next((w for w in cur["weeks"] if w["week"] == week_no), None)
@@ -148,6 +155,11 @@ def last_commit_by(repo: Path, date: str) -> str:
     return out
 
 
+def last_commit_touching(repo: Path, path: str, date: str) -> str:
+    """The last commit (any branch) touching `path` on or before the end of `date`, '' when none (D-0085)."""
+    return _git(repo, "log", "--all", "-1", f"--until={date}T23:59:59", "--format=%H", "--", path).strip()
+
+
 def diffstat(repo: Path, a: str, b: str, path: str) -> str:
     """`git diff --stat a b -- path`, '' when the trees are equal there."""
     return _git(repo, "diff", "--stat", a, b, "--", path).strip()
@@ -182,7 +194,12 @@ def match_blocks(blocks: list[dict], prep: list[tuple[str, str]], live: list[tup
 
 
 # ---------------------------------------------------------------- what gets written
-def delivery_record(day: dict, date: str, blocks: list[dict], cfg: dict, sha: str, notes: str | None) -> dict:
+def delivery_record(day: dict, date: str, blocks: list[dict], cfg: dict, sha: str, notes: str | None,
+                    notebook: dict | None = None) -> dict:
+    """The walkthrough record; with `notebook` ({path, sha}, D-0085) the notebook record (no blocks)."""
+    if notebook is not None:
+        return {"day": day["id"], "date": date, "format": "notebook", "notebook": notebook["path"], "notebookSha": notebook["sha"],
+                "demoRepo": cfg["demoRepo"]["url"], "demoRepoSha": sha, "notes": notes or ""}
     return {"day": day["id"], "date": date, "format": "walkthrough", "blocks": blocks,
             "demoRepo": cfg["demoRepo"]["url"], "demoRepoSha": sha, "notes": notes or ""}
 
@@ -217,7 +234,15 @@ def append_walkthrough(path: Path, record: str, date: str) -> bool:
     return True
 
 
-def runbook_section(date: str, blocks: list[dict], url: str, sha: str, notes: str | None) -> str:
+def runbook_section(date: str, blocks: list[dict], url: str, sha: str, notes: str | None, notebook: dict | None = None) -> str:
+    if notebook is not None:   # D-0085
+        where = (f"{url.rstrip('/')}/blob/{notebook['sha']}/{notebook['path']}" if notebook["sha"]
+                 else f"{notebook['path']} (not committed by that date)")
+        return (f"\n{RECORD_HEAD.format(date=date)}\n\n"
+                "- Format: notebook (D-0085)\n"
+                f"- Notebook: {where}\n"
+                f"- Demo repo: {url.rstrip('/')}/commit/{sha}\n"
+                f"- Notes: {notes or 'none'}\n")
     rows = [f"- {b['name']}: {b['state']} (live {_short(b['liveSha'])}, prep {_short(b['prepSha'])})" for b in blocks] or ["- no walkthrough block in the plan for this day"]
     return (f"\n{RECORD_HEAD.format(date=date)}\n\n"
             "- Format: walkthrough (D-0055)\n"
@@ -265,6 +290,26 @@ def plan(week_no: int, day_no: int, date: str | None = None, notes: str | None =
         raise SystemExit(f"--date must be YYYY-MM-DD, got {date!r}")
     if when < slot:
         raise SystemExit(f"{day['id']} is on {slot.isoformat()}; it cannot be taught on {date}")
+    sha = last_commit_by(repo, date)
+    if notes is None:  # a re-run without --notes keeps the notes of an earlier close of the same date
+        prev = TRAINER / rel / "delivery.json"
+        if prev.is_file():
+            old = json.loads(prev.read_text(encoding="utf-8"))
+            notes = old.get("notes", "") if old.get("date") == date else None
+    if day.get("demoFormat") == "notebook":   # D-0085: no block, no prep diff
+        if matches:
+            raise SystemExit(f"--match: {day['id']} is a notebook day; it has no block to match")
+        nb_rel = notebook_check.notebook_rel(week_no, day_no, day["slug"], ROOT)
+        nb_sha = last_commit_touching(repo, nb_rel, date) or None
+        warning = None
+        if not (repo / nb_rel).is_file():
+            warning = f"WARNING: {nb_rel} is not in the demo repo clone; delivery.json records notebookSha null"
+        elif nb_sha is None:
+            warning = f"WARNING: {nb_rel} has no commit by the end of {date} (not committed yet); delivery.json records notebookSha null"
+        return {"cur": cur, "week": week, "day": day, "rel": rel, "cfg": cfg, "repo": repo, "date": date, "prep": None,
+                "prepExists": False, "blocks": [], "sha": sha, "notes": notes or "", "url": cfg["demoRepo"]["url"],
+                "demosDir": TRAINER / week["dir"] / "demos", "walkthroughs": {},
+                "notebook": {"path": nb_rel, "sha": nb_sha}, "warning": warning}
     pfile = ROOT / "harness" / "plans" / f"week-{week_no:02d}.md"
     blocks = plan_check.day_rows(plan_check.load_plan(pfile), day["id"])["blockRows"] if pfile.is_file() else []
     thread_dirs = sorted({t.get("repoDir", "") for t in (cfg.get("threads") or {}).values() if isinstance(t, dict) and t.get("repoDir")})
@@ -274,12 +319,6 @@ def plan(week_no: int, day_no: int, date: str | None = None, notes: str | None =
     for name in (matches or {}):
         if name not in {b["name"] for b in blocks}:
             raise SystemExit(f"--match {name}: not a block of {day['id']} in the plan ({[b['name'] for b in blocks]})")
-    sha = last_commit_by(repo, date)
-    if notes is None:  # a re-run without --notes keeps the notes of an earlier close of the same date
-        prev = TRAINER / rel / "delivery.json"
-        if prev.is_file():
-            old = json.loads(prev.read_text(encoding="utf-8"))
-            notes = old.get("notes", "") if old.get("date") == date else None
     demos_dir = TRAINER / week["dir"] / "demos"
     return {"cur": cur, "week": week, "day": day, "rel": rel, "cfg": cfg, "repo": repo, "date": date, "prep": prep,
             "prepExists": branch_exists(repo, prep), "blocks": matched, "sha": sha, "notes": notes or "",
@@ -289,6 +328,18 @@ def plan(week_no: int, day_no: int, date: str | None = None, notes: str | None =
 
 def describe(p: dict) -> list[str]:
     rel = p["rel"]
+    if p.get("notebook"):   # D-0085
+        nb = p["notebook"]
+        out = [f"{p['day']['id']} ({rel}), demoFormat notebook, taught {p['date']}"
+               + (f" (already taught {p['day']['taught']})" if p["day"].get("taught") else ""),
+               f"demo repo {p['repo'].name} ({p['url']}): last commit by the end of {p['date']} is {_short(p['sha'])}",
+               f"notebook {nb['path']}: last commit touching it by then is {_short(nb['sha'])}"]
+        if p.get("warning"):
+            out.append(p["warning"])
+        return out + [f"write trainer/{rel}/delivery.json (format notebook)",
+                      f"set taught={p['date']} on {p['day']['id']} in harness/curriculum.json",
+                      f"runbook: append '{RECORD_HEAD.format(date=p['date'])}'" if (TRAINER / rel / "runbook.md").exists() else "runbook: none on disk",
+                      "then: index block, a manual run record, one tracker rebuild"]
     out = [f"{p['day']['id']} ({rel}), demoFormat walkthrough, taught {p['date']}"
            + (f" (already taught {p['day']['taught']})" if p["day"].get("taught") else ""),
            f"demo repo {p['repo'].name} ({p['url']}): last commit by the end of {p['date']} is {_short(p['sha'])}; prep branch {p['prep']} "
@@ -313,7 +364,10 @@ def apply(p: dict) -> list[str]:
     # (1) the delivery record in the private repo
     rec_path = TRAINER / rel / "delivery.json"
     rec_path.parent.mkdir(parents=True, exist_ok=True)
-    rec_path.write_text(json.dumps(delivery_record(day, date, blocks, cfg, sha, p["notes"]), indent=2, ensure_ascii=False) + "\n",
+    nb = p.get("notebook")
+    if p.get("warning"):
+        out.append(p["warning"])
+    rec_path.write_text(json.dumps(delivery_record(day, date, blocks, cfg, sha, p["notes"], nb), indent=2, ensure_ascii=False) + "\n",
                         encoding="utf-8", newline="\n")
     out.append(f"wrote trainer/{rel}/delivery.json")
     # (2) the walkthrough records
@@ -330,10 +384,10 @@ def apply(p: dict) -> list[str]:
     # (4) runbook record
     rb = TRAINER / rel / "runbook.md"
     if rb.exists():
-        wrote = append_runbook(rb, runbook_section(date, blocks, cfg["demoRepo"]["url"], sha, p["notes"]), date)
+        wrote = append_runbook(rb, runbook_section(date, blocks, cfg["demoRepo"]["url"], sha, p["notes"], nb), date)
         out.append("runbook Delivery record " + ("appended" if wrote else "already there"))
-    # (5) the series README's Delivered column
-    if p["demosDir"].is_dir():
+    # (5) the series README's Delivered column (a notebook day has no walkthrough, D-0085)
+    if p["demosDir"].is_dir() and not nb:
         import series_readme
         series_readme.write(p["week"]["week"])
         out.append(f"rendered trainer/{p['week']['dir']}/demos/README.md")
@@ -348,7 +402,8 @@ def apply(p: dict) -> list[str]:
         out.append("docs/exit-criteria updated")
     # (7) manual run record
     import log_run  # late import: it pulls in build_tracker
-    states = ", ".join(f"{b['name']} {b['state']}" for b in blocks) or "no blocks"
+    states = (f"notebook {nb['path']}@{_short(nb['sha'])}" if nb else
+              ", ".join(f"{b['name']} {b['state']}" for b in blocks) or "no blocks")
     RUN_REPORT.write_text(json.dumps({
         "kind": "manual", "date": dt.date.today().isoformat(), "week": p["week"]["week"], "days": [day["id"]],
         "runId": None, "agents": None, "minutes": None, "tokens": None, "tiers": {"labels": "", "verified": None},
@@ -362,7 +417,7 @@ def apply(p: dict) -> list[str]:
     build_tracker.build(quiet=True)
     # (9) the STATUS.md log line
     out.append(f"- {dt.date.today().isoformat()} — close_day W{p['week']['week']}D{day['day']} (taught {date}): {states}; "
-               f"demo-repo@{_short(sha)}; delivery.json, walkthrough and runbook Delivery records, manual run record; tracker rebuilt.")
+               f"demo-repo@{_short(sha)}; delivery.json, {'' if nb else 'walkthrough and '}runbook Delivery records, manual run record; tracker rebuilt.")
     return out
 
 

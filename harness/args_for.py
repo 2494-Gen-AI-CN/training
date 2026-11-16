@@ -34,6 +34,8 @@ Usage:
     python harness/args_for.py --restructure         # D-0060: notes-restructure.js, the readability pass over every
     python harness/args_for.py 1 2 --restructure     # authored or live page, one week's, or named days of one week
     exitGroup / exitRows (D-0063): the week's exit-criteria group and the plan's rows per day (day args) and per block (--demos)
+    notebook (D-0085): every demoFormat notebook day (plan and day args) carries {path inside the demo repo, exists,
+    outline = the notebook's #/##/### headings in order, [] while the file does not exist} (harness/notebook_check.py)
 """
 from __future__ import annotations
 
@@ -47,6 +49,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import build_index as bi  # noqa: E402
 import demo_check  # noqa: E402
 import exit_criteria  # noqa: E402
+import notebook_check  # noqa: E402
 import plan_check  # noqa: E402
 import practice_tasks as pt  # noqa: E402
 
@@ -75,6 +78,7 @@ def prep_branch(config: dict, week_no: int) -> str:
 
 
 def _day_base(cur: dict, week: dict, d: dict, s: dict) -> dict:
+    nb = {"notebook": notebook_check.notebook_for(week["week"], d["day"], d["slug"], ROOT)} if d.get("demoFormat") == "notebook" else {}
     return {
         **{k: d[k] for k in ("day", "slug", "id", "kind", "gate", "demoFormat", "title", "subtitle", "subtopics")},
         "date": s["date"].isoformat(),
@@ -85,6 +89,7 @@ def _day_base(cur: dict, week: dict, d: dict, s: dict) -> dict:
         "status": d.get("status", "planned"),
         "taught": d.get("taught"),
         "rel": f"{week['dir']}/{d['slug']}",
+        **nb,
     }
 
 
@@ -220,7 +225,8 @@ def demos_args(cur: dict, week: dict, today: str | None, metrics: dict, config: 
     if missing:
         return None, ["BLOCKED: every block's day needs a research brief (research-first); run the day workflow's research for:"] + ["  " + x for x in missing]
     if not blocks:
-        return None, [f"week {week_no} plan has no walkthrough blocks"]
+        return None, [f"week {week_no} plan has no walkthrough blocks (a demoFormat none or notebook week has nothing for demo-series.js; "
+                      f"a notebook day's demo is its notebook in the demo repo, D-0085)"]
     return {
         **_common(cur, week, ew, today, metrics, config),
         "blocks": blocks,

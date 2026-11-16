@@ -54,7 +54,7 @@ class CurriculumTests(unittest.TestCase):
                 self.assertEqual(f"w{w['week']:02d}d{d['day']}", d["id"])
                 self.assertIn(d["kind"], ("lesson", "review"))
                 self.assertIn(d["gate"], ("full", "light"))
-                self.assertIn(d["demoFormat"], ("walkthrough", "none"))  # D-0055
+                self.assertIn(d["demoFormat"], ("walkthrough", "none", "notebook"))  # D-0055, D-0085
                 self.assertIn(d["status"], ("planned", "authored", "live"))  # D-0052
                 if "taught" in d:  # D-0030: set by the delivery-day close, after the session
                     self.assertRegex(d["taught"], r"^20\d\d-\d\d-\d\d$")

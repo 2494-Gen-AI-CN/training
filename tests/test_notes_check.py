@@ -83,6 +83,9 @@ class CountTests(unittest.TestCase):
         self.assertTrue(notes_check.concept_day(ROOT / "docs" / "weeks" / "week-00" / "day-1-x.html", cur))
         self.assertFalse(notes_check.concept_day(ROOT / "docs" / "weeks" / "week-00" / "day-2-y.html", cur))
         self.assertFalse(notes_check.concept_day(ROOT / "docs" / "weeks" / "week-00" / "day-3-z.html", cur))
+        # D-0085: a notebook day is a code day, held to codeBlocksMin like a walkthrough day
+        cur["weeks"][0]["days"].append({"slug": "day-4-nb", "demoFormat": "notebook"})
+        self.assertFalse(notes_check.concept_day(ROOT / "docs" / "weeks" / "week-00" / "day-4-nb.html", cur))
 
     def test_truncated_page_is_a_parse_error(self):
         with self.assertRaises(ValueError):

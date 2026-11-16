@@ -46,6 +46,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import build_index as bi  # noqa: E402
 import demo_check  # noqa: E402
+import notebook_check  # noqa: E402
 import plan_check  # noqa: E402
 
 ROOT = bi.ROOT
@@ -254,6 +255,9 @@ def _day(cur: dict, week: dict, slot: dict, plan_info: dict | None) -> dict:
             "notes": p["page_fs"].is_file(),
             "runbook": (p["trainer"] / "runbook.md").is_file(),
             "closed": delivery is not None,
+            # D-0085: a notebook day's demo is its notebook in the demo repo clone (the key is absent on other days)
+            **({"notebook": notebook_check.notebook_for(week["week"], d["day"], d["slug"])["exists"]}
+               if d["demoFormat"] == "notebook" else {}),
         },
         "delivery": delivery,
         "coverage": len(rows["weekPlanRows"]) if rows else None,

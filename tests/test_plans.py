@@ -61,8 +61,8 @@ class PlanFileTests(unittest.TestCase):
                         continue
                     for st in d["subtopics"]:
                         self.assertIn((d["id"], st.strip().lower()), covered, f"{d['id']} subtopic '{st}' not in the coverage map")
-                concept_week = all(d.get("demoFormat") == "none" for d in wk["days"] if d.get("kind") != "holiday")
-                if not concept_week:   # D-0082: a concept week has no thread
+                concept_week = all(d.get("demoFormat") in plan_check.NO_BLOCK_FORMATS for d in wk["days"] if d.get("kind") != "holiday")
+                if not concept_week:   # D-0082, D-0085: a concept or notebook week has no thread
                     self.assertTrue(plan["threads"], "plan needs at least one thread")
                 prev_last = plan_check.previous_last_block(plan["week"])
                 for t in plan["threads"]:
@@ -191,7 +191,7 @@ class PlanArgsTests(unittest.TestCase):
                     self.assertTrue(a["weekPlan"].endswith(f"harness/plans/week-{wk['week']:02d}.md"))
                     day = a["days"][0]
                     self.assertEqual(len(d["subtopics"]), len(day["weekPlanRows"]), "one coverage row per subtopic")
-                    if d["demoFormat"] != "none":
+                    if d["demoFormat"] not in plan_check.NO_BLOCK_FORMATS:
                         self.assertTrue(day["blockRows"], "a demo day needs block rows (D-0055)")
                         for r in day["blockRows"]:
                             self.assertIn("startsFrom", r)
@@ -380,6 +380,176 @@ class NextLinkTests(unittest.TestCase):
         step2 = wire[wire.index("`2. "):wire.index("`3. ")]
         self.assertIn("${J(WIRE_STATUS)}", step2)
         self.assertNotIn("A.releaseOnWire ?", step2, "one baked status for every day would downgrade a live day")
+
+
+def _notebook_week() -> dict | None:
+    """The first week whose teaching days are all demoFormat notebook (D-0085: week 6), else None."""
+    for w in curriculum()["weeks"]:
+        days = [d for d in w["days"] if d.get("kind") != "holiday"]
+        if days and all(d["demoFormat"] == "notebook" for d in days):
+            return w
+    return None
+
+
+def _notebook_plan(wk: dict, demo: str = "notebook", exit_rows: str = "") -> str:
+    """A minimal plan for a notebook week: no thread, empty ladder, every subtopic mapped to `demo`."""
+    days = [d for d in wk["days"] if d.get("kind") != "holiday"]
+    shape = "\n\n".join(f"### {d['id']} — {d['title']}\n\n- AM: setup check (10), notebook sections 1-3 (100), break (15).\n"
+                        f"- PM: notebook sections 4-6 (90), notes handoff (10), sprint / project work (75), wrap-up (20).\n"
+                        f"- Demo minutes: 190 (notebook)." for d in days)
+    cov = "\n".join(f"| {st} | {d['id']} | {demo} | 1 |" for d in days for st in d["subtopics"])
+    words = " ".join(["learners train and judge scikit-learn models in Colab notebooks"] * 6)
+    return f"""# Week {wk['week']:02d} plan — {wk['theme']}
+
+## Weekly Epic
+
+{words}.
+
+## Assumes from the previous week
+
+- A Google account signed in to Colab.
+
+## Threads
+
+No thread is in scope this week (D-0085): every day is demoFormat notebook.
+
+## Conventions
+
+| Convention | Kind | Applies from | Rule | Why |
+|---|---|---|---|---|
+
+## Standalone demos
+
+| Day | Slot | Walkthrough | Minutes | Why it fits no thread |
+|---|---|---|---|---|
+
+## Demo ladder
+
+| # | Day | Walkthrough | Minutes | Must follow | Guarantees |
+|---|---|---|---|---|---|
+
+## Per-day shape
+
+{shape}
+
+## Stop points
+
+| Walkthrough | Clean stop point | Resume at |
+|---|---|---|
+
+## Squeeze priorities
+
+**Cut first**
+
+1. the real dataset section of each notebook
+
+**Never cut**
+
+- the Quick check
+
+## Hard-stop rule
+
+At eighty percent of the slot the trainer stops running new cells, runs the Recap cell, asks two Quick check questions and leaves the rest of the notebook for the evening.
+
+## Scaffold bundle
+
+The notebooks are the hand-out.
+
+| Day | Hand-out | Pre-provided | Why rote |
+|---|---|---|---|
+| {days[0]['id']} | the notebook | the setup cell | plotting helpers are not the lesson |
+
+| Never pre-provide | Walkthrough |
+|---|---|
+
+## Run prerequisites
+
+- The notebooks on main of the demo repo; a Google account in Colab.
+
+## Anti-spoiler ledger
+
+| Day | Defers | To | Why |
+|---|---|---|---|
+| {days[0]['id']} | Keras | {days[-1]['id']} | curriculum order |
+
+## Real-world framing and deliberate deviations
+
+Notebooks are how data teams explore before they ship code.
+
+| Deviation | Workplace reality | Pedagogical reason |
+|---|---|---|
+| synthetic data | real data is messy | the shape is visible |
+
+## Coverage map
+
+| Subtopic | Day | Demo | Notes step |
+|---|---|---|---|
+{cov}
+
+## Exit criteria map
+
+{exit_rows}"""
+
+
+class NotebookWeekTests(unittest.TestCase):
+    """D-0085: a week of demoFormat notebook days plans with no thread, no ladder and (qc4 unpublished) no exit map."""
+
+    def setUp(self):
+        self.wk = _notebook_week()
+        if self.wk is None:
+            self.skipTest("no all-notebook week in the curriculum")
+
+    def _problems(self, text: str) -> list[str]:
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / f"week-{self.wk['week']:02d}.md"
+            p.write_text(text, encoding="utf-8")
+            return plan_check.check_plan(p, metrics()["demos"], root=Path(td))
+
+    def test_notebook_only_week_plans_cleanly(self):
+        self.assertTrue(plan_check.no_thread_week([d for d in self.wk["days"] if d.get("kind") != "holiday"]))
+        self.assertEqual([], self._problems(_notebook_plan(self.wk)))
+        self.assertEqual([], self._problems(_notebook_plan(self.wk, demo="facilitation")))
+        bad = self._problems(_notebook_plan(self.wk, demo="01-nope"))
+        self.assertTrue(bad and all("'notebook'" in x for x in bad if "coverage row" in x), bad)
+
+    def test_unpublished_exit_group_needs_no_map(self):
+        group = plan_check.exit_criteria.group_for_week(self.wk["week"])
+        if group is None or group["exists"]:
+            self.skipTest("the week's exit-criteria group is published")
+        text = _notebook_plan(self.wk)
+        self.assertEqual([], self._problems(text.split("## Exit criteria map")[0]), "the section may be omitted")
+        rows = "| ID | Tier | Criterion | Day | Where | Notes step |\n|---|---|---|---|---|---|\n| x.y.R01 | Required | t | week 07 | — | — |\n"
+        self.assertTrue([x for x in self._problems(_notebook_plan(self.wk, exit_rows=rows)) if "not published" in x])
+
+    def test_args_carry_the_notebook(self):
+        """Plan args and day args (--no-plan: no week-06 plan is needed for this) carry day.notebook."""
+        wn = str(self.wk["week"])
+        for argv in ((wn, "--plan"), (wn, "1", "2", "--no-plan")):
+            with self.subTest(argv=argv):
+                res = run_args(*argv, "--today", "2026-11-13")
+                self.assertEqual(0, res.returncode, res.stderr)
+                for d in json.loads(res.stdout)["days"]:
+                    nb = d["notebook"]
+                    self.assertEqual({"path", "exists", "outline"}, set(nb))
+                    self.assertRegex(nb["path"], rf"^notebooks/week-{self.wk['week']:02d}/0{d['day']}_[a-z]+day_[a-z0-9_]+\.ipynb$")
+                    self.assertEqual(nb["exists"], bool(nb["outline"]), "an outline exactly when the file exists")
+                    if nb["exists"]:
+                        self.assertTrue(nb["outline"][0].startswith("# "))
+        walk = json.loads(run_args("2", "1", "--today", "2026-10-19").stdout)["days"][0]
+        self.assertNotIn("notebook", walk, "only notebook days carry it")
+        res = run_args(wn, "--demos", "--today", "2026-11-13")
+        self.assertEqual(2, res.returncode, "a notebook week has nothing for demo-series.js")
+
+    def test_workflows_word_notebook_days_apart_from_concept_days(self):
+        fan = (HARNESS / "workflows" / "day-fanout.js").read_text(encoding="utf-8")
+        self.assertIn("noDemos: d.demoFormat === 'none' || d.demoFormat === 'notebook'", fan)
+        self.assertIn("## Notebook: ", fan)
+        self.assertIn("This is NOT a concept day", fan)
+        self.assertIn("runs in Colab", fan)
+        plan_js = WEEK_PLAN_JS.read_text(encoding="utf-8")
+        self.assertIn("NOTEBOOK WEEK (D-0085)", plan_js)
+        self.assertIn("is a CODE day, not a concept day", plan_js)
 
 
 if __name__ == "__main__":

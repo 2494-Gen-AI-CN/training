@@ -28,7 +28,11 @@ domain of the thread. Name the artifact they will have built along the trainer.
 <!-- One "### <thread-id>" per thread touched this week. Thread ids are kebab-case and stable across weeks.
      A concept week (every day demoFormat none, D-0082) has no thread in scope: keep this heading with one line saying
      so and no "### <thread-id>" block; the Standalone, Demo ladder, Stop points and never-pre-provide tables keep their
-     headers and stay empty, Conventions may be empty or carry tooling rows for what the trainer shows on screen. -->
+     headers and stay empty, Conventions may be empty or carry tooling rows for what the trainer shows on screen.
+     A notebook week (every day demoFormat notebook or none, D-0085) has no thread either, and the same tables stay
+     empty; each notebook day's demo is ONE prepared Colab notebook in the demo repo (args day.notebook), so its
+     Per-day shape names the notebook pass (minutes, sections in order, where the break falls) and a
+     "Demo minutes: N (notebook)" line. A notebook day is a code day, not a concept day. -->
 
 ### {{thread-id}}
 
@@ -173,8 +177,8 @@ what a professional team would build instead of what the demos build.
 
 <!-- Every curriculum subtopic of every teaching day of the week, exactly as spelled in curriculum.json, once.
      Demo = the NN-<slug> walkthrough of that day that teaches it, or "facilitation" (a timed runbook block), or
-     "notes" (notes page only; say why in the Per-day shape). Notes step = the step number on the notes page that
-     teaches it (1-based). -->
+     "notes" (notes page only; say why in the Per-day shape), or "notebook" on a demoFormat notebook day (the day's
+     notebook teaches it, D-0085). Notes step = the step number on the notes page that teaches it (1-based). -->
 
 | Subtopic | Day | Demo | Notes step |
 |---|---|---|---|
@@ -190,7 +194,9 @@ what a professional team would build instead of what the demos build.
        week 02   an EARLIER week of the group = taught earlier (Where and Notes step —); that week's plan maps it in-week,
                  so nothing is re-mapped twice
      The Coverage map's Demo column uses `notes`; this table's Where column uses `notes-only`; do not cross them.
-     Required rows first within each section. -->
+     On a demoFormat notebook day Where may be `notebook` (D-0085).
+     Required rows first within each section. A week whose group file is not published yet (D-0085: qc4, week 6)
+     keeps this heading with one line saying so and no rows; the map is backfilled when the file lands. -->
 
 | ID | Tier | Criterion | Day | Where | Notes step |
 |---|---|---|---|---|---|

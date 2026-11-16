@@ -266,6 +266,7 @@ window.TRACKER = null;
   };
   TR.demosState = function (d) {
     var a = d.a.demos;
+    if (d.demoFormat === "notebook") return d.a.notebook ? "full" : "none";   // D-0085: the day's notebook in the demo repo
     if (d.demoFormat === "none" || a.planned === 0) return "na";
     if (!a.scripts) return "none";
     if (a.planned != null && a.scripts < a.planned) return "partial";
@@ -609,12 +610,13 @@ window.TRACKER = null;
         art("week plan", w.plan.ok, L.plan, w.plan.exists ? "fails plan_check" : "no plan for this week"),
         art("research brief", d.a.research, L.research),
         d.demoFormat === "none" ? art("demos", true, null) :
+        d.demoFormat === "notebook" ? art("notebook (demo repo notebooks/)", !!d.a.notebook, null, "not in the demo repo clone yet") :
           art("walkthroughs (" + dm.scripts + " of " + (dm.planned == null ? "?" : dm.planned) + " blocks)", TR.demosState(d) === "full" || TR.demosState(d) === "na", L.demos),
         art("notes page", d.a.notes, L.notes), art("runbook", d.a.runbook, L.runbook),
         art("taught", !!d.taught, null, d.taught || "delivery close not run"),
         art("delivery record", d.a.closed, "trainer/" + d.rel + "/delivery.json", "close_day.py not run"),
         d.delivery ? h("tr", {}, [h("td", { colspan: "2", class: "small muted",
-          text: d.delivery.format + " · " + d.delivery.blocks + " block(s)" + (d.delivery.states && d.delivery.states.length ? " (" + d.delivery.states.join(", ") + ")" : "") + " · demo-repo@" + d.delivery.sha })]) : null])]),
+          text: d.delivery.format + (d.delivery.format === "notebook" ? "" : " · " + d.delivery.blocks + " block(s)") + (d.delivery.states && d.delivery.states.length ? " (" + d.delivery.states.join(", ") + ")" : "") + " · demo-repo@" + d.delivery.sha })]) : null])]),
       h("h4", { text: "From the week plan" }),
       d.coverage == null ? h("div", { class: "dim", text: "This week has no plan yet." }) :
         h("div", { class: "small" }, [d.coverage + " of " + d.subtopics + " subtopics mapped" + (d.demoMinutes ? " · " + d.demoMinutes + " demo minutes" : "")]),

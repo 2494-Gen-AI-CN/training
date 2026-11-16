@@ -1,5 +1,5 @@
 {
-  "_comment": "Single source of truth for the 11-week calendar. Transcribed from Curricula/Weeks/week1..11.png; weeks 1, 7 and 11 redistributed for holidays (decisions D-0015..D-0017). Every other path is derived as {week.dir}/{day.slug}. Calendar dates derive from startDate + week index + weekday slot (day 1=Mon..5=Fri); a slot whose date is in holidays is {day, kind: holiday} only. The weekly feedback form is the last teaching day of each week (derived, never hand-set). status: planned | authored | live (D-0052). The harness Wire step writes authored (every artifact exists and passed; the page is written but not linked from the index, which is what hides a week authored ahead) or live when the week has already started on --today (args_for.py releaseOnWire); harness/release_week.py flips authored->live on the Friday before the week and is the only other writer of live. demoFormat: py | nb | none | loose (none = concept day with no code demo; the runbook carries facilitation scripts, D-0030. loose = the trainer improvises; a plan ladder's scripts and keys are an optional fallback and harness/close_day.py publishes what was typed from the demo repo, D-0050). taught: YYYY-MM-DD, set ONLY by harness/close_day.py after the session; harness/publish_demos.py copies the answer keys from trainer/<rel>/demos/key/ to demos/<rel>/ only when it is set (D-0030).",
+  "_comment": "Single source of truth for the 11-week calendar. Transcribed from Curricula/Weeks/week1..11.png; weeks 1, 7 and 11 redistributed for holidays (decisions D-0015..D-0017). Every other path is derived as {week.dir}/{day.slug}. Calendar dates derive from startDate + week index + weekday slot (day 1=Mon..5=Fri); a slot whose date is in holidays is {day, kind: holiday} only. The weekly feedback form is the last teaching day of each week (derived, never hand-set). status: planned | authored | live (D-0052). The harness Wire step writes authored (every artifact exists and passed; the page is written but not linked from the index, which is what hides a week authored ahead) or live when the week has already started on --today (args_for.py releaseOnWire); harness/release_week.py flips authored->live on the Friday before the week and is the only other writer of live. demoFormat: walkthrough | none | notebook (D-0055, D-0085). walkthrough = one or two demo blocks, each a walkthrough under trainer/week-WW/demos/ with one commit on the demo repo's prep branch; none = concept day with no code demo, the runbook carries facilitation scripts (D-0079, D-0082); notebook = the demo is ONE prepared Jupyter notebook in the demo repo at notebooks/week-WW/NN_<weekday>_<slug>.ipynb on main, run live in Google Colab (no walkthrough, block, thread or prep commit; the notes page keeps the normal code floor). taught: YYYY-MM-DD, set ONLY by harness/close_day.py after the session (walkthrough and notebook days; D-0050, D-0085).",
   "cohort": "2494-Gen-AI-CN",
   "siteTitle": "2494 · Gen-AI Python",
   "startDate": "2026-10-13",
@@ -590,7 +590,8 @@
             "Snowflake schema",
             "Slowly changing dimensions",
             "SCD types"
-          ]
+          ],
+          "taught": "2026-11-05"
         },
         {
           "day": 5,
@@ -607,7 +608,8 @@
             "BigQuery connections",
             "Building ETL/ELT processes",
             "Review"
-          ]
+          ],
+          "taught": "2026-11-06"
         }
       ]
     },
@@ -733,7 +735,7 @@
           "id": "w06d1",
           "kind": "lesson",
           "gate": "light",
-          "demoFormat": "walkthrough",
+          "demoFormat": "notebook",
           "status": "planned",
           "title": "ML introduction & supervised learning",
           "subtitle": "algorithms & use cases · regression · fitting the line · classification",
@@ -751,7 +753,7 @@
           "id": "w06d2",
           "kind": "lesson",
           "gate": "light",
-          "demoFormat": "walkthrough",
+          "demoFormat": "notebook",
           "status": "planned",
           "title": "Unsupervised learning: clustering",
           "subtitle": "distance between clusters · k-means",
@@ -767,7 +769,7 @@
           "id": "w06d3",
           "kind": "lesson",
           "gate": "light",
-          "demoFormat": "walkthrough",
+          "demoFormat": "notebook",
           "status": "planned",
           "title": "Introduction to deep learning",
           "subtitle": "neural network types · CNN & image classification · ANN layers · NLP",
@@ -785,7 +787,7 @@
           "id": "w06d4",
           "kind": "lesson",
           "gate": "light",
-          "demoFormat": "walkthrough",
+          "demoFormat": "notebook",
           "status": "planned",
           "title": "TensorFlow introduction",
           "subtitle": "history · basic graphs · tensors of arbitrary shape · graphs, sessions, TensorBoard",
@@ -803,7 +805,7 @@
           "id": "w06d5",
           "kind": "lesson",
           "gate": "light",
-          "demoFormat": "walkthrough",
+          "demoFormat": "notebook",
           "status": "planned",
           "title": "Perceptrons & TensorFlow basics",
           "subtitle": "activation functions · perceptrons · graph visualization · constants/variables · creating a model",
@@ -817,7 +819,7 @@
           ]
         }
       ],
-      "notes": "CURRENCY RISK: 'graphs, sessions, TensorBoard' and 'constants, placeholders, variables' are TF1 concepts. Teach TF2 eager execution + tf.function, tf.constant/tf.Variable, Keras model building; mention Session/placeholder only as history. Verify against current tensorflow.org guides."
+      "notes": "WEEK ARC (D-0085): week 6 is a NOTEBOOK WEEK. Every day is demoFormat notebook: the demo is one prepared Jupyter notebook per day in the demo repo (notebooks/week-06/NN_<weekday>_<slug>.ipynb on main) that the trainer runs live in Google Colab cell by cell; no walkthrough, no block, no thread rung, no prep-branch commit. These are code days, not concept days: the notes pages keep the normal code floor and their examples use the libraries and kinds of datasets the notebooks use (scikit-learn, scipy, numpy, matplotlib; TensorFlow/Keras on D4-D5 only), as Colab ships them. The runtime is Colab with the Google account every learner has had since week 4 (D-0075), not the course Python 3.15 (TensorFlow has no 3.15 wheel), so version stamps are Colab's. Style reference: demo-repo/notebooks/week-06/02_tuesday_trees_and_clustering.ipynb (harness/templates/notebook-style.md). Mon W6D1 was delivered by the substitute trainer on Mon 2026-11-16 from his own notebook (regression and classification); that file is not in the repo, so D1 gets a notes page and a runbook written as a record of the official subtopics, and a notebook authored to match. Tue W6D2 uses the substitute's 02_tuesday_trees_and_clustering.ipynb as is; it also covers decision trees, hierarchical clustering and linkage, the silhouette score, feature scaling and DBSCAN beyond the three curriculum subtopics, so the D2 page and runbook cover those too. No thread is in scope and no P1 spec exists yet (the curriculum image marks Project 1 as starting Wed). No exit-criteria map: qc4 is not published (backfilled when Revature publishes it). TF2/Keras appears on D4-D5 only. CURRENCY RISK: 'graphs, sessions, TensorBoard' and 'constants, placeholders, variables' are TF1 concepts. Teach TF2 eager execution + tf.function, tf.constant/tf.Variable, Keras model building; mention Session/placeholder only as history. Verify against current tensorflow.org guides."
     },
     {
       "week": 7,

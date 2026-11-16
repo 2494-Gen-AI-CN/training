@@ -65,7 +65,8 @@ class TrackerDataTests(unittest.TestCase):
         self.assertEqual(len(list(authored_days())), sum(1 for d in teaching if d["status"] in ("authored", "live")))
         for d in teaching:
             self.assertIn(d["status"], ("planned", "authored", "live"), d["id"])
-            self.assertEqual({"research", "demos", "notes", "runbook", "closed"}, set(d["a"]), d["id"])
+            extra = {"notebook"} if d["demoFormat"] == "notebook" else set()   # D-0085: the day's notebook is in the demo repo
+            self.assertEqual({"research", "demos", "notes", "runbook", "closed"} | extra, set(d["a"]), d["id"])
             self.assertEqual({"planned", "scripts"}, set(d["a"]["demos"]), d["id"])
         for w, d, rel in authored_days():
             td = next(x for x in teaching if x["id"] == d["id"])
@@ -221,6 +222,19 @@ class TrackerPageTests(unittest.TestCase):
                                   "next": ["close W2D1 (`close_day.py 2 1`)", "the week-3 plan by Fri", "release Fri"]})
         self.assertEqual(out[1], {"now": "", "next": ["one step"]})
         self.assertEqual(out[2], {"now": "no steps here at all", "next": []})
+
+    @unittest.skipUnless(node_exe(), "node not found")
+    def test_notebook_day_demos_state(self):
+        """D-0085: a notebook day's demos artifact is its notebook in the demo repo; a none day's is not applicable."""
+        scripts = [s for s in INLINE_SCRIPT_RE.findall(shell_html())]
+        days = [{"demoFormat": "notebook", "a": {"demos": {"planned": 0, "scripts": 0}, "notebook": True}},
+                {"demoFormat": "notebook", "a": {"demos": {"planned": None, "scripts": 0}, "notebook": False}},
+                {"demoFormat": "none", "a": {"demos": {"planned": None, "scripts": 0}}}]
+        prog = ("const vm=require('vm');let s='';process.stdin.setEncoding('utf8');process.stdin.on('data',c=>s+=c);"
+                "process.stdin.on('end',()=>{const i=JSON.parse(s);const sb={window:{}};vm.runInNewContext(i.src,sb);"
+                "process.stdout.write(JSON.stringify(i.days.map(d=>sb.window.TR.demosState(d))));});")
+        out = json.loads(run_node(prog, json.dumps({"src": "\n".join(scripts), "days": days})))
+        self.assertEqual(["full", "none", "na"], out)
 
     @unittest.skipUnless(node_exe(), "node not found")
     def test_alarm_rules(self):

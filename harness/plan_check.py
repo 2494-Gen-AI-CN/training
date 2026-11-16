@@ -27,9 +27,11 @@ Checks (stdlib only):
               Demo = a walkthrough of that day | facilitation | notes, Notes step a positive integer
   authored/live days - once trainer/week-WW/demos/ exists, the walkthroughs on disk equal the plan's for every
               authored or live day (name, Time, thread, Starts from, commit message) (D-0052)
-  concept week - D-0082: when every teaching day of the week is demoFormat none there is no thread, block or
-              walkthrough: the Threads heading carries one line saying so, the ladder, stop-point, conventions and
-              never-pre-provide tables may be empty (headers kept), and every coverage row is facilitation | notes
+  no-thread week - D-0082, D-0085: when every teaching day of the week is demoFormat none (a concept week) or
+              notebook (a notebook week) there is no thread, block or walkthrough: the Threads heading carries one
+              line saying so, the ladder, stop-point, conventions and never-pre-provide tables may be empty (headers
+              kept), and every coverage row is facilitation | notes, or `notebook` on a notebook day (the exit map's
+              Where accepts `notebook` on a notebook day too). A none or notebook day never has a ladder row
   exitmap   - from curriculum exitCriteria.fromWeek (D-0063) the LAST section "## Exit criteria map" carries every
               criterion of the week's exit-criteria group exactly once (ID, Tier and Criterion as the source file
               has them), in one of three Day forms: a day id of this week (Where = a walkthrough of that day |
@@ -37,7 +39,8 @@ Checks (stdlib only):
               a LATER week of the group (deferred; Where and Notes step "—"; never on the group's last week), or
               "week NN" of an EARLIER week of the group (taught earlier; Where and Notes step "—"; that week's
               plan must map the id to one of its days). Earlier weeks may omit the section; when present it is
-              validated without the completeness rule
+              validated without the completeness rule. A week whose group source file is not published yet
+              (D-0085: qc4 for week 6) may omit the section too; when present it must carry no rows
 
 Usage:
     python harness/plan_check.py harness/plans/week-02.md
@@ -83,6 +86,14 @@ WALK_RE = re.compile(r"^(\d{2})-([a-z0-9]+(?:-[a-z0-9]+)*)$")
 SLOTS = ("AM", "PM")
 DAY_HEAD_RE = re.compile(r"^### (w\d{2}d\d) — ", re.M)
 THREAD_HEAD_RE = re.compile(r"^### ([a-z0-9]+(?:-[a-z0-9]+)*)\s*$", re.M)
+# demoFormats with no walkthrough block (D-0055, D-0082, D-0085): `none` (concept day) and `notebook` (one prepared
+# Colab notebook in the demo repo, D-0085). A week made only of these is a no-thread week.
+NO_BLOCK_FORMATS = ("none", "notebook")
+NOTEBOOK = "notebook"   # the Coverage Demo / exit-map Where value of a notebook day
+
+
+def no_thread_week(teaching: list[dict]) -> bool:
+    return bool(teaching) and all(d.get("demoFormat") in NO_BLOCK_FORMATS for d in teaching)
 
 
 def _cell(s: str) -> str:
@@ -272,12 +283,16 @@ def check_plan(path: Path, metrics: dict | None = None, root: Path = ROOT) -> li
     wk = next(w for w in cur["weeks"] if w["week"] == plan["week"])
     teaching = bi.teaching_days(wk)
     ids = [d["id"] for d in teaching]
-    # D-0082: a concept week (every teaching day demoFormat none) has no thread, no block and no walkthrough; the Threads
-    # heading stays with one line saying so, the ladder, stop-point, conventions and never-pre-provide tables may be empty.
-    concept_week = bool(teaching) and all(d.get("demoFormat") == "none" for d in teaching)
-    # headings in order; the exit map (D-0063) is required from exitCriteria.fromWeek only
+    # D-0082, D-0085: a no-thread week (every teaching day demoFormat none or notebook) has no thread, no block and no
+    # walkthrough; the Threads heading stays with one line saying so, the ladder, stop-point, conventions and
+    # never-pre-provide tables may be empty.
+    concept_week = no_thread_week(teaching)
+    notebook_days = {d["id"] for d in teaching if d.get("demoFormat") == NOTEBOOK}
+    # headings in order; the exit map (D-0063) is required from exitCriteria.fromWeek only, and only once the week's
+    # group is published (D-0085: an unpublished group's map is backfilled when its source file lands)
     reg = exit_criteria.registry(cur)
-    exit_active = plan["week"] >= reg["fromWeek"]
+    group = exit_criteria.group_for_week(plan["week"], cur)
+    exit_active = plan["week"] >= reg["fromWeek"] and not (group is not None and not group["exists"])
     pos = -1
     for s in SECTIONS:
         m = re.search(rf"^{re.escape(s)}\s*$", text, re.M)
@@ -412,9 +427,9 @@ def check_plan(path: Path, metrics: dict | None = None, root: Path = ROOT) -> li
     for did in ids:
         d = next(x for x in teaching if x["id"] == did)
         ws = order_by_day.get(did, [])
-        if d.get("demoFormat") == "none":
+        if d.get("demoFormat") in NO_BLOCK_FORMATS:
             if ws:
-                p.append(f"{name}: {did} is demoFormat none but the ladder lists {ws}")
+                p.append(f"{name}: {did} is demoFormat {d.get('demoFormat')} but the ladder lists {ws}")
             continue
         if not bmin <= len(ws) <= bmax:
             p.append(f"{name}: {did} has {len(ws)} walkthroughs in the ladder, band is {bmin}..{bmax}")
@@ -480,8 +495,11 @@ def check_plan(path: Path, metrics: dict | None = None, root: Path = ROOT) -> li
         if key not in want:
             p.append(f"{name}: coverage row '{r['Subtopic']}' / {r['Day']} is not a curriculum subtopic of that day (spell it exactly as curriculum.json does)")
         demo = r["Demo"]
-        if demo not in ("facilitation", "notes") and demo not in order_by_day.get(r["Day"], []):
-            p.append(f"{name}: coverage row '{r['Subtopic']}': Demo '{demo}' is not a walkthrough of {r['Day']} in the ladder, nor 'facilitation' / 'notes'")
+        if demo == NOTEBOOK and r["Day"] in notebook_days:
+            pass   # D-0085: the day's notebook teaches it
+        elif demo not in ("facilitation", "notes") and demo not in order_by_day.get(r["Day"], []):
+            p.append(f"{name}: coverage row '{r['Subtopic']}': Demo '{demo}' is not a walkthrough of {r['Day']} in the ladder, nor 'facilitation' / 'notes'"
+                     + (" / 'notebook'" if r["Day"] in notebook_days else ""))
         if not r["Notes step"].isdigit() or int(r["Notes step"]) < 1:
             p.append(f"{name}: coverage row '{r['Subtopic']}': Notes step must be a positive integer, got '{r['Notes step']}'")
     for key, st in want.items():
@@ -491,7 +509,8 @@ def check_plan(path: Path, metrics: dict | None = None, root: Path = ROOT) -> li
         elif n > 1:
             p.append(f"{name}: coverage map lists '{st}' of {key[0]} {n} times")
     # exit criteria map (D-0063)
-    p.extend(_check_exit_map(plan, name, ids, {did: set(ws) for did, ws in order_by_day.items()}, cur, root))
+    where_by_day = {did: set(order_by_day.get(did, [])) | ({NOTEBOOK} if did in notebook_days else set()) for did in ids}
+    p.extend(_check_exit_map(plan, name, ids, where_by_day, cur, root))
     # ledgers
     if not plan["spoilers"]:
         p.append(f"{name}: Anti-spoiler ledger table missing or empty (columns {SPOILER_COLS})")
@@ -545,11 +564,11 @@ def _check_exit_map(plan: dict, name: str, ids: list[str], walkthroughs_by_day: 
     rows = plan["exitMap"]
     group = exit_criteria.group_for_week(week, cur)
     if group is None or not group["exists"]:
-        if active:
-            if group is None:
-                p.append(f"{name}: exit map: week {week} is in no exitCriteria group of curriculum.json, yet fromWeek is {reg['fromWeek']}")
-            else:
-                p.append(f"{name}: exit map: the source of {group['id']} is not published; expected {group['sourceFile']}")
+        if active and group is None:
+            p.append(f"{name}: exit map: week {week} is in no exitCriteria group of curriculum.json, yet fromWeek is {reg['fromWeek']}")
+        elif group is not None and rows:
+            # D-0085: an unpublished group (qc4 for week 6) is planned without a map; ids cannot be checked before its file lands
+            p.append(f"{name}: exit map: the source of {group['id']} is not published ({group['sourceFile']}), so the map carries no rows yet")
         return p
     if not active and not rows:
         return p

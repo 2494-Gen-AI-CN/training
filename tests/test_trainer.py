@@ -56,6 +56,11 @@ class TrainerTests(unittest.TestCase):
                 if d["demoFormat"] == "none":
                     self.assertNotRegex(text, re.compile(r"^## Demo", re.M), "demoFormat none: no Demo sections")
                     self.assertRegex(text, re.compile(r"^## Facilitation \d+: .+\(\d+ min\)", re.M), "demoFormat none day needs timed Facilitation sections")
+                elif d["demoFormat"] == "notebook":
+                    # D-0085: one "## Notebook: <file>.ipynb" section with timed sections, no Demo sections
+                    self.assertNotRegex(text, re.compile(r"^## Demo", re.M), "demoFormat notebook: no Demo sections")
+                    self.assertRegex(text, re.compile(r"^## Notebook: \d{2}_[a-z]+_[a-z0-9_]+\.ipynb\s*$", re.M), "notebook day needs its ## Notebook section")
+                    self.assertRegex(text, re.compile(r"^### .+\(\d+ min\)", re.M), "the Notebook section times its sections")
                 elif week_demos(w["dir"]).is_dir():
                     plan_file = HARNESS / "plans" / f"week-{w['week']:02d}.md"
                     blocks = plan_check.day_rows(plan_check.load_plan(plan_file), d["id"])["blockRows"] if plan_file.is_file() else []

@@ -86,6 +86,56 @@ class GitTests(unittest.TestCase):
             self.assertEqual(live2, close_day.last_commit_by(repo, "2026-10-25"))
             self.assertEqual(prep2, close_day.last_commit_by(repo, "2026-10-16"), "the last commit on any branch by that date")
 
+    def test_last_commit_touching_a_notebook(self):
+        """D-0085: a notebook day records the last commit touching its notebook by the end of the taught date."""
+        with tempfile.TemporaryDirectory() as t:
+            repo = self._repo(t)
+            nb = "notebooks/week-06/02_tuesday_trees_and_clustering.ipynb"
+            self.assertEqual("", close_day.last_commit_touching(repo, nb, "2026-11-17"), "never committed")
+            (repo / "notebooks" / "week-06").mkdir(parents=True)
+            (repo / nb).write_text("{}\n", encoding="utf-8")
+            self._git(repo, "add", "-A")
+            self._git(repo, "commit", "-q", "-m", "Add the Tuesday notebook", when="2026-11-16T20:00:00")
+            first = close_day.head_sha(repo)
+            other = self._commit(repo, "Unrelated", "2026-11-17T09:00:00", "x = 1\n")
+            (repo / nb).write_text('{"a": 1}\n', encoding="utf-8")
+            self._git(repo, "add", "-A")
+            self._git(repo, "commit", "-q", "-m", "Fix the notebook after class", when="2026-11-18T09:00:00")
+            self.assertEqual(first, close_day.last_commit_touching(repo, nb, "2026-11-17"), "a later commit to the file does not count")
+            self.assertEqual(other, close_day.last_commit_by(repo, "2026-11-17"))
+            self.assertEqual("", close_day.last_commit_touching(repo, nb, "2026-11-15"))
+
+    def test_plan_of_a_notebook_day(self):
+        """D-0085: plan() of a notebook day has no blocks and no prep branch; it names the notebook and its last commit,
+        and warns (sha None) when the notebook is not committed by the taught date. Nothing is written."""
+        import datetime as dt
+        with tempfile.TemporaryDirectory() as t:
+            repo = self._repo(t)
+            nb = "notebooks/week-06/02_tuesday_trees_and_clustering.ipynb"
+            day = {"id": "w06d2", "day": 2, "slug": "day-2-x", "demoFormat": "notebook", "status": "live", "kind": "lesson"}
+            week = {"week": 6, "dir": "week-99", "days": [day]}
+            cfg = {"demoRepo": {"url": CFG["demoRepo"]["url"], "localDir": str(repo)}, "threads": {}}
+            with mock.patch.object(close_day, "locate", return_value=({"weeks": [week]}, week, day, "week-99/day-2-x", cfg)), \
+                    mock.patch.object(close_day, "TRAINER", Path(t)), \
+                    mock.patch.object(close_day.bi, "slot_date", return_value=dt.date(2026, 11, 17)), \
+                    mock.patch.object(close_day.notebook_check, "notebook_rel", return_value=nb):
+                p = close_day.plan(6, 2, pull=False)
+                self.assertEqual(([], {"path": nb, "sha": None}), (p["blocks"], p["notebook"]))
+                self.assertIn("not in the demo repo clone", p["warning"])
+                (repo / "notebooks" / "week-06").mkdir(parents=True)
+                (repo / nb).write_text("{}\n", encoding="utf-8")
+                self.assertIn("no commit by the end of 2026-11-17", close_day.plan(6, 2, pull=False)["warning"])
+                self._git(repo, "add", "-A")
+                self._git(repo, "commit", "-q", "-m", "Add the Tuesday notebook", when="2026-11-16T20:00:00")
+                p = close_day.plan(6, 2, pull=False)
+                self.assertEqual(close_day.head_sha(repo), p["notebook"]["sha"])
+                self.assertIsNone(p["warning"])
+                lines = close_day.describe(p)
+                self.assertIn("demoFormat notebook", lines[0])
+                self.assertTrue(any(nb in ln for ln in lines), lines)
+                with self.assertRaises(SystemExit):
+                    close_day.plan(6, 2, pull=False, matches={"01-x": "abc"})
+
 
 class ClassifyTests(unittest.TestCase):
     def test_states(self):
@@ -106,6 +156,19 @@ class LocateTests(unittest.TestCase):
         week, day = found
         with self.assertRaises(SystemExit) as cm:
             close_day.locate(week["week"], day["day"])
+        self.assertIn("nothing to close", str(cm.exception.code))
+
+    def test_notebook_day_is_closable(self):
+        """D-0085: locate() accepts a live notebook day (only `none` is refused)."""
+        day = {"id": "w06d2", "day": 2, "slug": "day-2-x", "demoFormat": "notebook", "status": "live", "kind": "lesson"}
+        week = {"week": 6, "dir": "week-06", "days": [day]}
+        with mock.patch.object(close_day.bi, "load_curriculum", return_value={"weeks": [week]}):
+            cur, wk, d, rel, cfg = close_day.locate(6, 2)
+        self.assertEqual(("w06d2", "week-06/day-2-x"), (d["id"], rel))
+        day["demoFormat"] = "none"
+        with mock.patch.object(close_day.bi, "load_curriculum", return_value={"weeks": [week]}):
+            with self.assertRaises(SystemExit) as cm:
+                close_day.locate(6, 2)
         self.assertIn("nothing to close", str(cm.exception.code))
 
     def test_unreleased_day_is_refused(self):
@@ -135,6 +198,20 @@ class RecordTests(unittest.TestCase):
         self.assertEqual(CFG["demoRepo"]["url"], rec["demoRepo"])
         self.assertEqual("", rec["notes"])
         self.assertEqual("prep/week-02", close_day.prep_branch(CFG, 2))
+
+    def test_notebook_delivery_record_and_runbook_section(self):
+        """D-0085: format notebook, the notebook path and sha, no blocks; a null sha when it was never committed."""
+        nb = {"path": "notebooks/week-06/02_tuesday_trees_and_clustering.ipynb", "sha": SHA}
+        rec = close_day.delivery_record(DAY, "2026-11-17", [], CFG, SHA, "ran to section 6", nb)
+        self.assertEqual(["day", "date", "format", "notebook", "notebookSha", "demoRepo", "demoRepoSha", "notes"], list(rec))
+        self.assertEqual(("notebook", nb["path"], SHA), (rec["format"], rec["notebook"], rec["notebookSha"]))
+        self.assertIsNone(close_day.delivery_record(DAY, "2026-11-17", [], CFG, SHA, None, dict(nb, sha=None))["notebookSha"])
+        section = close_day.runbook_section("2026-11-17", [], CFG["demoRepo"]["url"], SHA, None, nb)
+        self.assertIn("## Delivery record (2026-11-17)", section)
+        self.assertIn("- Format: notebook (D-0085)", section)
+        self.assertIn(f"/blob/{SHA}/{nb['path']}", section)
+        self.assertNotIn("walkthrough", section)
+        self.assertIn("(not committed by that date)", close_day.runbook_section("2026-11-17", [], "u", SHA, None, dict(nb, sha=None)))
 
     def test_walkthrough_record_inserts_before_the_cheat_sheet_once(self):
         rec = close_day.walkthrough_record("2026-10-19", self.MATCHED[1], "ran 10 min long")

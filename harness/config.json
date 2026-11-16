@@ -57,7 +57,8 @@
     "localDir": "demo-repo",
     "prepBranch": "prep/week-{WW}",
     "layout": {
-      "thread": "<threads.<id>.repoDir>/ at the top level, e.g. ticket-desk/ticket_desk.py, one commit per block on the prep branch; the trainer's live commits on main follow the same ladder"
+      "thread": "<threads.<id>.repoDir>/ at the top level, e.g. ticket-desk/ticket_desk.py, one commit per block on the prep branch; the trainer's live commits on main follow the same ladder",
+      "notebooks": "D-0085: notebooks/week-WW/NN_<weekday>_<slug>.ipynb on main, one prepared Jupyter notebook per demoFormat notebook day (NN = weekday slot 01..05, weekday lowercase English, slug lowercase words joined by underscores; the first file starting NN_<weekday>_ is the day's, else the day slug without 'day-N-'). The trainer runs it live in Google Colab; no prep-branch commit. Format check: harness/notebook_check.py; style: harness/templates/notebook-style.md"
     }
   },
   "llm": {

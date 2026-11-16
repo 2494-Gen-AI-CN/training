@@ -1,0 +1,9 @@
+# D-0085 — The ML weeks' demos are Jupyter notebooks in the substitute trainer's style: demoFormat gains the value 'notebook' (one prepared notebook per teaching day at demo-repo notebooks/week-WW/NN_<weekday>_<slug>.ipynb on main, run live in Google Colab, no walkthrough, no thread rung, no prep-branch commit); week 6's five days become notebook days and W6D2 uses the substitute's own 02_tuesday_trees_and_clustering.ipynb unchanged
+
+- Date: 2026-11-16
+- Status: accepted
+- Decision: The ML weeks' demos are Jupyter notebooks in the substitute trainer's style: demoFormat gains the value 'notebook' (one prepared notebook per teaching day at demo-repo notebooks/week-WW/NN_<weekday>_<slug>.ipynb on main, run live in Google Colab, no walkthrough, no thread rung, no prep-branch commit); week 6's five days become notebook days and W6D2 uses the substitute's own 02_tuesday_trees_and_clustering.ipynb unchanged
+- Why: The substitute trainer delivered W4D4 to W6D1 and opened the ML unit on Mon 2026-11-16 with a Colab notebook per day (a helper cell, markdown between short cells, synthetic data then a real dataset, try-changing prompts, a Recap table and a Quick check); the trainer returns Tue 2026-11-17 and chose to keep that format so the room sees one style. TensorFlow has no wheel for the course Python 3.15 (pip, 2026-11-16) and every learner has a Google account from week 4 (D-0075), so Colab is the runtime; the ticket-desk thread ended at week 4 (D-0082) and no P1 thread exists. Week 6 is planned without an exit-criteria map (qc-4 is not published) and without a P1 spec; both are backfilled when Revature publishes them.
+- Affects: harness/curriculum.json (week 6 demoFormat, week and day notes), harness/config.json demoRepo.layout, plan_check.py, args_for.py, close_day.py, release_week.py, notes_check.py, workflows/day-fanout.js, workflows/week-plan.js, critics, templates, tests, AGENTS.md, demo-repo notebooks/
+- Supersedes: —
+- Superseded-by: —

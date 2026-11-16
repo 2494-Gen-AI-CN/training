@@ -4,7 +4,7 @@ Agent-driven pipeline that turns one curriculum day into five reviewed artifacts
 
 ```
 harness/
-  curriculum.json      source of truth: weeks, days, slugs, gate, demoFormat (walkthrough | none, D-0055), status (planned -> authored -> live; taught implies live, D-0052)
+  curriculum.json      source of truth: weeks, days, slugs, gate, demoFormat (walkthrough | none | notebook, D-0055, D-0085), status (planned -> authored -> live; taught implies live, D-0052)
   metrics.json         quality bars (word band, steps, quiz count, test counts, day minutes)
   config.json          site title, repo URL, feedback form, LLM provider defaults, learner repo convention (public, D-0051) and demo repo (D-0050)
   build_index.py       curriculum.json -> CAL/WEEKS block in docs/index.html (--check in tests); owns all calendar arithmetic
@@ -17,6 +17,9 @@ harness/
   demo_check.py        FORMAT check for one walkthrough or a week's folder (D-0055): title, the five header fields, Time = sum of step
                        minutes within metrics.demos, cheat-sheet rows = steps, cwd lines, closing sections, the last step's commit,
                        typed-line cap; "What we did NOT cover" bullets take one format (D-0039). The answer key is the demo repo commit.
+  notebook_check.py    FORMAT check for a notebook day's demo notebook or a week's folder (D-0085): path rule notebooks/week-WW/NN_<weekday>_<slug>.ipynb,
+                       nbformat 4, title cell with a numbered agenda, setup cell second, >= 3 ## sections, Recap + Quick check, no stored outputs,
+                       no pip install of what Colab ships, code cells <= 40 lines; args_for, close_day and build_tracker use its path helpers
   series_readme.py     renders trainer/week-WW/demos/README.md (the series index: ordered table, dependency graph, stop points, squeeze
                        priorities, hard-stop rule, scaffold bundle, run prerequisites, ledgers) from the plan and the delivery records; --check
   prose_guard.py       prose-only guard for a humanizer pass on walkthroughs and runbooks (D-0039) and, in html mode, on notes
@@ -29,7 +32,8 @@ harness/
   close_day.py         closes a taught day (D-0050, D-0055): `<week> <day> [--date YYYY-MM-DD] [--match NN-slug=<sha> ...] [--notes "..."] [--no-pull] [--apply]`;
                        the only writer of `taught`; pulls demo-repo/, matches the day's live commits to the plan's blocks and diffs them against the
                        prep commits (reached / diverged / not reached), writes trainer/<rel>/delivery.json, appends a DELIVERY RECORD blockquote to
-                       each walkthrough and the runbook Delivery record, re-renders the series README, logs a manual run, rebuilds index and tracker
+                       each walkthrough and the runbook Delivery record, re-renders the series README, logs a manual run, rebuilds index and tracker;
+                       a notebook day (D-0085) records its notebook and the last commit touching it instead of blocks
   release_week.py      the Friday gate (D-0052): `<week> --today <date> [--check]`; refuses unless the plan passes plan_check, every teaching day is authored (or live),
                        pages exist (the page is the only per-day gate, D-0068), last-tests.json is green, the past teaching days have delivery.json and, when the week's
                        walkthrough folder exists, demo_check passes and the series README is fresh (D-0055); then flips

@@ -40,8 +40,8 @@ import build_index as bi  # noqa: E402
 
 ROOT = bi.ROOT
 RECORDED = ("authored", "live")
-# The demoFormats harness/close_day.py closes (its locate() refuses `none`: nothing to close that day).
-CLOSABLE_FORMATS = ("walkthrough",)
+# The demoFormats harness/close_day.py closes (its locate() refuses `none`: nothing to close that day; D-0085 adds notebook).
+CLOSABLE_FORMATS = ("walkthrough", "notebook")
 NOTES_PHASES = {"counts", "phrases", "stamps", "citations", "style"}
 
 

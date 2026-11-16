@@ -179,6 +179,19 @@ class ReleaseWeekTests(unittest.TestCase):
         self.assertEqual(0, code, out)
         self.assertNotIn(d["id"], out)
 
+    def test_past_notebook_day_must_be_closed(self):
+        """D-0085: close_day.py closes a notebook day, so a past notebook day without delivery.json is a reason."""
+        self.assertIn("notebook", release_week.CLOSABLE_FORMATS)
+        d = next(x for x in build_index.teaching_days(self.w1)
+                 if build_index.slot_date(self.cur, 1, x["day"]) < dt.date.fromisoformat(TODAY))
+        d["demoFormat"] = "notebook"
+        self._write_cur()
+        (self.root / "trainer" / self._rel(self.w1, d) / "delivery.json").unlink()
+        code, out = self._run("--check")
+        self.assertEqual(1, code, out)
+        self.assertIn(f"{d['id']} (", out)
+        self.assertIn("delivery.json is missing", out)
+
     def test_index_without_markers_writes_nothing(self):
         self._touch("docs/index.html", "<html>no markers</html>\n")
         before = self._cur_bytes()

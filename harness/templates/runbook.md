@@ -65,6 +65,27 @@ Exit criteria mapped to today
 
 (same structure; the talk track lives in the walkthrough, not here)
 
+<!-- D-0085, demoFormat notebook days ONLY (instead of every "## Demo:" section; Facilitation blocks stay for the
+subtopics the notebook does not cover). The glance table carries "Notebook: <file> §1–§3 | 105 | demo repo notebooks/week-WW/<file>"
+rows whose minutes sum to the timed sections below. While the notebook is not written yet, time the sections the
+subtopics imply and say so in one line under the heading.
+
+## Notebook: NN_<weekday>_<slug>.ipynb
+
+**Notebook:** `notebooks/week-WW/NN_<weekday>_<slug>.ipynb` on `main` of the demo repo · **Runtime:** Google Colab (File > Open notebook > GitHub); run the setup cell first
+**Stop point if long:** after section n; the rest is picked up ...
+
+### 1. <section heading as the notebook has it> (25 min)
+
+- Say: 2–4 lines.
+- Predict before running: "...?" → answer: ...
+- Try changing: `<parameter>` to ...; the room should see ...
+
+### Recap and Quick check (10 min)
+
+- Ask aloud: Quick check questions n, m.
+-->
+
 ## Notes page handoff
 
 - Open docs/weeks/{{rel}}.html; show the table of contents and the "Check yourself" step at the end. The page is tonight's study material (30–45 minutes of reading, D-0040), not a recap of the day: name the 2–3 sections that go beyond what the demos built.
