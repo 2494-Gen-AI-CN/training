@@ -760,6 +760,72 @@ print(clf.predict_proba(["Quantum flux capacitor"]).round(2))</code></pre>
         </div>
       </section>
 
+      <section class="practice" id="practice" hidden>
+        <div class="tag">Practice</div>
+        <h2>Practice</h2>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t1" data-title="Deep learning" data-q="A lender has 4,000 rows of application-form columns, such as income and loan amount, and must tell every refused applicant why the model said no. Which model do you pick?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t1" value="0"> It learns its own features from the columns, so a deep network.</label></li>
+            <li><label><input type="radio" name="t1" value="1"> Its weights can be read to explain each refusal, so a deep network.</label></li>
+            <li><label><input type="radio" name="t1" value="2"> The table is small and refusals need reasons, so a classical model.</label></li>
+            <li><label><input type="radio" name="t1" value="3"> 4,000 labelled rows is plenty of data, so a deep network.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 2, "explain": "The columns are already chosen, hundreds to thousands of rows can be enough for a classical model, and its coefficients or tree splits can be read to explain each refusal. A deep network pays off when it learns its own features from raw pixels or words on large labelled datasets, and its thousands of weights are hard to read."}</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t2" data-title="Types of neural networks" data-q="A factory has thousands of photos from its production line, each labelled defective or not, and wants a network that flags the defective ones. Which type of network fits?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t2" value="0"> A feedforward network, fed each photo flattened into one long row.</label></li>
+            <li><label><input type="radio" name="t2" value="1"> A convolutional network, which slides the same detector over the photo.</label></li>
+            <li><label><input type="radio" name="t2" value="2"> A recurrent network such as an LSTM, which carries a memory forward.</label></li>
+            <li><label><input type="radio" name="t2" value="3"> An autoencoder, which squeezes each photo through a narrow middle layer.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 1, "explain": "Ask what one input looks like: here it is an image, and a convolutional network reads grid data by reusing the same small detector at every position, so neighbouring pixels stay together. Flattening the photo for a feedforward network loses the fact that two pixels were neighbours."}</code></pre>
+        </div>
+        <div class="ix-task" data-id="t3" data-title="A dense layer" data-q="Write &lt;code&gt;dense_relu(x, W, b)&lt;/code&gt;, one dense layer followed by ReLU, with plain Python lists instead of numpy. &lt;code&gt;x&lt;/code&gt; is a list of inputs. &lt;code&gt;W&lt;/code&gt; is a list of rows with the shape (inputs, units), so it has one row per input and column &lt;code&gt;j&lt;/code&gt; holds the weights of unit &lt;code&gt;j&lt;/code&gt;. &lt;code&gt;b&lt;/code&gt; holds one bias per unit. Return a list with one value per unit: that unit&#x27;s weighted sum of the inputs, plus its bias, through ReLU, &lt;code&gt;max(0, ...)&lt;/code&gt;. For example, &lt;code&gt;dense_relu([2.0, 1.0, 3.0], [[0.5], [-1.0], [0.25]], [0.5])&lt;/code&gt; returns &lt;code&gt;[1.25]&lt;/code&gt;, the page&#x27;s one neuron.">
+<pre class="task-starter"><code>def dense_relu(x, W, b):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert dense_relu([2.0, 1.0, 3.0], [[0.5], [-1.0], [0.25]], [0.5]) == [1.25], "the page's one neuron adds its bias to the weighted sum"
+assert dense_relu([1.0, 2.0], [[1.0], [-1.0]], [0.5]) == [0.0], "a unit whose weighted sum plus bias is negative comes back as 0.0"
+assert dense_relu([1.0, 2.0], [[1.0, 0.5, -1.0], [2.0, 0.25, 3.0]], [0.0, 1.0, -2.0]) == [5.0, 2.0, 3.0], "two inputs and three units give three values, unit j using column j of W"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t4" data-title="Sliding a kernel" data-q="Write &lt;code&gt;correlate_valid(image, kernel)&lt;/code&gt; with plain Python lists of rows, as &lt;code&gt;correlate2d(image, kernel, mode=&quot;valid&quot;)&lt;/code&gt; computes it. Slide the kernel over the image without flipping it, visiting only the positions where the whole kernel fits. At each position multiply every pixel by the weight on top of it and add all the products. Return the feature map as a list of rows: a k by k kernel on an n by n image gives n - k + 1 rows of n - k + 1 values. For example, on the page&#x27;s 4 by 4 image, every row &lt;code&gt;[0, 0, 9, 9]&lt;/code&gt;, the vertical-edge kernel &lt;code&gt;[[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]]&lt;/code&gt; gives &lt;code&gt;[[27, 27], [27, 27]]&lt;/code&gt;.">
+<pre class="task-starter"><code>def correlate_valid(image, kernel):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>edge = [[0, 0, 9, 9], [0, 0, 9, 9], [0, 0, 9, 9], [0, 0, 9, 9]]
+vertical = [[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]]
+grid = [[1, 2, 0, 1, 3], [0, 1, 2, 3, 1], [2, 0, 1, 1, 0], [1, 3, 0, 2, 2], [0, 1, 1, 0, 1]]
+kernel = [[1, 0, 2], [0, 1, 0], [-1, 0, 3]]
+assert [len(row) for row in correlate_valid(edge, vertical)] == [2, 2], "a 3 by 3 kernel on a 4 by 4 image gives 2 rows of 2, n - k + 1 on each side"
+assert correlate_valid(edge, vertical) == [[27, 27], [27, 27]], "the dark-to-bright edge scores +27 with the kernel unflipped"
+assert correlate_valid(grid, kernel) == [[3, 9, 8], [3, 11, 11], [10, 1, 5]], "each value is the sum of all nine products of a patch and the kernel"</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t5" data-title="Image classification" data-q="Three classification jobs could each start with a flat classifier fed the raw values, the way the page&#x27;s baseline reads digit pixels. Which job most needs a convolutional network instead?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t5" value="0"> Large product photos where a defect can sit anywhere in the frame.</label></li>
+            <li><label><input type="radio" name="t5" value="1"> Handwritten digits of 8 by 8 pixels, each one centred in its grid.</label></li>
+            <li><label><input type="radio" name="t5" value="2"> A small table of application-form fields such as income and age.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 0, "explain": "On a large photo the flat model's first layer needs millions of weights, each tied to one pixel position, so a defect that moves around the frame confuses it, while a CNN reuses a few kernel weights at every position. On 64-pixel centred digits the flat baseline already scores 96 percent."}</code></pre>
+        </div>
+        <div class="ix-task" data-id="t6" data-title="Bag of words" data-q="Write &lt;code&gt;bag_of_words(text, vocabulary)&lt;/code&gt; in plain Python. Lowercase &lt;code&gt;text&lt;/code&gt; and split it on spaces into tokens. Return a list with one count per word of &lt;code&gt;vocabulary&lt;/code&gt;, in the vocabulary&#x27;s order: how many tokens are that word. A token that is not in the vocabulary is dropped, the way a fitted vectorizer drops a word it never saw. For example, &lt;code&gt;bag_of_words(&quot;Refund blocked login works&quot;, [&quot;blocked&quot;, &quot;login&quot;, &quot;refund&quot;, &quot;works&quot;])&lt;/code&gt; returns &lt;code&gt;[1, 1, 1, 1]&lt;/code&gt;.">
+<pre class="task-starter"><code>def bag_of_words(text, vocabulary):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>vocab = ["blocked", "login", "refund", "works"]
+assert bag_of_words("Login page Login", ["login", "page"]) == [2, 1], "a word repeated in another case is counted every time"
+assert bag_of_words("Refund invoice blocked", vocab) == [1, 0, 1, 0], "a word missing from the vocabulary is dropped, one count per vocabulary word"
+assert bag_of_words("Login blocked refund works", vocab) == [1, 1, 1, 1], "the same words in another order give the same row"</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t7" data-title="The text pipeline" data-q="A teammate has fitted &lt;code&gt;clf = make_pipeline(TfidfVectorizer(ngram_range=(1, 2)), LogisticRegression(max_iter=5000))&lt;/code&gt; on the training ticket titles and wants a label for one new title, held in &lt;code&gt;title&lt;/code&gt;. What should they do?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t7" value="0"> Run <code>fit_transform</code> on the new title, then predict from that row.</label></li>
+            <li><label><input type="radio" name="t7" value="1"> Pass the raw title straight to the <code>LogisticRegression</code> step.</label></li>
+            <li><label><input type="radio" name="t7" value="2"> Refit the vectorizer on the training titles plus the new one, then predict.</label></li>
+            <li><label><input type="radio" name="t7" value="3"> Call <code>clf.predict([title])</code> on the fitted pipeline as it stands.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 3, "explain": "The pipeline's &lt;code&gt;predict&lt;/code&gt; sends the title through &lt;code&gt;transform&lt;/code&gt;, which reuses the vocabulary learned from the training text, before the model sees it, and any word it never saw is ignored. &lt;code&gt;fit_transform&lt;/code&gt; would build a fresh vocabulary from the new title alone, so the columns no longer match the model's."}</code></pre>
+        </div>
+      </section>
+
       <section class="step" data-diagram="0" data-step="7">
         <div class="tag">Check yourself</div>
         <h2>Check yourself</h2>

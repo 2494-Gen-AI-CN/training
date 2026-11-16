@@ -139,7 +139,7 @@ version-stamps:
 ## Common pitfalls (3–6; feed the runbook "where trainees get stuck" and quiz distractors)
 
 - Following a tutorial that uses `tf.Session` or `tf.placeholder`; it fails on TensorFlow 2 with an AttributeError, and the fix is to read it as history, not to import `compat.v1`.
-- Taking `tf.reduce_mean` of the raw `uint8` MNIST arrays, which gives a truncated integer mean (or an error with the float-only reducer); cast to `float32` and divide by 255 first.
+- Taking `tf.reduce_mean` of the raw `uint8` MNIST arrays, which gives a truncated integer mean (or a `TypeError` when passed as a `uint8` tensor to the float-only reducer); cast to `float32` and divide by 255 first.
 - Confusing `axis=0` with `axis=(1, 2)` on a batch: one gives a `(28, 28)` mean image, the other gives one value per image.
 - Expecting `tf.argmax(x)` to search the whole tensor or to accept `keepdims`; it defaults to axis 0, takes one integer axis, and returns positions.
 - Putting a Python `print` inside a `@tf.function` and being surprised it prints once; use `tf.print`.

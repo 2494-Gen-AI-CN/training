@@ -112,7 +112,7 @@ except TypeError as err:
         <code>tf.keras.Sequential</code> or <code>tf.keras.layers.Dense</code> means Keras on TensorFlow, while bare
         <code>tf.constant</code> and <code>tf.matmul</code> calls mean someone is working at the operation level.</p>
         <h3>Running it in Colab</h3>
-        <p>TensorFlow publishes no wheel for the course's Python 3.15, so this week runs in Google Colab. Colab ships
+        <p>This week's code runs in Google Colab rather than on your own Python install. Colab ships
         TensorFlow preinstalled and runs on a CPU unless you choose a GPU runtime.<sup class="cite"><a href="#src-4">4</a></sup> A CPU is plenty for everything on this page. Nothing gets
         installed with <code>pip</code>, and nothing is uploaded.</p>
         <p>The first cell of any TensorFlow notebook should say which versions it is running on:</p>
@@ -618,8 +618,10 @@ for x in [tf.constant(4.0), tf.constant([1.0, 2.0, 6.0]), tf.constant([[1.0, 2.0
 (3,) 9.0 3.0 6.0
 (2, 2) 16.0 4.0 10.0</pre>
         <p>One trace served three ranks, and <code>summarize(images)</code> runs on the same graph. The limit is the dtype
-        in the signature: this reducer accepts <code>float32</code> only, so the raw <code>uint8</code> MNIST arrays must be
-        cast before they reach it.<sup class="cite"><a href="#src-14">14</a></sup></p>
+        in the signature: a <code>uint8</code> tensor such as <code>tf.constant(x_train)</code> does not match
+        <code>float32</code>, so the call fails with a <code>TypeError</code>.<sup class="cite"><a href="#src-14">14</a></sup>
+        Pixels that were never divided by 255 would also give a mean on the 0 to 255 scale, so cast and scale the batch
+        before it reaches the reducer.</p>
         <div class="recap"><div class="k">Takeaways</div><ul>
           <li>axis=None reduces everything; an int or tuple of axes removes just those axes.</li>
           <li>keepdims=True keeps reduced axes at length 1 so the result broadcasts back.</li>
@@ -696,8 +698,9 @@ with writer.as_default():
 <pre><code># Run in Colab
 %load_ext tensorboard
 %tensorboard --logdir logs</code></pre>
-        <p>The dashboard opens inside the cell's output area. On its Graphs tab you find the three inputs feeding a
-        multiply, then an add, the same nodes <code>get_operations()</code> listed in step 4. If the tab is empty, the
+        <p>The dashboard opens inside the cell's output area. On its Graphs tab the recorded function first appears as a
+        collapsed box, possibly beside other small boxes the export recorded. Double-click the function's box to expand it
+        and you find the three inputs feeding a multiply, then an add, the same nodes <code>get_operations()</code> listed in step 4. If the tab is empty, the
         usual causes are an export outside the <code>with</code> block or <code>%tensorboard</code> run before
         <code>%load_ext</code>.</p>
         <p>The Graphs tab shows structure, not training behaviour.<sup class="cite"><a href="#src-21">21</a></sup> It
@@ -735,6 +738,54 @@ print(sorted({op.name.split("/")[0] for op in ops}))</code></pre>
           <p>To look at a graph I create a summary file writer, turn tracing on, call the function once, and export the
           trace inside the writer's context. Then in Colab I load the TensorBoard extension and point it at the log
           folder, and the Graphs tab shows the operations.</p>
+        </div>
+      </section>
+
+      <section class="practice" id="practice" hidden>
+        <div class="tag">Practice</div>
+        <h2>Practice</h2>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t1" data-title="History of TensorFlow" data-q="Searching an error message turns up an answer whose code starts with &lt;code&gt;x = tf.placeholder(tf.float32)&lt;/code&gt; and then opens &lt;code&gt;sess = tf.Session()&lt;/code&gt;. On Colab its first line stops with an &lt;code&gt;AttributeError&lt;/code&gt;. What do you do with this code?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t1" value="0"> Change the import to <code>tf.compat.v1</code> so the code runs as it was written.</label></li>
+            <li><label><input type="radio" name="t1" value="1"> Reinstall TensorFlow, since an <code>AttributeError</code> on line one means a broken install.</label></li>
+            <li><label><input type="radio" name="t1" value="2"> Read it as TensorFlow 1 history and write its idea as a TensorFlow 2 function of tensors.</label></li>
+            <li><label><input type="radio" name="t1" value="3"> Keep <code>tf.Session</code> and swap out only <code>tf.placeholder</code>, the one removed call.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 2, "explain": "&lt;code&gt;tf.Session&lt;/code&gt; and &lt;code&gt;tf.placeholder&lt;/code&gt; mark TensorFlow 1 code, which stops on TensorFlow 2, and &lt;code&gt;tf.compat.v1&lt;/code&gt; exists as a migration bridge for teams moving old code forward, so new code is written in TensorFlow 2. In TensorFlow 2 a &lt;code&gt;tf.function&lt;/code&gt; replaces the session and ordinary function arguments replace placeholders."}</code></pre>
+        </div>
+        <div class="ix-task" data-id="t2" data-title="Tensors" data-q="Write &lt;code&gt;broadcast_shape(a, b)&lt;/code&gt;. &lt;code&gt;a&lt;/code&gt; and &lt;code&gt;b&lt;/code&gt; are shapes written as tuples of ints, and the function returns, as a tuple, the shape of &lt;code&gt;a + b&lt;/code&gt; under the page&#x27;s broadcasting rule: line the shapes up from the right, count a missing axis on the left as length 1, combine two lengths when they are equal or one of them is 1, and give the result the larger length on every axis. When two lengths cannot combine, raise &lt;code&gt;ValueError&lt;/code&gt;. For example, &lt;code&gt;broadcast_shape((3,), (3, 1))&lt;/code&gt; returns &lt;code&gt;(3, 3)&lt;/code&gt;.">
+<pre class="task-starter"><code>def broadcast_shape(a, b):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert broadcast_shape((2, 3), (3,)) == (2, 3), "the shapes line up from the right, so (3,) meets the last axis of (2, 3)"
+assert broadcast_shape((3, 1), (3,)) == (3, 3), "each axis of the result takes the larger of the two lengths"
+assert broadcast_shape((2, 2), ()) == (2, 2), "a missing axis counts as length 1, so a plain number fits any shape"
+assert raises(ValueError, broadcast_shape, (2, 2, 3), (2, 2)), "raises ValueError when two lengths are neither equal nor 1"</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t3" data-title="Tracing and retracing" data-q="A loop calls the page&#x27;s &lt;code&gt;scale(v, factor)&lt;/code&gt;, decorated with &lt;code&gt;@tf.function&lt;/code&gt;, once for each of a thousand different Python floats, passing the same &lt;code&gt;v&lt;/code&gt; every time. The loop is far slower than expected. What is the cause, and what is the fix?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t3" value="0"> The Python <code>print</code> in <code>scale</code> is what makes each call slow; swap it for <code>tf.print</code>.</label></li>
+            <li><label><input type="radio" name="t3" value="1"> A dtype mismatch on <code>v</code> retraces each call; cast <code>v</code> to <code>float32</code> first.</label></li>
+            <li><label><input type="radio" name="t3" value="2"> The graph is rebuilt per call; build it once and run it in a <code>tf.Session</code> with a <code>feed_dict</code>.</label></li>
+            <li><label><input type="radio" name="t3" value="3"> Each new Python float traces a new graph; pass <code>tf.constant(factor)</code> instead.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 3, "explain": "A plain Python number is baked into the graph as a constant, so every new float means a new trace and another run of the Python body. A tensor argument becomes an input node instead, so &lt;code&gt;tf.constant(factor)&lt;/code&gt; keeps one graph, as an &lt;code&gt;input_signature&lt;/code&gt; would."}</code></pre>
+        </div>
+        <div class="ix-task" data-id="t4" data-title="Reductions" data-q="Write &lt;code&gt;reduced_shape(shape, axis=None, keepdims=False)&lt;/code&gt;. It returns, as a tuple, the shape &lt;code&gt;tf.reduce_sum&lt;/code&gt; gives back for a tensor of shape &lt;code&gt;shape&lt;/code&gt;. &lt;code&gt;axis&lt;/code&gt; is &lt;code&gt;None&lt;/code&gt; (reduce every axis), an int, or a tuple of ints, and a negative axis counts from the end. The reduced axes disappear from the result, unless &lt;code&gt;keepdims&lt;/code&gt; is &lt;code&gt;True&lt;/code&gt;, when each one stays with length 1. For example, &lt;code&gt;reduced_shape((60000, 28, 28), (1, 2))&lt;/code&gt; returns &lt;code&gt;(60000,)&lt;/code&gt;.">
+<pre class="task-starter"><code>def reduced_shape(shape, axis=None, keepdims=False):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert (reduced_shape((60000, 28, 28), 0), reduced_shape((60000, 28, 28), (1, 2))) == ((28, 28), (60000,)), "the named axes disappear: axis 0 leaves one 28 by 28 image, axes (1, 2) one value per image"
+assert reduced_shape((2, 2, 3)) == (), "axis left as None reduces every axis to a rank-0 shape"
+assert reduced_shape((2, 2, 3), -1) == (2, 2), "a negative axis counts from the end, so -1 is the last axis"
+assert reduced_shape((2, 2, 3), -1, keepdims=True) == (2, 2, 1), "keepdims=True keeps each reduced axis with length 1"</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t5" data-title="Graphs, sessions and TensorBoard" data-q="A notebook creates &lt;code&gt;writer = tf.summary.create_file_writer(&quot;logs/graph&quot;)&lt;/code&gt;, calls &lt;code&gt;tf.summary.trace_on(graph=True)&lt;/code&gt;, calls &lt;code&gt;basic_graph&lt;/code&gt; once, then calls &lt;code&gt;tf.summary.trace_export(name=&quot;basic_graph&quot;, step=0)&lt;/code&gt; on the next line, with no &lt;code&gt;with&lt;/code&gt; block. It opens TensorBoard with &lt;code&gt;%load_ext tensorboard&lt;/code&gt; and then &lt;code&gt;%tensorboard --logdir logs&lt;/code&gt;, and the Graphs tab is empty. What fixes it?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t5" value="0"> Move <code>trace_export</code> inside <code>with writer.as_default():</code> so it has a writer.</label></li>
+            <li><label><input type="radio" name="t5" value="1"> Train first, since the Graphs tab fills in only once a training run has been logged.</label></li>
+            <li><label><input type="radio" name="t5" value="2"> Call <code>basic_graph</code> several more times before the export, so there is more to draw.</label></li>
+            <li><label><input type="radio" name="t5" value="3"> Run <code>%tensorboard --logdir logs</code> first and <code>%load_ext tensorboard</code> after it.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 0, "explain": "&lt;code&gt;trace_export&lt;/code&gt; must run with a default writer, so it sits inside &lt;code&gt;with writer.as_default():&lt;/code&gt;, and without one nothing reaches &lt;code&gt;logs/graph&lt;/code&gt;. The order is tracing on, exactly one call, then the export inside the writer; the Graphs tab shows structure, so it needs no training run."}</code></pre>
         </div>
       </section>
 
@@ -899,7 +950,7 @@ window.QUIZ = {
       explain: "argmax defaults to axis 0, so it goes down each column and returns the winning row: 8 beats 3, 9 beats 1, 7 beats 2. It does not flatten the tensor, and it returns positions rather than values." },
     { type: "open", stem: "In two or three sentences: why do the MNIST images get cast with tf.cast(x_train, tf.float32) / 255.0 before any mean is taken?",
       hint: "The dtype of the raw arrays, and what reduce_mean does with it.",
-      model: "load_data returns uint8 arrays, and tf.reduce_mean on an integer tensor returns a truncated integer mean, so the average would be wrong. Casting to float32 gives a real mean, and dividing by 255 puts every pixel between 0 and 1. A reducer whose signature accepts float32 only would also reject the raw arrays." }
+      model: "load_data returns uint8 arrays, and tf.reduce_mean on an integer tensor returns a truncated integer mean, so the average would be wrong. Casting to float32 gives a real mean, and dividing by 255 puts every pixel between 0 and 1. Passed in as a uint8 tensor, the raw data would also fail a reducer whose signature accepts float32 only." }
   ]
 };
 </script>

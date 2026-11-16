@@ -850,6 +850,98 @@ min_samples=20  clusters 1  noise 479</pre>
         </div>
       </section>
 
+      <section class="practice" id="practice" hidden>
+        <div class="tag">Practice</div>
+        <h2>Practice</h2>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t1" data-title="Decision trees" data-q="A decision tree is trained at three depths on curved two-class data, and each prints its training and test accuracy: &lt;code&gt;max_depth=1&lt;/code&gt; scores 0.78 train and 0.80 test, &lt;code&gt;max_depth=5&lt;/code&gt; scores 0.91 and 0.90, and &lt;code&gt;max_depth=None&lt;/code&gt; scores 1.00 and 0.86. Which tree do you keep?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t1" value="0"> The <code>max_depth=None</code> tree, because its training score of 1.00 shows it learned the data perfectly</label></li>
+            <li><label><input type="radio" name="t1" value="1"> The <code>max_depth=5</code> tree, because its test score is the best of the three and both its scores are close</label></li>
+            <li><label><input type="radio" name="t1" value="2"> The <code>max_depth=1</code> tree, because it is the only one that scores higher on test data than on training data</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 1, "explain": "The depth is chosen by the test score, never the training score, and depth 5 has the best test score with both scores high and close together. A perfect training score is a warning sign: with no depth limit the tree keeps splitting until it memorises noise, which is why its test score falls to 0.86."}</code></pre>
+        </div>
+        <div class="ix-task" data-id="t2" data-title="Unsupervised learning and clustering" data-q="Write &lt;code&gt;same_grouping(labels_a, labels_b)&lt;/code&gt;. It takes two lists of cluster numbers of the same length, one number per row, from two clusterings of the same rows. It returns &lt;code&gt;True&lt;/code&gt; when the two lists put exactly the same rows together, whatever numbers they use, and &lt;code&gt;False&lt;/code&gt; otherwise. Cluster numbers are only names, so &lt;code&gt;same_grouping([1, 2, 1, 2, 0], [2, 0, 2, 0, 1])&lt;/code&gt; returns &lt;code&gt;True&lt;/code&gt;. &lt;code&gt;same_grouping([0, 0, 1, 1], [0, 0, 0, 1])&lt;/code&gt; returns &lt;code&gt;False&lt;/code&gt;, because one row moved, and so does &lt;code&gt;same_grouping([0, 0, 1, 1], [0, 0, 0, 0])&lt;/code&gt;, where the second list lumps two groups into one.">
+<pre class="task-starter"><code>def same_grouping(labels_a, labels_b):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert same_grouping([1, 2, 1, 2, 0], [2, 0, 2, 0, 1]) == True, "the same grouping under different cluster numbers gives True"
+assert same_grouping([0, 0, 1, 1], [0, 0, 0, 1]) == False, "a row moved to another group gives False"
+assert same_grouping([0, 0, 1, 1], [0, 0, 0, 0]) == False, "two groups lumped into one gives False"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t3" data-title="Distance between two points" data-q="Write &lt;code&gt;distance(a, b, metric=&quot;euclidean&quot;)&lt;/code&gt;. It takes two points as tuples of the same length, one coordinate per feature, and returns the Euclidean distance between them: square the difference in each coordinate, add the squares and take the square root with &lt;code&gt;math.sqrt&lt;/code&gt;. When &lt;code&gt;metric&lt;/code&gt; is &lt;code&gt;&quot;cityblock&quot;&lt;/code&gt; it returns the Manhattan distance instead, the sum of the absolute differences (&lt;code&gt;abs(x)&lt;/code&gt; gives the absolute value of &lt;code&gt;x&lt;/code&gt;). &lt;code&gt;distance((1, 2), (4, 6))&lt;/code&gt; returns &lt;code&gt;5.0&lt;/code&gt; and &lt;code&gt;distance((1, 2), (4, 6), &quot;cityblock&quot;)&lt;/code&gt; returns &lt;code&gt;7&lt;/code&gt;. A point can have any number of coordinates.">
+<pre class="task-starter"><code>import math
+
+
+def distance(a, b, metric="euclidean"):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert distance((1, 2), (4, 6)) == 5.0, "the Euclidean distance takes the square root of the sum of squared differences"
+assert distance((1, 2), (4, 6), "cityblock") == 7, "cityblock adds the absolute differences instead"
+assert distance((1, 6), (4, 2), "cityblock") == 7, "cityblock counts a difference that runs the other way as positive"
+assert distance((1, 2, 3), (4, 6, 15)) == 13.0, "every coordinate counts, not only the first two"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t4" data-title="Distance between clusters" data-q="Write &lt;code&gt;cluster_distance(cluster_a, cluster_b, method)&lt;/code&gt;. Each cluster is a list of points, and the function measures the Euclidean distance from every point of &lt;code&gt;cluster_a&lt;/code&gt; to every point of &lt;code&gt;cluster_b&lt;/code&gt; (&lt;code&gt;math.dist(p, q)&lt;/code&gt; gives the distance between points &lt;code&gt;p&lt;/code&gt; and &lt;code&gt;q&lt;/code&gt;). It returns the smallest of those distances when &lt;code&gt;method&lt;/code&gt; is &lt;code&gt;&quot;single&quot;&lt;/code&gt;, the largest when it is &lt;code&gt;&quot;complete&quot;&lt;/code&gt; and their mean when it is &lt;code&gt;&quot;average&quot;&lt;/code&gt;. For the page&#x27;s clusters, &lt;code&gt;cluster_a = [(1.0, 1.0), (1.5, 2.0), (2.0, 1.2)]&lt;/code&gt; and &lt;code&gt;cluster_b = [(5.0, 4.0), (6.0, 5.5), (5.5, 3.5)]&lt;/code&gt;, it returns about 4.03, 6.73 and 5.00.">
+<pre class="task-starter"><code>import math
+
+
+def cluster_distance(cluster_a, cluster_b, method):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>cluster_a = [(1.0, 1.0), (1.5, 2.0), (2.0, 1.2)]
+cluster_b = [(5.0, 4.0), (6.0, 5.5), (5.5, 3.5)]
+assert round(cluster_distance(cluster_a, cluster_b, "single"), 2) == 4.03, "single linkage is the closest pair, one point from each cluster"
+assert round(cluster_distance(cluster_a, cluster_b, "complete"), 2) == 6.73, "complete linkage is the farthest pair"
+assert round(cluster_distance(cluster_a, cluster_b, "average"), 2) == 5.0, "average linkage is the mean over all nine pairs, not the gap between the two centres"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t5" data-title="The k-means algorithm by hand" data-q="Write &lt;code&gt;kmeans_round(points, centroids)&lt;/code&gt;, which runs one round of k-means on two lists of &lt;code&gt;(x, y)&lt;/code&gt; tuples. Assign: every point joins the centroid nearest to it (&lt;code&gt;math.dist(p, c)&lt;/code&gt; gives the distance). Update: every centroid moves to the mean of the points assigned to it. Return the new centroids as a list of &lt;code&gt;(x, y)&lt;/code&gt; tuples, in the same order as &lt;code&gt;centroids&lt;/code&gt;. On the page&#x27;s eight points, &lt;code&gt;[(1, 1), (1, 2), (2, 1), (2, 2), (6, 5), (7, 5), (6, 6), (7, 6)]&lt;/code&gt;, from the poor start &lt;code&gt;[(1, 1), (1, 2)]&lt;/code&gt; it returns about &lt;code&gt;[(1.5, 1.0), (4.83, 4.33)]&lt;/code&gt;. A second round from there returns &lt;code&gt;[(1.5, 1.5), (6.5, 5.5)]&lt;/code&gt;, and a third returns the same centroids again.">
+<pre class="task-starter"><code>import math
+
+
+def kmeans_round(points, centroids):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>points = [(1, 1), (1, 2), (2, 1), (2, 2), (6, 5), (7, 5), (6, 6), (7, 6)]
+first = kmeans_round(points, [(1, 1), (1, 2)])
+assert [round(v, 2) for v in first[0]] == [1.5, 1.0], "the first centroid moves to the mean of the points nearest to it"
+assert [round(v, 2) for v in first[1]] == [4.83, 4.33], "the second centroid moves to the mean of all six points assigned to it"
+second = kmeans_round(points, first)
+assert second == [(1.5, 1.5), (6.5, 5.5)], "a second round assigns every point again against the moved centroids"
+assert kmeans_round(points, second) == second, "a third round returns the same centroids: k-means has converged"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t6" data-title="Choosing K: the silhouette coefficient" data-q="Write &lt;code&gt;silhouette(i, points, labels)&lt;/code&gt;, which returns the silhouette coefficient of sample &lt;code&gt;i&lt;/code&gt;. &lt;code&gt;points&lt;/code&gt; is a list of points and &lt;code&gt;labels&lt;/code&gt; gives each point&#x27;s cluster number. &lt;code&gt;a&lt;/code&gt; is the mean distance from point &lt;code&gt;i&lt;/code&gt; to the other points of its own cluster, &lt;code&gt;b&lt;/code&gt; is its mean distance to the points of the nearest other cluster (the other cluster with the smallest mean distance), and the result is &lt;code&gt;(b - a) / max(a, b)&lt;/code&gt;. Measure with the Euclidean distance, which &lt;code&gt;math.dist(p, q)&lt;/code&gt; gives. For &lt;code&gt;points = [(0, 0), (0, 1), (5, 0), (5, 1)]&lt;/code&gt; and &lt;code&gt;labels = [0, 0, 1, 1]&lt;/code&gt;, &lt;code&gt;silhouette(0, points, labels)&lt;/code&gt; returns about 0.80. A sample that sits closer to another cluster than to its own gets a value below 0.">
+<pre class="task-starter"><code>import math
+
+
+def silhouette(i, points, labels):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>points = [(0, 0), (0, 1), (5, 0), (5, 1)]
+labels = [0, 0, 1, 1]
+assert round(silhouette(0, points, labels), 2) == 0.8, "a is the mean distance to the other points of the sample's own cluster, leaving the sample out"
+assert round(silhouette(0, [(0, 0), (0, 1), (3, 0), (3, 1), (10, 0), (10, 1)], [0, 0, 1, 1, 2, 2]), 2) == 0.68, "b uses the nearest other cluster only, not every other point"
+assert round(silhouette(1, [(0, 0), (4, 0), (5, 0), (5, 1)], [0, 0, 1, 1]), 2) == -0.7, "a sample closer to another cluster than to its own scores below 0"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t7" data-title="Feature scaling before any distance" data-q="Write a class &lt;code&gt;Scaler&lt;/code&gt; with two methods. &lt;code&gt;fit(rows)&lt;/code&gt; takes a list of rows, each a tuple with one value per column, and stores two lists: &lt;code&gt;mean_&lt;/code&gt;, the mean of each column, and &lt;code&gt;scale_&lt;/code&gt;, the spread of each column as the population standard deviation, the square root of the mean squared difference from the column&#x27;s mean (the spread &lt;code&gt;StandardScaler&lt;/code&gt; uses; &lt;code&gt;statistics.pstdev&lt;/code&gt; computes it). &lt;code&gt;transform(rows)&lt;/code&gt; returns a new list of tuples in which each value has its column&#x27;s &lt;code&gt;mean_&lt;/code&gt; subtracted and is then divided by its column&#x27;s &lt;code&gt;scale_&lt;/code&gt;. After &lt;code&gt;fit([(40000, 20), (90000, 80)])&lt;/code&gt;, with income first and spending score second, &lt;code&gt;mean_&lt;/code&gt; is &lt;code&gt;[65000, 50]&lt;/code&gt; and &lt;code&gt;scale_&lt;/code&gt; is &lt;code&gt;[25000, 30]&lt;/code&gt;. A new row is scaled with those fitted values, so &lt;code&gt;transform([(65000, 50)])&lt;/code&gt; then returns &lt;code&gt;[(0.0, 0.0)]&lt;/code&gt;.">
+<pre class="task-starter"><code>class Scaler:
+    def fit(self, rows):
+        ...
+
+    def transform(self, rows):
+        ...</code></pre>
+<pre class="task-tests" hidden><code>s = Scaler()
+s.fit([(40000, 20), (90000, 80)])
+assert s.mean_ == [65000, 50], "mean_ holds one mean per column, income then score"
+assert s.scale_ == [25000, 30], "scale_ holds one population standard deviation per column"
+assert s.transform([(40000, 20), (90000, 80)]) == [(-1.0, -1.0), (1.0, 1.0)], "transform on the fitting rows gives each column mean 0 and spread 1"
+assert s.transform([(65000, 50)]) == [(0.0, 0.0)], "a new row is scaled with the fitted mean_ and scale_, not refitted"</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t8" data-title="Where k-means fails, and DBSCAN" data-q="A dataset holds two rings of points, one inside the other. A DBSCAN loop with &lt;code&gt;min_samples=5&lt;/code&gt; finds 23 clusters and 64 noise points at &lt;code&gt;eps=0.05&lt;/code&gt;, and 1 cluster with no noise at &lt;code&gt;eps=0.8&lt;/code&gt;. Which setup separates the two rings?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t8" value="0"> <code>KMeans(n_clusters=2)</code> on the points as they are, since the data holds exactly two rings</label></li>
+            <li><label><input type="radio" name="t8" value="1"> <code>StandardScaler</code> on the points first, then <code>KMeans(n_clusters=2)</code> on the scaled points</label></li>
+            <li><label><input type="radio" name="t8" value="2"> <code>DBSCAN</code> with an <code>eps</code> between 0.05 and 0.8, wide enough to keep each ring whole but not to cross the gap</label></li>
+            <li><label><input type="radio" name="t8" value="3"> <code>DBSCAN</code> with <code>eps</code> raised to 0.8 or more, the setting where no point is left as noise</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 2, "explain": "DBSCAN grows a cluster from neighbour to neighbour, so it can follow a ring, as long as &lt;code&gt;eps&lt;/code&gt; sits between the fragments of a small value and the merge of a large one that reaches across the gap. K-means draws a straight border halfway between its centres and cuts both rings in half, and scaling does not help, because it fixes the units but not the shape."}</code></pre>
+        </div>
+      </section>
+
       <section class="step" data-diagram="0" data-step="8">
         <div class="tag">Check yourself</div>
         <h2>Check yourself</h2>

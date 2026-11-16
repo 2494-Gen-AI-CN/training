@@ -824,6 +824,67 @@ never fraud:   0.990</pre>
         </div>
       </section>
 
+      <section class="practice" id="practice" hidden>
+        <div class="tag">Practice</div>
+        <h2>Practice</h2>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t1" data-title="Supervised and unsupervised learning" data-q="A subscription service keeps a record of every past customer: their usage, and whether they renewed, stored as 1 for renewed and 0 for not. It wants to predict, for each current customer, whether they will renew. What kind of problem is this?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t1" value="0"> Regression, because the label is stored as the numbers 1 and 0, and a model that predicts a number is regression.</label></li>
+            <li><label><input type="radio" name="t1" value="1"> Supervised classification, because every past customer carries a recorded answer and that answer is a category, renewed or not.</label></li>
+            <li><label><input type="radio" name="t1" value="2"> Unsupervised learning, because nobody has labelled the customers by hand, so the data has no answer key to learn from.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 1, "explain": "A record the business already keeps is a label, so the problem is supervised, and the type of label picks the task: renewed or not is a discrete category whatever numbers store it, just as the breast cancer target is 0 and 1 and is still classification."}</code></pre>
+        </div>
+        <div class="ix-task" data-id="t2" data-title="Applications of regression" data-q="Write &lt;code&gt;in_training_range(train_values, x)&lt;/code&gt;, where &lt;code&gt;train_values&lt;/code&gt; is a list of the feature values a line was fitted on, in any order. Return &lt;code&gt;True&lt;/code&gt; when &lt;code&gt;x&lt;/code&gt; lies between the smallest and the largest of them, both ends included, and &lt;code&gt;False&lt;/code&gt; otherwise. For example, &lt;code&gt;in_training_range([-0.09, 0.02, 0.171], -0.3)&lt;/code&gt; returns &lt;code&gt;False&lt;/code&gt;.">
+<pre class="task-starter"><code>def in_training_range(train_values, x):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>bmi = [0.02, -0.09, 0.171, 0.05]
+assert [in_training_range(bmi, 0.0), in_training_range(bmi, -0.09), in_training_range(bmi, 0.171)] == [True, True, True], "a value inside the training values, or on either end, gives True"
+assert in_training_range(bmi, -0.3) == False, "a value below the smallest training value gives False"
+assert in_training_range(bmi, 0.3) == False, "a value above the largest training value gives False"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t3" data-title="Fitting the line" data-q="Write &lt;code&gt;regression_scores(y_true, y_pred)&lt;/code&gt;, where the two lists hold the true values and a model&#x27;s predictions in the same order. Return two numbers, &lt;code&gt;(mse, r2)&lt;/code&gt;. &lt;code&gt;mse&lt;/code&gt; is the mean of the squared residuals, a residual being the true value minus the prediction. &lt;code&gt;r2&lt;/code&gt; is 1 minus the residual sum of squares divided by the total sum of squares, which adds up the squared difference between each true value and the mean of &lt;code&gt;y_true&lt;/code&gt;. For example, &lt;code&gt;regression_scores([2, 4, 6], [2, 4, 6])&lt;/code&gt; returns &lt;code&gt;(0.0, 1.0)&lt;/code&gt;.">
+<pre class="task-starter"><code>def regression_scores(y_true, y_pred):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert regression_scores([0, 8], [2, 6])[0] == 4.0, "misses of +2 and -2 do not cancel out in the MSE"
+assert regression_scores([1, 2, 3, 4], [2, 2, 3, 6])[0] == 1.25, "the MSE is the mean of the squared residuals, not their sum"
+assert regression_scores([2, 4, 6], [4, 4, 4])[1] == 0.0, "predicting the mean of y_true for every row gives an R² of 0"
+assert regression_scores([2, 4, 6], [6, 4, 2])[1] == -3.0, "predictions worse than the mean give a negative R²"</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t4" data-title="Train and test" data-q="A teammate fits a line predicting ticket hours on all 200 closed tickets, scores it on those same tickets and wants to report the R² of 0.93 as how the model will do on new tickets. What should happen before any number is reported?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t4" value="0"> Fix <code>random_state</code>, since a fixed seed makes the estimate more accurate, then report the same 0.93 for new tickets.</label></li>
+            <li><label><input type="radio" name="t4" value="1"> Split with <code>train_test_split</code>, try seeds until the test score comes close to 0.93, and report that test score.</label></li>
+            <li><label><input type="radio" name="t4" value="2"> Report the 0.93 as it stands, since a high score on all 200 tickets already shows that the line fits the data.</label></li>
+            <li><label><input type="radio" name="t4" value="3"> Hold out a test set with <code>train_test_split</code> before fitting, fit on the training rows only, and report the test score.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 3, "explain": "A score on the rows the model was fitted on rewards memorising; only rows kept out of the fit, and out of every choice about the model, estimate how it does on new tickets. A fixed &lt;code&gt;random_state&lt;/code&gt; makes a split repeatable, not more accurate, and trying seeds until the test score looks good turns the test set into training data."}</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t5" data-title="Types of regression: multiple and polynomial" data-q="Polynomial models of degree 1, 2 and 12 are fitted to the same training rows and scored on the same test rows. Their R² scores are: degree 1, train 0.41 and test 0.39; degree 2, train 0.86 and test 0.84; degree 12, train 0.95 and test 0.52. Which degree do you keep?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t5" value="0"> Degree 2, because it has the best test score and its training score is only a little higher.</label></li>
+            <li><label><input type="radio" name="t5" value="1"> Degree 12, because it has the highest training score, so it follows the data most closely.</label></li>
+            <li><label><input type="radio" name="t5" value="2"> Degree 1, because its training and test scores are the closest, so it generalises best.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 0, "explain": "The degree is a hyperparameter picked by the score on held-out data, and degree 2 has the best test score with a small, healthy gap. Degree 12 shows the overfit pattern, training score up and test score down, and degree 1 underfits: its two scores are close only because both are poor."}</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t6" data-title="Classification with logistic regression" data-q="You fit &lt;code&gt;LogisticRegression()&lt;/code&gt; with its default settings on unscaled ticket features to predict whether a ticket gets escalated, and the cell prints a &lt;code&gt;ConvergenceWarning&lt;/code&gt;. What does the warning mean, and what do you do?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t6" value="0"> Something in the cell's code is broken, so the model cannot be trusted; rewrite the cell before using its predictions.</label></li>
+            <li><label><input type="radio" name="t6" value="1"> Logistic regression predicts a number, which suits hours but not escalation; switch to <code>LinearRegression</code> instead.</label></li>
+            <li><label><input type="radio" name="t6" value="2"> The lbfgs solver hit its default limit of 100 iterations; raise <code>max_iter</code> or scale the features and keep the model.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 2, "explain": "A &lt;code&gt;ConvergenceWarning&lt;/code&gt; means the solver ran out of steps before it finished, which happens on unscaled features; the code is fine, and raising &lt;code&gt;max_iter&lt;/code&gt; or scaling lets it finish. &lt;code&gt;LogisticRegression&lt;/code&gt; is a classifier despite its name, so it is the right model for escalated or not."}</code></pre>
+        </div>
+        <div class="ix-task" data-id="t7" data-title="Applications of classification" data-q="Write &lt;code&gt;baseline_accuracy(labels)&lt;/code&gt;, where &lt;code&gt;labels&lt;/code&gt; is a non-empty list of class labels. Return the accuracy of always predicting the most common label: how many labels equal it, divided by the number of labels. The labels can be numbers or strings, and there can be more than two classes. For example, &lt;code&gt;baseline_accuracy([1] * 10 + [0] * 990)&lt;/code&gt; returns &lt;code&gt;0.99&lt;/code&gt;.">
+<pre class="task-starter"><code>def baseline_accuracy(labels):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert baseline_accuracy([1] * 10 + [0] * 990) == 0.99, "10 frauds in 1,000 payments give the score of never flagging fraud"
+assert baseline_accuracy([1, 1, 1, 0]) == 0.75, "works when class 1 is the most common class"
+assert baseline_accuracy(["low", "high", "medium", "low", "low"]) == 0.6, "works for three classes named by strings"</code></pre>
+        </div>
+      </section>
+
       <section class="step" data-diagram="0" data-step="8">
         <div class="tag">Check yourself</div>
         <h2>Check yourself</h2>

@@ -73,10 +73,17 @@
         "Calling it regression because the label is stored as the numbers 1 and 0 catches deciding the task by how the label is stored, where the page shows the cancer target as 0 and 1 and calls it classification.",
         "Calling it unsupervised because nobody labelled the customers by hand catches missing a label the business already keeps as a record, the cheapest source the page lists."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "A subscription service keeps a record of every past customer: their usage, and whether they renewed, stored as 1 for renewed and 0 for not. It wants to predict, for each current customer, whether they will renew. What kind of problem is this?",
       "starter": "",
-      "tests": ""
+      "tests": "",
+      "options": [
+        "Regression, because the label is stored as the numbers 1 and 0, and a model that predicts a number is regression.",
+        "Supervised classification, because every past customer carries a recorded answer and that answer is a category, renewed or not.",
+        "Unsupervised learning, because nobody has labelled the customers by hand, so the data has no answer key to learn from."
+      ],
+      "answer": 1,
+      "explain": "A record the business already keeps is a label, so the problem is supervised, and the type of label picks the task: renewed or not is a discrete category whatever numbers store it, just as the breast cancer target is 0 and 1 and is still classification."
     },
     {
       "id": "t2",
@@ -89,10 +96,10 @@
         "A value below the smallest training value returns False, which a function that only compares against the largest misses (the bmi -0.3 case).",
         "A value above the largest training value returns False (the bmi 0.3 case), which a function that always trusts the line misses."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>in_training_range(train_values, x)</code>, where <code>train_values</code> is a list of the feature values a line was fitted on, in any order. Return <code>True</code> when <code>x</code> lies between the smallest and the largest of them, both ends included, and <code>False</code> otherwise. For example, <code>in_training_range([-0.09, 0.02, 0.171], -0.3)</code> returns <code>False</code>.",
+      "starter": "def in_training_range(train_values, x):\n    ...",
+      "tests": "bmi = [0.02, -0.09, 0.171, 0.05]\nassert [in_training_range(bmi, 0.0), in_training_range(bmi, -0.09), in_training_range(bmi, 0.171)] == [True, True, True], \"a value inside the training values, or on either end, gives True\"\nassert in_training_range(bmi, -0.3) == False, \"a value below the smallest training value gives False\"\nassert in_training_range(bmi, 0.3) == False, \"a value above the largest training value gives False\""
     },
     {
       "id": "t3",
@@ -106,10 +113,10 @@
         "Predicting the mean of y_true for every row gives an R² of 0.0.",
         "Predictions worse than the mean give a negative R², which fails clamping R² at zero or reading it as a share that cannot go below 0."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>regression_scores(y_true, y_pred)</code>, where the two lists hold the true values and a model's predictions in the same order. Return two numbers, <code>(mse, r2)</code>. <code>mse</code> is the mean of the squared residuals, a residual being the true value minus the prediction. <code>r2</code> is 1 minus the residual sum of squares divided by the total sum of squares, which adds up the squared difference between each true value and the mean of <code>y_true</code>. For example, <code>regression_scores([2, 4, 6], [2, 4, 6])</code> returns <code>(0.0, 1.0)</code>.",
+      "starter": "def regression_scores(y_true, y_pred):\n    ...",
+      "tests": "assert regression_scores([0, 8], [2, 6])[0] == 4.0, \"misses of +2 and -2 do not cancel out in the MSE\"\nassert regression_scores([1, 2, 3, 4], [2, 2, 3, 6])[0] == 1.25, \"the MSE is the mean of the squared residuals, not their sum\"\nassert regression_scores([2, 4, 6], [4, 4, 4])[1] == 0.0, \"predicting the mean of y_true for every row gives an R² of 0\"\nassert regression_scores([2, 4, 6], [6, 4, 2])[1] == -3.0, \"predictions worse than the mean give a negative R²\""
     },
     {
       "id": "t4",
@@ -122,10 +129,18 @@
         "Splitting, then trying seeds until the test score comes close to 0.93, catches tuning against the test set, which the page says turns it into training data and makes the score optimistic again.",
         "Reporting the 0.93 because a high training score shows the line fits catches scoring on the rows the model was fitted on, which rewards memorising."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "A teammate fits a line predicting ticket hours on all 200 closed tickets, scores it on those same tickets and wants to report the R² of 0.93 as how the model will do on new tickets. What should happen before any number is reported?",
       "starter": "",
-      "tests": ""
+      "tests": "",
+      "options": [
+        "Fix <code>random_state</code>, since a fixed seed makes the estimate more accurate, then report the same 0.93 for new tickets.",
+        "Split with <code>train_test_split</code>, try seeds until the test score comes close to 0.93, and report that test score.",
+        "Report the 0.93 as it stands, since a high score on all 200 tickets already shows that the line fits the data.",
+        "Hold out a test set with <code>train_test_split</code> before fitting, fit on the training rows only, and report the test score."
+      ],
+      "answer": 3,
+      "explain": "A score on the rows the model was fitted on rewards memorising; only rows kept out of the fit, and out of every choice about the model, estimate how it does on new tickets. A fixed <code>random_state</code> makes a split repeatable, not more accurate, and trying seeds until the test score looks good turns the test set into training data."
     },
     {
       "id": "t5",
@@ -137,10 +152,17 @@
         "Keeping degree 12 for its highest training score catches choosing by the training score, the overfit pattern of training score rising while test score falls.",
         "Keeping degree 1 because its two scores are the closest catches reading a small gap as a good fit when both scores are poor, the underfit pattern."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "Polynomial models of degree 1, 2 and 12 are fitted to the same training rows and scored on the same test rows. Their R² scores are: degree 1, train 0.41 and test 0.39; degree 2, train 0.86 and test 0.84; degree 12, train 0.95 and test 0.52. Which degree do you keep?",
       "starter": "",
-      "tests": ""
+      "tests": "",
+      "options": [
+        "Degree 2, because it has the best test score and its training score is only a little higher.",
+        "Degree 12, because it has the highest training score, so it follows the data most closely.",
+        "Degree 1, because its training and test scores are the closest, so it generalises best."
+      ],
+      "answer": 0,
+      "explain": "The degree is a hyperparameter picked by the score on held-out data, and degree 2 has the best test score with a small, healthy gap. Degree 12 shows the overfit pattern, training score up and test score down, and degree 1 underfits: its two scores are close only because both are poor."
     },
     {
       "id": "t6",
@@ -152,10 +174,17 @@
         "Treating the warning as broken code and rewriting the cell catches the misreading the page names: the code is fine and the solver ran out of steps.",
         "Switching to LinearRegression because logistic regression predicts numbers catches being fooled by the name, where the page calls LogisticRegression a classifier."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "You fit <code>LogisticRegression()</code> with its default settings on unscaled ticket features to predict whether a ticket gets escalated, and the cell prints a <code>ConvergenceWarning</code>. What does the warning mean, and what do you do?",
       "starter": "",
-      "tests": ""
+      "tests": "",
+      "options": [
+        "Something in the cell's code is broken, so the model cannot be trusted; rewrite the cell before using its predictions.",
+        "Logistic regression predicts a number, which suits hours but not escalation; switch to <code>LinearRegression</code> instead.",
+        "The lbfgs solver hit its default limit of 100 iterations; raise <code>max_iter</code> or scale the features and keep the model."
+      ],
+      "answer": 2,
+      "explain": "A <code>ConvergenceWarning</code> means the solver ran out of steps before it finished, which happens on unscaled features; the code is fine, and raising <code>max_iter</code> or scaling lets it finish. <code>LogisticRegression</code> is a classifier despite its name, so it is the right model for escalated or not."
     },
     {
       "id": "t7",
@@ -168,10 +197,10 @@
         "When class 1 is the common one, as in [1, 1, 1, 0], the result is 0.75, which fails hard-coding class 0 as the common class.",
         "Three string classes such as low, medium and high give the share of the most common one, which fails assuming the labels are two classes or numbers."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>baseline_accuracy(labels)</code>, where <code>labels</code> is a non-empty list of class labels. Return the accuracy of always predicting the most common label: how many labels equal it, divided by the number of labels. The labels can be numbers or strings, and there can be more than two classes. For example, <code>baseline_accuracy([1] * 10 + [0] * 990)</code> returns <code>0.99</code>.",
+      "starter": "def baseline_accuracy(labels):\n    ...",
+      "tests": "assert baseline_accuracy([1] * 10 + [0] * 990) == 0.99, \"10 frauds in 1,000 payments give the score of never flagging fraud\"\nassert baseline_accuracy([1, 1, 1, 0]) == 0.75, \"works when class 1 is the most common class\"\nassert baseline_accuracy([\"low\", \"high\", \"medium\", \"low\", \"low\"]) == 0.6, \"works for three classes named by strings\""
     }
   ]
 }

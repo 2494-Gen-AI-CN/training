@@ -869,6 +869,81 @@ with writer.as_default():
         </div>
       </section>
 
+      <section class="practice" id="practice" hidden>
+        <div class="tag">Practice</div>
+        <h2>Practice</h2>
+        <div class="ix-task" data-id="t1" data-title="Activation functions" data-q="Write three activation functions that each take one plain number &lt;code&gt;z&lt;/code&gt;, with no numpy or TensorFlow. &lt;code&gt;step(z)&lt;/code&gt; returns &lt;code&gt;1&lt;/code&gt; when &lt;code&gt;z&lt;/code&gt; is at or above 0 and &lt;code&gt;0&lt;/code&gt; below it. &lt;code&gt;relu(z)&lt;/code&gt; returns &lt;code&gt;max(0, z)&lt;/code&gt;: 0 for a negative &lt;code&gt;z&lt;/code&gt; and &lt;code&gt;z&lt;/code&gt; itself otherwise. &lt;code&gt;sigmoid(z)&lt;/code&gt; returns &lt;code&gt;1 / (1 + math.exp(-z))&lt;/code&gt;, where &lt;code&gt;math.exp(-z)&lt;/code&gt; is e to the power of &lt;code&gt;-z&lt;/code&gt;. For example &lt;code&gt;step(0.0)&lt;/code&gt; is &lt;code&gt;1&lt;/code&gt;, &lt;code&gt;relu(-2.0)&lt;/code&gt; is &lt;code&gt;0&lt;/code&gt; and &lt;code&gt;sigmoid(0.0)&lt;/code&gt; is &lt;code&gt;0.5&lt;/code&gt;.">
+<pre class="task-starter"><code>import math
+
+def step(z):
+    ...
+
+def relu(z):
+    ...
+
+def sigmoid(z):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert step(0.0) == 1, "step gives 1 at exactly 0"
+assert [step(-0.5), step(0.5)] == [0, 1], "step gives 0 below 0 and 1 above it"
+assert [relu(-2.0), relu(3.0)] == [0, 3.0], "relu gives 0 for a negative z and z itself for a positive one"
+assert sigmoid(0.0) == 0.5 and 0.5 &lt; sigmoid(2.0) &lt; 1, "sigmoid is 0.5 at 0 and between 0.5 and 1 for a positive z"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t2" data-title="The perceptron" data-q="Write &lt;code&gt;predict(x, w, b)&lt;/code&gt;, a perceptron&#x27;s prediction on plain lists. &lt;code&gt;x&lt;/code&gt; holds the inputs, &lt;code&gt;w&lt;/code&gt; holds one weight per input and &lt;code&gt;b&lt;/code&gt; is the bias. Multiply each input by its weight, add the products together with the bias, and return &lt;code&gt;1&lt;/code&gt; when that sum is at or above 0, otherwise &lt;code&gt;0&lt;/code&gt;. It works for any weights: &lt;code&gt;zip(x, w)&lt;/code&gt; walks the inputs and the weights in pairs. With the page&#x27;s AND weights, &lt;code&gt;predict([1, 1], [1.0, 1.0], -1.5)&lt;/code&gt; returns &lt;code&gt;1&lt;/code&gt; and &lt;code&gt;predict([0, 1], [1.0, 1.0], -1.5)&lt;/code&gt; returns &lt;code&gt;0&lt;/code&gt;.">
+<pre class="task-starter"><code>def predict(x, w, b):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>and_rows = [[0, 0], [0, 1], [1, 0], [1, 1]]
+assert [predict(row, [1.0, 1.0], -1.5) for row in and_rows] == [0, 0, 0, 1], "the hand-picked AND weights [1.0, 1.0] and bias -1.5 give 0, 0, 0, 1"
+assert predict([0, 0], [0.0, 0.0], 0.0) == 1, "a sum of exactly 0 gives 1"
+assert predict([1, 1], [1.0, 1.0], -3.0) == 0, "the bias is added into the sum"
+assert [predict(row, [2.0, 1.0], -3.0) for row in and_rows] == [0, 0, 0, 1], "the trained AND weights [2.0, 1.0] and bias -3.0 also give 0, 0, 0, 1"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t3" data-title="Training a perceptron" data-q="Write &lt;code&gt;train_epoch(rows, labels, w, b, lr)&lt;/code&gt;, one epoch of the perceptron learning rule on plain lists. Go through &lt;code&gt;rows&lt;/code&gt; and &lt;code&gt;labels&lt;/code&gt; in pairs. For each row, predict with the step (1 when the weighted sum plus the bias is at or above 0, otherwise 0). Then add &lt;code&gt;lr * (target - pred)&lt;/code&gt; times each input to its weight and &lt;code&gt;lr * (target - pred)&lt;/code&gt; to the bias, which changes nothing on a row the prediction got right. Return the new weights as a list and the new bias, as &lt;code&gt;return w, b&lt;/code&gt; does. On the OR table, &lt;code&gt;train_epoch([[0, 0], [0, 1], [1, 0], [1, 1]], [0, 1, 1, 1], [0.0, 0.0], 0.0, 1.0)&lt;/code&gt; returns &lt;code&gt;([0.0, 1.0], 0.0)&lt;/code&gt;.">
+<pre class="task-starter"><code>def train_epoch(rows, labels, w, b, lr):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>or_rows = [[0, 0], [0, 1], [1, 0], [1, 1]]
+or_labels = [0, 1, 1, 1]
+assert train_epoch(or_rows, or_labels, [0.0, 0.0], 0.0, 1.0) == ([0.0, 1.0], 0.0), "one epoch of OR from zero, with the step giving 1 at a sum of 0"
+assert train_epoch([[2, 3]], [1], [0.0, 0.0], -1.0, 1.0) == ([2.0, 3.0], 0.0), "a row predicted 0 but labelled 1 raises each weight by lr times its input and the bias by lr"
+assert train_epoch(or_rows, or_labels, [0.0, 0.0], 0.0, 0.5) == ([0.0, 0.5], 0.0), "a learning rate of 0.5 halves every correction"
+assert train_epoch([[1, 1]], [1], [1.0, 1.0], -1.5, 1.0) == ([1.0, 1.0], -1.5), "a row the prediction already gets right changes nothing"</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t4" data-title="TensorFlow basics" data-q="The page&#x27;s &lt;code&gt;weighted_sum&lt;/code&gt; is marked &lt;code&gt;@tf.function&lt;/code&gt; and holds a plain &lt;code&gt;print(&quot;tracing&quot;)&lt;/code&gt;. It is called three times: with two length-2 &lt;code&gt;tf.constant&lt;/code&gt; vectors and a bias of &lt;code&gt;tf.constant(-3.0)&lt;/code&gt;, then with two other length-2 &lt;code&gt;tf.constant&lt;/code&gt; vectors and a bias of &lt;code&gt;tf.constant(-2.0)&lt;/code&gt;, then with two length-3 &lt;code&gt;tf.constant&lt;/code&gt; vectors. How many times does &lt;code&gt;tracing&lt;/code&gt; appear in the output?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t4" value="0"> Three times, since the Python body runs on every call</label></li>
+            <li><label><input type="radio" name="t4" value="1"> Twice, on the first call and on the call with length-3 vectors</label></li>
+            <li><label><input type="radio" name="t4" value="2"> Once, on the first call, since the graph is reused after it</label></li>
+            <li><label><input type="radio" name="t4" value="3"> Twice, on the first call and on the call with the new bias</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 1, "explain": "Tracing runs the Python body once per new input signature, and a plain &lt;code&gt;print&lt;/code&gt; fires only while tracing. A different bias tensor of the same shape is the same signature, so the second call reuses the graph, while the length-3 vectors are a new signature and trace again."}</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t5" data-title="Constants, variables and placeholders" data-q="A training run needs a counter of how many steps have run. The code adds 1 to it after each step, and no gradient step should ever nudge it. What do you create it with?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t5" value="0"> <code>tf.constant(0)</code>, since the counter starts at a fixed number</label></li>
+            <li><label><input type="radio" name="t5" value="1"> <code>tf.Variable(0)</code>, since a variable can be changed in place</label></li>
+            <li><label><input type="radio" name="t5" value="2"> <code>tf.placeholder(tf.int32)</code>, fed the new count at each step</label></li>
+            <li><label><input type="radio" name="t5" value="3"> <code>tf.Variable(0, trainable=False)</code>, left out of training</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 3, "explain": "The counter changes after every step, so it has to be a &lt;code&gt;tf.Variable&lt;/code&gt;, and variables are trainable unless you say otherwise, so &lt;code&gt;trainable=False&lt;/code&gt; keeps gradient steps off it. A &lt;code&gt;tf.constant&lt;/code&gt; has no &lt;code&gt;assign&lt;/code&gt; method at all, and &lt;code&gt;tf.placeholder&lt;/code&gt; is TensorFlow 1 history that fails in TensorFlow 2 or runs only through &lt;code&gt;tf.compat.v1&lt;/code&gt;."}</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t6" data-title="Creating a model" data-q="You compiled the one-neuron model with &lt;code&gt;metrics=[&quot;accuracy&quot;]&lt;/code&gt; and ran &lt;code&gt;history = model.fit(X_train, y_train, epochs=50, verbose=0)&lt;/code&gt; on the scaled breast-cancer rows, then &lt;code&gt;model.evaluate(X_test, y_test, verbose=0)&lt;/code&gt; returned a list of two numbers. Which number do you quote as the model&#x27;s accuracy?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t6" value="0"> The first number in the list <code>evaluate</code> returned</label></li>
+            <li><label><input type="radio" name="t6" value="1"> The last entry of <code>history.history["accuracy"]</code></label></li>
+            <li><label><input type="radio" name="t6" value="2"> The second number in the list <code>evaluate</code> returned</label></li>
+            <li><label><input type="radio" name="t6" value="3"> The last entry of <code>history.history["loss"]</code></label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 2, "explain": "&lt;code&gt;evaluate&lt;/code&gt; scores the model on the held-out split and returns &lt;code&gt;[test loss, test accuracy]&lt;/code&gt;, so its second number is the accuracy to quote. The History holds training figures, and training accuracy overstates how well the model generalises."}</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t7" data-title="Graph visualization" data-q="On a laptop without pydot or the graphviz program, &lt;code&gt;tf.keras.utils.plot_model(model, show_shapes=True)&lt;/code&gt; raises an error that asks you to install them. You want to check the model&#x27;s layers, output shapes and parameter count. What do you do?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t7" value="0"> Run <code>model.summary()</code>, which needs nothing extra installed</label></li>
+            <li><label><input type="radio" name="t7" value="1"> Rebuild the model, since the error means one of its layers is wrong</label></li>
+            <li><label><input type="radio" name="t7" value="2"> Open TensorBoard's Graphs tab, which draws the same layer graph</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 0, "explain": "The &lt;code&gt;plot_model&lt;/code&gt; error is about the missing pydot and graphviz and says nothing about whether the model is right, while &lt;code&gt;model.summary()&lt;/code&gt; lists each layer, its output shape and its parameter count with nothing beyond Keras. TensorBoard's Graphs tab shows the operations a traced function ran, a different picture from the layer graph."}</code></pre>
+        </div>
+      </section>
+
       <section class="step" data-diagram="0" data-step="7">
         <div class="tag">Check yourself</div>
         <h2>Check yourself</h2>

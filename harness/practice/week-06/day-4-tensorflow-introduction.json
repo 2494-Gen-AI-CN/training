@@ -67,8 +67,16 @@
         "The AttributeError means TensorFlow is installed wrong in Colab, so reinstall it: catches missing the TensorFlow 1 signs the page names, tf.Session and a feed_dict, and the 2019 change to eager execution.",
         "Keep tf.Session but drop tf.placeholder, since only placeholders were removed: catches thinking sessions survive in TensorFlow 2, when a tf.function replaces the session and function arguments replace placeholders."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "Searching an error message turns up an answer whose code starts with <code>x = tf.placeholder(tf.float32)</code> and then opens <code>sess = tf.Session()</code>. On Colab its first line stops with an <code>AttributeError</code>. What do you do with this code?",
+      "options": [
+        "Change the import to <code>tf.compat.v1</code> so the code runs as it was written.",
+        "Reinstall TensorFlow, since an <code>AttributeError</code> on line one means a broken install.",
+        "Read it as TensorFlow 1 history and write its idea as a TensorFlow 2 function of tensors.",
+        "Keep <code>tf.Session</code> and swap out only <code>tf.placeholder</code>, the one removed call."
+      ],
+      "answer": 2,
+      "explain": "<code>tf.Session</code> and <code>tf.placeholder</code> mark TensorFlow 1 code, which stops on TensorFlow 2, and <code>tf.compat.v1</code> exists as a migration bridge for teams moving old code forward, so new code is written in TensorFlow 2. In TensorFlow 2 a <code>tf.function</code> replaces the session and ordinary function arguments replace placeholders.",
       "starter": "",
       "tests": ""
     },
@@ -84,10 +92,10 @@
         "broadcast_shape((2, 2), ()) returns (2, 2), the plain number 2 stretched over x; an answer that treats a missing axis as incompatible raises.",
         "broadcast_shape((2, 2, 3), (2, 2)) raises ValueError, the page's case without keepdims; an answer that skips the equal-or-1 test returns a shape."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>broadcast_shape(a, b)</code>. <code>a</code> and <code>b</code> are shapes written as tuples of ints, and the function returns, as a tuple, the shape of <code>a + b</code> under the page's broadcasting rule: line the shapes up from the right, count a missing axis on the left as length 1, combine two lengths when they are equal or one of them is 1, and give the result the larger length on every axis. When two lengths cannot combine, raise <code>ValueError</code>. For example, <code>broadcast_shape((3,), (3, 1))</code> returns <code>(3, 3)</code>.",
+      "starter": "def broadcast_shape(a, b):\n    ...",
+      "tests": "assert broadcast_shape((2, 3), (3,)) == (2, 3), \"the shapes line up from the right, so (3,) meets the last axis of (2, 3)\"\nassert broadcast_shape((3, 1), (3,)) == (3, 3), \"each axis of the result takes the larger of the two lengths\"\nassert broadcast_shape((2, 2), ()) == (2, 2), \"a missing axis counts as length 1, so a plain number fits any shape\"\nassert raises(ValueError, broadcast_shape, (2, 2, 3), (2, 2)), \"raises ValueError when two lengths are neither equal nor 1\""
     },
     {
       "id": "t3",
@@ -96,12 +104,20 @@
       "step": 4,
       "idea": "A loop calls the page's scale(v, factor), decorated with @tf.function, once for each of a thousand different Python floats, and the loop is far slower than expected. The right answer: every new Python float traces a new graph, so pass tf.constant(factor) so the factor becomes an input node, or fix the function with an input_signature.",
       "checks": [
-        "Add a Python print inside scale to watch each factor go through: catches the brief's pitfall about print in a tf.function, which runs only while tracing and here would show each retrace, not each call.",
+        "Blame the Python print for the slowness and swap it for tf.print: catches mistaking the symptom for the cause, since the print fires here only because each new float retraces, and the cost is the trace itself (a tf.print would run on every call too).",
         "Cast v to float32 first, since a dtype mismatch causes the retracing: catches blaming the tensor argument, whose shape and dtype stay the same, when the page names the new Python value as the trigger.",
         "Rewrite the loop with tf.Session and a feed_dict so the graph is built once: catches falling back to TensorFlow 1 code, which stops with an AttributeError on TensorFlow 2."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "A loop calls the page's <code>scale(v, factor)</code>, decorated with <code>@tf.function</code>, once for each of a thousand different Python floats, passing the same <code>v</code> every time. The loop is far slower than expected. What is the cause, and what is the fix?",
+      "options": [
+        "The Python <code>print</code> in <code>scale</code> is what makes each call slow; swap it for <code>tf.print</code>.",
+        "A dtype mismatch on <code>v</code> retraces each call; cast <code>v</code> to <code>float32</code> first.",
+        "The graph is rebuilt per call; build it once and run it in a <code>tf.Session</code> with a <code>feed_dict</code>.",
+        "Each new Python float traces a new graph; pass <code>tf.constant(factor)</code> instead."
+      ],
+      "answer": 3,
+      "explain": "A plain Python number is baked into the graph as a constant, so every new float means a new trace and another run of the Python body. A tensor argument becomes an input node instead, so <code>tf.constant(factor)</code> keeps one graph, as an <code>input_signature</code> would.",
       "starter": "",
       "tests": ""
     },
@@ -117,10 +133,10 @@
         "reduced_shape((2, 2, 3), -1) returns (2, 2); an answer that does not count a negative axis from the end removes the wrong axis or none.",
         "reduced_shape((2, 2, 3), -1, keepdims=True) returns (2, 2, 1); an answer that ignores keepdims returns (2, 2), the shape the page shows failing to broadcast back."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>reduced_shape(shape, axis=None, keepdims=False)</code>. It returns, as a tuple, the shape <code>tf.reduce_sum</code> gives back for a tensor of shape <code>shape</code>. <code>axis</code> is <code>None</code> (reduce every axis), an int, or a tuple of ints, and a negative axis counts from the end. The reduced axes disappear from the result, unless <code>keepdims</code> is <code>True</code>, when each one stays with length 1. For example, <code>reduced_shape((60000, 28, 28), (1, 2))</code> returns <code>(60000,)</code>.",
+      "starter": "def reduced_shape(shape, axis=None, keepdims=False):\n    ...",
+      "tests": "assert (reduced_shape((60000, 28, 28), 0), reduced_shape((60000, 28, 28), (1, 2))) == ((28, 28), (60000,)), \"the named axes disappear: axis 0 leaves one 28 by 28 image, axes (1, 2) one value per image\"\nassert reduced_shape((2, 2, 3)) == (), \"axis left as None reduces every axis to a rank-0 shape\"\nassert reduced_shape((2, 2, 3), -1) == (2, 2), \"a negative axis counts from the end, so -1 is the last axis\"\nassert reduced_shape((2, 2, 3), -1, keepdims=True) == (2, 2, 1), \"keepdims=True keeps each reduced axis with length 1\""
     },
     {
       "id": "t5",
@@ -133,8 +149,16 @@
         "Call basic_graph several times before exporting so there is more to show: catches missing the order the page sets, tracing on, exactly one call, then export inside the writer.",
         "Run %tensorboard --logdir logs again before %load_ext tensorboard: catches the brief's other cause of an empty tab, the two notebook commands in the wrong order."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "A notebook creates <code>writer = tf.summary.create_file_writer(\"logs/graph\")</code>, calls <code>tf.summary.trace_on(graph=True)</code>, calls <code>basic_graph</code> once, then calls <code>tf.summary.trace_export(name=\"basic_graph\", step=0)</code> on the next line, with no <code>with</code> block. It opens TensorBoard with <code>%load_ext tensorboard</code> and then <code>%tensorboard --logdir logs</code>, and the Graphs tab is empty. What fixes it?",
+      "options": [
+        "Move <code>trace_export</code> inside <code>with writer.as_default():</code> so it has a writer.",
+        "Train first, since the Graphs tab fills in only once a training run has been logged.",
+        "Call <code>basic_graph</code> several more times before the export, so there is more to draw.",
+        "Run <code>%tensorboard --logdir logs</code> first and <code>%load_ext tensorboard</code> after it."
+      ],
+      "answer": 0,
+      "explain": "<code>trace_export</code> must run with a default writer, so it sits inside <code>with writer.as_default():</code>, and without one nothing reaches <code>logs/graph</code>. The order is tracing on, exactly one call, then the export inside the writer; the Graphs tab shows structure, so it needs no training run.",
       "starter": "",
       "tests": ""
     }

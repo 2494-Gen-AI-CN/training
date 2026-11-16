@@ -67,10 +67,18 @@
         "Picking a deep network because its weights can be read to explain each refusal catches the belief that a network is interpretable; the page says its thousands of weights are hard to read.",
         "Picking a deep network because 4,000 rows is plenty catches the misreading of the data needs; the page says hundreds to thousands of rows can be enough for a classical model, while a deep network needs large labelled datasets."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "A lender has 4,000 rows of application-form columns, such as income and loan amount, and must tell every refused applicant why the model said no. Which model do you pick?",
       "starter": "",
-      "tests": ""
+      "tests": "",
+      "options": [
+        "It learns its own features from the columns, so a deep network.",
+        "Its weights can be read to explain each refusal, so a deep network.",
+        "The table is small and refusals need reasons, so a classical model.",
+        "4,000 labelled rows is plenty of data, so a deep network."
+      ],
+      "answer": 2,
+      "explain": "The columns are already chosen, hundreds to thousands of rows can be enough for a classical model, and its coefficients or tree splits can be read to explain each refusal. A deep network pays off when it learns its own features from raw pixels or words on large labelled datasets, and its thousands of weights are hard to read."
     },
     {
       "id": "t2",
@@ -83,10 +91,18 @@
         "Picking a recurrent network such as an LSTM catches choosing by popularity rather than input shape; the page says it reads a sequence in order, and a photo is not one.",
         "Picking an autoencoder catches missing what the labels mean; the page says an autoencoder suits unlabelled data you want to compress, and these photos are labelled."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "A factory has thousands of photos from its production line, each labelled defective or not, and wants a network that flags the defective ones. Which type of network fits?",
       "starter": "",
-      "tests": ""
+      "tests": "",
+      "options": [
+        "A feedforward network, fed each photo flattened into one long row.",
+        "A convolutional network, which slides the same detector over the photo.",
+        "A recurrent network such as an LSTM, which carries a memory forward.",
+        "An autoencoder, which squeezes each photo through a narrow middle layer."
+      ],
+      "answer": 1,
+      "explain": "Ask what one input looks like: here it is an image, and a convolutional network reads grid data by reusing the same small detector at every position, so neighbouring pixels stay together. Flattening the photo for a feedforward network loses the fact that two pixels were neighbours."
     },
     {
       "id": "t3",
@@ -99,10 +115,10 @@
         "A unit whose weighted sum plus bias is negative comes back as 0.0; skipping ReLU returns the negative value.",
         "With two inputs and three units it returns three values, unit j using column j of W; reading W as (units, inputs), the shape the page warns about, gives the wrong numbers or an IndexError."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>dense_relu(x, W, b)</code>, one dense layer followed by ReLU, with plain Python lists instead of numpy. <code>x</code> is a list of inputs. <code>W</code> is a list of rows with the shape (inputs, units), so it has one row per input and column <code>j</code> holds the weights of unit <code>j</code>. <code>b</code> holds one bias per unit. Return a list with one value per unit: that unit's weighted sum of the inputs, plus its bias, through ReLU, <code>max(0, ...)</code>. For example, <code>dense_relu([2.0, 1.0, 3.0], [[0.5], [-1.0], [0.25]], [0.5])</code> returns <code>[1.25]</code>, the page's one neuron.",
+      "starter": "def dense_relu(x, W, b):\n    ...",
+      "tests": "assert dense_relu([2.0, 1.0, 3.0], [[0.5], [-1.0], [0.25]], [0.5]) == [1.25], \"the page's one neuron adds its bias to the weighted sum\"\nassert dense_relu([1.0, 2.0], [[1.0], [-1.0]], [0.5]) == [0.0], \"a unit whose weighted sum plus bias is negative comes back as 0.0\"\nassert dense_relu([1.0, 2.0], [[1.0, 0.5, -1.0], [2.0, 0.25, 3.0]], [0.0, 1.0, -2.0]) == [5.0, 2.0, 3.0], \"two inputs and three units give three values, unit j using column j of W\""
     },
     {
       "id": "t4",
@@ -115,10 +131,10 @@
         "That dark-to-bright edge scores +27 at every position; flipping the kernel first, as convolve2d does, scores -27.",
         "A non-symmetric kernel on a small grid gives the sum of all nine products at each position; summing only one row or column of the patch gives a different map."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>correlate_valid(image, kernel)</code> with plain Python lists of rows, as <code>correlate2d(image, kernel, mode=\"valid\")</code> computes it. Slide the kernel over the image without flipping it, visiting only the positions where the whole kernel fits. At each position multiply every pixel by the weight on top of it and add all the products. Return the feature map as a list of rows: a k by k kernel on an n by n image gives n - k + 1 rows of n - k + 1 values. For example, on the page's 4 by 4 image, every row <code>[0, 0, 9, 9]</code>, the vertical-edge kernel <code>[[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]]</code> gives <code>[[27, 27], [27, 27]]</code>.",
+      "starter": "def correlate_valid(image, kernel):\n    ...",
+      "tests": "edge = [[0, 0, 9, 9], [0, 0, 9, 9], [0, 0, 9, 9], [0, 0, 9, 9]]\nvertical = [[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]]\ngrid = [[1, 2, 0, 1, 3], [0, 1, 2, 3, 1], [2, 0, 1, 1, 0], [1, 3, 0, 2, 2], [0, 1, 1, 0, 1]]\nkernel = [[1, 0, 2], [0, 1, 0], [-1, 0, 3]]\nassert [len(row) for row in correlate_valid(edge, vertical)] == [2, 2], \"a 3 by 3 kernel on a 4 by 4 image gives 2 rows of 2, n - k + 1 on each side\"\nassert correlate_valid(edge, vertical) == [[27, 27], [27, 27]], \"the dark-to-bright edge scores +27 with the kernel unflipped\"\nassert correlate_valid(grid, kernel) == [[3, 9, 8], [3, 11, 11], [10, 1, 5]], \"each value is the sum of all nine products of a patch and the kernel\""
     },
     {
       "id": "t5",
@@ -130,10 +146,17 @@
         "Picking the 8 by 8 centred digits catches the belief that a CNN always pays off on images; the page says the flat baseline already scores 96 percent there.",
         "Picking a small table of form fields catches confusing deep learning in general with a CNN; the page says a CNN reads grid data and small tables suit classical models."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "Three classification jobs could each start with a flat classifier fed the raw values, the way the page's baseline reads digit pixels. Which job most needs a convolutional network instead?",
       "starter": "",
-      "tests": ""
+      "tests": "",
+      "options": [
+        "Large product photos where a defect can sit anywhere in the frame.",
+        "Handwritten digits of 8 by 8 pixels, each one centred in its grid.",
+        "A small table of application-form fields such as income and age."
+      ],
+      "answer": 0,
+      "explain": "On a large photo the flat model's first layer needs millions of weights, each tied to one pixel position, so a defect that moves around the frame confuses it, while a CNN reuses a few kernel weights at every position. On 64-pixel centred digits the flat baseline already scores 96 percent."
     },
     {
       "id": "t6",
@@ -146,10 +169,10 @@
         "A title with a word missing from the vocabulary returns a row the length of the vocabulary, the unseen word dropped; appending a column for it or raising a KeyError fails.",
         "\"Refund blocked login works\" and \"Login blocked refund works\" return the same row; counting by position in the title instead of by vocabulary word gives different rows."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>bag_of_words(text, vocabulary)</code> in plain Python. Lowercase <code>text</code> and split it on spaces into tokens. Return a list with one count per word of <code>vocabulary</code>, in the vocabulary's order: how many tokens are that word. A token that is not in the vocabulary is dropped, the way a fitted vectorizer drops a word it never saw. For example, <code>bag_of_words(\"Refund blocked login works\", [\"blocked\", \"login\", \"refund\", \"works\"])</code> returns <code>[1, 1, 1, 1]</code>.",
+      "starter": "def bag_of_words(text, vocabulary):\n    ...",
+      "tests": "vocab = [\"blocked\", \"login\", \"refund\", \"works\"]\nassert bag_of_words(\"Login page Login\", [\"login\", \"page\"]) == [2, 1], \"a word repeated in another case is counted every time\"\nassert bag_of_words(\"Refund invoice blocked\", vocab) == [1, 0, 1, 0], \"a word missing from the vocabulary is dropped, one count per vocabulary word\"\nassert bag_of_words(\"Login blocked refund works\", vocab) == [1, 1, 1, 1], \"the same words in another order give the same row\""
     },
     {
       "id": "t7",
@@ -162,10 +185,18 @@
         "Passing the raw title straight to the LogisticRegression step catches skipping the vectorizer; the page says every model needs numbers and the components run tokenizer, vocabulary, vectorizer, model, in that order.",
         "Refitting the vectorizer on the training titles plus the new one so its unseen words get columns catches misreading where the vocabulary comes from; the page says it is learned from training text only and unseen words are ignored."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "A teammate has fitted <code>clf = make_pipeline(TfidfVectorizer(ngram_range=(1, 2)), LogisticRegression(max_iter=5000))</code> on the training ticket titles and wants a label for one new title, held in <code>title</code>. What should they do?",
       "starter": "",
-      "tests": ""
+      "tests": "",
+      "options": [
+        "Run <code>fit_transform</code> on the new title, then predict from that row.",
+        "Pass the raw title straight to the <code>LogisticRegression</code> step.",
+        "Refit the vectorizer on the training titles plus the new one, then predict.",
+        "Call <code>clf.predict([title])</code> on the fitted pipeline as it stands."
+      ],
+      "answer": 3,
+      "explain": "The pipeline's <code>predict</code> sends the title through <code>transform</code>, which reuses the vocabulary learned from the training text, before the model sees it, and any word it never saw is ignored. <code>fit_transform</code> would build a fresh vocabulary from the new title alone, so the columns no longer match the model's."
     }
   ]
 }

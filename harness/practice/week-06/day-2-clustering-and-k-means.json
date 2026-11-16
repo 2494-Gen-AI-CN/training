@@ -73,10 +73,17 @@
         "Keeping the unlimited tree because it scores 1.00 on training data catches reading a perfect training score as best, which the page calls a warning sign of a tree that memorised noise.",
         "Keeping the depth-1 tree because its test score beats its training score catches missing underfitting: one cut cannot follow a curve, and both its scores are the lowest."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "A decision tree is trained at three depths on curved two-class data, and each prints its training and test accuracy: <code>max_depth=1</code> scores 0.78 train and 0.80 test, <code>max_depth=5</code> scores 0.91 and 0.90, and <code>max_depth=None</code> scores 1.00 and 0.86. Which tree do you keep?",
       "starter": "",
-      "tests": ""
+      "tests": "",
+      "options": [
+        "The <code>max_depth=None</code> tree, because its training score of 1.00 shows it learned the data perfectly",
+        "The <code>max_depth=5</code> tree, because its test score is the best of the three and both its scores are close",
+        "The <code>max_depth=1</code> tree, because it is the only one that scores higher on test data than on training data"
+      ],
+      "answer": 1,
+      "explain": "The depth is chosen by the test score, never the training score, and depth 5 has the best test score with both scores high and close together. A perfect training score is a warning sign: with no depth limit the tree keeps splitting until it memorises noise, which is why its test score falls to 0.86."
     },
     {
       "id": "t2",
@@ -89,10 +96,10 @@
         "It returns False when one row moves to another group; a function that only checks both lists have the same number of distinct labels fails.",
         "It returns False when labels_b lumps two groups of labels_a into one, [0, 0, 1, 1] against [0, 0, 0, 0]; a one-way mapping from labels_a numbers to labels_b numbers fails, because it never checks two groups were given the same name."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>same_grouping(labels_a, labels_b)</code>. It takes two lists of cluster numbers of the same length, one number per row, from two clusterings of the same rows. It returns <code>True</code> when the two lists put exactly the same rows together, whatever numbers they use, and <code>False</code> otherwise. Cluster numbers are only names, so <code>same_grouping([1, 2, 1, 2, 0], [2, 0, 2, 0, 1])</code> returns <code>True</code>. <code>same_grouping([0, 0, 1, 1], [0, 0, 0, 1])</code> returns <code>False</code>, because one row moved, and so does <code>same_grouping([0, 0, 1, 1], [0, 0, 0, 0])</code>, where the second list lumps two groups into one.",
+      "starter": "def same_grouping(labels_a, labels_b):\n    ...",
+      "tests": "assert same_grouping([1, 2, 1, 2, 0], [2, 0, 2, 0, 1]) == True, \"the same grouping under different cluster numbers gives True\"\nassert same_grouping([0, 0, 1, 1], [0, 0, 0, 1]) == False, \"a row moved to another group gives False\"\nassert same_grouping([0, 0, 1, 1], [0, 0, 0, 0]) == False, \"two groups lumped into one gives False\""
     },
     {
       "id": "t3",
@@ -105,10 +112,10 @@
         "It returns 7 for the same points with \"cityblock\"; it also returns 7 for (1, 6) and (4, 2), where one difference is negative, so adding plain differences instead of absolute ones fails with 1.",
         "It works for points with three coordinates, one per feature; a version that reads only a[0] and a[1] fails."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>distance(a, b, metric=\"euclidean\")</code>. It takes two points as tuples of the same length, one coordinate per feature, and returns the Euclidean distance between them: square the difference in each coordinate, add the squares and take the square root with <code>math.sqrt</code>. When <code>metric</code> is <code>\"cityblock\"</code> it returns the Manhattan distance instead, the sum of the absolute differences (<code>abs(x)</code> gives the absolute value of <code>x</code>). <code>distance((1, 2), (4, 6))</code> returns <code>5.0</code> and <code>distance((1, 2), (4, 6), \"cityblock\")</code> returns <code>7</code>. A point can have any number of coordinates.",
+      "starter": "import math\n\n\ndef distance(a, b, metric=\"euclidean\"):\n    ...",
+      "tests": "assert distance((1, 2), (4, 6)) == 5.0, \"the Euclidean distance takes the square root of the sum of squared differences\"\nassert distance((1, 2), (4, 6), \"cityblock\") == 7, \"cityblock adds the absolute differences instead\"\nassert distance((1, 6), (4, 2), \"cityblock\") == 7, \"cityblock counts a difference that runs the other way as positive\"\nassert distance((1, 2, 3), (4, 6, 15)) == 13.0, \"every coordinate counts, not only the first two\""
     },
     {
       "id": "t4",
@@ -121,10 +128,10 @@
         "\"complete\" returns the farthest pair, about 6.73; swapping min and max, the single and complete mix-up the page contrasts, fails.",
         "\"average\" returns the mean over all nine pairs, about 5.00; measuring between the two cluster means, the centroid linkage the page sets apart, fails with 4.96."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>cluster_distance(cluster_a, cluster_b, method)</code>. Each cluster is a list of points, and the function measures the Euclidean distance from every point of <code>cluster_a</code> to every point of <code>cluster_b</code> (<code>math.dist(p, q)</code> gives the distance between points <code>p</code> and <code>q</code>). It returns the smallest of those distances when <code>method</code> is <code>\"single\"</code>, the largest when it is <code>\"complete\"</code> and their mean when it is <code>\"average\"</code>. For the page's clusters, <code>cluster_a = [(1.0, 1.0), (1.5, 2.0), (2.0, 1.2)]</code> and <code>cluster_b = [(5.0, 4.0), (6.0, 5.5), (5.5, 3.5)]</code>, it returns about 4.03, 6.73 and 5.00.",
+      "starter": "import math\n\n\ndef cluster_distance(cluster_a, cluster_b, method):\n    ...",
+      "tests": "cluster_a = [(1.0, 1.0), (1.5, 2.0), (2.0, 1.2)]\ncluster_b = [(5.0, 4.0), (6.0, 5.5), (5.5, 3.5)]\nassert round(cluster_distance(cluster_a, cluster_b, \"single\"), 2) == 4.03, \"single linkage is the closest pair, one point from each cluster\"\nassert round(cluster_distance(cluster_a, cluster_b, \"complete\"), 2) == 6.73, \"complete linkage is the farthest pair\"\nassert round(cluster_distance(cluster_a, cluster_b, \"average\"), 2) == 5.0, \"average linkage is the mean over all nine pairs, not the gap between the two centres\""
     },
     {
       "id": "t5",
@@ -137,10 +144,10 @@
         "Each new centroid is the mean of every point assigned to it; moving it halfway toward its points, or to the mean of its two extreme points, fails on the six-point cluster.",
         "A second round from the returned centroids gives (1.5, 1.5) and (6.5, 5.5), and a third returns the same centroids, the convergence the page traces; a version that keeps the old labels between rounds fails."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>kmeans_round(points, centroids)</code>, which runs one round of k-means on two lists of <code>(x, y)</code> tuples. Assign: every point joins the centroid nearest to it (<code>math.dist(p, c)</code> gives the distance). Update: every centroid moves to the mean of the points assigned to it. Return the new centroids as a list of <code>(x, y)</code> tuples, in the same order as <code>centroids</code>. On the page's eight points, <code>[(1, 1), (1, 2), (2, 1), (2, 2), (6, 5), (7, 5), (6, 6), (7, 6)]</code>, from the poor start <code>[(1, 1), (1, 2)]</code> it returns about <code>[(1.5, 1.0), (4.83, 4.33)]</code>. A second round from there returns <code>[(1.5, 1.5), (6.5, 5.5)]</code>, and a third returns the same centroids again.",
+      "starter": "import math\n\n\ndef kmeans_round(points, centroids):\n    ...",
+      "tests": "points = [(1, 1), (1, 2), (2, 1), (2, 2), (6, 5), (7, 5), (6, 6), (7, 6)]\nfirst = kmeans_round(points, [(1, 1), (1, 2)])\nassert [round(v, 2) for v in first[0]] == [1.5, 1.0], \"the first centroid moves to the mean of the points nearest to it\"\nassert [round(v, 2) for v in first[1]] == [4.83, 4.33], \"the second centroid moves to the mean of all six points assigned to it\"\nsecond = kmeans_round(points, first)\nassert second == [(1.5, 1.5), (6.5, 5.5)], \"a second round assigns every point again against the moved centroids\"\nassert kmeans_round(points, second) == second, \"a third round returns the same centroids: k-means has converged\""
     },
     {
       "id": "t6",
@@ -153,10 +160,10 @@
         "With three clusters, b uses the nearest other cluster only; averaging over the points of every other cluster fails.",
         "A sample placed closer to another cluster than to its own returns a value below 0, the misassigned case the page names; returning (a - b) / max(a, b) fails."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>silhouette(i, points, labels)</code>, which returns the silhouette coefficient of sample <code>i</code>. <code>points</code> is a list of points and <code>labels</code> gives each point's cluster number. <code>a</code> is the mean distance from point <code>i</code> to the other points of its own cluster, <code>b</code> is its mean distance to the points of the nearest other cluster (the other cluster with the smallest mean distance), and the result is <code>(b - a) / max(a, b)</code>. Measure with the Euclidean distance, which <code>math.dist(p, q)</code> gives. For <code>points = [(0, 0), (0, 1), (5, 0), (5, 1)]</code> and <code>labels = [0, 0, 1, 1]</code>, <code>silhouette(0, points, labels)</code> returns about 0.80. A sample that sits closer to another cluster than to its own gets a value below 0.",
+      "starter": "import math\n\n\ndef silhouette(i, points, labels):\n    ...",
+      "tests": "points = [(0, 0), (0, 1), (5, 0), (5, 1)]\nlabels = [0, 0, 1, 1]\nassert round(silhouette(0, points, labels), 2) == 0.8, \"a is the mean distance to the other points of the sample's own cluster, leaving the sample out\"\nassert round(silhouette(0, [(0, 0), (0, 1), (3, 0), (3, 1), (10, 0), (10, 1)], [0, 0, 1, 1, 2, 2]), 2) == 0.68, \"b uses the nearest other cluster only, not every other point\"\nassert round(silhouette(1, [(0, 0), (4, 0), (5, 0), (5, 1)], [0, 0, 1, 1]), 2) == -0.7, \"a sample closer to another cluster than to its own scores below 0\""
     },
     {
       "id": "t7",
@@ -169,10 +176,10 @@
         "mean_ and scale_ hold one value per column, income and score each with its own; computing them over all values together fails.",
         "transform on one new row uses the fitted mean_ and scale_, so (65000, 50) gives (0.0, 0.0); a transform that refits on the new rows fails, which is the page's habit of keeping the fitted scaler for new rows."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write a class <code>Scaler</code> with two methods. <code>fit(rows)</code> takes a list of rows, each a tuple with one value per column, and stores two lists: <code>mean_</code>, the mean of each column, and <code>scale_</code>, the spread of each column as the population standard deviation, the square root of the mean squared difference from the column's mean (the spread <code>StandardScaler</code> uses; <code>statistics.pstdev</code> computes it). <code>transform(rows)</code> returns a new list of tuples in which each value has its column's <code>mean_</code> subtracted and is then divided by its column's <code>scale_</code>. After <code>fit([(40000, 20), (90000, 80)])</code>, with income first and spending score second, <code>mean_</code> is <code>[65000, 50]</code> and <code>scale_</code> is <code>[25000, 30]</code>. A new row is scaled with those fitted values, so <code>transform([(65000, 50)])</code> then returns <code>[(0.0, 0.0)]</code>.",
+      "starter": "class Scaler:\n    def fit(self, rows):\n        ...\n\n    def transform(self, rows):\n        ...",
+      "tests": "s = Scaler()\ns.fit([(40000, 20), (90000, 80)])\nassert s.mean_ == [65000, 50], \"mean_ holds one mean per column, income then score\"\nassert s.scale_ == [25000, 30], \"scale_ holds one population standard deviation per column\"\nassert s.transform([(40000, 20), (90000, 80)]) == [(-1.0, -1.0), (1.0, 1.0)], \"transform on the fitting rows gives each column mean 0 and spread 1\"\nassert s.transform([(65000, 50)]) == [(0.0, 0.0)], \"a new row is scaled with the fitted mean_ and scale_, not refitted\""
     },
     {
       "id": "t8",
@@ -185,10 +192,18 @@
         "Scaling with StandardScaler and then KMeans with K = 2 catches treating scaling as the fix for shape, when the page says scaling fixes the units but not the shape.",
         "DBSCAN with eps raised until noise reaches zero catches turning the knob the wrong way: a larger eps merges the rings into one cluster."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "A dataset holds two rings of points, one inside the other. A DBSCAN loop with <code>min_samples=5</code> finds 23 clusters and 64 noise points at <code>eps=0.05</code>, and 1 cluster with no noise at <code>eps=0.8</code>. Which setup separates the two rings?",
       "starter": "",
-      "tests": ""
+      "tests": "",
+      "options": [
+        "<code>KMeans(n_clusters=2)</code> on the points as they are, since the data holds exactly two rings",
+        "<code>StandardScaler</code> on the points first, then <code>KMeans(n_clusters=2)</code> on the scaled points",
+        "<code>DBSCAN</code> with an <code>eps</code> between 0.05 and 0.8, wide enough to keep each ring whole but not to cross the gap",
+        "<code>DBSCAN</code> with <code>eps</code> raised to 0.8 or more, the setting where no point is left as noise"
+      ],
+      "answer": 2,
+      "explain": "DBSCAN grows a cluster from neighbour to neighbour, so it can follow a ring, as long as <code>eps</code> sits between the fragments of a small value and the merge of a large one that reaches across the gap. K-means draws a straight border halfway between its centres and cuts both rings in half, and scaling does not help, because it fixes the units but not the shape."
     }
   ]
 }
