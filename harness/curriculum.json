@@ -736,7 +736,7 @@
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "notebook",
-          "status": "authored",
+          "status": "live",
           "title": "ML introduction & supervised learning",
           "subtitle": "algorithms & use cases · regression · fitting the line · classification",
           "subtopics": [
@@ -754,7 +754,7 @@
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "notebook",
-          "status": "authored",
+          "status": "live",
           "title": "Unsupervised learning: clustering",
           "subtitle": "distance between clusters · k-means",
           "subtopics": [
@@ -770,7 +770,7 @@
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "notebook",
-          "status": "authored",
+          "status": "live",
           "title": "Introduction to deep learning",
           "subtitle": "neural network types · CNN & image classification · ANN layers · NLP",
           "subtopics": [
@@ -788,7 +788,7 @@
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "notebook",
-          "status": "authored",
+          "status": "live",
           "title": "TensorFlow introduction",
           "subtitle": "history · basic graphs · tensors of arbitrary shape · graphs, sessions, TensorBoard",
           "subtopics": [
@@ -806,7 +806,7 @@
           "kind": "lesson",
           "gate": "light",
           "demoFormat": "notebook",
-          "status": "authored",
+          "status": "live",
           "title": "Perceptrons & TensorFlow basics",
           "subtitle": "activation functions · perceptrons · graph visualization · constants/variables · creating a model",
           "subtopics": [
