@@ -41,32 +41,35 @@ version-stamps:
 - Adjacent concept: Decision trees as a labelled-data contrast — the day's notebook opens with them, so the page sets one labelled model beside the unlabelled task; no later day's content.
 - Trade-off or limit: No ground truth exists, so two algorithms can both be "right" with different groupings and the number of clusters is a choice, not a fact — [Clustering (scikit-learn user guide)](https://scikit-learn.org/stable/modules/clustering.html)
 - Recognise on sight: `labels = KMeans(n_clusters=3, n_init=10, random_state=42).fit_predict(X)` — there is no `y` in the call
-- Claims: [feeds notes step 1, decision trees; keep out of step 2] A decision tree asks one threshold question per node and draws axis-aligned boundaries — [Decision Trees (scikit-learn user guide)](https://scikit-learn.org/stable/modules/tree.html)
-- Claims: [feeds notes step 1, decision trees; keep out of step 2] `max_depth=None` lets a tree grow until its leaves are pure, which is how it overfits (Monday's degree-15 polynomial again) — [Decision Trees (scikit-learn user guide)](https://scikit-learn.org/stable/modules/tree.html)
-- Claims: [feeds notes step 1, decision trees; keep out of step 2] `plot_tree` draws the fitted tree with each node's question, gini impurity and sample count — [sklearn.tree.plot_tree](https://scikit-learn.org/stable/modules/generated/sklearn.tree.plot_tree.html)
-- Claims: Clustering is used for customer segments, grouping documents and finding structure before labels exist — [Clustering (scikit-learn user guide)](https://scikit-learn.org/stable/modules/clustering.html)
-- Claims: `make_blobs` generates isotropic Gaussian blobs for clustering demos and returns labels that a clustering algorithm never sees — [sklearn.datasets.make_blobs](https://scikit-learn.org/stable/modules/generated/sklearn.datasets.make_blobs.html)
+- Claims:
+  - [feeds notes step 1, decision trees; keep out of step 2] A decision tree asks one threshold question per node and draws axis-aligned boundaries — [Decision Trees (scikit-learn user guide)](https://scikit-learn.org/stable/modules/tree.html)
+  - [feeds notes step 1, decision trees; keep out of step 2] `max_depth=None` lets a tree grow until its leaves are pure, which is how it overfits (Monday's degree-15 polynomial again) — [Decision Trees (scikit-learn user guide)](https://scikit-learn.org/stable/modules/tree.html)
+  - [feeds notes step 1, decision trees; keep out of step 2] `plot_tree` draws the fitted tree with each node's question, gini impurity and sample count — [sklearn.tree.plot_tree](https://scikit-learn.org/stable/modules/generated/sklearn.tree.plot_tree.html)
+  - Clustering is used for customer segments, grouping documents and finding structure before labels exist — [Clustering (scikit-learn user guide)](https://scikit-learn.org/stable/modules/clustering.html)
+  - `make_blobs` generates isotropic Gaussian blobs for clustering demos and returns labels that a clustering algorithm never sees — [sklearn.datasets.make_blobs](https://scikit-learn.org/stable/modules/generated/sklearn.datasets.make_blobs.html)
 
 ### Distance between clusters
 - Interview questions: What is the difference between Euclidean and Manhattan distance?; What are single, complete and average linkage?; How do you read a dendrogram and where do you cut it?
 - Adjacent concept: Feature scaling before distance — distances are meaningless when one feature spans a larger range; belongs here because every linkage is built on a point distance.
 - Trade-off or limit: Single linkage can chain far-apart points through a line of close ones; complete linkage favours compact clusters; Ward only works with Euclidean distance — [Hierarchical clustering (scikit-learn user guide)](https://scikit-learn.org/stable/modules/clustering.html#hierarchical-clustering)
 - Recognise on sight: `Z = linkage(X, method="average"); dendrogram(Z)`
-- Claims: Cutting a dendrogram at a height gives the clusters that merged below it — [scipy.cluster.hierarchy.dendrogram](https://docs.scipy.org/doc/scipy/reference/generated/scipy.cluster.hierarchy.dendrogram.html)
-- Claims: Each row of the `linkage` output records two merged cluster indices, their distance and the new cluster's size — [scipy.cluster.hierarchy.linkage](https://docs.scipy.org/doc/scipy/reference/generated/scipy.cluster.hierarchy.linkage.html)
-- Claims: Cosine distance measures the angle between vectors rather than the length; it is named once here and taught in week 8 — [scipy.spatial.distance.cdist](https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.distance.cdist.html)
-- Claims: `StandardScaler` stores `mean_` and `scale_` from `fit` and applies them in `transform` — [StandardScaler](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.StandardScaler.html)
+- Claims:
+  - Cutting a dendrogram at a height gives the clusters that merged below it — [scipy.cluster.hierarchy.dendrogram](https://docs.scipy.org/doc/scipy/reference/generated/scipy.cluster.hierarchy.dendrogram.html)
+  - Each row of the `linkage` output records two merged cluster indices, their distance and the new cluster's size — [scipy.cluster.hierarchy.linkage](https://docs.scipy.org/doc/scipy/reference/generated/scipy.cluster.hierarchy.linkage.html)
+  - Cosine distance measures the angle between vectors rather than the length; it is named once here and taught in week 8 — [scipy.spatial.distance.cdist](https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.distance.cdist.html)
+  - `StandardScaler` stores `mean_` and `scale_` from `fit` and applies them in `transform` — [StandardScaler](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.StandardScaler.html)
 
 ### k-means algorithm
 - Interview questions: Walk through one round of k-means; Why does k-means depend on the starting centroids, and what does `n_init` do?; How do you choose K and why can't you just take the lowest inertia?
 - Adjacent concept: DBSCAN as the answer when k-means fails on rings and noise — it needs `eps` and `min_samples` rather than K.
 - Trade-off or limit: K-means needs K up front, is sensitive to scale and outliers, and assumes round clusters — [K-means (scikit-learn user guide)](https://scikit-learn.org/stable/modules/clustering.html#k-means)
 - Recognise on sight: `inertias = [KMeans(n_clusters=k, n_init=10, random_state=42).fit(X).inertia_ for k in range(1, 9)]`
-- Claims: `labels_` holds each sample's cluster index and `cluster_centers_` the centroid coordinates after `fit` — [sklearn.cluster.KMeans](https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html)
-- Claims: `inertia_` is the sum of squared distances of samples to their closest centre — [sklearn.cluster.KMeans](https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html)
-- Claims: Default initialisation is `k-means++`, which spreads the starting centroids apart — [sklearn.cluster.KMeans](https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html)
-- Claims: The notebook's `## 6` clusters iris on petal length and width only (`iris.data[:, [2, 3]]`), scores `KMeans(n_init=10, random_state=42)` for K = 2 to 8 with `silhouette_score`, and its markdown reports the peak at K = 2 although the dataset has three species of 50 samples each (setosa sits alone, versicolor and virginica overlap); metrics guide K, they do not decide it (re-read the printed peak on the fresh-runtime run before the commit) — [sklearn.datasets.load_iris](https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_iris.html) and [sklearn.metrics.silhouette_score](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.silhouette_score.html)
-- Claims: In `DBSCAN`, raising `eps` merges clusters and lowers noise; lowering `eps` or raising `min_samples` labels more points -1 (noise) — [sklearn.cluster.DBSCAN](https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html)
+- Claims:
+  - `labels_` holds each sample's cluster index and `cluster_centers_` the centroid coordinates after `fit` — [sklearn.cluster.KMeans](https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html)
+  - `inertia_` is the sum of squared distances of samples to their closest centre — [sklearn.cluster.KMeans](https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html)
+  - Default initialisation is `k-means++`, which spreads the starting centroids apart — [sklearn.cluster.KMeans](https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html)
+  - The notebook's `## 6` clusters iris on petal length and width only (`iris.data[:, [2, 3]]`), scores `KMeans(n_init=10, random_state=42)` for K = 2 to 8 with `silhouette_score`, and its markdown reports the peak at K = 2 although the dataset has three species of 50 samples each (setosa sits alone, versicolor and virginica overlap); metrics guide K, they do not decide it (re-read the printed peak on the fresh-runtime run before the commit) — [sklearn.datasets.load_iris](https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_iris.html) and [sklearn.metrics.silhouette_score](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.silhouette_score.html)
+  - In `DBSCAN`, raising `eps` merges clusters and lowers noise; lowering `eps` or raising `min_samples` labels more points -1 (noise) — [sklearn.cluster.DBSCAN](https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html)
 
 ## Sources (official / primary docs preferred; ≥ metrics.research.sourcesMin; full gate: every URL fetched and confirmed)
 
