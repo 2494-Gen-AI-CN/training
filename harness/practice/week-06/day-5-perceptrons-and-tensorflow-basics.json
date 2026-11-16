@@ -1,0 +1,174 @@
+{
+  "day": "w06d5",
+  "page": "docs/weeks/week-06/day-5-perceptrons-and-tensorflow-basics.html",
+  "assessed": "2026-11-16",
+  "verdict": "full",
+  "summary": "The activation and perceptron steps are plain arithmetic that runs in standard-library Python on lists, so they take Python tasks, while the TensorFlow, Keras and graph steps need packages the browser lacks and take choice tasks on the judgements the page names: retracing, constant against variable, which accuracy to quote and what a plot_model error means.",
+  "steps": [
+    {
+      "step": 0,
+      "title": "Activation functions: what a neuron does with its sum",
+      "suitable": true,
+      "reason": "The step, ReLU and sigmoid are one-line formulas whose return values a check can read once they are written in plain Python (math.exp is the Week 2 math module), and the page names the mistake worth catching: the rule at exactly zero, where z > 0 instead of z >= 0 gives 0. The numpy and tf.keras calls are left out because the runtime has no packages.",
+      "task": "t1"
+    },
+    {
+      "step": 1,
+      "title": "The perceptron: illustration and parameters",
+      "suitable": true,
+      "reason": "A perceptron's prediction (weighted sum, plus bias, through the step) is a return value a check can read with inputs and weights as plain lists and zip, which the page teaches. The page's hand-picked AND weights and its zero-sum convention give checks that a dropped bias or a z > 0 rule fails.",
+      "task": "t2"
+    },
+    {
+      "step": 2,
+      "title": "Training a perceptron: the rule, epochs and the learning rate",
+      "suitable": true,
+      "reason": "One epoch of the learning rule returns new weights and a new bias a check can compare, and the page names the mistakes: a flipped sign on target - pred, the wrong rule at zero, and expecting the learning rate to change more than the scale from a zero start. Checks use the OR table so the task is a sibling of the page's AND trace; make_blobs and scikit-learn stay out because the runtime has no packages.",
+      "task": "t3"
+    },
+    {
+      "step": 3,
+      "title": "TensorFlow basics: tensors and operations in one place",
+      "suitable": true,
+      "reason": "Every behaviour here needs TensorFlow, which the browser runtime does not have, so no Python task fits. The step does teach a judgement the reader can get wrong and the page names the wrong ways: when a plain print inside a tf.function fires, and which calls retrace.",
+      "task": "t4"
+    },
+    {
+      "step": 4,
+      "title": "Constants, variables and placeholders",
+      "suitable": true,
+      "reason": "tf.constant and tf.Variable need TensorFlow, so no Python task fits. Choosing what should hold a piece of state is a judgement with page-named wrong ways: a constant has no assign (AttributeError), a variable is trainable unless told otherwise, and a placeholder is TensorFlow 1 history.",
+      "task": "t5"
+    },
+    {
+      "step": 5,
+      "title": "Creating a model with Keras",
+      "suitable": true,
+      "reason": "Keras and scikit-learn are not in the runtime, so no Python task fits. Which figure to quote after fit and evaluate is a judgement the page and the brief's Pitfalls name the wrong ways for: reading the loss as accuracy and quoting training accuracy.",
+      "task": "t6"
+    },
+    {
+      "step": 6,
+      "title": "Graph visualization: seeing a model's structure",
+      "suitable": true,
+      "reason": "summary, plot_model and TensorBoard need Keras and a notebook, so no Python task fits. What to do when plot_model raises its pydot and graphviz error is a judgement the brief's Pitfalls name: taking the error as a sign the model is wrong, or treating the TensorBoard Graphs tab as the same layer picture.",
+      "task": "t7"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "kind": "python",
+      "title": "Activation functions",
+      "step": 0,
+      "idea": "The reader writes three functions of one number in plain Python: step(z) returns 1 when z is at or above 0 and 0 below, relu(z) returns max(0, z), and sigmoid(z) returns 1 / (1 + math.exp(-z)). For example step(0.0) is 1, relu(-2.0) is 0 and sigmoid(0.0) is 0.5.",
+      "checks": [
+        "step(0.0) returns 1, which a version written with z > 0 fails.",
+        "step(-0.5) returns 0 and step(0.5) returns 1.",
+        "relu(-2.0) returns 0 and relu(3.0) returns 3.0, which a version that returns 1 for positive input like the step fails.",
+        "sigmoid(0.0) returns 0.5 and sigmoid(2.0) lies strictly between 0.5 and 1, which a version with the sign of z flipped fails."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t2",
+      "kind": "python",
+      "title": "The perceptron",
+      "step": 1,
+      "idea": "The reader writes predict(x, w, b), which multiplies each input in the list x by its weight in w, adds the products and the bias, and returns 1 when that sum is at or above 0, otherwise 0. With the page's AND weights, predict([1, 1], [1.0, 1.0], -1.5) returns 1 and predict([0, 1], [1.0, 1.0], -1.5) returns 0.",
+      "checks": [
+        "With weights [1.0, 1.0] and bias -1.5 the four AND rows give 0, 0, 0, 1.",
+        "A sum of exactly 0 returns 1, so predict([0, 0], [0.0, 0.0], 0.0) is 1, which a version written with > fails.",
+        "The bias enters the sum: predict([1, 1], [1.0, 1.0], -3.0) returns 0, which a version that leaves the bias out fails.",
+        "The trained AND weights [2.0, 1.0] with bias -3.0 also give 0, 0, 0, 1, so the function works for any weights rather than one hard-coded line."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t3",
+      "kind": "python",
+      "title": "Training a perceptron",
+      "step": 2,
+      "idea": "The reader writes train_epoch(rows, labels, w, b, lr), which goes through the rows once, predicts each with the step at zero, and on a mistake adds lr * (target - pred) times the input to the weights and lr * (target - pred) to the bias, then returns the new weights as a list and the new bias. On the OR table from weights [0.0, 0.0], bias 0.0 and lr 1.0 it returns ([0.0, 1.0], 0.0).",
+      "checks": [
+        "One epoch of OR from zero weights, zero bias and lr 1.0 returns weights [0.0, 1.0] and bias 0.0, which a version that outputs 0 at a sum of exactly 0 fails.",
+        "A single row labelled 1 that the perceptron predicts as 0 raises each weight by lr times its input and the bias by lr, which a version that uses pred - target fails.",
+        "The same OR epoch with lr 0.5 returns weights [0.0, 0.5] and bias 0.0, half of every lr 1.0 number.",
+        "A row the perceptron already gets right leaves the weights and the bias as they were."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t4",
+      "kind": "choice",
+      "title": "TensorFlow basics",
+      "step": 3,
+      "idea": "A function marked @tf.function holds a plain print(\"tracing\") and returns a weighted sum; it is called three times, first with two vectors of length 2, then with two other length-2 vectors and a different bias tensor, then with vectors of length 3. The question asks how many times \"tracing\" appears; the right answer is twice, on the first call and on the call with the new shape.",
+      "checks": [
+        "Three times catches reading a plain print inside a tf.function as running on every call, which is what tf.print does.",
+        "Once catches missing that a new input shape is a new input signature and makes TensorFlow trace again.",
+        "Never catches thinking tf.function code runs eagerly like the rest of TensorFlow 2, when the Python body runs during tracing."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t5",
+      "kind": "choice",
+      "title": "Constants, variables and placeholders",
+      "step": 4,
+      "idea": "A training run needs a counter of how many steps have run: the code adds 1 to it after each step, and no gradient step should ever nudge it. The question asks what to create it with; the right answer is tf.Variable(0, trainable=False).",
+      "checks": [
+        "tf.constant(0) catches forgetting that a constant is immutable and has no assign method, so assign_add fails with AttributeError.",
+        "tf.Variable(0) catches forgetting that variables are trainable unless told otherwise, so training would treat the counter like a weight.",
+        "tf.placeholder(tf.int32) catches carrying a TensorFlow 1 name from an old tutorial into TensorFlow 2, where it fails or runs only through tf.compat.v1."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t6",
+      "kind": "choice",
+      "title": "Creating a model",
+      "step": 5,
+      "idea": "After compile and fit on scaled breast-cancer training rows, the reader has the History of each epoch and the list model.evaluate(X_test, y_test) returned. The question asks which number to quote as the model's accuracy; the right answer is the second number from evaluate on the held-out split.",
+      "checks": [
+        "The first number from evaluate catches reading the loss as accuracy.",
+        "The last entry of history.history[\"accuracy\"] catches quoting training accuracy, which overstates how well the model generalises.",
+        "The last entry of history.history[\"loss\"] catches both mistakes at once: a training figure, and a loss rather than an accuracy."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t7",
+      "kind": "choice",
+      "title": "Graph visualization",
+      "step": 6,
+      "idea": "On a laptop without pydot or the graphviz program, tf.keras.utils.plot_model(model, show_shapes=True) raises an error asking to install them, and the reader wants to check the model's layers, output shapes and parameter count. The right answer is to run model.summary(), which needs nothing extra.",
+      "checks": [
+        "Rebuilding the model catches reading the plot_model dependency error as a sign the model is wrong, when it says nothing about the model.",
+        "Opening the TensorBoard Graphs tab for the same layer drawing catches reading the traced execution graph as the layer graph plot_model draws."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    }
+  ]
+}

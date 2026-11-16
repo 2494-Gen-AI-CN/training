@@ -1,0 +1,194 @@
+{
+  "day": "w06d2",
+  "page": "docs/weeks/week-06/day-2-clustering-and-k-means.html",
+  "assessed": "2026-11-16",
+  "verdict": "full",
+  "summary": "Every cell on the page is scikit-learn, SciPy or NumPy, which the runtime does not load, but the mechanics underneath (comparing groupings, point and cluster distances, one k-means round, a silhouette coefficient, standard scaling) rebuild in plain Python with lists and math, and the two steps whose code cannot be rebuilt in fifteen lines (picking a tree depth, picking an algorithm for rings) teach a judgement the page names the wrong ways to make, so they take choice tasks.",
+  "steps": [
+    {
+      "step": 0,
+      "title": "Decision trees: a model that asks questions",
+      "suitable": true,
+      "reason": "The code is DecisionTreeClassifier, which the runtime does not load, and a hand-written tree is a few if statements with no mistake to catch, so no Python task fits. The step teaches a judgement the page names the wrong ways to make: keeping the unlimited tree because it scores 1.00 on training data, or the depth-1 tree that underfits, instead of choosing the depth by the test score.",
+      "task": "t1"
+    },
+    {
+      "step": 1,
+      "title": "Unsupervised learning and clustering",
+      "suitable": true,
+      "reason": "The page shows k-means labels and make_blobs labels that disagree on every number and agree on every grouping, and says a clustering is compared by who sits together, never by the numbers. That rebuilds in plain Python as a function over two label lists whose True or False a check can see, and comparing the numbers position by position fails it.",
+      "task": "t2"
+    },
+    {
+      "step": 2,
+      "title": "Distance between two points",
+      "suitable": true,
+      "reason": "Euclidean and Manhattan distance are return values the page computes by hand for (1, 2) and (4, 6), 5.0 and 7; plain Python with math.sqrt replaces the NumPy cell, and forgetting the square root or the absolute value gives a wrong number a check can see.",
+      "task": "t3"
+    },
+    {
+      "step": 3,
+      "title": "Distance between clusters: linkage and hierarchical clustering",
+      "suitable": true,
+      "reason": "Single, complete and average linkage are the smallest, largest and mean entry of the table of point distances, and the page prints all three for two three-point clusters (4.03, 6.73, 5.00) beside the centroid gap (4.96), so a plain-Python function returns numbers a check can compare. The linkage merge table and the dendrogram are SciPy and Matplotlib and stay out of the task.",
+      "task": "t4"
+    },
+    {
+      "step": 4,
+      "title": "The k-means algorithm by hand",
+      "suitable": true,
+      "reason": "One round of assign and update is the step's whole algorithm, and the page traces it on eight points from a poor start, so a plain-Python function returning the new centroids fits in fifteen lines and each half of the round fails its own check when done wrong. The n_init and k-means++ part is scikit-learn and stays out.",
+      "task": "t5"
+    },
+    {
+      "step": 5,
+      "title": "K-means in scikit-learn, and choosing K",
+      "suitable": true,
+      "reason": "KMeans and silhouette_score are scikit-learn, but the page writes out one sample's silhouette coefficient, (b - a) / max(a, b) with a over the other points of its own cluster and b over the nearest other cluster, and gives its sign meanings, so a plain-Python function returns a number a check can see. Picking K by the lowest inertia, the step's headline mistake, is a judgement a choice task could serve instead if the trainer prefers it.",
+      "task": "t6"
+    },
+    {
+      "step": 6,
+      "title": "Feature scaling before any distance",
+      "suitable": true,
+      "reason": "StandardScaler's fit and transform are a mean and a spread per column, which plain Python rebuilds as a small class whose stored values and returned rows a check can see; the page's habit of reusing the fitted mean and scale on new rows is behaviour a refit fails. Encoding categories and missing values are deferred to week 8, so the task scales numeric columns only.",
+      "task": "t7"
+    },
+    {
+      "step": 7,
+      "title": "Where k-means fails, and DBSCAN",
+      "suitable": true,
+      "reason": "DBSCAN and KMeans are scikit-learn and a working DBSCAN does not fit in fifteen lines, so no Python task fits. The step teaches which method and setting separates two rings, and the page names each wrong way: k-means with K = 2 cuts both rings in half, scaling fixes units but not shape, a large eps merges the rings and a small eps breaks them into fragments.",
+      "task": "t8"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "kind": "choice",
+      "title": "Decision trees",
+      "step": 0,
+      "idea": "A tree is trained at three depths on curved two-class data and prints training and test accuracy for each: depth 1 scores 0.78 train and 0.80 test, depth 5 scores 0.91 and 0.90, no limit scores 1.00 and 0.86. The question asks which tree to keep. The right answer keeps depth 5, chosen by the test score, where both scores are high and close together.",
+      "checks": [
+        "Keeping the unlimited tree because it scores 1.00 on training data catches reading a perfect training score as best, which the page calls a warning sign of a tree that memorised noise.",
+        "Keeping the depth-1 tree because its test score beats its training score catches missing underfitting: one cut cannot follow a curve, and both its scores are the lowest."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t2",
+      "kind": "python",
+      "title": "Unsupervised learning and clustering",
+      "step": 1,
+      "idea": "The reader writes same_grouping(labels_a, labels_b), which takes two equal-length lists of cluster numbers for the same rows and returns True when they put the same rows together, whatever numbers they use. same_grouping([1, 2, 1, 2, 0], [2, 0, 2, 0, 1]) returns True, and same_grouping([0, 0, 1, 1], [0, 0, 0, 1]) returns False.",
+      "checks": [
+        "It returns True for the page's kind of pair, the same grouping under different numbers; comparing the lists position by position fails, which is reading cluster numbers as more than names.",
+        "It returns False when one row moves to another group; a function that only checks both lists have the same number of distinct labels fails.",
+        "It returns False when labels_b lumps two groups of labels_a into one, [0, 0, 1, 1] against [0, 0, 0, 0]; a one-way mapping from labels_a numbers to labels_b numbers fails, because it never checks two groups were given the same name."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t3",
+      "kind": "python",
+      "title": "Distance between two points",
+      "step": 2,
+      "idea": "The reader writes distance(a, b, metric=\"euclidean\"), which takes two points as equal-length tuples and returns the Euclidean distance, or the Manhattan distance when metric is \"cityblock\", in plain Python with math.sqrt. distance((1, 2), (4, 6)) returns 5.0 and distance((1, 2), (4, 6), \"cityblock\") returns 7.",
+      "checks": [
+        "It returns 5.0 for the page's points (1, 2) and (4, 6); summing the squared differences without the square root fails with 25.",
+        "It returns 7 for the same points with \"cityblock\"; it also returns 7 for (1, 6) and (4, 2), where one difference is negative, so adding plain differences instead of absolute ones fails with 1.",
+        "It works for points with three coordinates, one per feature; a version that reads only a[0] and a[1] fails."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t4",
+      "kind": "python",
+      "title": "Distance between clusters",
+      "step": 3,
+      "idea": "The reader writes cluster_distance(cluster_a, cluster_b, method), which takes two lists of points and returns the single, complete or average linkage distance, using Euclidean distance between every point of one and every point of the other. For the page's cluster_a and cluster_b it returns about 4.03 for \"single\", 6.73 for \"complete\" and 5.00 for \"average\".",
+      "checks": [
+        "\"single\" returns the closest pair, about 4.03 on the page's clusters; a version that measures only between the first points of each cluster fails.",
+        "\"complete\" returns the farthest pair, about 6.73; swapping min and max, the single and complete mix-up the page contrasts, fails.",
+        "\"average\" returns the mean over all nine pairs, about 5.00; measuring between the two cluster means, the centroid linkage the page sets apart, fails with 4.96."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t5",
+      "kind": "python",
+      "title": "The k-means algorithm by hand",
+      "step": 4,
+      "idea": "The reader writes kmeans_round(points, centroids), which runs one assign step and one update step on lists of (x, y) tuples and returns the new centroids as a list of tuples. On the page's eight points from the poor start [(1, 1), (1, 2)] it returns about [(1.5, 1.0), (4.83, 4.33)], and a second round from there returns [(1.5, 1.5), (6.5, 5.5)].",
+      "checks": [
+        "From the page's poor start it returns about (1.5, 1.0) and (4.83, 4.33); assigning each point to the first centroid within some fixed distance, instead of the nearest one, fails.",
+        "Each new centroid is the mean of every point assigned to it; moving it halfway toward its points, or to the mean of its two extreme points, fails on the six-point cluster.",
+        "A second round from the returned centroids gives (1.5, 1.5) and (6.5, 5.5), and a third returns the same centroids, the convergence the page traces; a version that keeps the old labels between rounds fails."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t6",
+      "kind": "python",
+      "title": "Choosing K: the silhouette coefficient",
+      "step": 5,
+      "idea": "The reader writes silhouette(i, points, labels), which returns the silhouette coefficient of sample i: a is its mean distance to the other points of its own cluster, b its mean distance to the points of the nearest other cluster, and the result is (b - a) / max(a, b). For points [(0, 0), (0, 1), (5, 0), (5, 1)] with labels [0, 0, 1, 1], silhouette(0, points, labels) returns about 0.80.",
+      "checks": [
+        "It returns about 0.80 for the example; counting sample i itself in a, a zero distance that drags a down, fails with about 0.90.",
+        "With three clusters, b uses the nearest other cluster only; averaging over the points of every other cluster fails.",
+        "A sample placed closer to another cluster than to its own returns a value below 0, the misassigned case the page names; returning (a - b) / max(a, b) fails."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t7",
+      "kind": "python",
+      "title": "Feature scaling before any distance",
+      "step": 6,
+      "idea": "The reader writes a class Scaler with fit(rows), which stores mean_ and scale_ per column (scale_ as the population standard deviation, the spread StandardScaler uses), and transform(rows), which returns new rows with each value minus its column's mean, divided by its column's scale. After fit on [(40000, 20), (90000, 80)], mean_ is [65000, 50] and transform([(65000, 50)]) returns [(0.0, 0.0)].",
+      "checks": [
+        "After fit and then transform on the fitting rows, each column has mean 0 and spread 1; dividing by one scale shared across both columns fails, because income still swamps the score.",
+        "mean_ and scale_ hold one value per column, income and score each with its own; computing them over all values together fails.",
+        "transform on one new row uses the fitted mean_ and scale_, so (65000, 50) gives (0.0, 0.0); a transform that refits on the new rows fails, which is the page's habit of keeping the fitted scaler for new rows."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t8",
+      "kind": "choice",
+      "title": "Where k-means fails, and DBSCAN",
+      "step": 7,
+      "idea": "A dataset is two rings, one inside the other, and a DBSCAN eps loop shows a small eps giving many fragments and a large eps giving one cluster. The question asks which setup separates the two rings. The right answer is DBSCAN with an eps between those two, large enough to keep each ring whole and small enough not to reach across the gap.",
+      "checks": [
+        "KMeans with K = 2 catches expecting k-means to find any shape: its border is a straight line between centres, so it cuts both rings in half.",
+        "Scaling with StandardScaler and then KMeans with K = 2 catches treating scaling as the fix for shape, when the page says scaling fixes the units but not the shape.",
+        "DBSCAN with eps raised until noise reaches zero catches turning the knob the wrong way: a larger eps merges the rings into one cluster."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    }
+  ]
+}

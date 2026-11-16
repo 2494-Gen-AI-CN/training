@@ -1,0 +1,171 @@
+{
+  "day": "w06d3",
+  "page": "docs/weeks/week-06/day-3-deep-learning-concepts.html",
+  "assessed": "2026-11-16",
+  "verdict": "full",
+  "summary": "The day's numpy mechanics (a dense layer's forward pass, a valid unflipped kernel slide, a bag-of-words row) rebuild in a few lines of plain Python with lists, and its judgements (classical or deep, which network type, when a CNN earns its place, transform against fit_transform) fit choice tasks; nothing can run numpy, scipy or scikit-learn in the page, so no task touches those libraries.",
+  "steps": [
+    {
+      "step": 0,
+      "title": "Deep learning: models that learn their own features",
+      "suitable": true,
+      "reason": "The step has no behaviour a check can see without scikit-learn, but it teaches a judgement the reader can get wrong: a small table, or a decision that must be explained, still suits a classical model. The page names the wrong ways (expecting a deep network to win on any data, expecting its weights to explain a decision), so it fits a choice task.",
+      "task": "t1"
+    },
+    {
+      "step": 1,
+      "title": "Types of neural networks",
+      "suitable": true,
+      "reason": "No Python behaviour, but the step teaches a method the reader applies: ask what one input looks like and pick the architecture that reads that shape. A scenario question tests that judgement rather than recall of a name, and the page names why each wrong pick fails (a feedforward network flattens away neighbours, a recurrent one reads sequences, an autoencoder is for unlabelled data).",
+      "task": "t2"
+    },
+    {
+      "step": 2,
+      "title": "An artificial neural network: neurons, layers and a forward pass",
+      "suitable": true,
+      "reason": "A dense layer's forward pass is a return value: weighted sum, plus bias, through ReLU, with weights stored as (inputs, units). It rebuilds in plain Python with nested lists and loops, and the page's mistakes (reading the matrix the wrong way round, dropping the bias, skipping the activation) each give different numbers. ReLU stays at its one line, inside the anti-spoiler row.",
+      "task": "t3"
+    },
+    {
+      "step": 3,
+      "title": "How a CNN reads an image: kernels, convolution and pooling",
+      "suitable": true,
+      "reason": "Sliding a kernel over a grid with mode \"valid\" is a returned grid a check can compare, written in plain Python with lists since scipy is not in the runtime. The page's two mistakes, flipping the kernel as convolve2d does and getting the n - k + 1 output size wrong, both show up in the result.",
+      "task": "t4"
+    },
+    {
+      "step": 4,
+      "title": "Image classification: pixels, a baseline and what a CNN adds",
+      "suitable": true,
+      "reason": "The step's point is a judgement, not a computation: a CNN earns its place on large images where objects move, while the flat baseline already scores 96 percent on small centred digits. Its only computable pieces (flattening row by row, the inputs-times-units count) have no wrong answer beyond not writing them, so it fits a choice task on the page's named trade-offs.",
+      "task": "t5"
+    },
+    {
+      "step": 5,
+      "title": "NLP techniques: tokens, bag of words, TF-IDF and n-grams",
+      "suitable": true,
+      "reason": "A bag-of-words row over a given vocabulary is a returned list of counts, built with lower(), split() and a loop. The page names what a check can catch: case folding, repeated words counted, words outside the vocabulary silently dropped, and word order ignored so two reordered titles give the same row. TF-IDF and n-grams stay on the page, since one task per step keeps to counting.",
+      "task": "t6"
+    },
+    {
+      "step": 6,
+      "title": "NLP components and applications: routing ticket titles",
+      "suitable": true,
+      "reason": "The pipeline runs on scikit-learn, which the runtime does not have, and a plain-Python vectorizer would repeat step 5. The step teaches a judgement the page and the brief name as a pitfall: a new title goes through the training vocabulary with transform or the pipeline's predict, never fit_transform, so it fits a choice task.",
+      "task": "t7"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "kind": "choice",
+      "title": "Deep learning",
+      "step": 0,
+      "idea": "A lender has 4,000 rows of application-form columns and must tell every refused applicant why the model said no. The right pick is a classical model such as logistic regression or a tree, because the columns are already chosen, the table is small and each decision has to be explained.",
+      "checks": [
+        "Picking a deep network because it learns its own features catches the belief that deep learning always wins; the page says it needs large labelled datasets and the features here are already chosen columns.",
+        "Picking a deep network because its weights can be read to explain each refusal catches the belief that a network is interpretable; the page says its thousands of weights are hard to read.",
+        "Picking a deep network because 4,000 rows is plenty catches the misreading of the data needs; the page says hundreds to thousands of rows can be enough for a classical model, while a deep network needs large labelled datasets."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t2",
+      "kind": "choice",
+      "title": "Types of neural networks",
+      "step": 1,
+      "idea": "A factory has thousands of labelled photos from a production line, each marked defective or not, and wants a network to flag defects. The right pick is a convolutional network, because one input is an image and a CNN reads grid data with the same detector at every position.",
+      "checks": [
+        "Picking a feedforward network on the flattened pixels catches the idea that any input can be a table row; the page says flattening loses the fact that two pixels were neighbours.",
+        "Picking a recurrent network such as an LSTM catches choosing by popularity rather than input shape; the page says it reads a sequence in order, and a photo is not one.",
+        "Picking an autoencoder catches missing what the labels mean; the page says an autoencoder suits unlabelled data you want to compress, and these photos are labelled."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t3",
+      "kind": "python",
+      "title": "A dense layer",
+      "step": 2,
+      "idea": "The reader writes dense_relu(x, W, b) in plain Python: x is a list of inputs, W a list of rows with shape (inputs, units), b a list of one bias per unit, and it returns a list with one value per unit, max(0, weighted sum + bias). With x = [2.0, 1.0, 3.0], W = [[0.5], [-1.0], [0.25]] and b = [0.5] it returns [1.25].",
+      "checks": [
+        "Returns [1.25] for the page's one-neuron example; leaving out the bias gives [0.75].",
+        "A unit whose weighted sum plus bias is negative comes back as 0.0; skipping ReLU returns the negative value.",
+        "With two inputs and three units it returns three values, unit j using column j of W; reading W as (units, inputs), the shape the page warns about, gives the wrong numbers or an IndexError."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t4",
+      "kind": "python",
+      "title": "Sliding a kernel",
+      "step": 3,
+      "idea": "The reader writes correlate_valid(image, kernel) in plain Python with lists of lists: it slides the kernel unflipped over every position where it fits, multiplies and sums, and returns the feature map. On a 4 by 4 grid that is dark (0) in its left two columns and bright (9) in its right two, the vertical-edge kernel [[-1, 0, 1]] * 3 gives [[27, 27], [27, 27]].",
+      "checks": [
+        "The 4 by 4 edge image with the page's vertical-edge kernel gives a 2 by 2 result, n - k + 1 on each side; looping over every pixel gives the wrong size or an IndexError.",
+        "That dark-to-bright edge scores +27 at every position; flipping the kernel first, as convolve2d does, scores -27.",
+        "A non-symmetric kernel on a small grid gives the sum of all nine products at each position; summing only one row or column of the patch gives a different map."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t5",
+      "kind": "choice",
+      "title": "Image classification",
+      "step": 4,
+      "idea": "Three image jobs are on offer, and the question asks which one most needs a CNN instead of a flat classifier on pixels. The right pick is large product photos where the defect can sit anywhere in the frame, since the flat model's first layer would need millions of weights and shifted objects confuse it.",
+      "checks": [
+        "Picking the 8 by 8 centred digits catches the belief that a CNN always pays off on images; the page says the flat baseline already scores 96 percent there.",
+        "Picking a small table of form fields catches confusing deep learning in general with a CNN; the page says a CNN reads grid data and small tables suit classical models."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t6",
+      "kind": "python",
+      "title": "Bag of words",
+      "step": 5,
+      "idea": "The reader writes bag_of_words(text, vocabulary) in plain Python: it lowercases the text, splits it on spaces, and returns a list with one count per vocabulary word, in the vocabulary's order. With vocabulary [\"blocked\", \"login\", \"refund\", \"works\"], the title \"Refund blocked login works\" returns [1, 1, 1, 1].",
+      "checks": [
+        "\"Login page Login\" over a vocabulary holding login and page returns 2 under login; leaving out the lowercasing counts only one, or none.",
+        "A title with a word missing from the vocabulary returns a row the length of the vocabulary, the unseen word dropped; appending a column for it or raising a KeyError fails.",
+        "\"Refund blocked login works\" and \"Login blocked refund works\" return the same row; counting by position in the title instead of by vocabulary word gives different rows."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t7",
+      "kind": "choice",
+      "title": "The text pipeline",
+      "step": 6,
+      "idea": "A teammate has a fitted make_pipeline(TfidfVectorizer(...), LogisticRegression(...)) router and wants a label for one new ticket title. The right pick is clf.predict([title]), which sends the title through transform with the training vocabulary before the model sees it.",
+      "checks": [
+        "Calling fit_transform on the new title before predicting catches the brief's pitfall; the page says it builds a fresh vocabulary from that one title, so the columns no longer match the model's.",
+        "Passing the raw title straight to the LogisticRegression step catches skipping the vectorizer; the page says every model needs numbers and the components run tokenizer, vocabulary, vectorizer, model, in that order.",
+        "Refitting the vectorizer on the training titles plus the new one so its unseen words get columns catches misreading where the vocabulary comes from; the page says it is learned from training text only and unseen words are ignored."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    }
+  ]
+}

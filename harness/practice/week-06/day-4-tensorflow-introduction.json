@@ -1,0 +1,142 @@
+{
+  "day": "w06d4",
+  "page": "docs/weeks/week-06/day-4-tensorflow-introduction.html",
+  "assessed": "2026-11-16",
+  "verdict": "partial",
+  "summary": "The page's shape rules (broadcasting and which axes a reduction removes) work as small Python functions on tuples, and three of its named mistakes (running Session code, retracing on Python floats, an empty Graphs tab) work as choice questions, while the library overview and the tf.function basics are vocabulary, and no task can run TensorFlow, which the browser runtime does not have.",
+  "steps": [
+    {
+      "step": 0,
+      "title": "TensorFlow in Colab: tensors, operations and Keras on top",
+      "suitable": false,
+      "reason": "The step defines TensorFlow, tensors, operations and Keras and shows how to open Colab, which is vocabulary and setup. TensorFlow is not in the browser runtime, so no check can see a tensor, and the one judgement in the step (which layer someone's code is at) is recognition by name, too close to recall for a choice question.",
+      "task": null
+    },
+    {
+      "step": 1,
+      "title": "History of TensorFlow",
+      "suitable": true,
+      "reason": "The dates and the framework table are recall, but the step teaches what to do with a tutorial that uses tf.Session, and the page and the brief's first pitfall name the wrong move: reaching for tf.compat.v1 to make it run. A choice question on that scenario fits.",
+      "task": "t1"
+    },
+    {
+      "step": 2,
+      "title": "Tensors: rank, shape, dtype and arithmetic",
+      "suitable": true,
+      "reason": "TensorFlow cannot run in the browser, but the page states the broadcasting rule as three plain rules on shapes, and a function on shape tuples shows it as a return value or a raised error with nothing faked. The page's own failing case, (2, 2) against (2, 2, 3), and its (3,) plus (3, 1) example give the checks.",
+      "task": "t2"
+    },
+    {
+      "step": 3,
+      "title": "Implementing basic graphs with tf.function",
+      "suitable": false,
+      "reason": "Eager against graph mode, op types such as Placeholder and AddV2, and AutoGraph are concepts a reader recalls; there is no TensorFlow in the runtime to trace, and the one judgement here, side effects running only while tracing, is taught in practice in step 4, which carries the question.",
+      "task": null
+    },
+    {
+      "step": 4,
+      "title": "Tracing and retracing",
+      "suitable": true,
+      "reason": "No Python check can see a trace, but the step teaches a judgement with named wrong ways: a tf.function called with many Python floats retraces each time, and the fix is a tensor argument or an input_signature. A choice question on the slow loop over factors fits.",
+      "task": "t3"
+    },
+    {
+      "step": 5,
+      "title": "Reducing tensors of arbitrary shape",
+      "suitable": true,
+      "reason": "The page states exactly which axes a reduction removes (None removes all, an int or tuple removes those, negative counts from the end, keepdims leaves length 1), so a function that returns the result shape for a given shape and axis is behaviour a check can see. The brief's pitfall of confusing axis=0 with axis=(1, 2) on (60000, 28, 28) fails one check.",
+      "task": "t4"
+    },
+    {
+      "step": 6,
+      "title": "Graphs, sessions and TensorBoard",
+      "suitable": true,
+      "reason": "TensorBoard and the %-commands run only in Colab, so no Python task fits, but the page names why the Graphs tab stays empty (trace_export outside the with block, %tensorboard before %load_ext) and what the tab does not show. A choice question on an empty Graphs tab fits; the session table is covered by t1.",
+      "task": "t5"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "kind": "choice",
+      "title": "History of TensorFlow",
+      "step": 1,
+      "idea": "Searching an error message turns up an answer whose code starts with x = tf.placeholder(tf.float32) and sess = tf.Session(), and on Colab its first line stops with an AttributeError. The right answer: it is TensorFlow 1 code, so read it for the idea and write the TensorFlow 2 version, a function taking tensors, decorated with @tf.function if a graph is wanted.",
+      "checks": [
+        "Change the import to tf.compat.v1 so the code runs as written: catches the brief's first pitfall, reaching for the migration bridge when the page says to read the block as history.",
+        "The AttributeError means TensorFlow is installed wrong in Colab, so reinstall it: catches missing the TensorFlow 1 signs the page names, tf.Session and a feed_dict, and the 2019 change to eager execution.",
+        "Keep tf.Session but drop tf.placeholder, since only placeholders were removed: catches thinking sessions survive in TensorFlow 2, when a tf.function replaces the session and function arguments replace placeholders."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t2",
+      "kind": "python",
+      "title": "Tensors",
+      "step": 2,
+      "idea": "The reader writes broadcast_shape(a, b): a and b are shapes as tuples of ints, and the function returns the shape of a + b under the page's rule (line up from the right, a missing axis counts as 1, two lengths combine when equal or one is 1, the result takes the larger) or raises ValueError when they cannot combine. broadcast_shape((3,), (3, 1)) returns (3, 3).",
+      "checks": [
+        "broadcast_shape((2, 3), (3,)) returns (2, 3); an answer that lines the shapes up from the left compares 2 with 3 and raises.",
+        "broadcast_shape((3, 1), (3,)) returns (3, 3); an answer that keeps the first shape's length on each axis instead of the larger one returns (3, 1).",
+        "broadcast_shape((2, 2), ()) returns (2, 2), the plain number 2 stretched over x; an answer that treats a missing axis as incompatible raises.",
+        "broadcast_shape((2, 2, 3), (2, 2)) raises ValueError, the page's case without keepdims; an answer that skips the equal-or-1 test returns a shape."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t3",
+      "kind": "choice",
+      "title": "Tracing and retracing",
+      "step": 4,
+      "idea": "A loop calls the page's scale(v, factor), decorated with @tf.function, once for each of a thousand different Python floats, and the loop is far slower than expected. The right answer: every new Python float traces a new graph, so pass tf.constant(factor) so the factor becomes an input node, or fix the function with an input_signature.",
+      "checks": [
+        "Add a Python print inside scale to watch each factor go through: catches the brief's pitfall about print in a tf.function, which runs only while tracing and here would show each retrace, not each call.",
+        "Cast v to float32 first, since a dtype mismatch causes the retracing: catches blaming the tensor argument, whose shape and dtype stay the same, when the page names the new Python value as the trigger.",
+        "Rewrite the loop with tf.Session and a feed_dict so the graph is built once: catches falling back to TensorFlow 1 code, which stops with an AttributeError on TensorFlow 2."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t4",
+      "kind": "python",
+      "title": "Reductions",
+      "step": 5,
+      "idea": "The reader writes reduced_shape(shape, axis=None, keepdims=False): shape is a tuple of ints, axis is None, an int or a tuple of ints (negative counts from the end), and the function returns the shape tf.reduce_sum would give back. reduced_shape((60000, 28, 28), (1, 2)) returns (60000,).",
+      "checks": [
+        "reduced_shape((60000, 28, 28), 0) returns (28, 28) and with axis (1, 2) returns (60000,); an answer that keeps the named axes instead of removing them, the brief's axis=0 against axis=(1, 2) confusion, swaps the two.",
+        "reduced_shape((2, 2, 3)) with axis left as None returns (), a rank-0 result; an answer that treats None as axis 0, as argmax does, returns (2, 3).",
+        "reduced_shape((2, 2, 3), -1) returns (2, 2); an answer that does not count a negative axis from the end removes the wrong axis or none.",
+        "reduced_shape((2, 2, 3), -1, keepdims=True) returns (2, 2, 1); an answer that ignores keepdims returns (2, 2), the shape the page shows failing to broadcast back."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t5",
+      "kind": "choice",
+      "title": "Graphs, sessions and TensorBoard",
+      "step": 6,
+      "idea": "A notebook creates a writer, calls tf.summary.trace_on(graph=True), calls basic_graph once, then calls tf.summary.trace_export(name='basic_graph', step=0) on the next line with no with block, and TensorBoard's Graphs tab is empty. The right answer: trace_export needs a default writer, so it belongs inside with writer.as_default():.",
+      "checks": [
+        "The Graphs tab fills only once the model has been trained, so train first: catches confusing the Graphs tab, which shows structure, with the training view the page says it is not.",
+        "Call basic_graph several times before exporting so there is more to show: catches missing the order the page sets, tracing on, exactly one call, then export inside the writer.",
+        "Run %tensorboard --logdir logs again before %load_ext tensorboard: catches the brief's other cause of an empty tab, the two notebook commands in the wrong order."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    }
+  ]
+}

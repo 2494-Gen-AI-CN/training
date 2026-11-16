@@ -1,0 +1,177 @@
+{
+  "day": "w06d1",
+  "page": "docs/weeks/week-06/day-1-ml-intro-and-supervised-learning.html",
+  "assessed": "2026-11-16",
+  "verdict": "partial",
+  "summary": "The day lends itself to three plain-Python tasks on the arithmetic behind the scikit-learn calls (the training-range check, MSE and R², the majority-class baseline) and four choice tasks on the judgements the page names wrong ways for, while its opening vocabulary and fit/predict convention fit neither, and nothing can call scikit-learn or numpy in the browser.",
+  "steps": [
+    {
+      "step": 0,
+      "title": "Machine learning: algorithms and use cases",
+      "suitable": false,
+      "reason": "The step teaches vocabulary (sample, feature, label, parameter, hyperparameter) and scikit-learn's construct, fit and predict convention, and the one behaviour it names, the 1-D shape error, comes from scikit-learn, which the runtime cannot load. Its one judgement, hand-written rule against learned rule, has a single named wrong way, too thin for a choice task with two or more wrong options.",
+      "task": null
+    },
+    {
+      "step": 1,
+      "title": "Supervised and unsupervised learning",
+      "suitable": true,
+      "reason": "No Python behaviour here, but sorting a new problem by its label is a judgement the page drills with its own table and names the wrong ways for: reading the task off the features or the label's storage type, and missing a label the business already records. A choice task is the card sort the week plan allows; it names no clustering algorithm.",
+      "task": "t1"
+    },
+    {
+      "step": 2,
+      "title": "Applications of regression",
+      "suitable": true,
+      "reason": "The page puts the training-range check on the caller, and a function that answers whether a new input falls inside the training values returns a bool a check can read. The page's own failure (bmi at -0.3 and 0.3, outside -0.09 to 0.171) is the mistake each out-of-range check catches; plain lists and min/max, no scikit-learn.",
+      "task": "t2"
+    },
+    {
+      "step": 3,
+      "title": "Fitting the line",
+      "suitable": true,
+      "reason": "The page states residual, sum of squared residuals, MSE and R² as formulas, so a function that scores a list of predictions against true values returns numbers a check compares. The closed-form slope formula is not on the page, so the task scores given predictions and never fits the line.",
+      "task": "t3"
+    },
+    {
+      "step": 4,
+      "title": "Train and test",
+      "suitable": true,
+      "reason": "A hand-built split needs the random module's shuffle, which the page does not teach, so no Python task; the step does teach which score to trust and names three wrong ways (reading the training score, treating random_state as making the estimate more accurate, rerunning until the test score looks good). That fits a choice task.",
+      "task": "t4"
+    },
+    {
+      "step": 5,
+      "title": "Types of regression: multiple and polynomial",
+      "suitable": true,
+      "reason": "Expanding a value into its powers is checkable but no mistake the page names would fail it; the step's point is choosing the degree from train and test scores, with underfitting and overfitting named as the two wrong ways. That fits a choice task on fresh scores; ridge and lasso stay out.",
+      "task": "t5"
+    },
+    {
+      "step": 6,
+      "title": "Classification with logistic regression",
+      "suitable": true,
+      "reason": "The accuracy arithmetic belongs to step 7's baseline task, and predict, predict_proba and the warning live in scikit-learn. The step names two misreadings outright (LogisticRegression is a regression because of its name; a ConvergenceWarning means broken code), which fits a choice task on what to do when the warning appears.",
+      "task": "t6"
+    },
+    {
+      "step": 7,
+      "title": "Applications of classification",
+      "suitable": true,
+      "reason": "The majority-class baseline is plain counting: a function returning the accuracy of always predicting the most common label gives a number a check reads, and the page's fraud case (10 in 1,000 scores 0.990) is the trap it exposes. Precision, recall and the confusion matrix stay out, per the week plan.",
+      "task": "t7"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "kind": "choice",
+      "title": "Supervised and unsupervised learning",
+      "step": 1,
+      "idea": "A subscription service keeps a record of every past customer with their usage and whether they renewed, stored as 1 or 0, and wants to predict renewal for current customers. The question asks which kind of problem this is. The right answer is supervised classification, because a recorded answer exists and it is a category, renewed or not.",
+      "checks": [
+        "Calling it regression because the label is stored as the numbers 1 and 0 catches deciding the task by how the label is stored, where the page shows the cancer target as 0 and 1 and calls it classification.",
+        "Calling it unsupervised because nobody labelled the customers by hand catches missing a label the business already keeps as a record, the cheapest source the page lists."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t2",
+      "kind": "python",
+      "title": "Applications of regression",
+      "step": 2,
+      "idea": "The reader writes in_training_range(train_values, x) that returns True when x lies between the smallest and largest training value, ends included, and False otherwise, the check the page leaves to the caller before trusting a straight line's prediction. Example: in_training_range([-0.09, 0.02, 0.171], -0.3) returns False.",
+      "checks": [
+        "A value inside the training values returns True.",
+        "A value below the smallest training value returns False, which a function that only compares against the largest misses (the bmi -0.3 case).",
+        "A value above the largest training value returns False (the bmi 0.3 case), which a function that always trusts the line misses."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t3",
+      "kind": "python",
+      "title": "Fitting the line",
+      "step": 3,
+      "idea": "The reader writes regression_scores(y_true, y_pred) that returns a tuple (mse, r2): the mean of the squared residuals, and 1 minus the residual sum of squares over the total sum of squares around the mean of y_true. Example: regression_scores([2, 4, 6], [2, 4, 6]) returns (0.0, 1.0).",
+      "checks": [
+        "Misses of +2 and -2 give an MSE of 4.0, which fails summing raw residuals that cancel instead of squaring them.",
+        "The MSE divides the sum of squared residuals by the number of samples, which fails returning the sum itself.",
+        "Predicting the mean of y_true for every row gives an R² of 0.0.",
+        "Predictions worse than the mean give a negative R², which fails clamping R² at zero or reading it as a share that cannot go below 0."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t4",
+      "kind": "choice",
+      "title": "Train and test",
+      "step": 4,
+      "idea": "A teammate fits a line predicting ticket hours on all 200 closed tickets and reports its R² of 0.93 as how the model will do on new tickets. The question asks what to do before reporting a number. The right answer is to hold out a test set with train_test_split before fitting, fit on the training rows only, and report the test score.",
+      "checks": [
+        "Fixing random_state and reporting the same 0.93 catches believing a fixed seed makes the estimate more accurate, where the page says it only makes the result repeatable.",
+        "Splitting, then trying seeds until the test score comes close to 0.93, catches tuning against the test set, which the page says turns it into training data and makes the score optimistic again.",
+        "Reporting the 0.93 because a high training score shows the line fits catches scoring on the rows the model was fitted on, which rewards memorising."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t5",
+      "kind": "choice",
+      "title": "Types of regression: multiple and polynomial",
+      "step": 5,
+      "idea": "Polynomial models of degree 1, 2 and 12 are fitted to the same split, with train and test R² given for each (for example 0.41/0.39, 0.86/0.84 and 0.95/0.52). The question asks which degree to keep. The right answer is degree 2, the best test score with a small gap to its training score.",
+      "checks": [
+        "Keeping degree 12 for its highest training score catches choosing by the training score, the overfit pattern of training score rising while test score falls.",
+        "Keeping degree 1 because its two scores are the closest catches reading a small gap as a good fit when both scores are poor, the underfit pattern."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t6",
+      "kind": "choice",
+      "title": "Classification with logistic regression",
+      "step": 6,
+      "idea": "Fitting LogisticRegression() with its defaults on unscaled ticket features to predict escalated or not prints a ConvergenceWarning. The question asks what the warning means and what to do. The right answer is that the lbfgs solver hit its default limit of 100 iterations: raise max_iter (or scale the features) and keep the model.",
+      "checks": [
+        "Treating the warning as broken code and rewriting the cell catches the misreading the page names: the code is fine and the solver ran out of steps.",
+        "Switching to LinearRegression because logistic regression predicts numbers catches being fooled by the name, where the page calls LogisticRegression a classifier."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t7",
+      "kind": "python",
+      "title": "Applications of classification",
+      "step": 7,
+      "idea": "The reader writes baseline_accuracy(labels) that returns the accuracy of always predicting the most common label: its count divided by the number of labels. Example: baseline_accuracy([1] * 10 + [0] * 990) returns 0.99, the page's never-fraud score.",
+      "checks": [
+        "Ten frauds in 1,000 payments give 0.99, the score that makes a 95 percent accuracy look worse than doing nothing.",
+        "When class 1 is the common one, as in [1, 1, 1, 0], the result is 0.75, which fails hard-coding class 0 as the common class.",
+        "Three string classes such as low, medium and high give the share of the most common one, which fails assuming the labels are two classes or numbers."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    }
+  ]
+}
