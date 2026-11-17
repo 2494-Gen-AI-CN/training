@@ -819,7 +819,7 @@
           ]
         }
       ],
-      "notes": "WEEK ARC (D-0085): week 6 is a NOTEBOOK WEEK. Every day is demoFormat notebook: the demo is one prepared Jupyter notebook per day in the demo repo (notebooks/week-06/NN_<weekday>_<slug>.ipynb on main) that the trainer runs live in Google Colab cell by cell; no walkthrough, no block, no thread rung, no prep-branch commit. These are code days, not concept days: the notes pages keep the normal code floor and their examples use the libraries and kinds of datasets the notebooks use (scikit-learn, scipy, numpy, matplotlib; TensorFlow/Keras on D4-D5 only), as Colab ships them. The runtime is Colab with the Google account every learner has had since week 4 (D-0075), not the course Python 3.15 (TensorFlow has no 3.15 wheel), so version stamps are Colab's. Style reference: demo-repo/notebooks/week-06/02_tuesday_trees_and_clustering.ipynb (harness/templates/notebook-style.md). Mon W6D1 was delivered by the substitute trainer on Mon 2026-11-16 from his own notebook (regression and classification); that file is not in the repo, so D1 gets a notes page and a runbook written as a record of the official subtopics, and a notebook authored to match. Tue W6D2 uses the substitute's 02_tuesday_trees_and_clustering.ipynb as is; it also covers decision trees, hierarchical clustering and linkage, the silhouette score, feature scaling and DBSCAN beyond the three curriculum subtopics, so the D2 page and runbook cover those too. No thread is in scope and no P1 spec exists yet (the curriculum image marks Project 1 as starting Wed). No exit-criteria map: qc4 is not published (backfilled when Revature publishes it). TF2/Keras appears on D4-D5 only. CURRENCY RISK: 'graphs, sessions, TensorBoard' and 'constants, placeholders, variables' are TF1 concepts. Teach TF2 eager execution + tf.function, tf.constant/tf.Variable, Keras model building; mention Session/placeholder only as history. Verify against current tensorflow.org guides."
+      "notes": "WEEK ARC (D-0085): week 6 is a NOTEBOOK WEEK. Every day is demoFormat notebook: the demo is one prepared Jupyter notebook per day in the demo repo (notebooks/week-06/NN_<weekday>_<slug>.ipynb on main) that the trainer runs live in Google Colab cell by cell; no walkthrough, no block, no thread rung, no prep-branch commit. These are code days, not concept days: the notes pages keep the normal code floor and their examples use the libraries and kinds of datasets the notebooks use (scikit-learn, scipy, numpy, matplotlib; TensorFlow/Keras on D4-D5 only), as Colab ships them. The runtime is Colab with the Google account every learner has had since week 4 (D-0075), not the course Python 3.15 (TensorFlow has no 3.15 wheel), so version stamps are Colab's. Style reference: demo-repo/notebooks/week-06/02_tuesday_trees_and_clustering.ipynb (harness/templates/notebook-style.md). Mon W6D1 was delivered by the substitute trainer on Mon 2026-11-16 from his own notebook (regression and classification); that file is not in the repo, so D1 gets a notes page and a runbook written as a record of the official subtopics, and a notebook authored to match. Tue W6D2 uses the substitute's 02_tuesday_trees_and_clustering.ipynb as is; it also covers decision trees, hierarchical clustering and linkage, the silhouette score, feature scaling and DBSCAN beyond the three curriculum subtopics, so the D2 page and runbook cover those too. No thread is in scope and no P1 spec exists yet (the curriculum image marks Project 1 as starting Wed). No exit-criteria map: qc4 is not published (backfilled when Revature publishes it). TF2/Keras appears on D4-D5 only. CURRENCY RISK: 'graphs, sessions, TensorBoard' and 'constants, placeholders, variables' are TF1 concepts. Teach TF2 eager execution + tf.function, tf.constant/tf.Variable, Keras model building; mention Session/placeholder only as history. Verify against current tensorflow.org guides. DEPTH BAR (D-0086, 2026-11-17): fundamentals first in the room. The W6D3-W6D5 runbooks carry a Core path paragraph and their notebooks mark going-deeper subsections; the notes pages stay as the deeper reference."
     },
     {
       "week": 7,
@@ -827,7 +827,7 @@
       "phase": "ml",
       "project": "P1",
       "theme": "TensorFlow",
-      "notes": "Curriculum names TFLearn, which is unmaintained. Research briefs must verify current status and map each TFLearn topic to its Keras/TF2 equivalent before authoring.",
+      "notes": "WEEK ARC (D-0088, after D-0085): week 7 is a NOTEBOOK WEEK of three teaching days (Thu and Fri are US Thanksgiving holidays). Every day is demoFormat notebook: one prepared Jupyter notebook per day in the demo repo (notebooks/week-07/NN_<weekday>_<slug>.ipynb on main), run live in Google Colab cell by cell, in the style of harness/templates/notebook-style.md; no walkthrough, no block, no thread rung, no prep-branch commit. The runtime is Colab (TensorFlow has no wheel for the course Python 3.15), so version stamps are Colab's. Week 6 ended on one sigmoid neuron built, compiled and fitted in Keras (W6D5); week 7 starts from it. No exit-criteria map while qc4 is unpublished and no P1 spec yet. Curriculum names TFLearn, which is unmaintained. Research briefs must verify current status and map each TFLearn topic to its Keras/TF2 equivalent before authoring. DEPTH BAR (D-0086): fundamentals first. For every subtopic teach the core idea, one worked example and the answer a learner would give in an interview; implementation corners (API edge cases, parameter tuning, variants of a method, internals of the framework) are named in one sentence at most or left out. The plan's day shapes and every runbook separate a core path (what the room must leave with) from going-deeper parts that are run without discussion or skipped.",
       "days": [
         {
           "day": 1,
@@ -835,9 +835,10 @@
           "id": "w07d1",
           "kind": "lesson",
           "gate": "light",
-          "demoFormat": "walkthrough",
+          "demoFormat": "notebook",
           "status": "planned",
           "title": "Multi-layer perceptrons, backprop & digit classifier",
+          "notes": "DAY SHAPE (D-0087, fundamentals the earlier weeks left out; all at the D-0086 depth bar): (1) OPEN with the loss function before any backprop: one number that says how wrong the model is, mean squared error when the answer is a number, cross-entropy when it is a class, lower is better; then gradient descent as repeated small steps downhill on that number, with the learning rate as the step size. Backprop is then 'how each weight learns which way is downhill', taught as intuition with one tiny worked example, no chain-rule derivation. (2) The limit of a single perceptron is shown on XOR by name: four points no straight line separates, solved by one hidden layer. (3) The MLP digit classifier trains with a validation split, and the room reads the training and validation curves together: both falling is learning, validation rising while training falls is overfitting. Early stopping is named in one sentence. (4) The classifier's evaluation shows a confusion matrix on the ten digits (which digits get mistaken for which), then precision and recall defined on one digit against the rest, and why accuracy misleads on an unbalanced problem.",
           "subtitle": "limits of single perceptrons · MLP · backprop algorithm · MLP digit classifier · TensorBoard",
           "subtopics": [
             "Limitations of single perceptrons",
@@ -854,7 +855,7 @@
           "id": "w07d2",
           "kind": "lesson",
           "gate": "light",
-          "demoFormat": "walkthrough",
+          "demoFormat": "notebook",
           "status": "planned",
           "title": "Autoencoders, RBM & the Keras Sequential API",
           "subtitle": "collaborative filtering with RBM · autoencoders · composing models · sequential composition",
@@ -872,9 +873,10 @@
           "id": "w07d3",
           "kind": "lesson",
           "gate": "light",
-          "demoFormat": "walkthrough",
+          "demoFormat": "notebook",
           "status": "planned",
           "title": "Functional API, layers, batch norm, saving & custom training",
+          "notes": "DAY SHAPE (D-0087, D-0086 depth bar): where the training process is customised, name regularisation and dropout in one or two sentences (ways to hold a network back from memorising its training rows, the overfitting read on W7D1's curves); no demo of either. Checkpoints stay at name level beside saving and loading.",
           "subtitle": "functional composition · predefined layers · batch normalization · save/load · custom training loops · TensorBoard callbacks",
           "subtopics": [
             "Functional composition",
