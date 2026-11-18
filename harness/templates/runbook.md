@@ -43,14 +43,33 @@ Exit criteria mapped to today
 
 ## Facilitation 1: <concept subtopic> (30 min)
 
+<!-- D-0089: this block is the presenter's LECTURE NOTES for the subtopic, not an activity plan. A trainer who has
+not opened the brief or the notes page can teach the subtopic from this section alone. Every fact comes from the
+brief or the notes page. Never name an activity without its content ("draw the timeline and fill it as you talk",
+"discuss the history", "ask the first two questions below"): write the content itself. -->
+
 **Goal:** what the room can do after this block (one sentence).
-**Sequence:**
-1. (5 min) Board plan: ...
-2. (10 min) Ask the room: "...?" → steer toward: ...
-3. (10 min) Pairs: ... ; debrief: ...
-4. (5 min) What they write down: ...
-**Ask the room:** ≥2 questions with the answer you are steering toward.
+**Topics introduced, in order:** the 2–6 ideas or terms that are new to the room here, a few words each; one `### Topic` below per item.
+
+### Topic 1: <idea or term> (8 min)
+
+- **Teach:** 3–6 points, each a sentence or two the trainer can say as written. In this order: the term defined in one plain sentence; the problem it solves or why it exists; how it works; one concrete example, number or date from the brief.
+- **On screen:** the literal text, table rows or code typed or pasted on the shared screen, in order, written so it can be pasted (D-0090: delivery is remote; there is no board, so no drawing. The Setup check names the scratch text cell or file it goes in).
+- **Ask:** "...?" → steer toward: ... → if the room says <the likely wrong answer>: ...
+- **Bridge:** one sentence that leads into the next topic.
+
+### Topic 2: <idea or term> (7 min)
+
+(same four labels)
+
+### Activity: <what the room does> (10 min)
+
+At most one per block, placed after the topic it practises. Remote, and lecture is lecture (D-0090, D-0093): solo work, answers typed in the chat and sent together on the trainer's word; no pairs, no breakout room. The task as the trainer says it, the materials written out in full (every line, card or row), the answer key, and one debrief line per answer.
+
 **Misconception to surface:** from the brief, and how you surface it.
+**What the room writes down:** the lines themselves, not a description of them.
+
+Topic and Activity minutes sum to the heading's minutes.
 
 ## Demo: 01-<slug>.md
 
@@ -77,9 +96,12 @@ subtopics imply and say so in one line under the heading.
 
 ### 1. <section heading as the notebook has it> (25 min)
 
+- Teach: the idea this section introduces, in 2–4 sentences (D-0089): the term defined plainly, why it works, what the room should be able to say after the cells.
 - Say: 2–4 lines.
 - Predict before running: "...?" → answer: ...
 - Try changing: `<parameter>` to ...; the room should see ...
+- Trap: the mistake the room or the trainer is likely to make here, and how it shows (D-0092).
+- If asked: "<the likeliest hard question>" → the answer in one to three sentences, from the brief or the notes page. One or two of these; the full list is in `crib-sheet.md`.
 
 ### Recap and Quick check (10 min)
 
