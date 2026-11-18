@@ -2,7 +2,7 @@
 kind: official
 project: P1
 title: Project 1: Neural Network Families
-status: draft
+status: published
 handIn: projects/P1/
 checkpoints:
 - w08d5 Showcase
