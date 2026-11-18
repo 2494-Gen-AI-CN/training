@@ -34,7 +34,7 @@
     ]
   },
   "learnerRepo": {
-    "_comment": "Learner repo convention (D-0051, supersedes D-0037): one PUBLIC repository per trainee inside the cohort organisation, created in the W1D2 Git block and kept for the whole course; sprint / project work is handed in there, in <week-dir>/hackathon/ (D-0068). Reaches the runbook author and critic prompts through args_for.py and day-fanout.js (learnerCtx). The trainer's live demo repository is demoRepo below, a different repository. Change via a decision entry.",
+    "_comment": "Learner repo convention (D-0051, supersedes D-0037): one PUBLIC repository per trainee inside the cohort organisation, created in the W1D2 Git block and kept for the whole course; sprint / project work is handed in there: a sprint in <week-dir>/hackathon/ (D-0068), an official project in the folder its spec names, projects/P<n>/ (D-0072, D-0094). Reaches the runbook author and critic prompts through args_for.py and day-fanout.js (learnerCtx). The trainer's live demo repository is demoRepo below, a different repository. Change via a decision entry.",
     "org": "2494-Gen-AI-CN",
     "name": "FirstnameLastname",
     "nameRule": "the trainee's first and last name as on the class roster, run together in PascalCase, ASCII letters and digits; a hyphen or underscore between the names is tolerated; a clash gets a trailing digit",
@@ -43,6 +43,7 @@
     "layout": {
       "root": "hello.py, .gitignore and README.md from the W1D2 Git block stay at the top level",
       "hackathon": "<week-dir>/hackathon/ for the week's hackathon deliverable, due on the week's last teaching day unless the trainer says otherwise",
+      "official": "projects/P<n>/ (the hand-in folder the project's spec names) for an official project, due at its showcase",
       "codeAlong": "optional: code-along/<week-dir>/<day-slug>/ for the trainee's own copy of what was typed in class; never marked",
       "scratch": "scratch/ for explorations; never marked"
     },

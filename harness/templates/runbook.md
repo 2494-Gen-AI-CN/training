@@ -15,7 +15,7 @@ Notes page: [{{rel}}.html]({{siteUrl}}weeks/{{rel}}.html) · Walkthroughs: [../d
 | Walkthrough 02-<slug>.md | 75 | ../demos/02-<slug>.md |
 | Break | 10 | — |
 | Notes page handoff | 10 | docs/weeks/… |
-| Sprint / project work | 80 | trainee's learner repo, `<week-dir>/hackathon/` |
+| Sprint / project work | 80 | trainee's learner repo: `<week-dir>/hackathon/` for a sprint, the spec's hand-in folder for an official project |
 | Wrap-up / questions | 20 | — |
 | **Total** | **360** | |
 
@@ -116,7 +116,7 @@ subtopics imply and say so in one line under the heading.
 ## Sprint / project work
 
 - What to work on: the current sprint or official project spec on the site's Projects page, named in one sentence (D-0068).
-- Where trainees hand in: `<week-dir>/hackathon/` (the week dir of `{{rel}}`) in their own public `<FirstnameLastname>` repository (D-0051), committed and pushed to `main`.
+- Where trainees hand in: for a sprint, `<week-dir>/hackathon/` (the week dir of `{{rel}}`); for an official project, the hand-in folder its spec names (D-0094), never the week's hackathon folder. Either way in their own public `<FirstnameLastname>` repository (D-0051), committed and pushed to `main`.
 - Where trainees get stuck: ≥2 likely points, each with the nudge you give.
 - How you circulate: ...
 

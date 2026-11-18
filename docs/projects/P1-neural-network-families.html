@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project 1: Neural Network Families | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../assets/css/style.css?v=20261116">
+<script src="../assets/js/theme.js?v=20261116"></script>
+<style>
+  .pj-main { padding-top: 0; }
+  .pj-page { max-width: 980px; margin: 0 auto; padding-top: 30px; padding-bottom: 50px; }
+  .pj-page .lede { max-width: none; margin: 0 0 10px; }
+  .pj-page .lede h1 { font-size: 40px; line-height: 1.1; margin: 0 0 10px; letter-spacing: -.5px; }
+  .pj-page .lede .meta { display: flex; gap: 14px 18px; flex-wrap: wrap; align-items: center; color: var(--ink-soft); font-size: 15px; }
+  .pj-page .lede .meta b { color: var(--ink); }
+  .pj-page .lede p { font-size: 18px; line-height: 1.6; color: var(--ink-soft); margin: 14px 0 0; }
+  .pj-page .step { opacity: 1; min-height: 0; justify-content: flex-start; padding: 30px 0 10px; border-left: 0; margin-left: 0; padding-left: 0; }
+  .pj-page [id] { scroll-margin-top: 72px; }
+  .pj-page .step h2 { font-size: 28px; line-height: 1.15; margin: 6px 0 12px; }
+  .pj-page .step h3 { font-size: 19px; line-height: 1.3; margin: 22px 0 6px; }
+  .pj-page .step ul, .pj-page .step ol { margin: 0 0 14px; padding-left: 22px; font-size: 16px; line-height: 1.55; }
+  .pj-page .step li { margin: 0 0 5px; }
+  .pj-page .step p { font-size: 16px; line-height: 1.6; color: var(--ink-soft); margin: 0 0 12px; }
+  .pj-page .step code, .pj-facts code { font-family: var(--mono); font-size: .9em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+  .pj-page .step pre { background: var(--code-bg); padding: 12px 14px; border-radius: 8px; overflow-x: auto; font-size: 14px; }
+  .pj-page .step pre code { background: none; padding: 0; }
+  .pj-page .step table { width: 100%; border-collapse: collapse; font-size: 15.5px; line-height: 1.5; margin: 0 0 18px; }
+  .pj-page .step th, .pj-page .step td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; vertical-align: top; }
+  .pj-page .step thead th { background: var(--surface-2); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); }
+  .pj-facts th { width: 150px; background: var(--surface-2); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); }
+  .pj-status { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: 2px 8px; border-radius: 20px; border: 1px solid var(--line); white-space: nowrap; vertical-align: middle; }
+  .pj-status.open, .pj-status.published { color: var(--good-ink); border-color: var(--good-line); background: var(--good-soft); }
+  .pj-status.draft { color: var(--warn-ink); border-color: var(--warn-line); background: var(--warn-soft); }
+  .pj-status.closed { color: var(--dim); }
+  .pj-draft { border-left: 3px solid var(--warn-line); padding-left: 12px; }
+  .pj-facts .pj-checkpoints { margin: 0; padding-left: 18px; }
+  .pj-checkpoints li { font-weight: 600; color: var(--ink); }
+  .pj-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin: 24px 0 0; }
+  .pj-card, .pj-slot { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+  .pj-card h2, .pj-slot h2 { font-size: 22px; line-height: 1.2; margin: 0; }
+  .pj-card .pj-when { color: var(--ink-soft); font-size: 14px; margin: 0; }
+  .pj-card .pj-status { align-self: flex-start; }
+  .pj-card .fr-btn { margin-top: auto; align-self: flex-start; }
+  .pj-card.pj-closed { opacity: .7; }
+  .pj-slot { opacity: .75; }
+  .pj-slot .ritual { align-self: flex-start; }
+  .pj-intro p, .pj-empty { font-size: 17px; line-height: 1.65; color: var(--ink-soft); margin: 0 0 12px; }
+  @media (max-width: 700px) { .pj-page .lede h1 { font-size: 30px; } .pj-facts th { width: auto; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="../exit-criteria/index.html">Exit criteria</a>
+    <a class="topnav" href="index.html">Projects</a>
+  </nav>
+  <div class="topbar-right"></div>
+</div>
+
+<main class="lesson2 pj-main" id="reading-main">
+  <article class="reading-col pj-page">
+    <div class="lede">
+      <h1>Project 1: Neural Network Families</h1>
+      <div class="meta"><span><b>Project 1</b></span><span>Weeks 6–8</span><span class="pj-status draft">Draft</span></div>
+      <p class="pj-draft">Draft: this spec is still being written and can change before it is published.</p>
+      <div class="pj-intro">
+<p>Working on your own, pick a real dataset and take it through the whole machine learning workflow with a neural network built in TensorFlow / Keras: problem, dataset, preprocessing, model, training, evaluation, improvement, presentation. The work runs to the showcase on Friday 4 December 2026.</p>
+      </div>
+    </div>
+
+    <section class="step" id="at-a-glance">
+      <h2>At a glance</h2>
+      <table class="pj-facts">
+        <tbody>
+          <tr><th scope="row">Project</th><td>Project 1 (P1)</td></tr>
+          <tr><th scope="row">Weeks</th><td>Weeks 6–8</td></tr>
+          <tr><th scope="row">Checkpoints</th><td><ul class="pj-checkpoints">
+            <li>Week 8 · Day 5 — Fri Dec 4, 2026 — Showcase</li>
+          </ul></td></tr>
+          <tr><th scope="row">Hand-in</th><td><code>projects/P1/</code> in your learner repository</td></tr>
+          <tr><th scope="row">Status</th><td>Draft</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="step" id="goals-and-objectives">
+      <h2>Goals and objectives</h2>
+<p>Goal: show a neural network trained, measured and explained from start to finish, by you.</p>
+<p>By the showcase you can:</p>
+<ul>
+<li>Frame a prediction problem and say who would use the model.</li>
+<li>Prepare data so a network can read it.</li>
+<li>Choose an architecture and give a reason for its layers, activations, output layer, loss and optimizer.</li>
+<li>Read the training and validation curves and say whether the model is overfitting.</li>
+<li>Evaluate with the metrics that fit the problem, and look at the examples the model gets wrong.</li>
+<li>Make one change, measure it, and say whether it helped.</li>
+<li>Say plainly what the model cannot do.</li>
+</ul>
+    </section>
+
+    <section class="step" id="choose-one">
+      <h2>Choose one</h2>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Model</th>
+<th>What to report</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tabular classification or regression (customer churn, loan default, house prices, medical risk)</td>
+<td>A Dense network</td>
+<td>Classification: accuracy, precision, recall, F1 and a confusion matrix. Regression: MSE and MAE, a predicted-against-actual plot and the rows with the largest errors.</td>
+</tr>
+<tr>
+<td>Image classification (clothing, letters, plants, product defects)</td>
+<td>A Dense network on flattened pixels, or a CNN built from <code>Conv2D</code>, <code>MaxPooling2D</code>, <code>Flatten</code> and <code>Dense</code></td>
+<td>Accuracy, a confusion matrix and a grid of misclassified images.</td>
+</tr>
+<tr>
+<td>Autoencoder (image denoising, unusual transactions, sensor faults)</td>
+<td>A Dense autoencoder</td>
+<td>Originals beside their reconstructions, the reconstruction error, and how you chose the anomaly threshold if you use one.</td>
+</tr>
+<tr>
+<td>Text classification (spam, review sentiment, news topics, support tickets)</td>
+<td>TF-IDF features into a Dense network</td>
+<td>Accuracy, precision, recall, F1, a confusion matrix, and examples of false positives and false negatives.</td>
+</tr>
+</tbody>
+</table>
+<p>Optional stretch for text: build the same classifier a second time with a <code>TextVectorization</code> layer and an <code>Embedding</code> layer, and compare it with the TF-IDF model. The Keras documentation covers both layers.</p>
+    </section>
+
+    <section class="step" id="dataset">
+      <h2>Dataset</h2>
+<ul>
+<li>Real or realistic, with a clear problem behind it and a target to predict. An autoencoder needs no target.</li>
+<li>It loads in Colab from code, with no manual upload: a Keras built-in dataset, a scikit-learn <code>fetch_</code> loader, TensorFlow Datasets, or a public CSV that pandas reads from a URL.</li>
+<li>Small enough that one training run finishes in a few minutes on a CPU runtime. A sample of a large dataset is fine; say how you took it.</li>
+<li>Not one the course notebooks have already used: no MNIST digits, no breast cancer set, no 8 by 8 digits.</li>
+</ul>
+    </section>
+
+    <section class="step" id="build">
+      <h2>Build</h2>
+<p>One notebook that runs from top to bottom, with a markdown cell before each part saying what it does and what you found.</p>
+<ul>
+<li>Problem statement: what you predict or classify, why it matters, who would use the model.</li>
+<li>Dataset: the source and a link, the number of examples, what the columns or classes are, and a few sample records, images or texts.</li>
+<li>Preprocessing: for tabular data, missing values, encoding of categories, scaling and the split; for images, normalisation and the shape the model reads; for text, how it is vectorised and the vocabulary size.</li>
+<li>Model: <code>model.summary()</code>, and a reason for the kind of network, the number and type of layers, the activations, the output layer, the loss and the optimizer.</li>
+<li>Training: epochs, batch size, the validation split, any callback, and the training and validation curves on one chart.</li>
+<li>Evaluation: the metrics for your option from the table above, and an error analysis: which examples the model gets wrong and what they have in common.</li>
+<li>One improvement attempt: change one thing (layers or units, the learning rate, dropout, batch normalization, early stopping, the preprocessing, the threshold, or a second architecture), and show before and after on the same validation data with a sentence on why it did or did not help.</li>
+<li>Limitations and next steps: what the model does well, where it struggles, whether the dataset is biased or too small, and what you would do with more time or data.</li>
+</ul>
+    </section>
+
+    <section class="step" id="rules">
+      <h2>Rules</h2>
+<ul>
+<li>TensorFlow / Keras, in Google Colab on a CPU runtime.</li>
+<li>Hold out a test set at the start and use it once, at the end. Every choice along the way is made on the validation data.</li>
+<li>The notebook runs with Runtime &gt; Run all in a fresh runtime, without edits.</li>
+<li>Every number on a slide comes from a cell in the notebook.</li>
+<li>Set the random seeds so a rerun lands close to the numbers you present.</li>
+<li>The work is your own. Talking a problem through with someone is fine; sharing a notebook is not.</li>
+</ul>
+    </section>
+
+    <section class="step" id="presentation">
+      <h2>Presentation</h2>
+<ul>
+<li>When: Friday 4 December 2026, on the call.</li>
+<li>Length: 5 to 7 minutes each, questions included.</li>
+<li>Format: a slide deck, with the notebook open in another tab for questions.</li>
+<li>Slide flow: title, problem statement, dataset, preprocessing, model architecture, results and metrics, error analysis, improvement attempt, limitations and next steps, questions.</li>
+</ul>
+    </section>
+
+    <section class="step" id="hand-in">
+      <h2>Hand-in</h2>
+<p>Push to <code>projects/P1/</code> in your learner repository before the showcase: the notebook with its outputs kept, a README (the problem, a link to the dataset, how to run the notebook, a table of your results), the slide deck, and the saved <code>.keras</code> model if it is a few megabytes or less.</p>
+    </section>
+
+    <section class="step" id="what-we-look-for">
+      <h2>What we look for</h2>
+<ul>
+<li>The workflow is complete: every part of the build is in the notebook, and it reruns.</li>
+<li>You can explain it: each choice has a reason, and you can say what the curves and the wrong predictions tell you.</li>
+<li>The improvement is measured honestly, including when it did not help.</li>
+</ul>
+    </section>
+  </article>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training</footer>
+</body>
+</html>

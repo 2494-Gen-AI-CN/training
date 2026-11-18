@@ -99,7 +99,8 @@ class LearnerRepoTests(unittest.TestCase):
             self.assertTrue(self.lr.get(k), f"learnerRepo lacks {k}")
         self.assertIn("PascalCase", self.lr["nameRule"])
         self.assertIn("hyphen or underscore", self.lr["nameRule"], "the rule tolerates a separator between the names")
-        self.assertEqual({"root", "codeAlong", "scratch", "hackathon"}, set(self.lr["layout"]), "no exercises folder (D-0068)")
+        self.assertEqual({"root", "codeAlong", "scratch", "hackathon", "official"}, set(self.lr["layout"]),
+                         "no exercises folder (D-0068); official projects have their own folder (D-0094)")
         self.assertIn(self.lr["createdIn"], {d["id"] for w, d, rel in all_days()}, "createdIn must be a curriculum day id")
 
     def test_args_carry_it_to_the_workflows(self):

@@ -161,12 +161,13 @@ const dayHeader = (d) =>
   `Today's date for stamps: ${A.today}. Python ${CFG.python}. LLM config for this week: ${J(LLM)}.\n` +
   `Root: ${ROOT}. Metrics: ${J(M)}.\n`
 // Learner repo convention (D-0051, supersedes D-0037): config.json learnerRepo via args_for.py. The trainee's repo
-// is where sprint / project work is handed in, in <week-dir>/hackathon/ (D-0068). Goes to the runbook author and
+// is where sprint / project work is handed in: a sprint in <week-dir>/hackathon/ (D-0068), an official project in
+// the folder its spec names (layout.official, D-0094). Goes to the runbook author and
 // critic only; research, demo and notes prompts never see it, and the trainer's demo-thread repo keeps its own name.
 const LR = CFG.learnerRepo
 const learnerCtx = (d) => !LR ? '' :
   `LEARNER REPO (D-0051, binding): every trainee has ONE ${LR.visibility} GitHub repository ${LR.org}/<${LR.name}> (${LR.nameRule}), created in the ${LR.createdIn} Git block and kept for the whole course. ` +
-  `Sprint / project work (D-0068) is handed in there, in ${LR.layout.hackathon}: ${LR.handIn}. Never ask for a new repository or a personal-account repository. ` +
+  `Sprint / project work (D-0068) is handed in there: a sprint in ${LR.layout.hackathon}; an official project (D-0094) in ${LR.layout.official}, never in the week's hackathon folder: ${LR.handIn}. Never ask for a new repository or a personal-account repository. ` +
   `Code-along copies of the demos go in ${LR.layout.codeAlong}; ${LR.layout.scratch}. ` +
   `The trainer's live demo repository ${(CFG.demoRepo || {}).url || ''} is a different repository. Write "<${LR.name}>" as the placeholder for the trainee's own repository.\n`
 // Exit criteria (D-0063): the week's group and the plan's rows mapped to this day. Reaches the research (incl. depth),
