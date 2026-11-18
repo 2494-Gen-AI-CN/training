@@ -745,7 +745,8 @@
             "Applications of regression",
             "Types of regression, fitting the line",
             "Applications of classification"
-          ]
+          ],
+          "taught": "2026-11-16"
         },
         {
           "day": 2,
@@ -761,7 +762,8 @@
             "Unsupervised learning - clustering",
             "Distance between clusters",
             "k-means algorithm"
-          ]
+          ],
+          "taught": "2026-11-17"
         },
         {
           "day": 3,
