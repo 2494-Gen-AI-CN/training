@@ -781,7 +781,8 @@
             "CNN and image classification",
             "Artificial neural network, layers",
             "Natural language processing - techniques, components, applications"
-          ]
+          ],
+          "taught": "2026-11-18"
         },
         {
           "day": 4,
@@ -799,7 +800,8 @@
             "Implementing basic graphs",
             "Reducing tensors of arbitrary shape",
             "Graphs, sessions, TensorBoard"
-          ]
+          ],
+          "taught": "2026-11-19"
         },
         {
           "day": 5,
