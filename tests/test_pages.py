@@ -13,6 +13,7 @@ from helpers import DOCS, FORBIDDEN_RE, HARNESS, PAGE_SCRIPT_ORDER, ROOT, Parsed
 sys.path.insert(0, str(HARNESS))
 import build_index  # noqa: E402
 import exit_criteria  # noqa: E402
+import notebook_check  # noqa: E402
 import notes_check  # noqa: E402
 
 EXEMPLAR = HARNESS / "templates" / "day.exemplar.html"
@@ -125,6 +126,31 @@ class ExemplarTests(unittest.TestCase):
 
 
 class AuthoredPageTests(unittest.TestCase):
+    def test_notebook_days_link_their_notebook_in_colab(self):
+        """D-0098: a notebook day's lede meta carries one span.notebook, the direct Colab link to the day's notebook
+        (the D-0097 URL); no other day carries the span."""
+        repo = load_json(HARNESS / "config.json")["demoRepo"]
+        base = f"https://colab.research.google.com/github/{repo['org']}/{repo['name']}/blob/{repo['branch']}/"
+        for w, d, rel in authored_days():
+            with self.subTest(rel=rel):
+                page = ParsedPage(DOCS / "weeks" / f"{rel}.html")
+                spans = page.root.find("div", "lede").find("div", "meta").find_all("span", "notebook")
+                if d["demoFormat"] != "notebook":
+                    self.assertEqual([], spans, "only a notebook day carries span.notebook (D-0098)")
+                    self.assertNotIn("colab.research.google.com/github/", page.raw)
+                    continue
+                self.assertEqual(1, len(spans), "a notebook day's lede meta carries one span.notebook (D-0098)")
+                link = spans[0].find("a")
+                self.assertIsNotNone(link)
+                self.assertEqual("Open the notebook in Colab", link.text().strip())
+                self.assertEqual(("_blank", "noopener"), (link.attrs.get("target"), link.attrs.get("rel")))
+                href = link.attrs.get("href", "")
+                prefix = f"{base}notebooks/week-{w['week']:02d}/{notebook_check.day_prefix(d['day'])}_"
+                self.assertRegex(href, re.compile(re.escape(prefix) + r"[a-z0-9_]+\.ipynb$"))
+                self.assertEqual(1, page.raw.count("colab.research.google.com/github/"), "the meta link is the page's only notebook link")
+                if notebook_check.demo_repo_dir().is_dir():   # the clone is gitignored: the exact file name needs it
+                    self.assertEqual(base + notebook_check.notebook_rel(w["week"], d["day"], d["slug"]), href)
+
     def test_every_authored_page(self):
         """Every authored or live day's page (D-0052)."""
         M = metrics()["notes"]

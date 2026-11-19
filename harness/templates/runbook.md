@@ -121,10 +121,14 @@ row per part of the pass; a break, lunch or Facilitation block between two parts
 section is a short overview, directly above part 1. Each row then gets a "## Notebook part k: §a–§b (M min)" section,
 placed where it runs in the day, whose timed "###" sections sum to the row's minutes. While the notebook is not
 written yet, time the sections the subtopics imply and say so in one line under the overview heading.
+D-0097: the direct Colab link to the notebook (https://colab.research.google.com/github/<org>/<repo>/blob/main/notebooks/week-WW/NN_<weekday>_<slug>.ipynb,
+org / repo / branch from config.json demoRepo) appears three times: on line 3 as " · Colab: [<file>.ipynb](<link>)" just before the
+Crib sheet link, in the Setup check step where learners open the notebook ("Paste the direct link into the chat for anyone who
+gets lost: <link>"), and in the Runtime field below.
 
 ## Notebook: NN_<weekday>_<slug>.ipynb
 
-**Notebook:** `notebooks/week-WW/NN_<weekday>_<slug>.ipynb` on `main` of the demo repo · **Runtime:** Google Colab (File > Open notebook > GitHub); run the setup cell first
+**Notebook:** `notebooks/week-WW/NN_<weekday>_<slug>.ipynb` on `main` of the demo repo · **Runtime:** Google Colab (File > Open notebook > GitHub, or the direct link https://colab.research.google.com/github/<org>/<repo>/blob/main/notebooks/week-WW/NN_<weekday>_<slug>.ipynb); run the setup cell first
 **Time:** the total minutes, and the parts it is split into · **Stop point if long:** after section n; the rest is picked up ...
 
 ## Notebook part 1: §1–§3 (55 min)

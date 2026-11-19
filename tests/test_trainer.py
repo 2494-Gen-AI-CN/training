@@ -65,6 +65,11 @@ class TrainerTests(unittest.TestCase):
                     self.assertRegex(text, re.compile(r"^### .+\(\d+ min\)", re.M), "the Notebook section times its sections")
                     if (w["week"], d["day"]) >= D0096_FROM:  # the pass is split into parts placed where they run
                         self.assertRegex(text, re.compile(r"^## Notebook part \d+: .+\(\d+ min\)\s*$", re.M), "notebook day needs its ## Notebook part sections (D-0096)")
+                        nb = re.search(r"^## Notebook: (\S+\.ipynb)", text, re.M).group(1)
+                        repo = CONFIG["demoRepo"]
+                        colab = f"https://colab.research.google.com/github/{repo['org']}/{repo['name']}/blob/{repo['branch']}/notebooks/week-{w['week']:02d}/{nb}"
+                        self.assertIn(f"]({colab})", head, "line 3 links the notebook in Colab (D-0097)")
+                        self.assertGreaterEqual(text.count(colab), 3, "the Colab link is also in the Setup check and the Notebook overview (D-0097)")
                 elif week_demos(w["dir"]).is_dir():
                     plan_file = HARNESS / "plans" / f"week-{w['week']:02d}.md"
                     blocks = plan_check.day_rows(plan_check.load_plan(plan_file), d["id"])["blockRows"] if plan_file.is_file() else []
