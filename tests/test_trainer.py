@@ -23,6 +23,8 @@ REQUIRED = ["## Day at a glance", "## Objectives", "## Setup check", "## Notes p
 SPRINT = "## Sprint / project work"
 OLD_EXERCISE = "## Exercise briefing"
 PRACTICE_KEYS = {"practice.py", "practice_cases.py"}
+# D-0096: runbooks from W6D3 (2026-11-18) follow presentation order and carry content notes, not a script.
+D0096_FROM = (6, 3)
 
 
 @unittest.skipUnless(TRAINER.exists(), "trainer/ private repo not cloned here")
@@ -61,6 +63,8 @@ class TrainerTests(unittest.TestCase):
                     self.assertNotRegex(text, re.compile(r"^## Demo", re.M), "demoFormat notebook: no Demo sections")
                     self.assertRegex(text, re.compile(r"^## Notebook: \d{2}_[a-z]+_[a-z0-9_]+\.ipynb\s*$", re.M), "notebook day needs its ## Notebook section")
                     self.assertRegex(text, re.compile(r"^### .+\(\d+ min\)", re.M), "the Notebook section times its sections")
+                    if (w["week"], d["day"]) >= D0096_FROM:  # the pass is split into parts placed where they run
+                        self.assertRegex(text, re.compile(r"^## Notebook part \d+: .+\(\d+ min\)\s*$", re.M), "notebook day needs its ## Notebook part sections (D-0096)")
                 elif week_demos(w["dir"]).is_dir():
                     plan_file = HARNESS / "plans" / f"week-{w['week']:02d}.md"
                     blocks = plan_check.day_rows(plan_check.load_plan(plan_file), d["id"])["blockRows"] if plan_file.is_file() else []
@@ -68,6 +72,15 @@ class TrainerTests(unittest.TestCase):
                     for b in blocks:
                         self.assertRegex(text, re.compile(rf"^## Demo: {re.escape(b['name'])}\.md", re.M), f"no section for walkthrough {b['name']}.md")
                         self.assertTrue((week_demos(w["dir"]) / f"{b['name']}.md").is_file(), f"walkthrough {b['name']}.md missing on disk")
+                if (w["week"], d["day"]) >= D0096_FROM:
+                    # D-0096: presentation order and content notes; earlier runbooks keep the shape they were delivered with
+                    self.assertIn("](crib-sheet.md)", head, "line 3 links the crib sheet (D-0096)")
+                    self.assertNotRegex(text, re.compile(r"^\s*- (\*\*)?(Teach|Say|Bridge|Behind this):", re.M), "notes, not a script (D-0096)")
+                    order = [text.index(h) for h in ("## Setup check", "## Notes page handoff", SPRINT, "## Common questions", "## If running long / short")]
+                    self.assertEqual(order, sorted(order), "sections follow the day; the two reference sections are last (D-0096)")
+                    self.assertNotRegex(text.split("## If running long / short", 1)[1], re.compile(r"^## (?!Delivery record)", re.M), "nothing but the delivery record follows the reference sections")
+                    if re.search(r"^\|\s*Lunch\s*\|", text, re.M):
+                        self.assertRegex(text, re.compile(r"^## Lunch \(\d+ min\)", re.M), "a Lunch row has its own section (D-0096)")
                 # minutes table sums into the day band
                 glance = text.split("## Day at a glance", 1)[1].split("\n## ", 1)[0]
                 mins = [int(m) for m in re.findall(r"^\|[^|]*\|\s*(\d+)\s*\|", glance, re.M)]

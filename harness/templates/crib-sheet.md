@@ -1,11 +1,11 @@
 # {{id}} crib sheet: concepts behind the day
 
-Trainer-only. Companion to `runbook.md`: the runbook is what the trainer says and shows, in order; this sheet is the reference read the evening before and jumped into when a hard question lands. Same section order as the runbook's teaching blocks (each `## Facilitation`, each `### <section>` of a `## Notebook:` pass, each `## Demo:` block).
+Trainer-only. Companion to `runbook.md`: the runbook is the day in order, with notes on what each block covers; this sheet is the reference read the evening before and jumped into when a hard question lands. Same section order as the runbook's teaching blocks (each `## Facilitation`, each `### <section>` of the notebook pass, each `## Demo:` block).
 
 Sourcing: everything unmarked comes from the research brief or the notes page (sources checked {{verified}}). Lines marked **†** are general knowledge added for depth. They are not in the brief and were not checked against its sources, so say them as background, and look them up before putting any of them in writing. A † line never states an API default, a version, a limit or a price: it says which doc page to check.
 
-<!-- D-0092. The runbook already carries each block's Teach line, its Trap and its one or two most likely questions.
-This sheet does not repeat the script. It holds what does not fit a delivery file: why the idea is true, the full
+<!-- D-0092, D-0096. The runbook already carries each block's notes (what each term is, how it works, its numbers),
+its Trap and its three to five most likely questions. This sheet does not repeat them. It holds what does not fit a delivery file: why the idea is true, the full
 list of hard questions, the numbers, the worked arithmetic, and where the notes page differs from what the room saw. -->
 
 ## The day in five sentences
@@ -14,7 +14,7 @@ list of hard questions, the numbers, the worked arithmetic, and where the notes 
 
 ## <teaching block, named as the runbook names it>
 
-**Key idea.** Two to four sentences. The same idea as the runbook's Teach line, with the reasoning behind it.
+**Key idea.** Two to four sentences. The same idea as the runbook's notes for the block, with the reasoning behind it.
 
 **Why it works.**
 - 3–8 bullets: the mechanism, each term defined, the cause behind each number the room sees.
@@ -23,7 +23,7 @@ list of hard questions, the numbers, the worked arithmetic, and where the notes 
 
 **Hard questions.**
 - *The question as a learner would ask it?* The answer in one to three sentences. † for anything beyond the brief.
-- (4–8 per block; the runbook's "If asked" lines are the first one or two)
+- (4–8 per block; the runbook's "If asked" lines come first)
 
 **Trap.** The mistake the room or the trainer is likely to make here, and how it shows.
 
