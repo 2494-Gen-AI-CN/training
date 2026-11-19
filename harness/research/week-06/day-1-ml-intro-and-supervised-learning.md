@@ -65,6 +65,7 @@ version-stamps:
 - Claims:
   - Regression targets are continuous numbers — [Supervised learning](https://scikit-learn.org/stable/supervised_learning.html)
   - `load_diabetes` is a regression dataset whose target is a disease-progression measure for each patient — [load_diabetes](https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_diabetes.html)
+  - The ten feature columns of the diabetes dataset are not raw measurements (added 2026-11-19, checked that day): each "have been mean centered and scaled by the standard deviation times the square root of `n_samples` (i.e. the sum of squares of each column totals 1)", so a column such as `bmi` holds small values either side of 0, and a negative value means below the average — [Toy datasets: diabetes dataset](https://scikit-learn.org/stable/datasets/toy_dataset.html)
   - Multiple regression uses several feature columns and returns one coefficient per column — [LinearRegression](https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html)
 
 ### Types of regression, fitting the line
@@ -90,6 +91,7 @@ version-stamps:
 - Claims:
   - `load_breast_cancer` is a binary classification dataset of 569 samples and 30 numeric features — [load_breast_cancer](https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_breast_cancer.html)
   - `predict_proba` returns one column per class, and each row sums to 1 — [LogisticRegression](https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html)
+  - How the model gets from features to a class (added 2026-11-19, checked that day): in the binary case `predict_proba` gives the probability of the positive class as the logistic function of a weighted sum of the features plus an intercept, `expit(X w + w0)`, which is a number between 0 and 1 (the guide: "the probabilities describing the possible outcomes of a single trial are modeled using a logistic function"); that probability becomes a class "by applying a threshold (by default 0.5) to it"; and the guide says that, despite its name, logistic regression "is implemented as a linear model for classification rather than regression". The points where the weighted sum gives exactly 0.5 lie on a straight line, which is why the boundary is linear — [Logistic regression](https://scikit-learn.org/stable/modules/linear_model.html#logistic-regression)
   - The logistic regression boundary is a straight line in two features — [Logistic regression](https://scikit-learn.org/stable/modules/linear_model.html#logistic-regression)
   - `accuracy_score(y_true, y_pred)` returns the fraction of predictions that match the true labels, a number between 0 and 1 — [Metrics and scoring](https://scikit-learn.org/stable/modules/model_evaluation.html#accuracy-score)
 
@@ -98,6 +100,7 @@ version-stamps:
 - scikit-learn Getting Started — https://scikit-learn.org/stable/getting_started.html
 - scikit-learn Linear Models user guide — https://scikit-learn.org/stable/modules/linear_model.html
 - LinearRegression API — https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html
+- Toy datasets: diabetes dataset (read 2026-11-19) — https://scikit-learn.org/stable/datasets/toy_dataset.html
 - LogisticRegression API — https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html
 - train_test_split API — https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.train_test_split.html
 - Underfitting vs. Overfitting example — https://scikit-learn.org/stable/auto_examples/model_selection/plot_underfitting_overfitting.html

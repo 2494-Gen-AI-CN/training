@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="tc-day" content="w06d3">
 <title>W6·D3 — Introduction to deep learning | 2494 · Gen-AI Python</title>
-<link rel="stylesheet" href="../../assets/css/style.css?v=20261116">
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261119">
 <script src="../../assets/js/theme.js?v=20261116"></script>
 </head>
 <body>
@@ -36,7 +36,7 @@
           <span><b>Week 6</b> · Day 3</span>
           <span>Wed Nov 18, 2026</span>
           <span>AI/ML fundamentals</span>
-          <span><b>~40 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span><b>~41 min</b> · reference notes @150 wpm · diagram · check</span>
           <span class="verified">Sources checked 2026-11-16 · python 3.13.18 · numpy 2.4.6 · scipy 1.16.3 · scikit-learn 1.6.1 · matplotlib 3.10.0</span>
           <span class="notebook"><a href="https://colab.research.google.com/github/2494-Gen-AI-CN/demos/blob/main/notebooks/week-06/03_wednesday_deep_learning_concepts.ipynb" target="_blank" rel="noopener">Open the notebook in Colab</a></span>
         </div>
@@ -83,8 +83,7 @@
           </tbody>
         </table>
         <h3>A baseline on raw pixels</h3>
-        <p>Every example on this page is a Google Colab cell. Colab's runtime ships Python 3.13.18 with scikit-learn
-        1.6.1, numpy 2.4.6, scipy 1.16.3 and matplotlib 3.10.0, so nothing needs installing.<sup class="cite"><a href="#src-4">4</a></sup>
+        <p>Every example on this page is a Google Colab cell, and nothing needs installing.<sup class="cite"><a href="#src-4">4</a></sup>
         The first dataset is <code>load_digits</code>: 1,797 handwritten digits, each an 8 by 8 greyscale image with pixel
         values from 0 to 16, in 10 classes.<sup class="cite"><a href="#src-1">1</a></sup></p>
         <p>The loader also returns each image flattened to 64 numbers, one per pixel.<sup class="cite"><a href="#src-1">1</a></sup>
@@ -111,9 +110,9 @@ train: 1.0
 test:  0.962</pre>
         <p>The model gets every training image right and 96.2 percent of the held-back test images. Comparing the two
         scores with <code>accuracy_score</code> before trusting a model is the habit from Monday.<sup class="cite"><a href="#src-3">3</a></sup>
-        <code>LogisticRegression</code> defaults to <code>max_iter=100</code>, and on these unscaled pixels its lbfgs
-        solver, the algorithm that adjusts the weights step by step, stops early and prints a <code>ConvergenceWarning</code>.<sup class="cite"><a href="#src-2">2</a></sup>
-        Raising <code>max_iter</code> to 5000 lets the solver finish without scaling the features first.<sup class="cite"><a href="#src-2">2</a></sup></p>
+        A perfect training score can be a sign of overfitting. Here the test score is still high and only 3.8 points
+        lower, the small, healthy gap Monday described. As on Monday, <code>max_iter=5000</code> lets the lbfgs solver
+        finish on unscaled pixels.<sup class="cite"><a href="#src-2">2</a></sup></p>
         <p>In someone else's notebook, a <code>LogisticRegression</code> fitted on flattened image pixels is almost always
         this baseline. It is cheap to train, and its test score is the number a bigger model has to beat.</p>
         <h3>Why it took off, and where it does not fit</h3>
@@ -283,6 +282,10 @@ params: 1210</pre>
         Follow the shapes: five images of 64 pixels times a (64, 16) matrix gives five rows of 16 hidden values, and
         those times a (16, 10) matrix give five rows of 10 scores. The inner numbers have to match: 64 with 64, then 16
         with 16.</p>
+        <p>Each hidden value is the one-neuron calculation from above. Row i of <code>X_batch</code> holds one image's 64
+        pixels and column j of <code>W1</code> holds one neuron's 64 weights, so their weighted sum plus that neuron's bias,
+        through ReLU, is the value in row i, column j of <code>h</code>. The layer does that 5 × 16 = 80 times in one line,
+        which is why the pixel count and the weight count must both be 64.</p>
         <p>Store the first matrix as (16, 64) instead and the inner numbers no longer match, so the multiplication
         fails. The 10 raw scores are often called logits, and the highest one is the network's
         guess. In someone else's code the pattern looks like <code>h = np.maximum(0, X @ W1 + b1)</code> followed by
@@ -310,8 +313,7 @@ print("accuracy:", round(accuracy_score(y_test, guesses), 3))</code></pre>
 <pre class="out">guesses: [4 4 6 6 4 4 9 6 6 6]
 accuracy: 0.093</pre>
         <p><code>argmax(axis=1)</code> picks the position of the highest score in each row.<sup class="cite"><a href="#src-26">26</a></sup> The untrained network is right
-        9.3 percent of the time, about one in ten, which is what guessing among ten classes gives. scikit-learn's
-        <code>DummyClassifier</code> exists to measure exactly this kind of chance baseline.<sup class="cite"><a href="#src-16">16</a></sup>
+        9.3 percent of the time, about one in ten, which is what guessing among ten classes gives.<sup class="cite"><a href="#src-16">16</a></sup>
         Only training fixes it by adjusting all 1,210 parameters, and that algorithm, backpropagation, is week 7's
         subject.</p>
         <div class="ix-predict" data-q="The hidden layer grows from 16 neurons to 32, everything else the same. How many parameters does the network have now?" data-a="64 × 32 + 32 = 2,080 for the hidden layer and 32 × 10 + 10 = 330 for the output layer, so 2,410 in total."></div>
@@ -441,8 +443,8 @@ print(pooled.astype(int))</code></pre>
  [35 29 24]
  [33 28  4]]</pre>
         <p>The <code>reshape</code> groups the 6 by 6 map into a 3 by 3 grid of 2 by 2 windows without changing any
-        values,<sup class="cite"><a href="#src-27">27</a></sup> and <code>max</code> over the window axes keeps each
-        window's largest value.<sup class="cite"><a href="#src-28">28</a></sup> The top-left window held 33, 27, 40 and 10, so it keeps 40.</p>
+        values,<sup class="cite"><a href="#src-27">27</a></sup> and <code>max</code> over axes 1 and 3, the row and column
+        inside each window, keeps each window's largest value.<sup class="cite"><a href="#src-28">28</a></sup> The top-left window held 33, 27, 40 and 10, so it keeps 40.</p>
         <p>Pooling is a trade. It shrinks the map, so later layers have less to process, and it tolerates small shifts,
         since an edge one pixel to the side usually lands in the same window. It also throws away exactly where inside the
         window the edge was.<sup class="cite"><a href="#src-20">20</a></sup></p>
@@ -499,6 +501,9 @@ shifted:  0.444</pre>
         <p>Size is the second problem. A dense layer of 16 neurons on the flattened greyscale photograph would need 427 ×
         640 × 16 + 16 = 4,372,496 parameters, by the inputs-times-units rule.<sup class="cite"><a href="#src-12">12</a></sup>
         A 3 by 3 kernel has 9 weights and one bias, and it reuses those same 10 numbers at every position.</p>
+        <p>That reuse also answers the shift problem. The same kernel visits every position, so a digit moved one pixel to
+        the right gives the same strong values in its feature map, one column further right. Max pooling then usually
+        keeps each of them in the same 2 by 2 window, so the pooled map barely changes.</p>
         <table>
           <thead><tr><th></th><th>Flat classifier on pixels</th><th>Convolutional network</th></tr></thead>
           <tbody>
@@ -607,8 +612,8 @@ print(rows.toarray())</code></pre>
         <p>Raw counts treat a word that appears in every text the same as a rare, telling one. TF-IDF, short for term
         frequency times inverse document frequency, weights a word up when it is frequent in this text and down when it
         appears in many texts.<sup class="cite"><a href="#src-22">22</a></sup> <code>TfidfVectorizer</code> is a
-        <code>CountVectorizer</code> followed by a TF-IDF step, with a smoothed IDF and each row scaled to length 1 by
-        default.<sup class="cite"><a href="#src-22">22</a></sup></p>
+        <code>CountVectorizer</code> followed by a TF-IDF step, and by default it scales each row to length 1, which
+        means the squares of the row's values add up to 1.<sup class="cite"><a href="#src-22">22</a></sup></p>
 <pre><code># Run in Colab (after the CountVectorizer cell)
 from sklearn.feature_extraction.text import TfidfVectorizer
 
@@ -619,8 +624,8 @@ print(weights.toarray().round(2))</code></pre>
  [0.   0.   0.   0.   0.   0.53 0.4  0.   0.53 0.   0.53]
  [0.   0.5  0.5  0.5  0.   0.   0.   0.5  0.   0.   0.  ]]</pre>
         <p>The columns are the same 11 words. <code>page</code> appears in two of the three titles, so it scores 0.4 where
-        the words unique to one title score 0.53. The third title shares no word with the others, so its four words split
-        the weight evenly at 0.5. On a few thousand real tickets, words such as "is" and "on" turn up everywhere and fade
+        the words unique to one title score 0.53. The third title shares no word with the others, so its four words get equal
+        weights, and four squares of 0.5 make 4 × 0.25 = 1. On a few thousand real tickets, words such as "is" and "on" turn up everywhere and fade
         towards zero.</p>
         <h3>N-grams</h3>
         <p>An n-gram is a run of n neighbouring words treated as one vocabulary entry, and a bigram is two.
@@ -633,7 +638,8 @@ print(bi.get_feature_names_out())</code></pre>
 <pre class="out">['500' 'login' 'login page' 'page' 'page returns' 'returns' 'returns 500']</pre>
         <p>Four words give four unigrams and three bigrams, so the title contributes <code>login</code>, <code>page</code>
         and the bigram <code>login page</code> among others.<sup class="cite"><a href="#src-22">22</a></sup> Bigrams
-        bring back a little word order, enough to tell "not working" from "working". The price is a much larger vocabulary
+        bring back a little word order. The two tickets that bag of words could not tell apart now differ, since only
+        the first contains the pair "refund blocked" and only the second "login blocked". The price is a much larger vocabulary
         in which most pairs appear only once.</p>
         <div class="recap"><div class="k">Takeaways</div><ul>
           <li>A tokenizer splits text into tokens, and the vocabulary gives each distinct token a column.</li>
@@ -670,8 +676,7 @@ print(bi.get_feature_names_out())</code></pre>
         as <code>make_pipeline(TfidfVectorizer(ngram_range=(1, 2)), LogisticRegression(max_iter=5000))</code>.</p>
         <h3>A classifier on 24 ticket titles</h3>
         <p>The data is 24 short ticket titles, each labelled <code>billing</code> or <code>technical</code>, 12 of each.
-        Six titles are borrowed from the ticket desk's seed data. The other 18 titles and every label are new, written for
-        this example, because the seed data has no such label.</p>
+        Every label was written for this example.</p>
 <pre><code># Run in Colab
 from sklearn.pipeline import make_pipeline
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -728,7 +733,7 @@ print(clf.predict_proba(["Quantum flux capacitor"]).round(2))</code></pre>
         <p><code>make_pipeline</code> names each step after its class in lower case, which is how
         <code>named_steps</code> finds the vectorizer.<sup class="cite"><a href="#src-24">24</a></sup> The vocabulary
         holds 155 single words and word pairs. None of them appears in the new title, so its row has no non-zero entries,
-        and the model can only answer 50/50.<sup class="cite"><a href="#src-21">21</a></sup></p>
+        the 0 on the second printed line, and the model can only answer 50/50.<sup class="cite"><a href="#src-21">21</a></sup></p>
         <h3>Where NLP shows up</h3>
         <p>The same components sit under most everyday language features.</p>
         <table>

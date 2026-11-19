@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="tc-day" content="w06d1">
 <title>W6·D1 — ML introduction &amp; supervised learning | 2494 · Gen-AI Python</title>
-<link rel="stylesheet" href="../../assets/css/style.css?v=20261116">
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261119">
 <script src="../../assets/js/theme.js?v=20261116"></script>
 </head>
 <body>
@@ -36,7 +36,7 @@
           <span><b>Week 6</b> · Day 1</span>
           <span>Mon Nov 16, 2026</span>
           <span>AI/ML fundamentals</span>
-          <span><b>~41 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span><b>~44 min</b> · reference notes @150 wpm · diagram · check</span>
           <span class="verified">Sources checked 2026-11-16 · python 3.13.18 · numpy 2.4.6 · scikit-learn 1.6.1 · matplotlib 3.10.0</span>
           <span class="notebook"><a href="https://colab.research.google.com/github/2494-Gen-AI-CN/demos/blob/main/notebooks/week-06/01_monday_ml_intro_and_supervised_learning.ipynb" target="_blank" rel="noopener">Open the notebook in Colab</a></span>
         </div>
@@ -52,24 +52,20 @@
       <section class="step" data-diagram="0" data-step="0">
         <div class="tag">Concepts</div>
         <h2>Machine learning: algorithms and use cases</h2>
-        <p>Machine learning is a way of getting a program's rule from data instead of from a person. This step covers
-        the vocabulary the rest of the week uses, the three families of problems, and the two method calls almost every
-        scikit-learn model shares.</p>
+        <p>Machine learning is a way of getting a program's rule from data instead of from a person.</p>
         <h3>A rule written by hand against a rule learned from examples</h3>
         <p>An ordinary program applies a rule someone wrote. A support desk might flag a ticket as urgent when its title
-        contains "outage" or "down". A person chose those words, the program applies them exactly, and anyone can read the
-        rule and test it. When a rule is easy to state, writing it by hand is the right tool.</p>
+        contains "outage" or "down". A person chose those words, and anyone can read the rule and test it. When a rule is
+        easy to state, writing it by hand is the right tool.</p>
         <p>Many useful rules are not easy to state. Nobody can write the exact formula linking a house's floor area, age and
         street to its sale price, or the pattern of measurements that makes a tumour likely to be malignant. Machine
         learning takes the other route. You collect examples whose answers are known, and an algorithm finds the rule that
         best reproduces those answers. The learned rule is a set of numbers, not lines of code you wrote.</p>
         <p>The limit comes with the method. A learned model is only as good as its examples, and on data unlike them it
         still returns an answer, with no error and no warning.<sup class="cite"><a href="#src-1">1</a></sup> That is why
-        a model is always scored on examples kept apart from the ones it learned from, so the score estimates how it will
-        do on new data.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        a model is scored on examples kept apart from the ones it learned from.<sup class="cite"><a href="#src-1">1</a></sup></p>
         <h3>Sample, feature, label, model</h3>
-        <p>Every machine-learning conversation uses the same small set of words. Picture a table of houses, one row per
-        house:</p>
+        <p>Picture a table of houses, one row per house:</p>
         <table>
           <thead><tr><th>Term</th><th>Meaning</th><th>In the table of houses</th></tr></thead>
           <tbody>
@@ -84,8 +80,8 @@
         </table>
         <p>In scikit-learn the features are a 2-D array named <code>X</code>, shaped (n_samples, n_features), with one row
         per sample and one column per feature. The labels are a 1-D array named <code>y</code> with one value per
-        row.<sup class="cite"><a href="#src-2">2</a></sup> The capital letter is a convention borrowed from maths for a
-        table, and the lower-case one for a single column.</p>
+        row.<sup class="cite"><a href="#src-2">2</a></sup> The capital letter is a maths convention for a table, the
+        lower-case one for a single column.</p>
         <h3>Three families and where teams use them</h3>
         <p>This week's algorithms fall into three families, and naming the family is the first step in choosing
         one.<sup class="cite"><a href="#src-3">3</a></sup></p>
@@ -97,15 +93,14 @@
             <tr><td>clustering</td><td>groups, with no label given</td><td>customer segments from purchase history</td></tr>
           </tbody>
         </table>
-        <p>scikit-learn's "Choosing the right estimator" map groups its algorithms by these tasks, and it is the quickest
-        answer to "what do I use for this?"<sup class="cite"><a href="#src-4">4</a></sup> Regression and classification
+        <p>scikit-learn's "Choosing the right estimator" map groups its algorithms by these
+        tasks.<sup class="cite"><a href="#src-4">4</a></sup> Regression and classification
         fill this page; clustering is Tuesday's subject.</p>
         <h3>The fit and predict pattern</h3>
-        <p>The examples on this page are Colab cells. Google Colab is a notebook that runs in the browser on a Google
+        <p>This page's examples are Colab cells. Google Colab is a notebook that runs in the browser on a Google
         machine, signed in with the Google account set up in week 4.<sup class="cite"><a href="#src-5">5</a></sup> A
         notebook is a page of code cells you run one at a time, and each cell's output appears under
-        it.<sup class="cite"><a href="#src-5">5</a></sup> Colab runs its own Python, 3.13.18 at the time of writing,
-        separate from the course's 3.15, with numpy, scikit-learn and matplotlib
+        it.<sup class="cite"><a href="#src-5">5</a></sup> Colab runs its own Python, with numpy, scikit-learn and matplotlib
         preinstalled.<sup class="cite"><a href="#src-6">6</a></sup><sup class="cite"><a href="#src-7">7</a></sup></p>
         <p>Every scikit-learn estimator follows one pattern: construct it, call <code>fit(X, y)</code> on training data,
         then call <code>predict</code> on new rows.<sup class="cite"><a href="#src-2">2</a></sup> The datasets ship inside
@@ -128,11 +123,12 @@ print(model.predict([[0.5], [1.0]]).round(1))   # 3. answer for new rows</code><
  [-1.06]]
 [ 56.7 -16.9 -30.3]
 [24.6 47.5]</pre>
-        <p><code>X</code> has 100 rows and one column, and <code>y</code> has 100 values. The model was asked about two new
-        rows and returned two predictions. Swapping in a different algorithm changes the construct line only, because the
-        <code>fit</code> and <code>predict</code> calls stay the same.<sup class="cite"><a href="#src-2">2</a></sup></p>
-        <p>The commonest first error is passing one column as a 1-D array. <code>X</code> must be 2-D even when there is a
-        single feature, and a 1-D array raises a shape error.<sup class="cite"><a href="#src-2">2</a></sup></p>
+        <p><code>make_regression</code> makes up a dataset, and step 4 explains its arguments. <code>X</code> has 100
+        rows and one column, and <code>y</code> has 100 values. The model was asked about two new
+        rows and returned two predictions. Swapping in a different algorithm changes only the construct
+        line.<sup class="cite"><a href="#src-2">2</a></sup></p>
+        <p>The commonest first error is passing one column as a 1-D array, which raises a shape error: <code>X</code>
+        must be 2-D even with a single feature.<sup class="cite"><a href="#src-2">2</a></sup></p>
 <pre><code># Run in Colab (after the cell above)
 x = X[:, 0]                       # the one column pulled out: shape (100,)
 try:
@@ -143,13 +139,13 @@ print(x.reshape(-1, 1).shape)     # back to one column, 2-D</code></pre>
 <pre class="out">Expected 2D array, got 1D array instead:
 (100, 1)</pre>
         <p>In <code>reshape(-1, 1)</code> the <code>-1</code> means "as many rows as needed" and the <code>1</code> means
-        one column. <code>x[:, None]</code> does the same job, and you will see both in other people's code.</p>
+        one column.</p>
         <h3>Parameters and hyperparameters</h3>
-        <p>The first fit already shows two kinds of number. The slope and intercept the model found are parameters: the
-        algorithm learns them from the data during <code>fit</code>. A setting you choose before fitting, such as the
-        degree of a polynomial or the iteration limit of a solver, is a hyperparameter. No amount of data sets it; a
-        person does, usually by trying several values and comparing scores on held-back data.</p>
-        <p>In code the split is visible on sight. Hyperparameters are the arguments inside the constructor's brackets.
+        <p>The first fit already shows two kinds of number. The slope and intercept of its line, the tilt and the height
+        where x is 0, are parameters: the algorithm learns them during <code>fit</code>, and step 4 reads both.</p>
+        <p>A setting you choose before fitting is a hyperparameter, such as the polynomial degree in step 6 or, in
+        step 7, the step limit of a solver, the routine that searches for the numbers. A person sets it, usually by trying several values and comparing scores on held-back data.</p>
+        <p>In code, hyperparameters are the arguments inside the constructor's brackets.
         Learned parameters are attributes of the fitted model: a <code>LinearRegression</code> keeps its slopes in
         <code>coef_</code> and its intercept in <code>intercept_</code>.<sup class="cite"><a href="#src-9">9</a></sup></p>
         <div class="recap"><div class="k">Takeaways</div><ul>
@@ -300,8 +296,11 @@ print(bmi.min().round(3), bmi.max().round(3))
 print(model.predict([[-0.3], [0.0], [0.3]]).round(1))</code></pre>
 <pre class="out">-0.09 0.171
 [-132.7  152.1  437. ]</pre>
-        <p>The <code>bmi</code> values in the data run from -0.09 to 0.171. Inside that range the prediction is sensible.
-        At -0.3 the line predicts a progression of -132.7, a value no patient can have, and at 0.3 it predicts 437, above
+        <p>The <code>bmi</code> values in the data run from -0.09 to 0.171. They are small because scikit-learn ships
+        all ten diabetes feature columns already centred on their mean and rescaled, so each value sits either side of 0
+        and a negative <code>bmi</code> means below the average.<sup class="cite"><a href="#src-27">27</a></sup> Inside
+        that range the prediction is sensible.</p>
+        <p>At -0.3 the line predicts a progression of -132.7, a value no patient can have, and at 0.3 it predicts 437, above
         the largest target in the data. The model gives no sign that it is guessing. Checking that new inputs fall inside
         the training range is the caller's job.</p>
         <h3>From a number to a category</h3>
@@ -346,8 +345,9 @@ print(high.mean().round(2))</code></pre>
         For a line <code>y = 2x + 5</code>, the slope 2 says each extra unit of x adds 2 to the prediction, and the
         intercept 5 is the prediction when x is 0.</p>
         <p>The data is synthetic. <code>make_regression</code> builds a linear relationship, <code>noise=15</code> adds
-        Gaussian noise with standard deviation 15 to the target, and <code>random_state</code> makes the same numbers come
-        back on every run.<sup class="cite"><a href="#src-15">15</a></sup></p>
+        random scatter to each target value, so the points sit around the line instead of on it, and the 15 sets how wide
+        that scatter is.<sup class="cite"><a href="#src-15">15</a></sup> <code>random_state</code> makes the same numbers
+        come back on every run.<sup class="cite"><a href="#src-15">15</a></sup></p>
 <pre><code># Run in Colab
 from sklearn.datasets import make_regression
 from sklearn.linear_model import LinearRegression
@@ -394,15 +394,18 @@ plt.show()</code></pre>
         <p>The cell draws the 100 samples as dots, the fitted line in red, and a thin grey vertical segment from each dot
         to the line. Each grey segment is one residual, and least squares chose the red line to make the squares of those
         lengths add up to the smallest total.</p>
-        <p>Ordinary least squares has a closed-form solution, so <code>fit</code> computes the line in one step, with no
-        repeated small corrections.<sup class="cite"><a href="#src-16">16</a></sup> Learning by repeated corrections
-        arrives on Friday with the perceptron.</p>
+        <p><code>fit</code> computes this line in one step, with no repeated small
+        corrections.<sup class="cite"><a href="#src-16">16</a></sup> Learning by repeated corrections arrives on Friday
+        with the perceptron.</p>
         <h3>Mean squared error and R²</h3>
         <p>Two numbers summarise how well the line fits. <code>mean_squared_error</code> averages the squared differences
         between true and predicted values.<sup class="cite"><a href="#src-17">17</a></sup> <code>r2_score</code>, the
         coefficient of determination, is 1 minus the ratio of the residual sum of squares to the total sum of
-        squares.<sup class="cite"><a href="#src-18">18</a></sup> A regression model's <code>score</code> method returns
-        the same R²; 1.0 is a perfect fit, and on unseen data it can be
+        squares.<sup class="cite"><a href="#src-18">18</a></sup></p>
+        <p>The total sum of squares is the same kind of total for a flat line drawn at the mean of <code>y</code>, a
+        guess that ignores the features. R² compares the model's squared misses with that flat line's: the smaller the
+        model's share, the closer R² gets to 1.<sup class="cite"><a href="#src-18">18</a></sup> A regression model's
+        <code>score</code> method returns the same R²; 1.0 is a perfect fit, and on unseen data it can be
         negative.<sup class="cite"><a href="#src-9">9</a></sup></p>
 <pre><code># Run in Colab (after the cell above)
 from sklearn.metrics import mean_squared_error, r2_score
@@ -413,7 +416,8 @@ print(f"score: {model.score(X, y):.3f}")</code></pre>
 <pre class="out">MSE: 175.6
 R2: 0.907
 score: 0.907</pre>
-        <p>The MSE of 175.6 is the sum of squared residuals, 17562, divided by 100 samples. The R² of 0.907 says the line
+        <p>The MSE of 175.6 is the sum of squared residuals, 17562, divided by 100 samples. The R² of 0.907 says the line's
+        squared misses add up to about 9 percent of the flat line's, since 1 - 0.907 = 0.093. Put the other way, the line
         accounts for about 91 percent of the spread in the target, and <code>score</code> gives the identical number. The
         two metrics answer different questions:</p>
         <table>
@@ -424,7 +428,9 @@ score: 0.907</pre>
           </tbody>
         </table>
         <p>MSE in squared minutes or squared dollars is hard to say out loud, which is why people often quote its square
-        root. R² reads the same on any dataset, though a "good" R² still depends on how noisy the problem is.</p>
+        root. Here the square root of 175.6 is a little over 13, since 13 times 13 is 169, and it is back in the
+        target's own units. R² reads the same on any dataset, though a "good" R² still depends on how noisy the problem
+        is.</p>
         <div class="recap"><div class="k">Takeaways</div><ul>
           <li>coef_ holds the slope and intercept_ the intercept of the fitted line.</li>
           <li>A residual is the true value minus the prediction.</li>
@@ -475,8 +481,8 @@ train R2: 0.912
 test R2:  0.874</pre>
         <p>The model trained on 80 rows and was tested on the other 20. The test score is a little lower than the
         training score, which is normal: the line was tuned to the training rows. A small gap like this one is healthy.
-        A large gap, such as 0.9 on training and 0.2 on test, means the model learned the training rows' noise and fails
-        on new data, the overfitting that step 6 shows.</p>
+        A large gap, such as 0.9 on training and 0.2 on test, means the model learned the training rows' noise, random
+        scatter that new rows do not repeat, so it fails on them; step 6 shows it.</p>
         <p>The four names on the left are the convention you will see in almost every scikit-learn codebase. They come
         back in a fixed order:</p>
         <ol>
@@ -578,8 +584,8 @@ test R2:  0.453</pre>
         lowers it.</p>
         <p>Two cautions come with reading them. Comparing sizes across features only works when the features share a
         scale; a coefficient on age in years and one on income in dollars cannot be ranked against each other. And "held
-        fixed" is an idealisation: when features are correlated, the least-squares estimate becomes highly sensitive to
-        random errors in the target, so the coefficients can swing widely.<sup class="cite"><a href="#src-16">16</a></sup></p>
+        fixed" is an idealisation: when features move together, the coefficients can swing
+        widely.<sup class="cite"><a href="#src-16">16</a></sup></p>
         <h3>Polynomial regression: powers as new columns</h3>
         <p><code>PolynomialFeatures(degree=d)</code> adds powers of the input as new columns, so a plain
         <code>LinearRegression</code> fitted on those columns draws a degree-d curve. The model is still linear, because
@@ -590,8 +596,10 @@ from sklearn.preprocessing import PolynomialFeatures
 
 print(PolynomialFeatures(degree=3).fit_transform([[2.0]]))</code></pre>
         <p>It prints <code>[[1. 2. 4. 8.]]</code>: the value 2 becomes a constant column, 2, 2 squared and 2 cubed. The
-        regression then finds one coefficient for each of those columns, which together describe a cubic curve. In real
-        code the two steps are chained with <code>make_pipeline(PolynomialFeatures(3), LinearRegression())</code>, so one
+        regression then finds one coefficient for each of those columns, which together describe a cubic curve. The
+        model still only multiplies each column by its coefficient and adds the results, which is what "linear in its
+        coefficients" means; the bend comes from the squared and cubed columns.</p>
+        <p>In real code the two steps are chained with <code>make_pipeline(PolynomialFeatures(3), LinearRegression())</code>, so one
         <code>fit</code> call runs both.<sup class="cite"><a href="#src-20">20</a></sup></p>
         <h3>Underfitting and overfitting</h3>
         <p>The degree is a hyperparameter, and choosing it badly fails in two opposite ways. An underfit model is too
@@ -655,9 +663,8 @@ degree 15: train R2 0.842, test R2 0.679</pre>
         linear models because its decision boundary is linear: with two features, the line between the classes is
         straight.<sup class="cite"><a href="#src-23">23</a></sup> Its output is a class, plus a probability for each class
         when you ask for one.</p>
-        <p>The example data is synthetic and has two features, so it can be drawn. <code>make_classification</code>
-        defaults to <code>n_features=20</code>; setting <code>n_features=2</code> keeps two columns, so a two-column grid
-        of points can be passed to <code>predict</code> for a boundary plot.<sup class="cite"><a href="#src-24">24</a></sup></p>
+        <p>The example data is synthetic, made by <code>make_classification</code>, and <code>n_features=2</code> keeps
+        two feature columns so the classes can be drawn on a flat plot.<sup class="cite"><a href="#src-24">24</a></sup></p>
         <h3>predict, predict_proba and accuracy_score</h3>
 <pre><code># Run in Colab
 from sklearn.datasets import make_classification
@@ -682,6 +689,13 @@ test accuracy: 0.850</pre>
         0.951. The second is also class 0, but at 0.778 the model is far less sure, and in this output each predicted class
         is the one with the larger probability. When a decision has a cost, such as escalating a ticket, the probability
         is often more useful than the bare class.</p>
+        <p>Behind those numbers, the model computes a weighted sum of the features plus an intercept, as linear
+        regression does. A logistic function turns that sum into a number between 0 and 1: the probability of class 1,
+        the second column of <code>predict_proba</code>. <code>predict</code> then answers class 1 when that probability
+        is above 0.5, and class 0 otherwise.<sup class="cite"><a href="#src-23">23</a></sup></p>
+        <p>The points where that probability is exactly 0.5 lie on a straight line, and that line is the decision
+        boundary.<sup class="cite"><a href="#src-23">23</a></sup> The user guide calls the model a linear model for
+        classification.<sup class="cite"><a href="#src-23">23</a></sup></p>
         <p><code>accuracy_score</code> is the fraction of predictions equal to the true labels, a number between 0 and
         1.<sup class="cite"><a href="#src-26">26</a></sup> Here 0.850 means 34 of the 40 test rows were classified
         correctly.</p>
@@ -691,8 +705,8 @@ test accuracy: 0.850</pre>
         it.<sup class="cite"><a href="#src-25">25</a></sup> The warning means the
         solver ran out of steps, and the code is fine. Here 5000 lets it finish, and Tuesday shows scaling.</p>
         <h3>The decision boundary</h3>
-        <p>To see the boundary, ask the model for a prediction at every point of a fine grid and colour the grid by the
-        answer.</p>
+        <p>On one side of the boundary the model answers class 0 and on the other class 1. To see it, ask the model for a
+        prediction at every point of a fine grid and colour the grid by the answer.</p>
 <pre><code># Run in Colab (after the cell above)
 import numpy as np
 import matplotlib.pyplot as plt
@@ -931,6 +945,7 @@ assert baseline_accuracy(["low", "high", "medium", "low", "low"]) == 0.6, "works
           <li id="src-24"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.datasets.make_classification.html" target="_blank" rel="noopener">make_classification</a> — the synthetic classification data and its <code>n_features</code> default.</li>
           <li id="src-25"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html" target="_blank" rel="noopener">LogisticRegression</a> — <code>predict_proba</code>, <code>max_iter</code> and the lbfgs solver.</li>
           <li id="src-26"><a href="https://scikit-learn.org/stable/modules/model_evaluation.html#accuracy-score" target="_blank" rel="noopener">Metrics and scoring: accuracy_score</a> — accuracy, and why it misleads on imbalanced classes.</li>
+          <li id="src-27"><a href="https://scikit-learn.org/stable/datasets/toy_dataset.html" target="_blank" rel="noopener">Toy datasets: diabetes dataset</a> — why the diabetes feature columns are small numbers around 0.</li>
         </ul>
       </section>
 

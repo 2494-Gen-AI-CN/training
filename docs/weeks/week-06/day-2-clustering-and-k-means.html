@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="tc-day" content="w06d2">
 <title>W6·D2 — Unsupervised learning: clustering | 2494 · Gen-AI Python</title>
-<link rel="stylesheet" href="../../assets/css/style.css?v=20261116">
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261119">
 <script src="../../assets/js/theme.js?v=20261116"></script>
 </head>
 <body>
@@ -36,7 +36,7 @@
           <span><b>Week 6</b> · Day 2</span>
           <span>Tue Nov 17, 2026</span>
           <span>AI/ML fundamentals</span>
-          <span><b>~38 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span><b>~41 min</b> · reference notes @150 wpm · diagram · check</span>
           <span class="verified">Sources checked 2026-11-16 · python 3.13.18 · scikit-learn 1.6.1 · scipy 1.16.3 · numpy 2.4.6 · matplotlib 3.10.0</span>
           <span class="notebook"><a href="https://colab.research.google.com/github/2494-Gen-AI-CN/demos/blob/main/notebooks/week-06/02_tuesday_trees_and_clustering.ipynb" target="_blank" rel="noopener">Open the notebook in Colab</a></span>
         </div>
@@ -90,7 +90,8 @@ print("Feature importances:", tree.feature_importances_.round(3))</code></pre>
 Test accuracy:     0.960
 Feature importances: [0.963 0.037]</pre>
         <p>The data is a made-up weather set with two features and a play or do-not-play label. <code>max_depth=3</code>
-        caps the tree at three questions in a row.<sup class="cite"><a href="#src-3">3</a></sup> The two importances say
+        caps the tree at three questions in a row.<sup class="cite"><a href="#src-3">3</a></sup> Training and test
+        accuracy are both high and only 0.02 apart, so this tree has not overfit. The two importances say
         that nearly every useful question was about the first feature, a quick way to explain what the model looks at.</p>
 <pre><code># Run in Colab
 import matplotlib.pyplot as plt
@@ -105,7 +106,12 @@ plt.show()</code></pre>
           <li>the node's question</li>
           <li>its gini impurity, a measure of how mixed the node's classes are, which each split tries to shrink</li>
           <li>the number of training samples that reached it<sup class="cite"><a href="#src-4">4</a></sup></li>
+          <li>a <code>value</code> line with one number per class, showing how those samples divide between the
+          classes<sup class="cite"><a href="#src-16">16</a></sup></li>
+          <li>a <code>class</code> line, written with the names passed as <code>class_names</code>, which are listed in
+          ascending order of the class numbers<sup class="cite"><a href="#src-4">4</a></sup></li>
         </ul>
+        <p><code>filled=True</code> colours each box by its majority class.<sup class="cite"><a href="#src-4">4</a></sup></p>
         <p>The diagram lets someone who does not write code read the tree's rules. In other people's code a tree shows up as <code>DecisionTreeClassifier</code> with a
         <code>max_depth</code> argument.</p>
         <h3>How deep is too deep</h3>
@@ -340,22 +346,26 @@ print(cdist(points, points, metric="cityblock"))</code></pre>
         <h2>Distance between clusters: linkage and hierarchical clustering</h2>
         <p>A distance between two points is one number. A distance between two groups of points has several reasonable
         answers, and the one an algorithm picks shapes every group it builds.</p>
-        <h3>Four ways to measure the gap between two clusters</h3>
+        <h3>Five ways to measure the gap between two clusters</h3>
         <p>The rule that turns point distances into a distance between two clusters is called the linkage
         criterion.<sup class="cite"><a href="#src-5">5</a></sup> SciPy's <code>linkage</code> function accepts each of these
         as its <code>method</code>.<sup class="cite"><a href="#src-10">10</a></sup></p>
         <table>
-          <thead><tr><th>Linkage</th><th>Distance between clusters A and B</th><th>Behaviour or limit (scikit-learn guide)</th></tr></thead>
+          <thead><tr><th>Linkage</th><th>Distance between clusters A and B</th><th>Behaviour or limit</th></tr></thead>
           <tbody>
             <tr><td>single</td><td>the closest pair, one point from each</td><td>can chain far-apart points through a line of close ones</td></tr>
             <tr><td>complete</td><td>the farthest pair</td><td>favours compact clusters</td></tr>
-            <tr><td>average</td><td>the mean over every pair</td><td>no limit named in the guide</td></tr>
-            <tr><td>centroid</td><td>between the two cluster means</td><td>not in the guide (a SciPy method)</td></tr>
+            <tr><td>average</td><td>the mean over every pair</td><td>always between the single and complete values</td></tr>
+            <tr><td>centroid</td><td>between the two cluster means</td><td>a SciPy method</td></tr>
             <tr><td>ward</td><td>the merge that least increases total within-cluster variance</td><td>works with Euclidean distance only</td></tr>
           </tbody>
         </table>
-        <p>The first three and Ward are defined in the scikit-learn guide, along with the limits in the last
-        column.<sup class="cite"><a href="#src-5">5</a></sup> Centroid linkage comes from SciPy, where it is one of <code>linkage</code>'s methods.<sup class="cite"><a href="#src-10">10</a></sup></p>
+        <p>The single, complete and ward limits come from the scikit-learn guide;<sup class="cite"><a href="#src-5">5</a></sup>
+        centroid is one of SciPy's <code>linkage</code> methods.<sup class="cite"><a href="#src-10">10</a></sup></p>
+        <p>Chaining is easiest to see on a made-up example. Put five points on a line at 0, 1, 2, 3 and 4. Under single
+        linkage every merge along the line happens at distance 1, the gap between neighbours, so any cut above 1 puts the
+        two ends, 4 apart, in one cluster. Complete linkage measures the last of those merges at 4, the gap between the
+        ends.</p>
 <pre><code># Run in Colab
 import numpy as np
 from scipy.spatial.distance import cdist
@@ -378,8 +388,8 @@ Complete (farthest pair):  6.73
 Average  (all nine pairs): 5.00
 Centroid (centre to centre): 4.96</pre>
         <p>Three of the four answers come out of one 3 by 3 table: its smallest entry, its largest entry and its mean. The
-        centroid distance is the odd one out, because it measures between the two averaged points, which are not in the
-        table. The same two clusters give four different "distances", from 4.03 to 6.73.</p>
+        centroid distance is the odd one out, because it measures between the two averaged points, the column means that
+        <code>mean(axis=0)</code> returns, which are not in the table. The same two clusters give four different "distances", from 4.03 to 6.73.</p>
         <h3>Hierarchical clustering and the merge table</h3>
         <p>Hierarchical, or agglomerative, clustering starts with every point as its own cluster and repeatedly merges the
         closest pair of clusters, where the linkage decides which pair is
@@ -406,9 +416,10 @@ single   last four merges at [ 1.47  1.65  8.09 12.89]
 average  last four merges at [ 2.02  2.2  10.2  15.39]
 complete last four merges at [ 2.71  2.85 11.83 18.25]</pre>
         <p>Fifteen points need fourteen merges to become one cluster, hence 14 rows. The first row says points 10 and 12
-        merged at distance 0.41 into a cluster of 2. The last four distances show the shape of the whole dataset: merges
-        happen at about 2, then jump to 10 and 15. Those two late merges join groups that are far apart, so the data holds
-        three natural clusters.</p>
+        merged at distance 0.41 into a cluster of 2.</p>
+        <p>The last four distances show the shape of the whole dataset: merges happen at about 2, then jump to 10 and 15.
+        Those two late merges join groups that are far apart. Each merge leaves one cluster fewer, so just before those two
+        merges there were three clusters, and the data holds three natural groups.</p>
         <p>Changing the linkage moves the numbers and keeps the shape here. Single linkage merges lowest because it uses the
         closest pair, complete highest because it uses the farthest. On well-separated blobs all three agree; on stringy or
         touching groups they can disagree a lot.</p>
@@ -506,6 +517,11 @@ Step 3: labels [0 0 0 0 1 1 1 1], centroids moved 0.000
           <li>Step 3 produces the same labels, so the means do not change and the movement is 0. The algorithm has
           converged.</li>
         </ul>
+        <p>The helpers rely on two NumPy details.<code>argmin(axis=1)</code> works across the columns of each row: each
+        row of the distance table is one point, and it returns the position of that row's smallest distance, which is the
+        number of the nearest centroid. <code>mean(axis=0)</code> works down the rows of each column, so the points that
+        <code>X[labels == c]</code> picks out collapse to one mean x and one mean y. For the four bottom-left points that
+        is (1.5, 1.5).</p>
         <p>Even from a poor start, two rounds were enough on data this clean. In other people's code, the assign step is
         nearly always a distance table followed by <code>argmin(axis=1)</code>, and the update step a mean per label.</p>
         <h3>Why the starting centroids matter</h3>
@@ -570,7 +586,10 @@ start rows [3, 4, 5]: inertia 271.5, sizes [50 50 50]</pre>
         its results and the question k-means cannot answer for itself: how many clusters.</p>
         <h3>KMeans, labels_, cluster_centers_ and inertia</h3>
         <p>Picture customers described by two numbers, an annual income and a spending score, with no segment written
-        anywhere. The cell fakes such data with five blobs of 500 points and asks for five clusters.</p>
+        anywhere. The cell fakes such data with five blobs of 500 points and asks for five clusters. These made-up numbers
+        have no units, and <code>cluster_std=1.2</code> gives every blob the same spread in both
+        columns.<sup class="cite"><a href="#src-6">6</a></sup> Step 7 shows what real units, dollars against points, do to
+        k-means.</p>
 <pre><code># Run in Colab
 from sklearn.datasets import make_blobs
 from sklearn.cluster import KMeans
@@ -603,6 +622,9 @@ inertia_: 1256.9</pre>
         points of its own cluster and <code>b</code> its mean distance to the points of the nearest other cluster. Its
         silhouette coefficient is <code>(b - a) / max(a, b)</code>, which runs from −1 to +1, and higher is
         better.<sup class="cite"><a href="#src-5">5</a></sup></p>
+        <p>A made-up example: a point with <code>a</code> = 1 and <code>b</code> = 4 scores (4 − 1) / 4 = 0.75. Swap
+        them, <code>a</code> = 4 and <code>b</code> = 1, and it scores (1 − 4) / 4 = −0.75. Dividing by the larger of
+        the two keeps every score between −1 and +1.</p>
         <ul>
           <li>Near +1: the sample is far closer to its own cluster than to any other.</li>
           <li>Near 0: it sits on the border between two clusters.</li>
@@ -650,7 +672,7 @@ K=3  silhouette 0.660
 K=4  silhouette 0.613
 K=5  silhouette 0.588
 Flowers per species: [50 50 50]</pre>
-        <p>The silhouette score prefers K = 2, yet three species exist. On a scatter plot of the petals the reason is plain:
+        <p>The silhouette score prefers K = 2, yet three species exist. The reason is in the petal measurements themselves:
         setosa sits on its own, while versicolor and virginica overlap.<sup class="cite"><a href="#src-13">13</a></sup><sup class="cite"><a href="#src-8">8</a></sup>
         The score describes the shape of the data correctly and still misses the grouping a botanist cares about.</p>
         <p>The species labels were never given to the algorithm, so it had no way to know. Metrics guide the choice of K,
@@ -790,7 +812,7 @@ eps=0.25  clusters 2  noise 0
 eps=0.5   clusters 1  noise 0</pre>
         <p><code>make_circles</code> builds an inner ring inside an outer one. K-means with K = 2 matches the rings on 51%
         of points, no better than a coin toss: it cut both rings in half down the middle. The agreement line takes the
-        better of the two ways to pair cluster numbers with ring numbers, since cluster numbers are only names. DBSCAN with
+        better of the two ways to pair cluster numbers with ring numbers, since cluster numbers are only names. DBSCAN (explained in the next section) with
         <code>eps=0.25</code> finds exactly two clusters and no noise, which are the two rings.</p>
         <h3>DBSCAN: dense regions and noise</h3>
         <p>DBSCAN, density-based clustering, groups points that sit in dense regions. A core point has at least
@@ -798,6 +820,9 @@ eps=0.5   clusters 1  noise 0</pre>
         core point, and points reachable from no core point get the label −1, meaning
         noise.<sup class="cite"><a href="#src-5">5</a></sup> Because a cluster grows from neighbour to neighbour, it can
         follow a curve, and DBSCAN needs no K.<sup class="cite"><a href="#src-5">5</a></sup></p>
+        <p>Reachable means within <code>eps</code> of a core point. A point with too few neighbours to be a core point
+        still joins the cluster of a core point within <code>eps</code> of it, on that cluster's fringe. A point that is
+        neither a core point nor within <code>eps</code> of one is noise, label −1.<sup class="cite"><a href="#src-5">5</a></sup></p>
         <table>
           <thead><tr><th></th><th>K-means</th><th>DBSCAN</th></tr></thead>
           <tbody>
@@ -976,6 +1001,7 @@ assert s.transform([(65000, 50)]) == [(0.0, 0.0)], "a new row is scaled with the
           <li id="src-13"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_iris.html" target="_blank" rel="noopener">sklearn.datasets.load_iris</a> — the 150 flowers, three species of 50 each.</li>
           <li id="src-14"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.StandardScaler.html" target="_blank" rel="noopener">sklearn.preprocessing.StandardScaler</a> — mean 0 and unit variance, <code>mean_</code> and <code>scale_</code>.</li>
           <li id="src-15"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html" target="_blank" rel="noopener">sklearn.cluster.DBSCAN</a> — <code>eps</code>, <code>min_samples</code> and the noise label.</li>
+          <li id="src-16"><a href="https://scikit-learn.org/stable/auto_examples/tree/plot_unveil_tree_structure.html" target="_blank" rel="noopener">Understanding the decision tree structure</a> — what a node's <code>value</code> holds for each class.</li>
         </ul>
       </section>
 

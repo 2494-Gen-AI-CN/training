@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="tc-day" content="w06d5">
 <title>W6·D5 — Perceptrons &amp; TensorFlow basics | 2494 · Gen-AI Python</title>
-<link rel="stylesheet" href="../../assets/css/style.css?v=20261116">
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261119">
 <script src="../../assets/js/theme.js?v=20261116"></script>
 </head>
 <body>
@@ -96,8 +96,7 @@ relu    [0. 0. 2.] True</pre>
         0.</p>
         <p>Each has a cost. Sigmoid and tanh flatten out at large positive or negative inputs, so a big change in
         <code>z</code> barely moves the output there. ReLU is cheap to compute but outputs 0 for every negative
-        input.<sup class="cite"><a href="#src-6">6</a></sup> Plotting the curves makes the flat ends easy to
-        see.</p>
+        input.<sup class="cite"><a href="#src-6">6</a></sup></p>
         <p class="run-label">Run in Colab</p>
 <pre><code>import matplotlib.pyplot as plt
 
@@ -127,8 +126,7 @@ print(step(np.array([-0.5, 0.0, 0.5])))</code></pre>
         outputs 1. Every perceptron on this page uses that convention.</p>
         <p>A fixed rule matters because training changes the weights only after a wrong answer. A row whose sum lands
         exactly on 0 is right under one convention and wrong under the other, so two people working the same table with
-        different rules end the first epoch with different weights. Starting from zero weights, the very first row has a
-        sum of 0, so the convention decides the first update.</p>
+        different rules end the first epoch with different weights.</p>
         <div class="ix-predict" data-q="A perceptron starts with weights [0, 0] and bias 0. What does it output for the input (0, 0), and is that right for the AND table?" data-a="The sum is 0, so the step outputs 1. AND of 0 and 0 is 0, so the very first row is a mistake and the first weight update happens at once."></div>
         <h3>Softmax for more than two classes</h3>
         <p>A single sigmoid answers one yes-or-no question. When a label has three or more classes, the network needs one
@@ -147,9 +145,11 @@ print(round(float(tf.reduce_sum(probs)), 6))</code></pre>
         <h3>Why the activation has to be non-linear</h3>
         <p>Linear operations applied to linear operations are still linear. Without a non-linear activation between them,
         extra weighted sums add no expressive power.<sup class="cite"><a href="#src-1">1</a></sup> Two weighted sums
-        in a row collapse into a single weighted sum with different numbers, so a stack of them can still only draw a
-        straight boundary. Networks with more than one layer are week 7's subject, and this is the reason each of their
-        layers carries an activation.</p>
+        in a row collapse into a single weighted sum with different numbers.</p>
+        <p>Take one input x. A first neuron computes
+        z = 3x + 1, and a second computes 2z + 4 from it. That is 2(3x + 1) + 4, or 6x + 6: a single
+        weighted sum with weight 6 and bias 6. So a stack of weighted sums can still only draw a straight boundary. Networks with more than one layer are
+        week 7's subject, and this is the reason each of their layers carries an activation.</p>
         <p>In someone else's code you recognise an activation in three common shapes:</p>
         <ul>
           <li><code>tf.keras.layers.Dense(1, activation="sigmoid")</code>, the string form inside a layer</li>
@@ -281,7 +281,9 @@ epoch 6: w=[2.0, 1.0] b=-3.0 errors=0</pre>
         are right. Row (1, 1) sums to −1 and is wrong the other way, so both weights rise to 1 and the bias returns to
         0.</p>
         <p>Training stops in epoch 6 with weights [2, 1] and a bias of −3. Those are not the hand-picked weights, yet they
-        also put only (1, 1) on the positive side, because any line that separates the classes is a correct answer.</p>
+        also put only (1, 1) on the positive side, because any line that separates the classes is a correct answer. On
+        the way there the mistakes do not fall steadily and the weights sometimes drop back, because a correction that
+        fixes one row can break another.</p>
         <div class="recap"><div class="k">Takeaways</div><ul>
           <li>A perceptron computes a weighted sum plus a bias and passes it through the step.</li>
           <li>Weights and bias are learned parameters; learning rate and epochs are hyperparameters you set.</li>
@@ -316,8 +318,8 @@ epoch 6: w=[2.0, 1.0] b=-3.0 errors=0</pre>
         updates its model only on mistakes.<sup class="cite"><a href="#src-11">11</a></sup> In code the
         rule is two lines inside a loop over the rows, and you recognise it by the shape
         <code>w += lr * (y - y_pred) * x</code> followed by <code>b += lr * (y - y_pred)</code>.</p>
-        <p>Adding the input on a "should have been 1" mistake raises that row's own sum by the
-        learning rate times (the input's squared length plus 1), so the next time the row comes round its sum is higher.
+        <p>Take row (1, 1) at a learning rate of 1 after a "should have been 1" mistake. Each weight gains 1 and the bias
+        gains 1, so that row's sum rises by 1 + 1 + 1 = 3, and the next time the row comes round its sum is higher.
         Each correction
         nudges the boundary towards getting the misclassified row right, without any guarantee about the other rows.</p>
         <h3>What the learning rate changes, and when it changes nothing</h3>
@@ -382,10 +384,9 @@ print(train_perceptron(X_blobs, y_blobs, lr=0.01)[2])</code></pre>
         random start with more say. On harder data that difference in path becomes a difference in how many epochs
         training needs.</p>
         <h3>scikit-learn's Perceptron</h3>
-        <p>scikit-learn's <code>Perceptron</code> implements the same rule as a linear classifier trained with
-        stochastic gradient descent, a perceptron loss and a constant learning
-        rate.<sup class="cite"><a href="#src-11">11</a></sup> Stochastic gradient descent here means a small
-        correction to the weights after each training row, which is what the loop above does. Its <code>score</code> method returns the
+        <p>scikit-learn's <code>Perceptron</code> implements the same rule, a small correction to the weights after each
+        training row, which is what the loop above does.<sup class="cite"><a href="#src-11">11</a></sup> Its
+        <code>score</code> method returns the
         mean accuracy on the data you pass it.<sup class="cite"><a href="#src-10">10</a></sup></p>
         <p class="run-label">Run in Colab</p>
 <pre><code>from sklearn.linear_model import Perceptron
@@ -430,13 +431,12 @@ print(train_perceptron(X_wide, y_wide, epochs=10)[2])</code></pre>
         <h2>TensorFlow basics: tensors and operations in one place</h2>
         <p>The perceptron so far ran in numpy. TensorFlow does the same kind of arithmetic on its own array type, the
         tensor, and adds the machinery a neural network needs. Colab ships TensorFlow 2.21.0 with Keras 3.13.2,
-        reached as <code>tf.keras</code>.<sup class="cite"><a href="#src-12">12</a></sup> It runs them on Python 3.13.18,
-        not the course's 3.15, because TensorFlow has no 3.15 wheel.<sup class="cite"><a href="#src-13">13</a></sup>
-        Every example on this page is TensorFlow 2.</p>
+        reached as <code>tf.keras</code>.<sup class="cite"><a href="#src-12">12</a></sup> Every example on this page
+        is TensorFlow 2, and the first half of this step recaps Thursday.</p>
         <h3>Rank, shape and dtype</h3>
-        <p>A tensor is a multi-dimensional array. It has a shape and a dtype, and when you write plain decimal numbers the
-        default float type is <code>float32</code>.<sup class="cite"><a href="#src-14">14</a></sup> The rank is the
-        number of axes, which is the length of the shape.</p>
+        <p>A tensor is a multi-dimensional array with a shape and a dtype, and plain decimal numbers default to
+        <code>float32</code>.<sup class="cite"><a href="#src-14">14</a></sup> The rank is the number of axes, the
+        length of the shape.</p>
         <table>
           <thead><tr><th>Rank</th><th>Common name</th><th>Example</th><th>Shape</th></tr></thead>
           <tbody>
@@ -445,8 +445,7 @@ print(train_perceptron(X_wide, y_wide, epochs=10)[2])</code></pre>
             <tr><td>2</td><td>matrix</td><td><code>tf.constant([[1.0, 2.0], [3.0, 4.0]])</code></td><td>(2, 2)</td></tr>
           </tbody>
         </table>
-        <p>A batch of breast-cancer rows is a rank-2 tensor of shape (rows, 30), and a batch of greyscale images is rank 3.
-        The cell below builds a 2 by 2 matrix and prints its shape, dtype and rank, then runs two operations on it.</p>
+        <p>The cell below prints a 2 by 2 matrix's shape, dtype and rank, then runs two operations on it.</p>
         <p class="run-label">Run in Colab</p>
 <pre><code>import tensorflow as tf
 
@@ -461,23 +460,15 @@ tf.Tensor(
 tf.Tensor(
 [[ 7. 10.]
  [15. 22.]], shape=(2, 2), dtype=float32)</pre>
-        <p><code>m + 1</code> adds 1 to every element, the way numpy does, and <code>tf.matmul</code> is the matrix
-        product. Every printed tensor carries its values, its shape and its dtype, which is the first place to look when
-        an operation complains.</p>
+        <p><code>m + 1</code> adds 1 to every element, and <code>tf.matmul</code> is the matrix product.</p>
         <h3>Eager execution</h3>
         <p>TensorFlow 2 runs operations eagerly by default: each operation executes at once and returns a concrete
         value.<sup class="cite"><a href="#src-15">15</a></sup> That is why <code>print(m + 1)</code> above shows
-        numbers. Operations such as <code>tf.matmul</code> and <code>+</code> run eagerly and return
-        tensors.<sup class="cite"><a href="#src-15">15</a></sup></p>
-        <p>Eager code reads and debugs like ordinary Python. You can print any intermediate value, step through it, and
-        mix it with Python <code>if</code> statements and loops. A <code>tf.Tensor</code> is immutable, so every operation
-        returns a new tensor and leaves its inputs alone.<sup class="cite"><a href="#src-16">16</a></sup>
-        TensorFlow 1 worked the other way round, building a graph first and computing values later, and the next step
-        covers that history.</p>
+        numbers, and why eager code reads and debugs like ordinary Python. TensorFlow 1 built a graph first and computed values later, and the next step covers that history.</p>
         <h3>From NumPy and back</h3>
-        <p>TensorFlow and numpy pass data back and forth. <code>tf.constant</code> accepts a numpy array, and the
+        <p><code>tf.constant</code> accepts a numpy array, and the
         <code>.numpy()</code> method converts an eager tensor into a numpy
-        array.<sup class="cite"><a href="#src-14">14</a></sup> The same arithmetic reads the same in both.</p>
+        array.<sup class="cite"><a href="#src-14">14</a></sup></p>
         <p class="run-label">Run in Colab</p>
 <pre><code>import numpy as np
 
@@ -494,7 +485,7 @@ True</pre>
         array.</p>
         <h3>tf.function: the route to a graph</h3>
         <p><code>tf.function</code> traces a Python function into a <code>tf.Graph</code> that TensorFlow can optimise and
-        reuse, and it is the TensorFlow 2 route to a graph.<sup class="cite"><a href="#src-15">15</a></sup>
+        reuse.<sup class="cite"><a href="#src-15">15</a></sup>
         Tracing runs the Python body once per new input signature. A plain <code>print</code> inside it therefore fires
         only while tracing, while <code>tf.print</code> fires on every call.<sup class="cite"><a href="#src-17">17</a></sup></p>
         <p class="run-label">Run in Colab</p>
@@ -516,10 +507,9 @@ tracing
         <p>The function is a perceptron's weighted sum. The first call traces it, so "tracing" appears once. The second
         call has the same shapes and reuses the graph. The third passes vectors of length 3, a new input signature, so
         TensorFlow traces again.</p>
-        <p>TensorFlow can optimise and reuse a graph, but tracing costs time, and new shapes or new
-        Python values cause retracing.<sup class="cite"><a href="#src-17">17</a></sup> A function that
-        retraces on every call pays that cost every time. You recognise the feature by <code>@tf.function</code>
-        on the line above a <code>def</code>.</p>
+        <p>Tracing costs time, and new shapes or new Python values cause
+        retracing,<sup class="cite"><a href="#src-17">17</a></sup> so a function that retraces on every call pays that
+        cost every time.</p>
         <div class="recap"><div class="k">Takeaways</div><ul>
           <li>A tensor has a shape, a dtype and a rank; decimal values default to float32.</li>
           <li>TensorFlow 2 runs each operation eagerly and returns a value at once.</li>
@@ -654,8 +644,8 @@ print(double(tf.constant([1.0, 2.0])).numpy())</code></pre>
         breast-cancer dataset: 30 measurements per tumour and a two-class label.</p>
         <h3>Split and scale the data first</h3>
         <p>The data is split into training and test rows with Monday's <code>train_test_split</code>, then scaled.
-        <code>StandardScaler</code> rescales each feature to mean 0 and standard deviation 1, which lets sigmoid units and
-        gradient-based optimisers converge in few epochs.<sup class="cite"><a href="#src-19">19</a></sup> The
+        <code>StandardScaler</code> rescales each feature to mean 0 and standard deviation 1, so a sigmoid
+        neuron's training settles on good weights within a few epochs.<sup class="cite"><a href="#src-19">19</a></sup> The
         scaler is fitted on the training rows only, so nothing about the test rows leaks into training.
         <code>tf.keras.utils.set_random_seed</code> seeds Python, NumPy and TensorFlow together, so the starting weights
         repeat on every run.<sup class="cite"><a href="#src-20">20</a></sup></p>
@@ -678,8 +668,8 @@ print(np.allclose(X_train.mean(axis=0), 0), np.allclose(X_train.std(axis=0), 1))
 <pre class="out">(455, 30) (114, 30)
 True True</pre>
         <p>There are 455 training rows and 114 test rows, each with 30 features, and every training column now has mean 0
-        and standard deviation 1. Skipping the scaler is a common mistake here. The raw features make the single neuron
-        train slowly with a poor first epoch, and the model gets the blame.</p>
+        and standard deviation 1. Skipping the scaler is a common mistake: on the raw features the single neuron trains
+        slowly, and the model gets the blame.</p>
         <h3>Sequential, Input and Dense</h3>
         <p>A <code>tf.keras.Sequential</code> model is a stack of layers with one input and one output per
         layer.<sup class="cite"><a href="#src-21">21</a></sup> <code>tf.keras.Input(shape=(30,))</code>
@@ -694,18 +684,20 @@ True True</pre>
 print(model.count_params())</code></pre>
         <p>It prints 31. <code>Dense(1, activation="sigmoid")</code> on a 30-feature input holds a kernel of shape
         (30, 1) and a bias of shape (1,), which makes 31 trainable
-        parameters.<sup class="cite"><a href="#src-22">22</a></sup> That is the perceptron again, with one weight
-        per input and one bias, and a sigmoid in place of the step. You recognise this model on sight by that
-        two-item list inside <code>Sequential</code>.</p>
+        parameters.<sup class="cite"><a href="#src-22">22</a></sup> That is the perceptron again, with
+        one weight per input and one bias, and a sigmoid in place of the step. The kernel here is the weight matrix,
+        unrelated to Wednesday's convolution kernel.</p>
         <h3>compile: optimizer, loss and metrics</h3>
         <p><code>model.compile</code> takes an optimizer, a loss and a list of
         metrics.<sup class="cite"><a href="#src-23">23</a></sup> Two of the names below are week 7's subject,
         so here is one line on each:</p>
         <ul>
-          <li><code>"adam"</code> is the rule that nudges the weights a little after each batch to lower the loss, a
-          refined version of the perceptron's correction</li>
           <li><code>"binary_crossentropy"</code> is the loss for a yes-or-no label, a number that grows as the predicted
           probability moves away from the true label</li>
+          <li><code>"adam"</code> is the rule that nudges the weights a little after each batch to lower the loss, a
+          refined version of the perceptron's correction. A batch is a small group of training rows, so the update
+          comes once per group where the perceptron's came once per row, and an epoch is still one pass over every
+          row.</li>
           <li><code>["accuracy"]</code> asks Keras to report the share of rows classified correctly alongside the loss</li>
         </ul>
         <h3>fit, evaluate and predict</h3>
@@ -728,12 +720,18 @@ print(model.evaluate(X_test, y_test, verbose=0))
 probs = model.predict(X_test[:5], verbose=0)
 print(probs.shape)
 print((probs &gt;= 0.5).astype(int).ravel(), y_test[:5])</code></pre>
-        <p>The first line prints <code>50 ['accuracy', 'loss']</code>: one entry per epoch for each tracked figure. The
-        second prints a list of two numbers, <code>[test loss, test accuracy]</code>. The third prints <code>(5, 1)</code>, one probability per row, and the last prints the thresholded
-        predictions next to the true labels.</p>
+<pre class="out">50 ['accuracy', 'loss']
+[0.1599815934896469, 0.9561403393745422]
+(5, 1)
+[0 1 0 1 0] [0 1 0 1 0]</pre>
+        <p>The first line shows one entry per epoch for each tracked figure. The second is
+        <code>[test loss, test accuracy]</code>: a loss of about 0.16 and an accuracy of 0.956, or 109 of the 114
+        test rows. The third is the shape of <code>probs</code>, one probability per row, and the last shows the five
+        thresholded predictions matching the five true labels.</p>
         <p>A sigmoid output lies between 0 and 1, so it reads as the probability of class 1, and this page thresholds it
         at 0.5.<sup class="cite"><a href="#src-3">3</a></sup> Two mistakes are common at this point. One is
-        reading the printed loss as accuracy. The other is quoting training accuracy, which overstates how well the model
+        reading the printed loss as accuracy, though the loss is a score where lower is better, not a
+        percentage. The other is quoting training accuracy, which overstates how well the model
         generalises; the figure to quote is <code>evaluate</code> on the held-out
         split.<sup class="cite"><a href="#src-23">23</a></sup></p>
         <h3>The layer's kernel and bias</h3>
@@ -741,8 +739,8 @@ print((probs &gt;= 0.5).astype(int).ravel(), y_test[:5])</code></pre>
         <code>Variable</code>s. Each is a container for state with <code>assign</code>, <code>trainable</code>,
         <code>path</code> and <code>value</code> attributes.<sup class="cite"><a href="#src-24">24</a></sup> A Keras
         <code>Variable</code>'s <code>.value</code> returns its backing
-        tensor.<sup class="cite"><a href="#src-24">24</a></sup> In the TensorFlow backend that backing tensor is a
-        <code>tf.Variable</code> like the ones in the previous step, as the cell below prints.
+        tensor,<sup class="cite"><a href="#src-24">24</a></sup> which in the TensorFlow backend is a
+        <code>tf.Variable</code> like those in the previous step.
         <code>get_weights()</code> returns a Dense layer's kernel, then its bias, as NumPy
         arrays.<sup class="cite"><a href="#src-25">25</a></sup></p>
         <p class="run-label">Run in Colab</p>
@@ -767,10 +765,9 @@ ndarray (30, 1) (1,) 31</pre>
 logreg = LogisticRegression(max_iter=5000).fit(X_train, y_train)
 print(logreg.coef_.shape, logreg.intercept_.shape)</code></pre>
 <pre class="out">(1, 30) (1,)</pre>
-        <p>Thirty coefficients and one intercept, the same 31 numbers as the Dense layer. The two models reach their
-        numbers by different routes, and both draw a single flat boundary through the 30-dimensional space. That is the
-        limit of a one-layer sigmoid model: it is logistic regression and can only draw a
-        line.<sup class="cite"><a href="#src-23">23</a></sup></p>
+        <p>Thirty coefficients and one intercept, the same 31 numbers as the Dense layer. Both models draw a single flat boundary through the 30-dimensional space. That is the
+        limit of a one-layer sigmoid model: it is logistic
+        regression.<sup class="cite"><a href="#src-23">23</a></sup></p>
         <div class="recap"><div class="k">Takeaways</div><ul>
           <li>Scale the features first; StandardScaler gives each one mean 0 and standard deviation 1.</li>
           <li>Sequential with Input(shape=(30,)) and Dense(1, sigmoid) holds 31 trainable parameters.</li>
@@ -812,8 +809,7 @@ print(logreg.coef_.shape, logreg.intercept_.shape)</code></pre>
         <p><code>tf.keras.utils.plot_model</code> draws the layer graph as an image, and it needs pydot and graphviz
         installed.<sup class="cite"><a href="#src-27">27</a></sup> <code>show_shapes=True</code> adds the
         input and output shapes to each node.<sup class="cite"><a href="#src-27">27</a></sup> Colab ships
-        both dependencies, pydot 4.0.1 as a Python package and the graphviz 2.42.2 system package that provides the
-        <code>dot</code> program, so no install line is needed.<sup class="cite"><a href="#src-12">12</a></sup><sup class="cite"><a href="#src-28">28</a></sup></p>
+        both, so no install line is needed.<sup class="cite"><a href="#src-12">12</a></sup><sup class="cite"><a href="#src-28">28</a></sup></p>
         <p class="run-label">Run in Colab</p>
 <pre><code>tf.keras.utils.plot_model(model, show_shapes=True)</code></pre>
         <p>The cell displays an image of the model with a box for each layer. The Dense box shows its name and type, an

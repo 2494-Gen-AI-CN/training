@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="tc-day" content="w06d4">
 <title>W6·D4 — TensorFlow introduction | 2494 · Gen-AI Python</title>
-<link rel="stylesheet" href="../../assets/css/style.css?v=20261116">
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261119">
 <script src="../../assets/js/theme.js?v=20261116"></script>
 </head>
 <body>
@@ -36,7 +36,7 @@
           <span><b>Week 6</b> · Day 4</span>
           <span>Thu Nov 19, 2026</span>
           <span>AI/ML fundamentals</span>
-          <span><b>~34 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span><b>~36 min</b> · reference notes @150 wpm · diagram · check</span>
           <span class="verified">Sources checked 2026-11-16 · python 3.15 · colab-python 3.12.x · tensorflow 2.21.x · keras 3.15.x</span>
           <span class="notebook"><a href="https://colab.research.google.com/github/2494-Gen-AI-CN/demos/blob/main/notebooks/week-06/04_thursday_tensorflow_introduction.ipynb" target="_blank" rel="noopener">Open the notebook in Colab</a></span>
         </div>
@@ -95,13 +95,13 @@ except TypeError as err:
 <pre class="out">TypeError</pre>
         <p>A NumPy array would have accepted that assignment. State that changes, such as a network's weights during
         training, lives in a <code>tf.Variable</code>, and Friday sets the two side by
-        side.<sup class="cite"><a href="#src-2">2</a></sup> A tensor is also strictly typed, so it gives up the in-place
-        editing a NumPy array allows.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        side.<sup class="cite"><a href="#src-2">2</a></sup></p>
         <h3>Keras, the layer teams write models in</h3>
         <p>Very little production code builds a network from raw tensor operations. Teams write models in Keras, the
         high-level API that sits on top of TensorFlow and is reached as <code>tf.keras</code>. From TensorFlow 2.16,
         <code>tf.keras</code> is Keras 3, which can train on a TensorFlow, JAX or PyTorch
-        backend.<sup class="cite"><a href="#src-3">3</a></sup></p>
+        backend.<sup class="cite"><a href="#src-3">3</a></sup> A backend here is the library that does the arithmetic
+        underneath, and the next step introduces JAX and PyTorch.</p>
         <p>The layers stack like this:</p>
         <ul>
           <li>tensors hold the numbers</li>
@@ -123,8 +123,8 @@ import tensorflow as tf
 print(tf.__version__)
 print(tf.keras.__version__)
 print(tf.config.list_physical_devices())</code></pre>
-        <p>The first line prints the TensorFlow 2 version Colab ships and the second a Keras 3 version, since
-        <code>tf.keras</code> is Keras 3 from TensorFlow 2.16.<sup class="cite"><a href="#src-3">3</a></sup> The last
+        <p>The first line prints the TensorFlow 2 version Colab ships and the second a Keras 3
+        version.<sup class="cite"><a href="#src-3">3</a></sup> The last
         prints the devices TensorFlow can see, a CPU unless you picked a GPU runtime.<sup class="cite"><a href="#src-4">4</a></sup>
         Exact numbers move whenever Colab updates its image, which is why a shared notebook prints them in its first cell
         rather than quoting them in a comment.</p>
@@ -154,8 +154,6 @@ print(tf.config.list_physical_devices())</code></pre>
         internal system called DistBelief.<sup class="cite"><a href="#src-5">5</a></sup> Its API and a reference
         implementation were released as open source under the Apache 2.0 licence in November
         2015.<sup class="cite"><a href="#src-5">5</a></sup></p>
-        <p>The paper that describes the system is titled for large-scale machine learning on heterogeneous distributed
-        systems.<sup class="cite"><a href="#src-5">5</a></sup></p>
         <h3>TensorFlow 1, TensorFlow 2 and Keras 3</h3>
         <p>The releases that matter for reading code are these:</p>
         <table>
@@ -173,12 +171,11 @@ print(tf.config.list_physical_devices())</code></pre>
         Python reaches it, is easy to debug by comparison.<sup class="cite"><a href="#src-13">13</a></sup></p>
         <p>TensorFlow 2.0.0 followed in September 2019.<sup class="cite"><a href="#src-8">8</a></sup> It made eager
         execution the default and Keras the main high-level API.<sup class="cite"><a href="#src-9">9</a></sup> A line ran
-        when Python reached it, the way NumPy does, and graphs moved behind a decorator that this page covers in step 4.
-        From TensorFlow 2.16, <code>tf.keras</code> is Keras 3.<sup class="cite"><a href="#src-3">3</a></sup></p>
+        when Python reached it, the way NumPy does, and graphs moved behind a decorator that this page covers in step 4.</p>
         <h3>PyTorch and JAX alongside it</h3>
         <p>TensorFlow is one of three open-source frameworks you will hear about in machine-learning teams. PyTorch is a
-        deep-learning framework that runs eagerly. JAX is Google's NumPy-style library with composable <code>jit</code>,
-        <code>grad</code> and <code>vmap</code> transformations.<sup class="cite"><a href="#src-10">10</a></sup><sup class="cite"><a href="#src-11">11</a></sup></p>
+        deep-learning framework that runs eagerly. JAX is Google's NumPy-style library with composable <code>jit</code>
+        and <code>grad</code> transformations.<sup class="cite"><a href="#src-10">10</a></sup><sup class="cite"><a href="#src-11">11</a></sup></p>
         <table>
           <thead><tr><th>Framework</th><th>Style</th><th>How you recognise it</th></tr></thead>
           <tbody>
@@ -192,14 +189,13 @@ print(tf.config.list_physical_devices())</code></pre>
         on this page carry across. Every framework has tensors with a shape and a dtype, operations on them, and some way
         to compile a function for speed.</p>
         <h3>Why tutorials still show Session</h3>
-        <p>Most TensorFlow material online, including blog posts, answers on forums and older courses, predates 2019. It
-        uses <code>tf.Session</code> and <code>tf.placeholder</code>, and you will meet it every time you search for an
-        error message. You recognise it on sight by a line such as <code>sess = tf.Session()</code> or a
-        <code>feed_dict</code> argument.</p>
+        <p>Most TensorFlow material online, including blog posts, answers on forums and older courses, predates 2019, and
+        you will meet it every time you search for an error message. You recognise it on sight by a line such as
+        <code>sess = tf.Session()</code> or a <code>feed_dict</code> argument.</p>
         <p>That code does not run unchanged on TensorFlow 2. The old API survives under <code>tf.compat.v1</code>, and it
         exists as a migration bridge for teams moving old code forward.<sup class="cite"><a href="#src-7">7</a></sup> For
-        new code the right move is to read a TensorFlow 1 tutorial for its idea, then write the TensorFlow 2 version, with
-        eager calls and <code>tf.function</code> in place of the session.</p>
+        new code, read a TensorFlow 1 tutorial for its idea and write the TensorFlow 2 version. The last step of this
+        page puts the two side by side.</p>
         <div class="recap"><div class="k">Takeaways</div><ul>
           <li>Google Brain open-sourced TensorFlow under Apache 2.0 in November 2015, after DistBelief.</li>
           <li>TensorFlow 1 built a graph and ran it in a session; TensorFlow 2 runs eagerly.</li>
@@ -299,10 +295,12 @@ print((tf.constant([1.0, 2.0, 3.0]) + column).shape)</code></pre>
  [15. 22.]]
 (3, 3)</pre>
         <p>The row of shape <code>(2,)</code> was added to each row of <code>x</code>, and the plain number 2 was stretched
-        to every element. <code>tf.matmul</code> did rows times columns, so its top-left value is 1 × 1 + 2 × 3 = 7. The
-        last line is the limit of broadcasting: a vector of shape <code>(3,)</code> plus a column of shape
+        to every element. <code>tf.matmul</code> did rows times columns, so its top-left value is 1 × 1 + 2 × 3 = 7.</p>
+        <p>The last line is the limit of broadcasting: a vector of shape <code>(3,)</code> plus a column of shape
         <code>(3, 1)</code> gives a full <code>(3, 3)</code> grid, with no error, which is rarely what the author
-        meant.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        meant.<sup class="cite"><a href="#src-1">1</a></sup> Lined up from the right,
+        <code>(3,)</code> counts as <code>(1, 3)</code>, and against <code>(3, 1)</code> each axis takes the larger
+        length, 3 and 3.</p>
         <p>When a result has more elements than you expected, print the shapes of both inputs before anything else. In
         Wednesday's numpy network, a layer's forward pass was a matrix product plus a bias row, and in TensorFlow that is
         <code>tf.matmul(inputs, weights) + bias</code>, with broadcasting adding the bias to every row.</p>
@@ -365,12 +363,16 @@ print(graph_affine(x, w, b).numpy())</code></pre>
             <tr><td>Graph (<code>tf.function</code>)</td><td>Optimisation, and export to run without Python</td><td>Python side effects run only while tracing</td></tr>
           </tbody>
         </table>
-        <p>Graphs allow optimisation and export.<sup class="cite"><a href="#src-13">13</a></sup> The price is that
+        <p>Graphs allow optimisation and export.<sup class="cite"><a href="#src-13">13</a></sup> In eager mode Python
+        hands TensorFlow one operation at a time. A graph is the whole recorded chain, which TensorFlow can optimise and
+        run without Python stepping through it.<sup class="cite"><a href="#src-13">13</a></sup> Export means saving that
+        graph so it can run without your Python function.<sup class="cite"><a href="#src-13">13</a></sup></p>
+        <p>The price is that
         Python side effects, such as a <code>print</code> or appending to a list, run only while the function is being
         traced, not on every call.<sup class="cite"><a href="#src-14">14</a></sup></p>
         <h3>What is inside the graph</h3>
         <p><code>get_concrete_function</code> returns the traced graph for one input
-        signature.<sup class="cite"><a href="#src-14">14</a></sup> Its <code>graph.get_operations()</code> lists the nodes,
+        signature, meaning one set of argument shapes and dtypes.<sup class="cite"><a href="#src-14">14</a></sup> Its <code>graph.get_operations()</code> lists the nodes,
         each with a type.</p>
 <pre><code># Run in Colab
 concrete = graph_affine.get_concrete_function(x, w, b)
@@ -489,6 +491,10 @@ for t in [tf.constant([1.0, 2.0]), tf.constant([1.0, 2.0, 3.0])]:
         shape and dtype it names.<sup class="cite"><a href="#src-14">14</a></sup>
         You recognise the pattern by <code>@tf.function(input_signature=[...])</code> above a function that a team serves
         or exports, where one stable graph matters more than flexibility.</p>
+        <p>Keras runs a model's <code>fit</code>, <code>evaluate</code> and <code>predict</code> as graphs through
+        <code>tf.function</code>.<sup class="cite"><a href="#src-9">9</a></sup> So the behaviour in this step, a Python
+        <code>print</code> that runs once and a new trace for a new shape or dtype, is what happens when a Keras model
+        trains, and Friday builds the first one.</p>
         <div class="recap"><div class="k">Takeaways</div><ul>
           <li>A Python print runs once while tracing; tf.print runs on every call.</li>
           <li>A new shape, dtype or Python value as argument makes tf.function trace again.</li>
@@ -558,7 +564,7 @@ print((t - row_means).numpy()[0])</code></pre>
         ways:<sup class="cite"><a href="#src-16">16</a></sup></p>
         <ul>
           <li>it takes a single integer axis, never a tuple</li>
-          <li>its default axis is 0: its signature shows <code>axis=None</code>, which argmax treats as axis 0, so leaving <code>axis</code> out does not search the whole tensor</li>
+          <li>its default axis is 0, so leaving <code>axis</code> out does not search the whole tensor</li>
           <li>it has no <code>keepdims</code></li>
           <li>it returns indices, not values</li>
         </ul>
@@ -575,7 +581,9 @@ print(tf.reduce_max(m, axis=1).numpy())</code></pre>
         <code>reduce_max</code> gave the values themselves, 9 and 8. A classifier's prediction is this pattern: the position
         of the highest score in each row is the predicted class.</p>
         <h3>Reducing a batch of MNIST images</h3>
-        <p><code>tf.keras.datasets.mnist.load_data()</code> returns <code>uint8</code> arrays: 60000 training images of 28
+        <p>MNIST is a set of small greyscale images of handwritten digits, 0 to 9, that Keras downloads and loads in one
+        call, like Wednesday's 8 by 8 digits but at 28 by 28.<sup class="cite"><a href="#src-26">26</a></sup><sup class="cite"><a href="#src-17">17</a></sup>
+        <code>tf.keras.datasets.mnist.load_data()</code> returns <code>uint8</code> arrays: 60000 training images of 28
         by 28 and 10000 test images.<sup class="cite"><a href="#src-17">17</a></sup> Cast integers before taking a mean,
         because <code>tf.reduce_mean</code> on an integer tensor returns a truncated integer
         mean.<sup class="cite"><a href="#src-18">18</a></sup></p>
@@ -601,6 +609,9 @@ print(mean_image.shape, brightest.shape, position.shape)</code></pre>
         <code>(28, 28) (60000,) (60000,)</code>. Reducing over axis 0 gives one 28 by 28 mean image, and reducing over
         <code>(1, 2)</code> gives one value per image.<sup class="cite"><a href="#src-20">20</a></sup> People often mix
         those two up, and printing the shape settles it.</p>
+        <p>The <code>position</code> line answers a different question. <code>tf.argmax</code> takes one axis only, so
+        <code>tf.reshape</code> first flattens each image into a row of 784, and argmax along axis 1 then gives, for each
+        image, the position from 0 to 783 of its brightest pixel.<sup class="cite"><a href="#src-16">16</a></sup><sup class="cite"><a href="#src-19">19</a></sup></p>
         <h3>One reducer for any shape</h3>
         <p><code>tf.TensorSpec(shape=None, dtype=tf.float32)</code> accepts any shape in one traced
         graph.<sup class="cite"><a href="#src-14">14</a></sup> That gives a single compiled function for a scalar, a vector,
@@ -621,8 +632,7 @@ for x in [tf.constant(4.0), tf.constant([1.0, 2.0, 6.0]), tf.constant([[1.0, 2.0
         <p>One trace served three ranks, and <code>summarize(images)</code> runs on the same graph. The limit is the dtype
         in the signature: a <code>uint8</code> tensor such as <code>tf.constant(x_train)</code> does not match
         <code>float32</code>, so the call fails with a <code>TypeError</code>.<sup class="cite"><a href="#src-14">14</a></sup>
-        Pixels that were never divided by 255 would also give a mean on the 0 to 255 scale, so cast and scale the batch
-        before it reaches the reducer.</p>
+        Cast and scale the batch before it reaches the reducer.</p>
         <div class="recap"><div class="k">Takeaways</div><ul>
           <li>axis=None reduces everything; an int or tuple of axes removes just those axes.</li>
           <li>keepdims=True keeps reduced axes at length 1 so the result broadcasts back.</li>
@@ -724,7 +734,8 @@ ops = scaled_shift.get_concrete_function(tf.TensorSpec([3], tf.float32)).graph.g
 print(sorted({op.name.split("/")[0] for op in ops}))</code></pre>
 <pre class="out">['Identity', 'scale', 'shift', 'x']</pre>
         <p>The multiply and its constant now live under <code>scale/</code>, and the add under <code>shift/</code>. In
-        TensorBoard each scope is drawn as one box you can expand.<sup class="cite"><a href="#src-21">21</a></sup></p>
+        the printout each name is cut at its first slash, so the other two entries are the input argument
+        <code>x</code> and the <code>Identity</code> node for the returned value, as in step 4.</p>
         <div class="recap"><div class="k">Takeaways</div><ul>
           <li>TensorFlow 1 fed placeholders through a feed_dict into Session.run; that code fails on TensorFlow 2.</li>
           <li>In TensorFlow 2, tf.function replaces the session and arguments replace placeholders.</li>
@@ -832,6 +843,7 @@ assert reduced_shape((2, 2, 3), -1, keepdims=True) == (2, 2, 1), "keepdims=True 
           <li id="src-23"><a href="https://www.tensorflow.org/tensorboard/get_started" target="_blank" rel="noopener">Get started with TensorBoard</a> — loading TensorBoard inside a notebook.</li>
           <li id="src-24"><a href="https://www.tensorflow.org/api_docs/python/tf/name_scope" target="_blank" rel="noopener">tf.name_scope</a> — prefixing operation names so a graph groups them.</li>
           <li id="src-25"><a href="https://www.tensorflow.org/guide/migrate/tf1_vs_tf2" target="_blank" rel="noopener">TF1.x vs TF2: behaviors and APIs</a> — TensorFlow 1's sessions, placeholders and <code>feed_dict</code> set against TensorFlow 2's functions.</li>
+          <li id="src-26"><a href="https://www.tensorflow.org/datasets/catalog/mnist" target="_blank" rel="noopener">TensorFlow Datasets catalog: mnist</a> — MNIST as a database of handwritten digits.</li>
         </ul>
       </section>
 

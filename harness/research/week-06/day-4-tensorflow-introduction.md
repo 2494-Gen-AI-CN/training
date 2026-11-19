@@ -35,6 +35,8 @@ version-stamps:
 - PyTorch and JAX are the other widely used open-source frameworks for array computation and deep learning; JAX pairs a NumPy-style API with transformations such as `jit` and `grad` — [PyTorch documentation](https://pytorch.org/docs/stable/index.html), [JAX documentation](https://docs.jax.dev/en/latest/)
 - TensorBoard's Graphs tab shows a traced function when you call `tf.summary.trace_on(graph=True)`, run it, then `tf.summary.trace_export` under a default writer (the guide's TF 2.2-era example also passes `profiler=True` and `profiler_outdir`; `profiler` defaults to False and `profiler_outdir` is optional, so `graph=True` alone exports the graph; confirm on the fresh Colab runtime with the stamp cell) — [Examining the TensorFlow Graph](https://www.tensorflow.org/tensorboard/graphs), [tf.summary.trace_export](https://www.tensorflow.org/api_docs/python/tf/summary/trace_export)
 - `tf.keras.datasets.mnist.load_data()` returns `uint8` arrays: 60000 training images of 28 by 28 and 10000 test images — [mnist.load_data](https://www.tensorflow.org/api_docs/python/tf/keras/datasets/mnist/load_data)
+- What MNIST is (added 2026-11-19, checked that day): the loader's page calls it "a dataset of 60,000 28x28 grayscale images of the 10 digits, along with a test set of 10,000 images", with labels that are integers 0 to 9 — [mnist.load_data](https://www.tensorflow.org/api_docs/python/tf/keras/datasets/mnist/load_data); the digits are handwritten: the TensorFlow Datasets catalog names it "The MNIST database of handwritten digits" — [TensorFlow Datasets catalog: mnist](https://www.tensorflow.org/datasets/catalog/mnist)
+- Keras trains inside a graph (added 2026-11-19, checked that day): "`tf.keras.Model` methods such as `fit`, `evaluate`, and `predict` execute as graphs with `tf.function` under the hood", and `compile(run_eagerly=True)` stops the model's logic being wrapped in a `tf.function`. So what this day teaches about tracing (a Python `print` that runs once, a retrace on a new shape or dtype) is what happens when a Keras model trains — [Effective TensorFlow 2](https://www.tensorflow.org/guide/effective_tf2)
 - Broadcasting stretches a size-1 or missing axis so tensors of different shapes can be combined elementwise — [Introduction to Tensors](https://www.tensorflow.org/guide/tensor)
 
 ## Notes depth (D-0040; one block per curriculum subtopic, sized for a 4500–7000-word study page; every claim-bearing line carries [title](official url))
@@ -117,6 +119,7 @@ version-stamps:
 - tf.math.argmax — https://www.tensorflow.org/api_docs/python/tf/math/argmax
 - tf.summary.trace_export — https://www.tensorflow.org/api_docs/python/tf/summary/trace_export
 - tf.keras.datasets.mnist.load_data — https://www.tensorflow.org/api_docs/python/tf/keras/datasets/mnist/load_data
+- TensorFlow Datasets catalog: mnist (read 2026-11-19) — https://www.tensorflow.org/datasets/catalog/mnist
 - tf.name_scope — https://www.tensorflow.org/api_docs/python/tf/name_scope
 - TensorFlow: Large-Scale Machine Learning on Heterogeneous Distributed Systems (arXiv:1603.04467) — https://arxiv.org/abs/1603.04467
 - tensorflow v1.0.0 release (GitHub) — https://github.com/tensorflow/tensorflow/releases/tag/v1.0.0

@@ -634,6 +634,10 @@ footer.foot { border-top:1px solid var(--line); margin-top:50px; padding: 26px 2
 .reading-col .lede .summary { font-size:23px; line-height:1.6; color:var(--ink-soft); margin-top:16px; }
 .reading-col .step { min-height:28vh; }
 .reading-col .step .tag { font-size:13px; }
+/* step numbers (D-0100): the prose says "step 4", so each step's tag shows its number, counted in page order */
+.reading-col { counter-reset:step; }
+.reading-col section.step { counter-increment:step; }
+.reading-col section.step > .tag::before { content:"Step " counter(step) " \00B7  "; }
 .reading-col .step h2 { font-size:33px; line-height:1.15; margin:6px 0 14px; }
 .reading-col .step p { font-size:21px; line-height:1.75; margin:0 0 18px; }
 /* Reference-depth pages (D-0040): long sections read at full strength (no dimming, no forced height), h3
