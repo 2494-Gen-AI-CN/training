@@ -12,16 +12,6 @@
       "scope": "ca"
     },
     {
-      "date": "2026-11-26",
-      "label": "Thanksgiving (US)",
-      "scope": "us"
-    },
-    {
-      "date": "2026-11-27",
-      "label": "Day after Thanksgiving (US)",
-      "scope": "us"
-    },
-    {
       "date": "2026-12-25",
       "label": "Christmas Day",
       "scope": "ca"
@@ -831,7 +821,7 @@
       "phase": "ml",
       "project": "P1",
       "theme": "TensorFlow",
-      "notes": "WEEK ARC (D-0088, after D-0085): week 7 is a NOTEBOOK WEEK of three teaching days (Thu and Fri are US Thanksgiving holidays). Every day is demoFormat notebook: one prepared Jupyter notebook per day in the demo repo (notebooks/week-07/NN_<weekday>_<slug>.ipynb on main), run live in Google Colab cell by cell, in the style of harness/templates/notebook-style.md; no walkthrough, no block, no thread rung, no prep-branch commit. The runtime is Colab (TensorFlow has no wheel for the course Python 3.15), so version stamps are Colab's. Week 6 ended on one sigmoid neuron built, compiled and fitted in Keras (W6D5); week 7 starts from it. No exit-criteria map while qc4 is unpublished and no P1 spec yet. Curriculum names TFLearn, which is unmaintained. Research briefs must verify current status and map each TFLearn topic to its Keras/TF2 equivalent before authoring. DEPTH BAR (D-0086): fundamentals first. For every subtopic teach the core idea, one worked example and the answer a learner would give in an interview; implementation corners (API edge cases, parameter tuning, variants of a method, internals of the framework) are named in one sentence at most or left out. The plan's day shapes and every runbook separate a core path (what the room must leave with) from going-deeper parts that are run without discussion or skipped.",
+      "notes": "WEEK ARC (D-0101, after D-0085 and D-0088): week 7 has five days. Mon to Wed are NOTEBOOK days taught on the call: one prepared Jupyter notebook per day in the demo repo (notebooks/week-07/NN_<weekday>_<slug>.ipynb on main), run live in Google Colab cell by cell, in the style of harness/templates/notebook-style.md; no walkthrough, no block, no thread rung, no prep-branch commit. Thu and Fri are US Thanksgiving: the trainer is off, the learners are in Canada and work on Project 1 all day on their own, so W7D4 and W7D5 are SELF-DIRECTED PAGE DAYS (demoFormat none): a notes page each, no call, no notebook, no facilitation; the page must read fully alone. The runtime is Colab (TensorFlow has no wheel for the course Python 3.15), so version stamps are Colab's. Week 6 ended on one sigmoid neuron built, compiled and fitted in Keras (W6D5); week 7 starts from it. PROJECT 1 (published, D-0094; solo; showcase W8D5) offers four options: tabular classification or regression with a Dense network, image classification with a Dense network or a CNN, a Dense autoencoder, and text classification with TF-IDF into a Dense network. RULE (D-0101): by the end of Wednesday the room has watched every option BUILT END TO END in a notebook, in the order a learner's own project notebook follows: problem statement, dataset, preprocessing, model with a reason for each choice, training with a validation split and both curves on one chart, evaluation with the option's metrics, error analysis (the examples the model gets wrong), one improvement attempt measured before and after on the same validation data, limitations. A test set is held out at the start and used once at the end. The builds are: Mon image with a Dense network, Tue AM autoencoder with an anomaly threshold, Tue PM text, Wed AM image with a CNN, Wed PM tabular classification with a regression variant. The sprint / project work slot on Mon to Wed may shrink to 10 minutes or go, because Thu and Fri are whole project days. A dataset a course notebook uses is one the learners may not reuse for the project, so the builds avoid the datasets learners are most likely to want (Fashion-MNIST, Titanic, IMDB reviews). No exit-criteria map: the qc4 group file is written by us after week 7 lands (D-0103), not published by Revature. Curriculum names TFLearn, which is unmaintained. Research briefs must verify current status and map each TFLearn topic to its Keras/TF2 equivalent before authoring. DEPTH BAR (D-0086): fundamentals first. For every subtopic teach the core idea, one worked example and the answer a learner would give in an interview; implementation corners (API edge cases, parameter tuning, variants of a method, internals of the framework) are named in one sentence at most or left out. The plan's day shapes and every runbook separate a core path (what the room must leave with) from going-deeper parts that are run without discussion or skipped. The end-to-end builds are core path, never going deeper.",
       "days": [
         {
           "day": 1,
@@ -842,7 +832,7 @@
           "demoFormat": "notebook",
           "status": "planned",
           "title": "Multi-layer perceptrons, backprop & digit classifier",
-          "notes": "DAY SHAPE (D-0087, fundamentals the earlier weeks left out; all at the D-0086 depth bar): (1) OPEN with the loss function before any backprop: one number that says how wrong the model is, mean squared error when the answer is a number, cross-entropy when it is a class, lower is better; then gradient descent as repeated small steps downhill on that number, with the learning rate as the step size. Backprop is then 'how each weight learns which way is downhill', taught as intuition with one tiny worked example, no chain-rule derivation. (2) The limit of a single perceptron is shown on XOR by name: four points no straight line separates, solved by one hidden layer. (3) The MLP digit classifier trains with a validation split, and the room reads the training and validation curves together: both falling is learning, validation rising while training falls is overfitting. Early stopping is named in one sentence. (4) The classifier's evaluation shows a confusion matrix on the ten digits (which digits get mistaken for which), then precision and recall defined on one digit against the rest, and why accuracy misleads on an unbalanced problem.",
+          "notes": "DAY SHAPE (D-0087, fundamentals the earlier weeks left out; all at the D-0086 depth bar): (1) OPEN with the loss function before any backprop: one number that says how wrong the model is, mean squared error when the answer is a number, cross-entropy when it is a class, lower is better; then gradient descent as repeated small steps downhill on that number, with the learning rate as the step size. Backprop is then 'how each weight learns which way is downhill', taught as intuition with one tiny worked example, no chain-rule derivation. (2) The limit of a single perceptron is shown on XOR by name: four points no straight line separates, solved by one hidden layer. (3) The MLP digit classifier trains with a validation split, and the room reads the training and validation curves together: both falling is learning, validation rising while training falls is overfitting. Early stopping is named in one sentence. (4) The classifier's evaluation shows a confusion matrix on the ten digits (which digits get mistaken for which), then precision and recall defined on one digit against the rest, and why accuracy misleads on an unbalanced problem. (5) FULL BUILD (D-0101): the digit classifier and its evaluation are the week's first end-to-end build, Project 1's image option with a Dense network, and they follow the project's order: a problem statement in one markdown cell, a look at the dataset, preprocessing, the model with `summary()` and a reason for each choice (layers, activations, output layer, loss, optimizer), training with a validation split and both curves on one chart, then the test set, which was held out at the start and is used once at the end (the rule is stated in one sentence where the split is made). The evaluation adds F1 in one line beside precision and recall (the two combined into one number; the fuller treatment stays in week 8) and an error analysis: a grid of misclassified digits, read for what they have in common. It ends with one improvement attempt: change one thing (for example more hidden units or a second hidden layer), compare before and after on the same validation data, and say plainly whether it helped; then two sentences on what the model cannot do. The sprint / project work slot may shrink to 10 minutes.",
           "subtitle": "limits of single perceptrons · MLP · backprop algorithm · MLP digit classifier · TensorBoard",
           "subtopics": [
             "Limitations of single perceptrons",
@@ -869,7 +859,8 @@
             "TFLearn API",
             "Composing models in TFLearn",
             "Sequential composition"
-          ]
+          ],
+          "notes": "DAY SHAPE (D-0101, D-0086 depth bar): two end-to-end builds. (1) AM, AUTOENCODER BUILD: the autoencoder section is Project 1's autoencoder option built whole: originals beside their reconstructions, the reconstruction error per image, a threshold chosen from the errors on data the model was not trained on (for example a high percentile), the images above it shown as anomalies, and one improvement attempt (a different bottleneck size, measured on the same validation data). The 'digits it rebuilds worst' part is core, not going deeper. Denoising is named in one sentence only; Friday's page builds it. (2) PM, TEXT BUILD (about 40 minutes, a new last section before the Recap): Project 1's text option built whole. W6D3's TF-IDF (`TfidfVectorizer`, vocabulary capped with `max_features`) turns texts into a table of numbers, the sparse result is made a dense float32 array, and a small Dense network classifies it: validation split, both curves, precision, recall, F1 and a confusion matrix, false positives and false negatives read as text, one improvement attempt, limitations. Dataset: two or three categories of scikit-learn's `fetch_20newsgroups`, if the research brief confirms it downloads on a fresh Colab CPU runtime in well under a minute; otherwise the brief names another real text set that loads from code. (3) TFLearn shrinks to about 15 minutes in all: one history block, the TFLearn-to-Keras mapping table and the interview answer; the facilitation and the rebuilt digit network are merged into that. Collaborative filtering with the RBM, composing models and sequential composition keep their core sections. The sprint / project work slot may shrink to 20 minutes."
         },
         {
           "day": 3,
@@ -879,25 +870,49 @@
           "gate": "light",
           "demoFormat": "notebook",
           "status": "planned",
-          "title": "Functional API, layers, batch norm, saving & custom training",
-          "notes": "DAY SHAPE (D-0087, D-0086 depth bar): where the training process is customised, name regularisation and dropout in one or two sentences (ways to hold a network back from memorising its training rows, the overfitting read on W7D1's curves); no demo of either. Checkpoints stay at name level beside saving and loading.",
-          "subtitle": "functional composition · predefined layers · batch normalization · save/load · custom training loops · TensorBoard callbacks",
+          "title": "Functional API, layers, batch norm, saving & two full builds",
+          "notes": "DAY SHAPE (D-0101, superseding the D-0087 note and D-0095's going-deeper status; D-0086 depth bar): two end-to-end builds, paid for by moving two subtopics to Thursday's page. (1) AM: functional composition, predefined layers and batch normalization stay; the batch-norm pair (with and without the layer, measured on the same validation data) is read as a worked improvement attempt. (2) AM, CNN BUILD (core, about 35 minutes): Project 1's image option with a CNN built whole on MNIST so its numbers sit beside Monday's Dense network: images reshaped to 28 by 28 by 1, `Conv2D`, `MaxPooling2D`, `Flatten`, `Dropout`, `Dense`, a validation split, both curves, test accuracy, a confusion matrix or a grid of misclassified digits, and one improvement attempt measured on validation data (with and without `Dropout`, or with an `EarlyStopping` callback). Dropout and early stopping are taught here as core: what each does and how to tell whether it helped. Regularisation is named in one sentence. Sized for a CPU runtime. (3) PM: saving and loading a model stays (Project 1 hands in a `.keras` file). (4) PM, TABULAR BUILD (about 55 minutes): Project 1's tabular option built whole on a real table with blank cells and category columns. Proposed dataset: penguins through `seaborn.load_dataset('penguins')` (the brief confirms it loads on a fresh Colab runtime and names a fallback that loads from code if not). Order: split first (training, validation, test), fill blanks with a median or a most common value worked out from the training rows only, one-hot encode the categories with `pd.get_dummies` and give the other tables the training columns with `reindex`, scale with `StandardScaler` fitted on the training rows, then a Dense network, both curves, accuracy, precision, recall, F1 and a confusion matrix, the rows it gets wrong, one improvement attempt, limitations. Then a REGRESSION VARIANT (about 10 minutes; the first thing cut when the day runs long): the same table predicting a number: one linear output unit, `loss='mse'`, mean absolute error as the metric, a predicted-against-actual plot and the rows with the largest errors. Outliers and feature selection stay in week 8. (5) MOVED to Thursday's page (W7D4): the training loop written by hand with `tf.GradientTape` and comparing runs in TensorBoard; neither is in Wednesday's notebook. `fit`'s knobs (optimizer and learning rate, batch size, epochs, callbacks) are named where the builds use them. Checkpoints stay at name level beside saving and loading. The sprint / project work slot may go. Wednesday's wrap-up tells the room what Thursday and Friday are: project days on their own, one page each day, the weekly feedback form on Friday's page.",
+          "subtitle": "functional composition · predefined layers · batch normalization · save/load · a CNN build · a tabular build",
           "subtopics": [
             "Functional composition",
             "Predefined neural network layers",
             "Batch normalization",
-            "Saving and loading a model with TFLearn",
-            "Customizing the training process",
-            "TensorBoard with TFLearn"
+            "Saving and loading a model with TFLearn"
           ]
         },
         {
           "day": 4,
-          "kind": "holiday"
+          "slug": "day-4-custom-training-tensorboard-and-project-workflow",
+          "id": "w07d4",
+          "kind": "lesson",
+          "gate": "light",
+          "demoFormat": "none",
+          "status": "planned",
+          "title": "Custom training loops, TensorBoard runs & project workflow",
+          "notes": "SELF-DIRECTED PAGE DAY (D-0101): US Thanksgiving, the trainer is off and there is no call. The learners work on Project 1 all day and read this page on their own, so it must stand alone and be laid out so a reader finds what they need without reading top to bottom: the lede says in two sentences what the page holds and that the day is project work. Two parts, in this order. PART A, the two curriculum topics that left Wednesday's room: what `fit` does on every batch (forward pass, loss, gradients, update) and its knobs; the same loop written by hand with `tf.GradientTape` on the week's 784-128-10 digit network (a fresh uncompiled model, `SparseCategoricalCrossentropy`, `Adam`, batches as numpy slices, no `tf.data`), and when a team writes its own loop; then TensorBoard for comparing two runs in the Scalars tab (TFLearn's `tensorboard_verbose` shown as history, the Keras `TensorBoard` callback as today's way, one log folder per run) with weight histograms named. PART B, working on a model project on your own: loading a dataset from code with no upload (a Keras built-in, a scikit-learn `fetch_` loader, TensorFlow Datasets, a public CSV read by pandas from a URL), looking at it before modelling, setting the seeds and checking the notebook with Runtime > Run all on a fresh runtime, holding the test set out and using it once, keeping a results table as you go, saving the `.keras` file, and what a README and a short slide deck for a model need to say. Part B speaks of the reader's project in general terms and never links or quotes the project spec. Every example is a 'Run in Colab' cell. The runbook for this day is a record only: no block is delivered; it lists what the page holds and what Wednesday's wrap-up told the room.",
+          "subtitle": "self-directed (trainer off, US Thanksgiving) · what fit does · a training loop by hand · comparing runs in TensorBoard · working on a model project alone",
+          "subtopics": [
+            "Customizing the training process",
+            "TensorBoard with TFLearn",
+            "Working on a model project: datasets from code, reproducible runs, hand-in"
+          ]
         },
         {
           "day": 5,
-          "kind": "holiday"
+          "slug": "day-5-improving-a-model-and-stretch-builds",
+          "id": "w07d5",
+          "kind": "lesson",
+          "gate": "light",
+          "demoFormat": "none",
+          "status": "planned",
+          "title": "Improving a model & stretch builds",
+          "notes": "SELF-DIRECTED PAGE DAY (D-0101): the day after US Thanksgiving, the trainer is off and there is no call. The learners work on Project 1 all day and read this page on their own; it must stand alone and be easy to move around in. Two parts. PART A, the improvement playbook: read the curves and the wrong examples first to choose what to change; the levers (hidden units and layers, the learning rate, dropout, batch normalization, early stopping, the preprocessing, the decision threshold, a second architecture), each with what it is for and the sign that says to try it; change one thing at a time; compare before and after on the same validation data with the seeds fixed; keep a results table; say so plainly when a change did not help; the test set stays out of it until the end. One worked example on the week's digit network carries the whole loop. PART B, stretch builds, each short and optional: a denoising autoencoder (noise added to the input, the clean image as the target), and text with a `TextVectorization` layer and an `Embedding` layer compared with Tuesday's TF-IDF model on the same data (what an embedding vector means and similarity between vectors stay in week 8). If Wednesday's regression variant was cut, it is not rebuilt here; the page points at Wednesday's notebook section. Every example is a 'Run in Colab' cell. The weekly feedback form is on this page (the week's last day). The page speaks of the reader's project in general terms and never links or quotes the project spec. The runbook for this day is a record only: no block is delivered.",
+          "subtitle": "self-directed (trainer off) · one change, measured · the levers and when to pull them · a denoising autoencoder · TextVectorization and Embedding · feedback form",
+          "subtopics": [
+            "Improving a model: one change, measured",
+            "Denoising autoencoders",
+            "Text with TextVectorization and Embedding layers"
+          ]
         }
       ]
     },
@@ -910,42 +925,30 @@
       "days": [
         {
           "day": 1,
-          "slug": "day-1-feature-engineering",
+          "slug": "day-1-feature-engineering-and-model-evaluation",
           "id": "w08d1",
           "kind": "lesson",
           "gate": "full",
           "demoFormat": "walkthrough",
           "status": "planned",
-          "title": "Feature engineering",
-          "subtitle": "encoding categorical data · missing values & outliers · feature selection",
+          "title": "Feature engineering & model evaluation",
+          "subtitle": "encoding · missing values & outliers · feature selection · F1 · confusion matrix · regularization & cross-validation",
           "subtopics": [
             "Feature engineering",
             "Encoding categorical data",
             "Handling missing values, outliers",
-            "Feature selection techniques"
-          ]
-        },
-        {
-          "day": 2,
-          "slug": "day-2-model-evaluation-and-metrics",
-          "id": "w08d2",
-          "kind": "lesson",
-          "gate": "full",
-          "demoFormat": "walkthrough",
-          "status": "planned",
-          "title": "Model evaluation & metrics",
-          "subtitle": "accuracy · precision · recall · F1 · confusion matrix · overfitting & cross-validation",
-          "subtopics": [
+            "Feature selection techniques",
             "Model evaluation and metrics",
             "Accuracy, precision, recall, F1-score",
             "Confusion matrix interpretation",
             "Avoiding overfitting (regularization, cross-validation)"
-          ]
+          ],
+          "notes": "DAY SHAPE (D-0102): the curriculum's feature-engineering day and its model-evaluation day merged into one, because week 7 already taught their fundamentals inside the Project 1 builds (D-0087, D-0101): missing values, one-hot encoding and scaling in W7D3's tabular build; the confusion matrix, precision, recall and F1 in W7D1; overfitting, dropout and early stopping in W7D1 and W7D3. This day goes deeper from there, not over it again: outliers, feature selection, other encodings and when one-hot is wrong, choosing a metric with the people who own the decision, the decision threshold, regularization in code and cross-validation. It ends with a Project 1 clinic: learners bring their own notebooks four days before the showcase. Format to settle in the week-8 plan: the day needs scikit-learn and Keras, which run in Colab and not on the course Python 3.15, so a notebook day (D-0085) fits better than a walkthrough."
         },
         {
-          "day": 3,
-          "slug": "day-3-vector-databases-chroma-and-pinecone",
-          "id": "w08d3",
+          "day": 2,
+          "slug": "day-2-vector-databases-chroma-and-pinecone",
+          "id": "w08d2",
           "kind": "lesson",
           "gate": "full",
           "demoFormat": "walkthrough",
@@ -966,29 +969,28 @@
           ]
         },
         {
-          "day": 4,
-          "slug": "day-4-vector-index-management",
-          "id": "w08d4",
+          "day": 3,
+          "slug": "day-3-vector-index-management",
+          "id": "w08d3",
           "kind": "lesson",
           "gate": "full",
           "demoFormat": "walkthrough",
           "status": "planned",
           "title": "Vector index & collection management",
-          "subtitle": "index management · collections · partitioning · upsert · metadata · distance metrics · project review",
+          "subtitle": "index management · collections · partitioning · upsert · metadata · distance metrics",
           "subtopics": [
             "Index management",
             "Collection",
             "Partitioning vectors",
             "Upsert",
             "Vector partitioning using metadata",
-            "Distance metrics",
-            "Project review"
+            "Distance metrics"
           ]
         },
         {
-          "day": 5,
-          "slug": "day-5-semantic-search-and-embeddings",
-          "id": "w08d5",
+          "day": 4,
+          "slug": "day-4-semantic-search-and-embeddings",
+          "id": "w08d4",
           "kind": "lesson",
           "gate": "full",
           "demoFormat": "walkthrough",
@@ -1005,8 +1007,25 @@
             "Data preparation",
             "NER helper function",
             "Vector embedding in batches",
-            "Metadata processing",
-            "VectorDB review"
+            "Metadata processing"
+          ]
+        },
+        {
+          "day": 5,
+          "slug": "day-5-project-1-showcase",
+          "id": "w08d5",
+          "kind": "lesson",
+          "gate": "full",
+          "demoFormat": "none",
+          "status": "planned",
+          "title": "Project 1 showcase",
+          "notes": "DAY SHAPE (D-0102, after W5D5's showcase day D-0082): the Project 1 showcase; the vector-database days moved up one slot so this day carries no new topic. AM: a short review of the week's vector-database work, then rehearsal and polishing. PM: the presentations, 5 to 7 minutes each, solo. The feedback form closes the day. The notes page is study material for after the day: presenting a model to a mixed audience, what a reviewer asks about a model and why, and telling the project in an interview.",
+          "subtitle": "vector database review · rehearse · present a model · tell it in an interview · feedback form",
+          "subtopics": [
+            "VectorDB review",
+            "Project review",
+            "Presenting a model to a mixed audience",
+            "Project 1 showcase"
           ]
         }
       ]

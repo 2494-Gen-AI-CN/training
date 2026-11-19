@@ -59,7 +59,7 @@ class TrackerDataTests(unittest.TestCase):
         self.assertEqual(len(cur["weeks"]), len(self.data["weeks"]))
         days = [d for w in self.data["weeks"] for d in w["days"]]
         teaching = [d for d in days if d["kind"] != "holiday"]
-        self.assertEqual(51, len(teaching))
+        self.assertEqual(53, len(teaching))   # D-0101: week 7's Thu and Fri are page days, not holidays
         self.assertEqual(len(cur["holidays"]), len(days) - len(teaching))
         self.assertEqual(len(list(live_days())), sum(1 for d in teaching if d["status"] == "live"))
         self.assertEqual(len(list(authored_days())), sum(1 for d in teaching if d["status"] in ("authored", "live")))

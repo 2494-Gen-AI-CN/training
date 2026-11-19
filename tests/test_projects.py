@@ -82,6 +82,17 @@ class _TempRoot(unittest.TestCase):
                     return
         raise AssertionError(day_id)
 
+    def make_holiday(self, day_id: str, label: str = "Fixture holiday"):
+        """Turn one teaching slot of the curriculum copy into a holiday slot (slot and holidays list together)."""
+        for w in self.cur["weeks"]:
+            for i, d in enumerate(w["days"]):
+                if d.get("id") == day_id:
+                    date = build_index.slot_date(self.cur, w["week"], d["day"])
+                    w["days"][i] = {"day": d["day"], "kind": "holiday"}
+                    self.cur["holidays"].append({"date": date.isoformat(), "label": label, "scope": "us"})
+                    return
+        raise AssertionError(day_id)
+
 
 # ---------------------------------------------------------------- parser / validation
 class ParserTests(_TempRoot):
@@ -190,6 +201,7 @@ class ParserTests(_TempRoot):
         self.assertProblem("due 2026-10-24 is not a teaching day")
 
     def test_holiday_is_not_a_teaching_day(self):
+        self.make_holiday("w07d4")   # no holiday falls inside the course since D-0101, so the fixture makes one
         self.put("sprints/2026-11-23-fixture.md", sprint(assigned="2026-11-23", due="2026-11-26", handIn="week-07/hackathon/"))
         self.assertProblem("due 2026-11-26 is not a teaching day")
 
@@ -260,6 +272,7 @@ class ParserTests(_TempRoot):
         self.assertProblem("checkpoint w08d9 is not a day id")
 
     def test_holiday_slot(self):
+        self.make_holiday("w07d4")
         self.put("official/P1-fixture.md", official(checkpoints=("w07d4 Showcase",)))
         self.assertProblem("checkpoint w07d4 is a holiday slot")
 

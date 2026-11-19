@@ -13,11 +13,9 @@ Training runs **Tue 2026-10-13 → Thu 2026-12-24**, Monday to Friday, Eastern t
 | Date | Holiday |
 |---|---|
 | Mon 2026-10-12 | Thanksgiving (Canada) |
-| Thu 2026-11-26 | Thanksgiving (US) |
-| Fri 2026-11-27 | Day after Thanksgiving (US) |
 | Fri 2026-12-25 | Christmas Day |
 
-So week 1 is Tue–Fri, week 7 (Nov 23–27) is Mon–Wed, and week 11 (Dec 21–24) is Mon–Thu. The [notes site](https://2494-gen-ai-cn.github.io/training/) calendar shows the date on every day and highlights today.
+So week 1 is Tue–Fri and week 11 (Dec 21–24) is Mon–Thu. In week 7, Thu 2026-11-26 and Fri 2026-11-27 (US Thanksgiving) have no call: the trainer is off and they are project days with a notes page each. The [notes site](https://2494-gen-ai-cn.github.io/training/) calendar shows the date on every day and highlights today.
 
 ## How each day works
 

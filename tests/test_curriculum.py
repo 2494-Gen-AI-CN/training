@@ -36,8 +36,8 @@ class CurriculumTests(unittest.TestCase):
                     self.assertEqual(HOLIDAY_SLOT_KEYS, set(d), f"{w['dir']} holiday slot {d['day']} carries extra keys {set(d) - HOLIDAY_SLOT_KEYS}")
 
     def test_teaching_day_counts_match_decision(self):
-        """D-0013: week 1 = 4 days, week 7 = 3, week 11 = 4, everything else 5."""
-        expected = {1: 4, 7: 3, 11: 4}
+        """D-0013, D-0101: week 1 = 4 days, week 11 = 4, everything else 5 (week 7's Thu and Fri are page days)."""
+        expected = {1: 4, 11: 4}
         for w in self.cur["weeks"]:
             self.assertEqual(expected.get(w["week"], 5), len(build_index.teaching_days(w)), w["dir"])
         self.assertEqual(55 - len(self.cur["holidays"]), sum(1 for _ in all_days()))
