@@ -58,6 +58,12 @@ fit plan (CPU-sized fits; every fit under 3 minutes on a fresh Colab CPU runtime
   - Batch normalization is tried when training is slow or unsteady in a deeper stack — [tf.keras.layers.BatchNormalization](https://www.tensorflow.org/api_docs/python/tf/keras/layers/BatchNormalization)
   - Each trained model adds one row to the results table from `model.evaluate(x_val, y_val)`, which returns the loss and then the metrics in the order `compile` listed them — [tf.keras.Model](https://www.tensorflow.org/api_docs/python/tf/keras/Model)
   - The test set is scored once, on the kept model; scoring it after each change turns it into a second validation set and its number stops being an honest estimate — [Cross-validation: evaluating estimator performance](https://scikit-learn.org/stable/modules/cross_validation.html)
+  - (added 2026-11-20, "when stuck" step) `SparseCategoricalCrossentropy` expects labels as integers; one-hot labels take `CategoricalCrossentropy` — [tf.keras.losses.SparseCategoricalCrossentropy](https://www.tensorflow.org/api_docs/python/tf/keras/losses/SparseCategoricalCrossentropy)
+  - (added 2026-11-20) `BinaryCrossentropy` is for binary (0 or 1) classification: `y_true` is 0 or 1 and `y_pred` a single floating-point value per example, a probability in [0, 1] when `from_logits=False` — [tf.keras.losses.BinaryCrossentropy](https://www.tensorflow.org/api_docs/python/tf/keras/losses/BinaryCrossentropy)
+  - (added 2026-11-20) `StandardScaler`: "NaNs are treated as missing values: disregarded in fit, and maintained in transform" — [sklearn.preprocessing.StandardScaler](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.StandardScaler.html)
+  - (added 2026-11-20) Training loss can sit above validation loss because dropout is on in training and off at test time, and because the displayed training loss averages the epoch's batches while the validation loss uses the model at the end of the epoch; on a GPU some operations are not deterministic, which seeds alone do not fix — [Keras FAQ](https://keras.io/getting_started/faq/)
+  - (added 2026-11-20) `Dense` with no `activation` applies none, a linear output `a(x) = x` — [tf.keras.layers.Dense](https://www.tensorflow.org/api_docs/python/tf/keras/layers/Dense)
+  - (added 2026-11-20, observed in one run on TF 2.21.0 / Keras 3.15.1 CPU, not a doc claim) error texts: a Dense model fed (32, 28, 28) raises "Expected shape (None, 784), but input has incompatible shape (32, 28, 28)"; integer labels with `categorical_crossentropy` and 0/1 labels with `Dense(2, softmax)` + `binary_crossentropy` raise "Arguments `target` and `output` must have the same rank (ndim)"; one-hot labels with `sparse_categorical_crossentropy` raise "Argument `output` must have rank (ndim) `target.ndim - 1`"; `Dense(1, activation="softmax")` warns that softmax "will always return the value 1" and predicted class 1 for all 239 validation posts (accuracy 0.502); inputs and labels split by two `train_test_split` calls held validation accuracy at about 0.10 with loss 2.32 to 2.24; a TF-IDF vectorizer refitted on the validation posts kept 5,000 columns and dropped validation accuracy from 0.845 to 0.52; unscaled MNIST pixels gave a first-epoch loss of 5.65 against 0.37 and 0.944 against 0.973 validation accuracy after 5 epochs; unscaled test digits through a 3-epoch autoencoder were all flagged (1.0) against 0.008 scaled
 
 ### Denoising autoencoders
 - Interview questions: What is an autoencoder trained to do?; What changes for a denoising one?; Why clip the noisy image to 0 to 1?
@@ -99,6 +105,10 @@ fit plan (CPU-sized fits; every fit under 3 minutes on a fresh Colab CPU runtime
 - pandas DataFrame reference — https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html
 - tflearn on PyPI (history: last release) — https://pypi.org/project/tflearn/
 - TFLearn repository (history: last commit, layer names) — https://github.com/tflearn/tflearn
+- tf.keras.losses.SparseCategoricalCrossentropy (added 2026-11-20) — https://www.tensorflow.org/api_docs/python/tf/keras/losses/SparseCategoricalCrossentropy
+- tf.keras.losses.BinaryCrossentropy (added 2026-11-20) — https://www.tensorflow.org/api_docs/python/tf/keras/losses/BinaryCrossentropy
+- scikit-learn StandardScaler (added 2026-11-20) — https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.StandardScaler.html
+- Keras FAQ (added 2026-11-20) — https://keras.io/getting_started/faq/
 
 ## Glossary terms
 

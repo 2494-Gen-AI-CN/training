@@ -7,59 +7,59 @@
   "steps": [
     {
       "step": 0,
-      "title": "What fit does on every batch",
-      "suitable": true,
-      "reason": "TensorFlow is not in the runtime, but the step's count of weight updates (one per batch, a short last batch when the rows do not divide evenly, 422 batches and 844 updates for two epochs) is plain arithmetic a function returns. Floor division (421 batches) and one update per epoch are the wrong readings the page rules out.",
-      "task": "t1"
-    },
-    {
-      "step": 1,
-      "title": "The same loop written by hand with tf.GradientTape",
-      "suitable": true,
-      "reason": "No check can run a tape in the browser, and the batch slicing is already practised in t1, but the step names a judgement the reader can get wrong: the loss computed outside the with block gives None gradients, while the short last batch, the uncompiled model and training=True are named as harmless here. A choice question on a broken hand loop fits.",
-      "task": "t2"
-    },
-    {
-      "step": 2,
-      "title": "TensorBoard: comparing two runs",
-      "suitable": true,
-      "reason": "TensorBoard runs only in Colab, so no Python task fits, but the page names what tangles the overlay (a rerun into the same folder) and the fix (one folder per run under one parent, --logdir on the parent), and the brief names reaching for TFLearn. A choice question on one tangled line fits.",
-      "task": "t3"
-    },
-    {
-      "step": 3,
       "title": "Loading a dataset from code",
       "suitable": true,
       "reason": "The four routes need packages and a network, so no Python task fits, and the route names alone are recall. The step still teaches a judgement with named wrong ways: a hand-uploaded file vanishes on a reset and nobody else can rerun it, and a CSV link must open the raw file, not a page that shows it. A choice question on which loading line makes the notebook rerunnable fits.",
       "task": "t4"
     },
     {
-      "step": 4,
+      "step": 1,
       "title": "Looking at the data before modelling",
       "suitable": true,
       "reason": "The pandas calls do not run in the browser, but the step's point that uneven classes make plain accuracy mislead shows up as a return value: the accuracy of a model that always answers the most common class, about 91% for 5 against not-5 on MNIST. Counting labels with a dict is standard library.",
       "task": "t5"
     },
     {
-      "step": 5,
+      "step": 2,
       "title": "Seeds and Runtime > Run all on a fresh runtime",
       "suitable": true,
       "reason": "The seed call is TensorFlow's and the check is a Colab menu, so no Python task fits; Python's own random.seed is not taught on the page. The step names three causes a fresh runtime catches (out-of-order cells, a variable from a deleted cell, an uploaded file) and what seeds cannot fix, so a choice question on a Run all that stops with a NameError fits.",
       "task": "t6"
     },
     {
-      "step": 6,
+      "step": 3,
       "title": "The test set used once, and a results table kept as you go",
       "suitable": true,
       "reason": "The rule that every fill for blanks is learned from the training rows only shows up as a return value: a function that fills blanks in other rows with the mean of the training rows' values. A fill computed over all the rows, the leak the page and the brief name, fails a check.",
       "task": "t7"
     },
     {
-      "step": 7,
+      "step": 4,
       "title": "Saving the .keras file, the README and a short deck",
       "suitable": true,
       "reason": "Saving and reloading need TensorFlow, and the README table is a convention, but the step names how a hand-in file goes wrong: left in the Colab session it vanishes on a reset, and the path must end in .keras; the check is a reload compared on predictions. A choice question on handing in the saved model fits.",
       "task": "t8"
+    },
+    {
+      "step": 5,
+      "title": "What fit does on every batch",
+      "suitable": true,
+      "reason": "TensorFlow is not in the runtime, but the step's count of weight updates (one per batch, a short last batch when the rows do not divide evenly, 422 batches and 844 updates for two epochs) is plain arithmetic a function returns. Floor division (421 batches) and one update per epoch are the wrong readings the page rules out.",
+      "task": "t1"
+    },
+    {
+      "step": 6,
+      "title": "The same loop written by hand with tf.GradientTape",
+      "suitable": true,
+      "reason": "No check can run a tape in the browser, and the batch slicing is already practised in t1, but the step names a judgement the reader can get wrong: the loss computed outside the with block gives None gradients, while the short last batch, the uncompiled model and training=True are named as harmless here. A choice question on a broken hand loop fits.",
+      "task": "t2"
+    },
+    {
+      "step": 7,
+      "title": "TensorBoard: comparing two runs",
+      "suitable": true,
+      "reason": "TensorBoard runs only in Colab, so no Python task fits, but the page names what tangles the overlay (a rerun into the same folder) and the fix (one folder per run under one parent, --logdir on the parent), and the brief names reaching for TFLearn. A choice question on one tangled line fits.",
+      "task": "t3"
     }
   ],
   "tasks": [
@@ -67,7 +67,7 @@
       "id": "t1",
       "kind": "python",
       "title": "What fit does on every batch",
-      "step": 0,
+      "step": 5,
       "idea": "The reader writes count_updates(n_rows, batch_size, epochs), which returns how many times the weights change: one update per batch, with a short last batch when n_rows is not a multiple of batch_size. count_updates(54000, 128, 2) returns 844.",
       "checks": [
         "count_updates(54000, 128, 2) returns 844; an answer that drops the short last batch with floor division returns 842.",
@@ -83,7 +83,7 @@
       "id": "t2",
       "kind": "choice",
       "title": "The loop written by hand",
-      "step": 1,
+      "step": 6,
       "idea": "A hand-written loop has the forward pass inside with tf.GradientTape() as tape:, but loss = loss_fn(yb, preds) sits on the line after the block, and apply_gradients fails on the first batch. The right answer: the tape never saw the loss, so tape.gradient returns None; move the loss line inside the block.",
       "checks": [
         "The last batch holds only 112 rows and breaks the loop, so add code for it: catches missing the page's point that a numpy slice past the end stops at the end and the loop needs no special code.",
@@ -107,7 +107,7 @@
       "id": "t3",
       "kind": "choice",
       "title": "TensorBoard: comparing two runs",
-      "step": 2,
+      "step": 7,
       "idea": "After a change, the plain fit is run again with log_dir=\"logs/compare/plain\", and the Scalars tab now shows one tangled line where two runs were expected. The right answer: the second run's events landed on top of the first; give each run its own folder under logs/compare and point --logdir at the parent.",
       "checks": [
         "Add histogram_freq=1 so TensorBoard separates the runs: catches confusing the weight histograms the setting writes with keeping runs apart, which is the folder's job.",
@@ -131,7 +131,7 @@
       "id": "t4",
       "kind": "choice",
       "title": "Loading a dataset from code",
-      "step": 3,
+      "step": 0,
       "idea": "A notebook reads pd.read_csv(\"penguins.csv\") from a file uploaded by hand into Colab, and a reviewer cannot rerun it. The right answer: read the CSV from the URL of the raw file with pd.read_csv(url), so the data loads from code on any runtime.",
       "checks": [
         "Pass pd.read_csv the address of the web page that shows the table: catches the page's rule that the link must open the raw file itself, not a page that displays it.",
@@ -155,7 +155,7 @@
       "id": "t5",
       "kind": "python",
       "title": "Looking at the data",
-      "step": 4,
+      "step": 1,
       "idea": "The reader writes majority_accuracy(labels), which returns, as a fraction, the accuracy of a model that always answers the most common label in the list. For the penguins' species, 152 Adelie, 124 Gentoo and 68 Chinstrap, it returns 152 / 344, about 0.44.",
       "checks": [
         "On a list with one \"5\" and ten \"not 5\" labels it returns 10 / 11; an answer that scores the rare class returns 1 / 11, missing how a model that ignores the rare class still scores high.",
@@ -171,7 +171,7 @@
       "id": "t6",
       "kind": "choice",
       "title": "Seeds and Run all",
-      "step": 5,
+      "step": 2,
       "idea": "A notebook runs fine in its author's session. After a cell that made scaler was deleted, Runtime > Run all on a fresh runtime stops with a NameError on scaler. The right answer: a later cell used a variable left over from the deleted cell; put the cell that makes it back above its first use and run the fresh-runtime check again.",
       "checks": [
         "Set the seeds at the top so the run repeats: catches thinking seeds fix any rerun difference, when they only make random choices repeat and create no variable.",
@@ -195,7 +195,7 @@
       "id": "t7",
       "kind": "python",
       "title": "The test set used once",
-      "step": 6,
+      "step": 3,
       "idea": "The reader writes fill_from_training(train, rows): train and rows are lists of numbers with None for a blank, and the function returns a new list like rows with each None replaced by the mean of train's numbers. fill_from_training([1.0, None, 3.0], [None, 10.0]) returns [2.0, 10.0].",
       "checks": [
         "The fill comes from the training rows only; an answer that averages train and rows together, the leak the page names, returns about 4.67 in place of 2.0.",
@@ -211,7 +211,7 @@
       "id": "t8",
       "kind": "choice",
       "title": "Saving the .keras file",
-      "step": 7,
+      "step": 4,
       "idea": "A notebook ends with the kept model trained, and the hand-in is the saved model. The right answer: kept.save(\"digits_kept.keras\"), reload it with tf.keras.models.load_model, check the predictions on the same rows agree with np.allclose, then download the file.",
       "checks": [
         "Save it and leave it in the Colab session's files for the reviewer: catches the page's warning that Colab loses the file when the runtime resets, so it must be downloaded.",

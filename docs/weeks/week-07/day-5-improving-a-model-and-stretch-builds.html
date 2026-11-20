@@ -36,12 +36,12 @@
           <span><b>Week 7</b> · Day 5</span>
           <span>Fri Nov 27, 2026</span>
           <span>TensorFlow</span>
-          <span><b>~37 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span><b>~43 min</b> · reference notes @150 wpm · diagram · check</span>
           <span class="verified">Sources checked 2026-11-19 · python 3.13.18 · tensorflow 2.21.0 · keras 3.13.2 · numpy 2.4.6 · pandas 2.2.3 · scikit-learn 1.6.1 · matplotlib 3.10.0</span>
         </div>
-        <p class="summary">Today is project work on your own, and this page is its reference: Part A (steps 1 to 4) is a
-        playbook for improving a model one measured change at a time, worked once on the week's digit network. Part B
-        (steps 5 and 6) is optional and holds two short stretch builds, a denoising autoencoder and an Embedding text
+        <p class="summary">Today is project work on your own, and this page is its reference: Part A (steps 1 to 5) is a
+        playbook for improving a model one measured change at a time, worked once on the week's digit network, plus
+        a table for when a run breaks. Part B (steps 6 and 7) is optional and holds two short stretch builds, a denoising autoencoder and an Embedding text
         model set beside TF-IDF, and each one stands alone. The page assumes the week's digit network, 784 pixels into
         128 ReLU units and ten softmax outputs, fitted against validation data and read from its two curves; afterwards
         you can explain how you chose a change, why the test set is scored once, and what each stretch model
@@ -262,6 +262,20 @@ print(np.unique(drop(ones, training=False).numpy()))</code></pre>
         and recall metrics turn it into a yes at 0.5 unless told otherwise. Moving the cut trades precision against
         recall,<sup class="cite"><a href="#src-10">10</a></sup> and week 8 tunes it properly. The digit network has no
         threshold to move, because it picks the largest of ten probabilities.</p>
+        <h3>What to try first, per project option</h3>
+        <p>Step 4 works the loop on the digit Dense network only. For the other options, start from this table, and
+        measure each change: none of them is sure to help.</p>
+        <table>
+          <thead><tr><th>Project option</th><th>Try first</th><th>The sign that points to it</th><th>The week's attempt</th></tr></thead>
+          <tbody>
+            <tr><td>Image, Dense network</td><td>Dropout or early stopping</td><td>Validation loss turns up while training loss falls</td><td><a href="day-1-mlp-backprop-and-digit-classifier.html">Monday's</a> extra <code>Dense(64)</code> did not help; step 4's dropout did, in one run</td></tr>
+            <tr><td>Anomaly detection, autoencoder</td><td>The bottleneck width, then the threshold's percentile</td><td>Blurry rebuilds; flagged digits that look ordinary</td><td><a href="day-2-autoencoders-rbm-and-sequential-api.html">Tuesday's</a> 64-unit bottleneck halved the mean error, and a lower error is not automatically a better detector</td></tr>
+            <tr><td>Text, TF-IDF into Dense</td><td>The vocabulary cap, <code>max_features</code></td><td>The training posts hold more distinct words than the cap: 11,416 against 5,000</td><td>A cap of 20,000 raised validation F1 from about 0.84 to 0.86; step 7's Embedding model did not help</td></tr>
+            <tr><td>Image, CNN</td><td>Dropout after <code>Flatten</code>; early stopping is already on</td><td>Early stopping fires well before the epoch ceiling</td><td><a href="day-3-functional-api-layers-and-custom-training.html">Wednesday's</a> <code>Dropout(0.3)</code> lowered validation loss from about 0.041 to 0.033 in one run</td></tr>
+            <tr><td>Tabular classification</td><td>Hidden units, then the preprocessing</td><td>Both curves high and flat; or the wrong rows share a trait, as the Dream birds did</td><td>32 units beat 8 by one validation bird of 69, a gap another seed could flip</td></tr>
+            <tr><td>Tabular, regression variant</td><td>The learning rate</td><td>Validation MAE still falling at the last epoch, or bouncing</td><td><code>Adam(learning_rate=0.01)</code>, set by hand; no second attempt measured</td></tr>
+          </tbody>
+        </table>
         <div class="ix-predict" data-q="Training loss is still falling at epoch 20; validation loss bottomed at epoch 4 and has risen since. Which levers does the table point at, and which one would make it worse?" data-a="Dropout or early stopping, the levers for a growing gap. Adding hidden units raises capacity and would widen the gap."></div>
         <div class="recap"><div class="k">Takeaways</div><ul>
           <li>Each lever has a job and a sign in the curves or the wrong examples.</li>
@@ -486,7 +500,82 @@ model.fit(X, Y, validation_set=(X_val, Y_val))</code></pre>
         </div>
       </section>
 
-      <section class="step" data-diagram="0" data-step="4">
+      <section class="step" id="when-stuck" data-diagram="0" data-step="4">
+        <div class="tag">Part A · When stuck</div>
+        <h2>When stuck: the symptom, its likely cause and the first check</h2>
+        <p>Use this when a cell stops with an error or the numbers look wrong, and there is nobody to ask. A row that
+        says "in one run" was produced on purpose on this week's data, with TensorFlow 2.21 and Keras 3.15.</p>
+        <h3>Error messages: names, shapes and labels</h3>
+        <table>
+          <thead><tr><th>Symptom</th><th>Likely cause</th><th>Check or change first</th></tr></thead>
+          <tbody>
+            <tr><td><code>NameError: name 'x_tr' is not defined</code></td><td>The runtime restarted or disconnected, which clears every variable, or a cell above never ran</td><td>Runtime, then Run all; saved files are gone too (<a href="day-4-custom-training-tensorboard-and-project-workflow.html">Thursday's page</a>)</td></tr>
+            <tr><td><code>Expected shape (None, 784), but input has incompatible shape (32, 28, 28)</code></td><td>Images not flattened for a Dense network, or no channel axis for a CNN, in one run</td><td>Print the array's <code>.shape</code> beside <code>model.input_shape</code></td></tr>
+            <tr><td>At <code>fit</code>: <code>target</code> and <code>output</code> "must have the same rank"</td><td>Integer labels with <code>categorical_crossentropy</code>, or 0 and 1 labels with a two-unit softmax, in one run</td><td>Integer labels take <code>sparse_categorical_crossentropy</code>; two classes take <code>Dense(1, activation="sigmoid")</code> with <code>binary_crossentropy</code><sup class="cite"><a href="#src-25">25</a></sup><sup class="cite"><a href="#src-26">26</a></sup></td></tr>
+            <tr><td>At <code>fit</code>: <code>output</code> "must have rank (ndim) <code>target.ndim - 1</code>"</td><td>One-hot labels with <code>sparse_categorical_crossentropy</code>, in one run</td><td>Pass the integer labels, or use <code>categorical_crossentropy</code> with the one-hot ones<sup class="cite"><a href="#src-25">25</a></sup></td></tr>
+            <tr><td>A warning that softmax "will always return the value 1"</td><td><code>Dense(1, activation="softmax")</code>: in one run every post was predicted class 1</td><td><code>Dense(1, activation="sigmoid")</code>, whose one output is a probability between 0 and 1<sup class="cite"><a href="#src-26">26</a></sup></td></tr>
+          </tbody>
+        </table>
+        <p>For a shape or label error, print what the model expects beside what it was given, here for step 1's
+        digits and <code>base_20</code>.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>print(x_tr.shape, x_tr.dtype, y_tr.shape, y_tr.dtype)
+print(base_20.input_shape, base_20.output_shape)
+print(y_tr[:5])</code></pre>
+<pre class="out">(54000, 784) float32 (54000,) uint8
+(None, 784) (None, 10)
+[5 0 4 1 9]</pre>
+        <p><code>None</code> is the batch size, which can be any number.<sup class="cite"><a href="#src-4">4</a></sup>
+        The inputs match the model's 784, and the labels are one integer per row, the form the sparse loss
+        expects.<sup class="cite"><a href="#src-25">25</a></sup></p>
+        <h3>Numbers that look wrong</h3>
+        <table>
+          <thead><tr><th>Symptom</th><th>Likely cause</th><th>Check or change first</th></tr></thead>
+          <tbody>
+            <tr><td>Loss is <code>nan</code> from the first epoch</td><td>A blank cell reached the model; <code>StandardScaler</code> keeps blanks when it transforms<sup class="cite"><a href="#src-27">27</a></sup></td><td><code>np.isnan(X_tr_s).sum()</code>; fill blanks from the training rows before scaling</td></tr>
+            <tr><td>Loss stuck near 2.3 with ten classes, accuracy near chance</td><td>Labels no longer line up with their inputs; in one run, two separate split calls held validation accuracy at 0.10</td><td>Split inputs and labels in one <code>train_test_split</code> call</td></tr>
+            <tr><td>Validation accuracy near chance, no error</td><td>The vectorizer was fitted again on the validation posts: same width, different words per column</td><td>Call <code>transform</code> only on validation and test;<sup class="cite"><a href="#src-19">19</a></sup> in one run validation accuracy fell from 0.845 to 0.52</td></tr>
+            <tr><td>First-epoch loss far higher than usual, accuracy a few points short</td><td>Unscaled inputs, such as pixels from 0 to 255; in one run, 0.944 against 0.973</td><td>Print the array's <code>min()</code> and <code>max()</code></td></tr>
+            <tr><td>Validation loss below training loss</td><td>Dropout is on while training loss is measured, and that figure averages the whole epoch<sup class="cite"><a href="#src-28">28</a></sup></td><td>Nothing to fix; judge the model on validation</td></tr>
+            <tr><td>Every prediction is the same class</td><td>A one-unit softmax, or uneven classes (<a href="day-1-mlp-backprop-and-digit-classifier.html">Monday's</a> "always not 5")</td><td>Compare <code>pd.Series(val_pred).value_counts()</code> with the true counts</td></tr>
+            <tr><td>An autoencoder flags almost every test image</td><td>Test pixels not scaled like the training pixels; in one run all 10,000 unscaled test digits were flagged</td><td>Print <code>x_test.max()</code>; use the kept model's own threshold</td></tr>
+            <tr><td>Numbers change on every rerun</td><td>No seed call just before each model, or GPU operations that are not deterministic<sup class="cite"><a href="#src-1">1</a></sup><sup class="cite"><a href="#src-28">28</a></sup></td><td>The seed call before each build, as in step 3, on a CPU runtime</td></tr>
+            <tr><td>Regression predictions never go above 1</td><td>A sigmoid on the output layer</td><td><code>Dense(1)</code> with no activation, a linear output<sup class="cite"><a href="#src-4">4</a></sup></td></tr>
+          </tbody>
+        </table>
+        <p>The cell below produces the first row on a three-row table with two blanks.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>from sklearn.preprocessing import StandardScaler
+
+table = np.array([[39.1, 3750.0], [np.nan, 3800.0], [40.3, np.nan]])
+scaled = StandardScaler().fit_transform(table)
+print(np.isnan(scaled).sum(axis=0))
+
+tf.keras.utils.set_random_seed(RANDOM_STATE)
+tiny = tf.keras.Sequential([tf.keras.Input(shape=(2,)), tf.keras.layers.Dense(1)])
+tiny.compile(optimizer="adam", loss="mse")
+print(tiny.fit(scaled, np.zeros(3), epochs=1, verbose=0).history["loss"])</code></pre>
+<pre class="out">[1 1]
+[nan]</pre>
+        <p>The first line counts one blank left in each column: the scaler kept them.<sup class="cite"><a href="#src-27">27</a></sup>
+        The second is one epoch's loss on that table, <code>nan</code>. Wednesday's penguins table has 19 blanks.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Read the end of an error, then print the shapes on both sides.</li>
+          <li>Integer labels take the sparse loss; two classes take one sigmoid unit.</li>
+          <li>For a nan loss, look for blanks in the inputs first.</li>
+          <li>Chance accuracy with no error points at the labels or a refitted vectorizer.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I read the end of the error first. For a shape error I print the array's shape beside the model's input
+          shape. A rank error at fit means the labels don't match the loss: integer labels go with sparse categorical
+          cross-entropy.</p>
+          <p>If there's no error but accuracy sits at chance, I check that the labels still line up with the inputs.
+          For a nan loss I look for missing values first.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
         <div class="tag">Part B · Stretch build 1</div>
         <h2>Part B, build 1: a denoising autoencoder</h2>
         <p>This stretch build helps a project that uses an autoencoder or works with digit images, and it assumes
@@ -575,7 +664,7 @@ show_image_grid(images, titles)</code></pre>
         </div>
       </section>
 
-      <section class="step" data-diagram="0" data-step="5">
+      <section class="step" data-diagram="0" data-step="6">
         <div class="tag">Part B · Stretch build 2</div>
         <h2>Part B, build 2: text with TextVectorization and Embedding</h2>
         <p>This stretch build helps a project that classifies text, and it assumes Tuesday's TF-IDF text build plus
@@ -783,10 +872,10 @@ assert to_ids("car bike the", vocabulary, 3) == [4, 3, 2], "gives a known word i
         </div>
       </section>
 
-      <section class="step" data-diagram="0" data-step="6">
+      <section class="step" data-diagram="0" data-step="7">
         <div class="tag">Check yourself</div>
         <h2>Check yourself</h2>
-        <p>Nine questions, at least one per step. Answer each out loud before you open it.</p>
+        <p>Ten questions, at least one per step. Answer each out loud before you open it.</p>
         <details class="check"><summary>Training loss is still falling at epoch 20, but validation loss bottomed at epoch 4 and has risen since. What is this, and what do you look at before changing anything?</summary><p>Overfitting: the model keeps fitting the training rows while getting worse on rows it has not seen. Before choosing a lever, look at the validation examples it gets wrong, because they show whether the trouble is the model or the data, labels or preprocessing.</p></details>
         <details class="check"><summary>What can the wrong examples tell you that the two curves cannot?</summary><p>The curves only say whether the model fits too little or too much. The wrong examples show what the mistakes share, and whether the trouble sits in the data, the labels or the preprocessing.</p></details>
         <details class="check"><summary>Which levers fit underfitting, and which fit overfitting?</summary><p>For underfitting, both curves high and flat, add capacity: more hidden units or layers, or a second architecture such as a CNN for images. For overfitting, a growing gap between the curves, try dropout or early stopping.</p></details>
@@ -794,6 +883,7 @@ assert to_ids("car bike the", vocabulary, 3) == [4, 3, 2], "gives a known word i
         <details class="check"><summary>Your change gains 0.1 point of validation accuracy on 6,000 rows. Why do you call that "did not help", and why must only one thing have changed?</summary><p>0.1 point is 6 digits, and a different seed can flip a gap that small, so it may be noise. If two things changed at once, even a real gain could not be traced to either of them.</p></details>
         <details class="check"><summary>Why is the test set scored only once, on the kept model?</summary><p>Scoring it after each change and keeping the best turns it into a second validation set used for choosing. Its number then stops being an honest estimate of how the model does on new data.</p></details>
         <details class="check"><summary>An old TFLearn tutorial has <code>tflearn.dropout(net, 0.8)</code>. What is the Keras line?</summary><p><code>tf.keras.layers.Dropout(0.2)</code>. TFLearn's number is the share kept and Keras's is the share dropped, so copying 0.8 would switch off 80% of the units.</p></details>
+        <details class="check"><summary>The loss is <code>nan</code> from the first epoch; elsewhere <code>fit</code> says <code>target</code> and <code>output</code> "must have the same rank". What do you check first in each?</summary><p>For <code>nan</code>, blanks in the inputs: count them with <code>np.isnan</code> and fill them from the training rows before scaling. For the rank error, the labels against the loss: integer labels need <code>sparse_categorical_crossentropy</code>; two classes need one sigmoid unit.</p></details>
         <details class="check"><summary>What goes into <code>fit</code> for a denoising autoencoder, and why are the noisy pixels clipped?</summary><p>The noisy images as the input and the clean images as the target, as in <code>fit(x_tr_noisy, x_tr)</code>. The clip keeps every pixel between 0 and 1, the range the sigmoid output can produce and the clean target lives in.</p></details>
         <details class="check"><summary>What do <code>TextVectorization</code> and <code>Embedding(10000, 16)</code> each output, and when would TF-IDF beat them?</summary><p><code>TextVectorization</code> outputs a fixed-length list of integer word ids, here 200 per post, with 0 for padding and 1 for unknown words. The Embedding layer outputs a learned row of 16 numbers per id, 160,000 numbers in all. On a small set, about a thousand posts, the embedding learns its table from scratch and often only matches TF-IDF.</p></details>
       </section>
@@ -825,6 +915,10 @@ assert to_ids("car bike the", vocabulary, 3) == [4, 3, 2], "gives a known word i
           <li id="src-22"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/layers/Embedding" target="_blank" rel="noopener">tf.keras.layers.Embedding</a> — <code>input_dim</code>, <code>output_dim</code> and the trainable table.</li>
           <li id="src-23"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/layers/GlobalAveragePooling1D" target="_blank" rel="noopener">tf.keras.layers.GlobalAveragePooling1D</a> — averaging per-word vectors into one.</li>
           <li id="src-24"><a href="https://www.tensorflow.org/text/guide/word_embeddings" target="_blank" rel="noopener">Word embeddings (TensorFlow text guide)</a> — an embedding learned from scratch on a small text set.</li>
+          <li id="src-25"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/losses/SparseCategoricalCrossentropy" target="_blank" rel="noopener">tf.keras.losses.SparseCategoricalCrossentropy</a> — integer labels; one-hot labels take <code>CategoricalCrossentropy</code>.</li>
+          <li id="src-26"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/losses/BinaryCrossentropy" target="_blank" rel="noopener">tf.keras.losses.BinaryCrossentropy</a> — labels of 0 or 1 and one predicted probability per example.</li>
+          <li id="src-27"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.StandardScaler.html" target="_blank" rel="noopener">sklearn.preprocessing.StandardScaler</a> — blanks (NaN) disregarded in fit and kept in transform.</li>
+          <li id="src-28"><a href="https://keras.io/getting_started/faq/" target="_blank" rel="noopener">Keras FAQ</a> — why training loss can sit above validation loss, and GPU sources of randomness.</li>
         </ul>
       </section>
 
@@ -875,6 +969,7 @@ assert to_ids("car bike the", vocabulary, 3) == [4, 3, 2], "gives a known word i
     <ul class="goals-list">
       <li>Read the training and validation curves and the wrong examples, and name the lever each sign points at</li>
       <li>Measure one change at a time with fixed seeds on the same validation data, keep a results table and score the test set once</li>
+      <li>Match a failing run's symptom, such as a shape error, a nan loss or accuracy at chance, to its likely cause and first check</li>
       <li>Build a denoising autoencoder that takes noisy digits as input and is scored against the clean ones</li>
       <li>Turn posts into word ids with TextVectorization, train an Embedding model and compare it with TF-IDF on the same posts</li>
     </ul>
@@ -886,16 +981,17 @@ assert to_ids("car bike the", vocabulary, 3) == [4, 3, 2], "gives a known word i
 window.NEXT = { label: "Back to program →", href: "../../index.html" };
 window.DIAGRAM = {
   title: "Day 5 · improve a model one change at a time",
-  width: 500, height: 470,
+  width: 500, height: 540,
   nodes: [
     { id:"read", step:0, kind:"example", x:14, y:14, w:472, h:50, label:"READ FIRST\n  two curves · the wrong digits", detail:"Training loss falling while validation loss rises is overfitting; both high and flat is underfitting. The wrong examples point at the data, the labels or the preprocessing." },
     { id:"levers", step:1, x:24, y:86, w:452, h:56, label:"Levers\n  units · learning rate · dropout · batch norm\n  early stopping · preprocessing · threshold · CNN", detail:"Each lever has a job and a sign. Capacity for underfitting; dropout and early stopping for a growing gap; the learning rate when the loss crawls or bounces." },
     { id:"method", step:2, x:24, y:166, w:200, h:56, label:"One change, measured\n  seeds fixed · same val rows\n  results table", detail:"set_random_seed before each model, evaluate on the same 6,000 validation digits, one row per run. A 0.1-point gain is 6 digits and may be noise." },
     { id:"test", step:2, x:276, y:166, w:200, h:56, label:"Test set\n  scored once\n  on the kept model", detail:"Scoring it after every change turns it into a second validation set, and its number stops being an honest estimate." },
     { id:"worked", step:3, x:24, y:246, w:452, h:50, label:"WORKED: base_20 → dropout_20\n  Dropout(0.2) · two rows · one test score", detail:"Same seed, 20 epochs, batch 128 and validation rows; dropout adds no weights, so both have 101,770. TFLearn's dropout 0.8 is Keras's Dropout(0.2)." },
-    { id:"denoise", step:4, x:24, y:324, w:200, h:56, label:"Denoising autoencoder\n  fit(noisy, clean)\n  784-32-784", detail:"Noise of 0.3 times a bell-curve draw, clipped to 0 to 1, drawn once. The grid of noisy, rebuilt and clean digits is the evidence." },
-    { id:"text", step:5, x:276, y:324, w:200, h:56, label:"Text stretch\n  TextVectorization · Embedding\n  beside TF-IDF", detail:"200 word ids per post, 16 learned numbers per id, averaged into one row. 160,017 against 160,065 weights; on 953 training posts it often only matches TF-IDF, and in one run it trailed it." },
-    { id:"check", step:6, x:24, y:410, w:452, h:40, label:"CHECK YOURSELF\n  answer out loud, then open" }
+    { id:"stuck", step:4, x:24, y:320, w:452, h:44, label:"WHEN STUCK\n  symptom → likely cause → first check", detail:"Errors: a NameError after a reset, a shape that does not match Input, labels in the wrong form for the loss. Numbers: a nan loss from a blank, accuracy at chance from misaligned labels or a refitted vectorizer." },
+    { id:"denoise", step:5, x:24, y:390, w:200, h:56, label:"Denoising autoencoder\n  fit(noisy, clean)\n  784-32-784", detail:"Noise of 0.3 times a bell-curve draw, clipped to 0 to 1, drawn once. The grid of noisy, rebuilt and clean digits is the evidence." },
+    { id:"text", step:6, x:276, y:390, w:200, h:56, label:"Text stretch\n  TextVectorization · Embedding\n  beside TF-IDF", detail:"200 word ids per post, 16 learned numbers per id, averaged into one row. 160,017 against 160,065 weights; on 953 training posts it often only matches TF-IDF, and in one run it trailed it." },
+    { id:"check", step:7, x:24, y:476, w:452, h:40, label:"CHECK YOURSELF\n  answer out loud, then open" }
   ],
   edges: [
     { id:"e1", step:1, from:"read", to:"levers", label:"the sign picks" },
@@ -903,16 +999,18 @@ window.DIAGRAM = {
     { id:"e3", step:2, from:"method", to:"test", label:"at the end" },
     { id:"e4", step:3, from:"method", to:"worked", label:"the whole loop" },
     { id:"e5", step:3, from:"test", to:"worked", dir:"-" },
-    { id:"e6", step:4, from:"worked", to:"denoise", label:"stretch" },
-    { id:"e7", step:5, from:"worked", to:"text", label:"stretch" },
-    { id:"e8", step:6, from:"denoise", to:"check", dir:"-" },
-    { id:"e9", step:6, from:"text", to:"check", dir:"-" }
+    { id:"e10", step:4, from:"worked", to:"stuck", label:"if a run breaks" },
+    { id:"e6", step:5, from:"stuck", to:"denoise", label:"stretch" },
+    { id:"e7", step:6, from:"stuck", to:"text", label:"stretch" },
+    { id:"e8", step:7, from:"denoise", to:"check", dir:"-" },
+    { id:"e9", step:7, from:"text", to:"check", dir:"-" }
   ],
   captions: [
     "Read before changing: the two curves say too little or too much fit, and the wrong digits say what the mistakes share. <span style='opacity:.7'>(tap nodes for detail)</span>",
     "Each lever has a job and a sign: capacity for underfitting, dropout and early stopping for a growing gap, the learning rate for a crawling or bouncing loss.",
     "One change per run, seeds fixed, the same validation rows, every run kept in a results table, and the test set held back.",
     "The worked loop on the digit network: overfitting seen, Dropout(0.2) added, two rows compared, the kept model scored on the test set once.",
+    "When a run breaks: find the symptom, read its likely cause, and run the first check before changing the model.",
     "Stretch: a denoising autoencoder keeps Tuesday's shape and changes only what fit is given, noisy in and clean out.",
     "Stretch: TextVectorization and an Embedding layer set beside TF-IDF on the same posts, in one results table.",
     "You can now explain how you chose a change, measured it honestly, and what the two stretch models learn."

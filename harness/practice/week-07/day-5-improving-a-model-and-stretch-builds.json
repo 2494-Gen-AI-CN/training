@@ -2,7 +2,7 @@
   "day": "w07d5",
   "page": "docs/weeks/week-07/day-5-improving-a-model-and-stretch-builds.html",
   "assessed": "2026-11-19",
-  "verdict": "full",
+  "verdict": "partial",
   "summary": "Each step's rule rebuilds in a few lines of plain Python on lists and dictionaries (the best epoch from a history, dropout's mask and scaling, one change per run, the kept row, clipped noise, padded word ids), while nothing can run TensorFlow, NumPy, pandas or scikit-learn in the page, so no task trains or scores a real model.",
   "steps": [
     {
@@ -35,13 +35,20 @@
     },
     {
       "step": 4,
+      "title": "When stuck: the symptom, its likely cause and the first check",
+      "suitable": false,
+      "reason": "Not assessed by the suitability stage: this lookup step (two symptom tables) was added to the page on 2026-11-20, after the tasks were approved and built, and it carries no task by instruction. No task is proposed or approved for it.",
+      "task": null
+    },
+    {
+      "step": 5,
       "title": "Part B, build 1: a denoising autoencoder",
       "suitable": true,
       "reason": "The model needs TensorFlow, but making the noisy input is plain arithmetic on a list of pixels with the noise passed in, drawn once: pixel plus 0.3 times noise, clipped to 0 to 1. The page's named mistakes, no clip and a noisy target (which an in-place change of the clean list produces), each fail a check.",
       "task": "t5"
     },
     {
-      "step": 5,
+      "step": 6,
       "title": "Part B, build 2: text with TextVectorization and Embedding",
       "suitable": true,
       "reason": "TextVectorization's output, a fixed-length list of word ids with 0 for padding and 1 for an unknown word, rebuilds in plain Python with split and a vocabulary list. The page and the brief name leaving output_sequence_length unset, so lengths do not match; the Embedding layer and what its vectors mean stay out, as the anti-spoiler row defers similarity to week 8.",
@@ -117,7 +124,7 @@
       "id": "t5",
       "kind": "python",
       "title": "Noisy input, clean target",
-      "step": 4,
+      "step": 5,
       "idea": "The reader writes add_noise(pixels, noise, scale=0.3): pixels is a list of values between 0 and 1, noise a list of numbers of the same length drawn once beforehand, and the function returns a new list with each pixel plus scale times its noise, clipped to 0.0 at the bottom and 1.0 at the top. add_noise([0.9, 0.1, 0.5], [1.0, -1.0, 0.0]) returns [1.0, 0.0, 0.5].",
       "checks": [
         "A sum above 1 comes back as 1.0 and a sum below 0 as 0.0; an answer without the clip returns 1.2 and -0.2.",
@@ -133,7 +140,7 @@
       "id": "t6",
       "kind": "python",
       "title": "Text to word ids",
-      "step": 5,
+      "step": 6,
       "idea": "The reader writes to_ids(text, vocabulary, length): vocabulary is a list that starts with \"\" and \"[UNK]\", the text is split on spaces, and the function returns exactly length ids, each word's position in the vocabulary, 1 for a word not in it, padded with 0 at the end or cut to length. With vocabulary [\"\", \"[UNK]\", \"the\", \"bike\", \"car\"], to_ids(\"the bike hit the car\", vocabulary, 7) returns [2, 3, 1, 2, 4, 0, 0].",
       "checks": [
         "A post shorter than length is padded with 0 up to length; an answer that returns only the words' ids, as an unset output_sequence_length would, comes back too short.",
