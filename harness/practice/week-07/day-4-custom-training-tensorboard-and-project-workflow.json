@@ -74,10 +74,10 @@
         "count_updates(256, 128, 3) returns 6; an answer that always adds one batch for leftover rows returns 9 when the rows divide evenly.",
         "count_updates(54000, 128, 1) returns 422; an answer that counts one update per epoch returns 1."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>count_updates(n_rows, batch_size, epochs)</code>, which returns how many times the weights change when <code>fit</code> trains on <code>n_rows</code> rows for <code>epochs</code> epochs with that <code>batch_size</code>. The weights change once per batch, and when <code>n_rows</code> is not a multiple of <code>batch_size</code> the leftover rows make one last, shorter batch. For example, <code>count_updates(54000, 128, 2)</code> returns <code>844</code>.",
+      "starter": "def count_updates(n_rows, batch_size, epochs):\n    ...",
+      "tests": "assert count_updates(54000, 128, 2) == 844, \"the short last batch of each epoch is an update too\"\nassert count_updates(256, 128, 3) == 6, \"rows that divide evenly make no extra batch\"\nassert count_updates(54000, 128, 1) == 422, \"the weights change once per batch, not once per epoch\""
     },
     {
       "id": "t2",
@@ -90,8 +90,16 @@
         "The model was never compiled, so call compile before the loop: catches the page's line that a hand loop trains an uncompiled model and compile is needed only for evaluate and fit.",
         "The forward pass lacks training=True, so add it: catches the page's note that the flag changes the output only for layers such as Dropout and BatchNormalization, which this network does not have."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "A hand-written loop for the 784-128-10 network runs <code>preds = loop_model(xb)</code> inside <code>with tf.GradientTape() as tape:</code>, but <code>loss = loss_fn(yb, preds)</code> sits on the line after the block ends. <code>apply_gradients</code> fails on the first batch. What is wrong?",
+      "options": [
+        "The last batch holds only 112 rows, so the loop needs extra code to handle that short batch.",
+        "The model was never compiled, so call <code>compile</code> on it before the loop starts.",
+        "The tape never saw the loss, so <code>tape.gradient</code> returns <code>None</code>; move the loss line inside the block.",
+        "The forward pass lacks <code>training=True</code>, so add it to the <code>loop_model</code> call."
+      ],
+      "answer": 2,
+      "explain": "The tape records only what runs inside its <code>with</code> block, so it never saw a loss computed after the block and <code>tape.gradient</code> returns <code>None</code>. A hand loop can train an uncompiled model, and <code>training=True</code> changes nothing here, since this network has no <code>Dropout</code> or <code>BatchNormalization</code> layer.",
       "starter": "",
       "tests": ""
     },
@@ -106,8 +114,16 @@
         "Rebuild the model in TFLearn with tensorboard_verbose=3: catches the brief's pitfall of reaching for TFLearn from an old tutorial, which is unmaintained and does not import on Colab's TensorFlow.",
         "Restart the runtime so the old events clear and run again: catches the page's warning that the logs folder disappears when the runtime resets, which loses both runs rather than separating them."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "After a change to the plain network, you rerun its fit with its callback's <code>log_dir</code> still <code>\"logs/compare/plain\"</code>. TensorBoard, opened with <code>--logdir logs/compare</code>, now draws the plain run as one tangled line where you expected the old and new runs as two. What fixes it?",
+      "options": [
+        "Raise the callback's <code>histogram_freq</code>, so TensorBoard can tell the two runs apart.",
+        "Rebuild the network in TFLearn with <code>tensorboard_verbose=3</code>, so each run logs on its own.",
+        "Restart the Colab runtime so the old events clear, then run the changed fit once more.",
+        "Give each run its own folder under <code>logs/compare</code>, so the rerun no longer writes on top of the first."
+      ],
+      "answer": 3,
+      "explain": "Rerunning a fit into the same folder adds the second run's events on top of the first, so one line turns into a tangle. With one folder per run under one parent, and <code>--logdir</code> on that parent, the Scalars tab draws each run as its own line; <code>histogram_freq</code> only sets how often the weights' histograms are written.",
       "starter": "",
       "tests": ""
     },
@@ -122,8 +138,16 @@
         "Keep the upload and add a README line asking the reviewer to upload the same file: catches the page's point that nobody else can rerun a notebook that needs a hand-uploaded file.",
         "Upload the file once more and leave it in the session: catches the page's point that a hand-uploaded file disappears when the runtime resets."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "A notebook's loading cell reads <code>pd.read_csv(\"penguins.csv\")</code> from a file its author uploaded by hand into Colab, and a reviewer cannot rerun the notebook. What change lets anyone rerun it?",
+      "options": [
+        "Read the CSV with <code>pd.read_csv(url)</code>, where <code>url</code> opens the raw file itself.",
+        "Pass <code>pd.read_csv</code> the address of the web page that shows the table.",
+        "Keep the upload, and add a README line asking the reviewer to upload the same file.",
+        "Upload the file once more and leave it sitting in the Colab session for later runs."
+      ],
+      "answer": 0,
+      "explain": "A notebook that loads its data from code runs anywhere, and <code>pd.read_csv</code> reads a CSV straight from a web address when the link opens the raw file, not a page that shows it. A file uploaded by hand disappears when the runtime resets.",
       "starter": "",
       "tests": ""
     },
@@ -138,10 +162,10 @@
         "On the penguin counts it returns 152 / 344, a fraction; an answer that returns the count 152 is not an accuracy.",
         "When the most common label appears last in the list it is still the one counted; an answer that takes the first label's count returns the wrong fraction."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>majority_accuracy(labels)</code>. <code>labels</code> is a list of class labels, one per row, and the function returns, as a fraction between 0 and 1, the accuracy of a model that always answers the most common label in the list. For example, for the penguins' species, 152 <code>\"Adelie\"</code>, 124 <code>\"Gentoo\"</code> and 68 <code>\"Chinstrap\"</code>, it returns <code>152 / 344</code>, about 0.44.",
+      "starter": "def majority_accuracy(labels):\n    ...",
+      "tests": "assert majority_accuracy([\"5\"] + [\"not 5\"] * 10) == 10 / 11, \"always answering the common class still scores high when one class is rare\"\nassert majority_accuracy([\"Adelie\"] * 152 + [\"Gentoo\"] * 124 + [\"Chinstrap\"] * 68) == 152 / 344, \"returns the share of rows answered right, not a count\"\nassert majority_accuracy([\"Gentoo\", \"Chinstrap\", \"Adelie\", \"Adelie\", \"Adelie\"]) == 3 / 5, \"finds the most common label wherever it sits in the list\""
     },
     {
       "id": "t6",
@@ -154,8 +178,16 @@
         "Run the cells by hand in the order that worked in the session: catches the page's named cause, cells run out of order, which a fresh Run all exists to catch.",
         "Record the library versions, since Colab's versions changed: catches confusing version drift, which can move numbers, with a missing name, which it does not cause."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "A notebook runs fine in its author's session. After the cell that made <code>scaler</code> was deleted, Runtime &gt; Run all on a fresh runtime stops with <code>NameError: name 'scaler' is not defined</code>. What is the fix?",
+      "options": [
+        "Set the seeds in the top cell, so every rerun of the notebook repeats the same way.",
+        "Put a cell that makes <code>scaler</code> back above its first use, then Run all on a fresh runtime again.",
+        "Run the cells by hand, in the order that worked in the author's session.",
+        "Record the library versions in the README, since Colab's preinstalled versions changed."
+      ],
+      "answer": 1,
+      "explain": "On a fresh runtime the only state is what the cells create, top to bottom, so it catches a variable left over from a deleted cell: the cell that makes <code>scaler</code> must sit above the first cell that uses it, and a second fresh Run all proves the fix. Seeds only make random choices repeat, and other library versions can move numbers but do not remove a name.",
       "starter": "",
       "tests": ""
     },
@@ -170,10 +202,10 @@
         "Blanks in train are skipped when the mean is taken; an answer that counts None as 0 or divides by the full length returns a smaller fill.",
         "Numbers in rows pass through unchanged; an answer that replaces every value with the mean loses the 10.0."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>fill_from_training(train, rows)</code>. <code>train</code> and <code>rows</code> are lists of numbers from one column, with <code>None</code> for a blank: <code>train</code> holds the training rows and <code>rows</code> another part of the split. The function returns a list like <code>rows</code> with each <code>None</code> replaced by the mean of the numbers in <code>train</code>, its blanks left out, and with the numbers already in <code>rows</code> as they were. For example, <code>fill_from_training([1.0, None, 3.0], [None, 10.0])</code> returns <code>[2.0, 10.0]</code>.",
+      "starter": "def fill_from_training(train, rows):\n    ...",
+      "tests": "assert fill_from_training([1.0, None, 3.0], [None, 10.0]) == [2.0, 10.0], \"the fill is the mean of the training rows only\"\nassert fill_from_training([2.0, None, None, 4.0], [None]) == [3.0], \"blanks in the training rows are left out of the mean\"\nassert fill_from_training([1.0, 3.0], [4.0, None, 10.0]) == [4.0, 2.0, 10.0], \"numbers already in rows stay as they were\""
     },
     {
       "id": "t8",
@@ -185,8 +217,15 @@
         "Save it and leave it in the Colab session's files for the reviewer: catches the page's warning that Colab loses the file when the runtime resets, so it must be downloaded.",
         "Save it to a path with no .keras ending, such as digits_kept: catches the page's rule that the path must end in .keras."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "Your notebook ends with the kept model, <code>kept</code>, trained, and the hand-in is the saved model. Which way of handing it in works?",
+      "options": [
+        "Save it with <code>kept.save(\"digits_kept.keras\")</code> and leave the file in the session's files, where the reviewer can open it and check it loads.",
+        "Save it with <code>kept.save(\"digits_kept\")</code>, a name with no file ending, check it loads back, then download that file.",
+        "Save it with <code>kept.save(\"digits_kept.keras\")</code>, check that <code>tf.keras.models.load_model</code> gives the same predictions on the same rows, then download the file."
+      ],
+      "answer": 2,
+      "explain": "<code>model.save</code> needs a path that ends in <code>.keras</code>, and predictions that agree on the same rows after a reload with <code>tf.keras.models.load_model</code> show the file holds the whole trained model. Colab loses the file when the runtime resets, so the downloaded copy is the hand-in.",
       "starter": "",
       "tests": ""
     }

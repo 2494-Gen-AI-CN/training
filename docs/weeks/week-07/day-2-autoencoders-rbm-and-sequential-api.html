@@ -960,6 +960,84 @@ print(f"accuracy {accuracy_score(labels_test, test_pred):.3f}, F1 {f1_score(labe
         </div>
       </section>
 
+      <section class="practice" id="practice" hidden>
+        <div class="tag">Practice</div>
+        <h2>Practice</h2>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t1" data-title="Collaborative filtering" data-q="Ivy signs up to the film service today, and her new row in the ratings table is all zeros. What can the recommender show her?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t1" value="0"> Run the collaborative filter on her row and show what the users most like her liked</label></li>
+            <li><label><input type="radio" name="t1" value="1"> Show nothing yet, since her six zeros say she did not like any of the films</label></li>
+            <li><label><input type="radio" name="t1" value="2"> Show popular films, or a few favourites she picks at sign-up, until her row has ratings</label></li>
+            <li><label><input type="radio" name="t1" value="3"> Add a genre column to the ratings table, so the filter can match her on genres</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 2, "explain": "A brand-new user has an empty row, so there is nobody she can be shown to agree with: the cold-start problem. A team covers it outside the model with popular films or favourites picked at sign-up, and the collaborative filter takes over once her row has ratings to match on."}</code></pre>
+        </div>
+        <div class="ix-task" data-id="t2" data-title="Recommending with an RBM" data-q="Write &lt;code&gt;recommend(row, hidden, components, biases, films)&lt;/code&gt;, the RBM&#x27;s recommending step on plain lists. &lt;code&gt;row&lt;/code&gt; is one user&#x27;s ratings, a 1 or a 0 per film; &lt;code&gt;hidden&lt;/code&gt; holds the user&#x27;s taste probabilities; &lt;code&gt;components&lt;/code&gt; holds one list of film weights per taste, one row per hidden unit as &lt;code&gt;components_&lt;/code&gt; has; &lt;code&gt;biases&lt;/code&gt; holds one bias per film and &lt;code&gt;films&lt;/code&gt; the film names. A film&#x27;s &lt;code&gt;z&lt;/code&gt; is the sum over the tastes of each taste&#x27;s probability times that taste&#x27;s weight for the film, plus the film&#x27;s bias, and its score is the sigmoid &lt;code&gt;1 / (1 + math.exp(-z))&lt;/code&gt;. Return &lt;code&gt;(film, score)&lt;/code&gt; for the highest-scoring film the user has a 0 for. With the page&#x27;s weights rounded to one decimal and both of Dev&#x27;s tastes off, &lt;code&gt;recommend([1, 1, 0, 0, 0, 0], [0.0, 0.0], components, biases, FILMS)&lt;/code&gt; returns &lt;code&gt;(&quot;Robot Dawn&quot;, 0.5)&lt;/code&gt;.">
+<pre class="task-starter"><code>import math
+
+def recommend(row, hidden, components, biases, films):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>rbm_films = ["Star Run", "Moon Base", "Robot Dawn", "Love Letters", "June Wedding", "Paris Days"]
+rbm_weights = [[-2.9, -3.0, -2.6, 3.6, 3.5, 2.5], [-2.3, -2.4, -2.1, 3.0, 3.0, 2.1]]
+rbm_bias = [0.7, 0.7, 0.0, -3.6, -3.6, -3.7]
+assert [recommend([1, 1, 0, 0, 0, 0], [0.0, 0.0], rbm_weights, rbm_bias, rbm_films)[0], recommend([0, 0, 0, 1, 1, 0], [1.0, 1.0], rbm_weights, rbm_bias, rbm_films)[0]] == ["Robot Dawn", "Paris Days"], "never picks a film the user has already rated 1"
+assert recommend([0, 0, 0], [0.0, 0.0], [[3.0, -1.0, 2.0], [1.0, 1.0, 1.0]], [-1.0, 2.0, 0.0], ["A", "B", "C"])[0] == "B", "with every taste off, the film biases alone decide the pick"
+assert round(recommend([0, 1], [1.0], [[1.0, 5.0]], [0.0, 0.0], ["X", "Y"])[1], 4) == 0.7311, "the score is the sigmoid of the sum, a number between 0 and 1"
+assert recommend([0, 0, 0], [0.5, 1.0], [[2.0, 0.0, 1.0], [0.0, 1.0, 2.0]], [0.0, 0.0, 0.0], ["P", "Q", "R"])[0] == "R", "with two tastes, each film's sum runs over both tastes' weights for that film"</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t3" data-title="Autoencoders" data-q="MNIST pixels are scaled to 0 to 1, &lt;code&gt;x_tr&lt;/code&gt; holds the training images and &lt;code&gt;y_tr&lt;/code&gt; their labels. Which build and fit line give an autoencoder that keeps a digit&#x27;s shape in its code?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t3" value="0"> <code>Dense(32, activation="relu")</code> then <code>Dense(784, activation="sigmoid")</code>, fitted with <code>fit(x_tr, y_tr)</code></label></li>
+            <li><label><input type="radio" name="t3" value="1"> <code>Dense(32, activation="relu")</code> then <code>Dense(784, activation="sigmoid")</code>, fitted with <code>fit(x_tr, x_tr)</code></label></li>
+            <li><label><input type="radio" name="t3" value="2"> <code>Dense(784, activation="relu")</code> then <code>Dense(784, activation="sigmoid")</code>, fitted with <code>fit(x_tr, x_tr)</code></label></li>
+            <li><label><input type="radio" name="t3" value="3"> <code>Dense(1, activation="relu")</code> then <code>Dense(784, activation="sigmoid")</code>, fitted with <code>fit(x_tr, x_tr)</code></label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 1, "explain": "An autoencoder's input is also its target, so both arguments of &lt;code&gt;fit&lt;/code&gt; are &lt;code&gt;x_tr&lt;/code&gt;, and its bottleneck must be narrower than the input. A 32-unit bottleneck is small enough that copying is impossible and wide enough to keep a digit's shape, where 784 units let the network copy the pixels through and a single unit blurs the rebuilds."}</code></pre>
+        </div>
+        <div class="ix-task" data-id="t4" data-title="Reconstruction error" data-q="Write &lt;code&gt;reconstruction_errors(images, rebuilt)&lt;/code&gt; on plain lists. &lt;code&gt;images&lt;/code&gt; is a list of images, each a list of pixel values, and &lt;code&gt;rebuilt&lt;/code&gt; holds their rebuilds in the same order and shape. Return a list with one number per image: the mean of the squared differences between its pixels and their rebuild, as &lt;code&gt;np.mean((x - rebuilt_toy) ** 2, axis=1)&lt;/code&gt; gives. An image can have any number of pixels. The page&#x27;s toy pair, &lt;code&gt;reconstruction_errors([[0.0, 1.0, 1.0, 0.0], [0.0, 1.0, 1.0, 0.0]], [[0.1, 0.9, 0.8, 0.0], [0.6, 0.4, 0.5, 0.7]])&lt;/code&gt;, returns about &lt;code&gt;[0.015, 0.365]&lt;/code&gt;.">
+<pre class="task-starter"><code>def reconstruction_errors(images, rebuilt):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>toy_x = [[0.0, 1.0, 1.0, 0.0], [0.0, 1.0, 1.0, 0.0]]
+toy_rebuilt = [[0.1, 0.9, 0.8, 0.0], [0.6, 0.4, 0.5, 0.7]]
+assert len(reconstruction_errors(toy_x, toy_rebuilt)) == 2, "returns one number per image, a list as long as images"
+assert [round(e, 3) for e in reconstruction_errors(toy_x, toy_rebuilt)] == [0.015, 0.365], "squares each difference: the toy pair scores 0.015 and 0.365"
+assert [round(e, 4) for e in reconstruction_errors([[1.0, 1.0, 0.0, 0.0]], [[0.5, 1.0, 0.0, 0.0]])] == [0.0625], "divides the sum of the squares by the number of pixels, so each score is a mean"
+assert [round(e, 4) for e in reconstruction_errors([[1.0, 1.0, 1.0], [0.0, 0.0, 0.0]], [[1.0, 1.0, 0.4], [0.3, 0.0, 0.0]])] == [0.12, 0.03], "works for images of any size, such as three pixels"</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t5" data-title="TFLearn and Keras" data-q="A blog post&#x27;s digit network starts with &lt;code&gt;import tflearn&lt;/code&gt; and &lt;code&gt;net = tflearn.input_data(shape=[None, 784])&lt;/code&gt;, and on Colab the import fails. What do you do?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t5" value="0"> Read the post as history and write the network in Keras, with <code>Input</code> for <code>input_data</code> and <code>Dense</code> for <code>fully_connected</code></label></li>
+            <li><label><input type="radio" name="t5" value="1"> Run <code>pip install tflearn</code> in a cell and import it again, since the error means the library is missing</label></li>
+            <li><label><input type="radio" name="t5" value="2"> Check the import line for a typo, since the error means the module name is spelled wrong</label></li>
+            <li><label><input type="radio" name="t5" value="3"> Install a TensorFlow 1 release in Colab, so the tutorial runs as the post wrote it</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 0, "explain": "TFLearn's source imports a helper, &lt;code&gt;is_sequence&lt;/code&gt;, that TensorFlow 2.21 no longer defines, so the failure comes from the library itself and its code is worth reading, never running. Keras is TensorFlow's own high-level API and does the same job, with &lt;code&gt;compile&lt;/code&gt; in place of &lt;code&gt;regression&lt;/code&gt;."}</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t6" data-title="Composing models" data-q="An encoder and a decoder were built as two Sequential models, joined with &lt;code&gt;composed = tf.keras.Sequential([encoder, decoder])&lt;/code&gt;, and &lt;code&gt;composed&lt;/code&gt; was fitted. You want the 32-number codes of some new digits, &lt;code&gt;new_digits&lt;/code&gt;. What do you run?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t6" value="0"> Fit <code>encoder</code> again on its own, since only the copy inside <code>composed</code> was trained</label></li>
+            <li><label><input type="radio" name="t6" value="1"> Call <code>composed.predict(new_digits)</code> and read the numbers it returns as the codes</label></li>
+            <li><label><input type="radio" name="t6" value="2"> Rebuild the autoencoder as one stack of two Dense layers, since a nested part cannot be called alone</label></li>
+            <li><label><input type="radio" name="t6" value="3"> Call <code>encoder.predict(new_digits)</code>, since <code>encoder</code> already holds the trained weights</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 3, "explain": "The part inside &lt;code&gt;composed&lt;/code&gt; is the very same object as &lt;code&gt;encoder&lt;/code&gt;, so the weights are shared, training &lt;code&gt;composed&lt;/code&gt; trained &lt;code&gt;encoder&lt;/code&gt; too, and each half is a model that can be called alone. &lt;code&gt;composed&lt;/code&gt; ends in the decoder, so its &lt;code&gt;predict&lt;/code&gt; returns the 784-pixel rebuilds."}</code></pre>
+        </div>
+        <div class="ix-task" data-id="t7" data-title="Sequential composition" data-q="Write &lt;code&gt;stack_params(input_width, units)&lt;/code&gt;, which returns the parameter count of a Sequential stack of Dense layers. &lt;code&gt;input_width&lt;/code&gt; is the width given to &lt;code&gt;tf.keras.Input&lt;/code&gt; and &lt;code&gt;units&lt;/code&gt; lists the Dense layers&#x27; widths in order. Each Dense layer holds one weight per incoming value per unit plus one bias per unit, and its incoming width is the width of the layer before it, or &lt;code&gt;input_width&lt;/code&gt; for the first. &lt;code&gt;stack_params(784, [128, 10])&lt;/code&gt; returns &lt;code&gt;101770&lt;/code&gt;, the count of the page&#x27;s digit stack.">
+<pre class="task-starter"><code>def stack_params(input_width, units):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert stack_params(784, [10, 128]) == 9258, "each layer's incoming width is the width of the layer before it: the swapped stack has 9,258"
+assert stack_params(784, [128, 10]) == 101770, "each layer adds one bias per unit: the page's digit stack has 101,770"
+assert stack_params(784, [128]) == 100480, "a single Dense layer of 128 units on 784 inputs, as after pop(), has 100,480"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t8" data-title="Confusion counts" data-q="Write &lt;code&gt;confusion_counts(probs, labels, threshold=0.5)&lt;/code&gt; on plain lists. &lt;code&gt;probs&lt;/code&gt; holds the model&#x27;s probability of label 1, motorcycles, for each post and &lt;code&gt;labels&lt;/code&gt; the true labels, 0 or 1. A post is predicted 1 when its probability is at or above &lt;code&gt;threshold&lt;/code&gt;, as &lt;code&gt;&amp;gt;= 0.5&lt;/code&gt; does on the page, and 0 otherwise. Return the tuple &lt;code&gt;(tn, fp, fn, tp)&lt;/code&gt; in the order &lt;code&gt;ravel()&lt;/code&gt; gives: a true negative is a true 0 predicted 0, a false positive a true 0 predicted 1, a false negative a true 1 predicted 0 and a true positive a true 1 predicted 1. &lt;code&gt;confusion_counts([0.9, 0.2, 0.6, 0.4], [1, 0, 0, 1])&lt;/code&gt; returns &lt;code&gt;(1, 1, 1, 1)&lt;/code&gt;.">
+<pre class="task-starter"><code>def confusion_counts(probs, labels, threshold=0.5):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert confusion_counts([0.9, 0.8, 0.7, 0.6, 0.1, 0.2, 0.3, 0.4, 0.45, 0.35], [1, 1, 1, 0, 0, 0, 0, 1, 1, 0]) == (4, 1, 2, 3), "returns (tn, fp, fn, tp) in the order ravel() gives, a false positive being a true 0 predicted 1"
+assert confusion_counts([0.5, 0.5], [1, 0]) == (0, 1, 0, 1), "a probability of exactly 0.5 counts as positive"
+assert confusion_counts([0.9, 0.4, 0.2, 0.6], [1, 1, 0, 0], threshold=0.3) == (1, 1, 0, 2), "with threshold=0.3 a post at 0.4 is called positive"</code></pre>
+        </div>
+      </section>
+
       <section class="step" data-diagram="0" data-step="8">
         <div class="tag">Check yourself</div>
         <h2>Check yourself</h2>

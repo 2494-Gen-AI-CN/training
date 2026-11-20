@@ -74,10 +74,18 @@
         "Her zeros mean she dislikes all six films, so recommend nothing until she rates one: catches reading 0 as \"did not like it\" when the page says 0 also means \"has not seen it\".",
         "Add a genre column to the ratings table so the filter can match her on genres: catches thinking collaborative filtering reads facts about the items, when it reads only who rated what."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "Ivy signs up to the film service today, and her new row in the ratings table is all zeros. What can the recommender show her?",
       "starter": "",
-      "tests": ""
+      "tests": "",
+      "options": [
+        "Run the collaborative filter on her row and show what the users most like her liked",
+        "Show nothing yet, since her six zeros say she did not like any of the films",
+        "Show popular films, or a few favourites she picks at sign-up, until her row has ratings",
+        "Add a genre column to the ratings table, so the filter can match her on genres"
+      ],
+      "answer": 2,
+      "explain": "A brand-new user has an empty row, so there is nobody she can be shown to agree with: the cold-start problem. A team covers it outside the model with popular films or favourites picked at sign-up, and the collaborative filter takes over once her row has ratings to match on."
     },
     {
       "id": "t2",
@@ -91,10 +99,10 @@
         "The returned score lies between 0 and 1 and equals the sigmoid of the weighted sum; an answer that skips the sigmoid returns the raw sum.",
         "With two hidden units and weights that differ per unit, the sum runs over the tastes for each film; an answer that reads components with films as rows picks the wrong film."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>recommend(row, hidden, components, biases, films)</code>, the RBM's recommending step on plain lists. <code>row</code> is one user's ratings, a 1 or a 0 per film; <code>hidden</code> holds the user's taste probabilities; <code>components</code> holds one list of film weights per taste, one row per hidden unit as <code>components_</code> has; <code>biases</code> holds one bias per film and <code>films</code> the film names. A film's <code>z</code> is the sum over the tastes of each taste's probability times that taste's weight for the film, plus the film's bias, and its score is the sigmoid <code>1 / (1 + math.exp(-z))</code>. Return <code>(film, score)</code> for the highest-scoring film the user has a 0 for. With the page's weights rounded to one decimal and both of Dev's tastes off, <code>recommend([1, 1, 0, 0, 0, 0], [0.0, 0.0], components, biases, FILMS)</code> returns <code>(\"Robot Dawn\", 0.5)</code>.",
+      "starter": "import math\n\ndef recommend(row, hidden, components, biases, films):\n    ...",
+      "tests": "rbm_films = [\"Star Run\", \"Moon Base\", \"Robot Dawn\", \"Love Letters\", \"June Wedding\", \"Paris Days\"]\nrbm_weights = [[-2.9, -3.0, -2.6, 3.6, 3.5, 2.5], [-2.3, -2.4, -2.1, 3.0, 3.0, 2.1]]\nrbm_bias = [0.7, 0.7, 0.0, -3.6, -3.6, -3.7]\nassert [recommend([1, 1, 0, 0, 0, 0], [0.0, 0.0], rbm_weights, rbm_bias, rbm_films)[0], recommend([0, 0, 0, 1, 1, 0], [1.0, 1.0], rbm_weights, rbm_bias, rbm_films)[0]] == [\"Robot Dawn\", \"Paris Days\"], \"never picks a film the user has already rated 1\"\nassert recommend([0, 0, 0], [0.0, 0.0], [[3.0, -1.0, 2.0], [1.0, 1.0, 1.0]], [-1.0, 2.0, 0.0], [\"A\", \"B\", \"C\"])[0] == \"B\", \"with every taste off, the film biases alone decide the pick\"\nassert round(recommend([0, 1], [1.0], [[1.0, 5.0]], [0.0, 0.0], [\"X\", \"Y\"])[1], 4) == 0.7311, \"the score is the sigmoid of the sum, a number between 0 and 1\"\nassert recommend([0, 0, 0], [0.5, 1.0], [[2.0, 0.0, 1.0], [0.0, 1.0, 2.0]], [0.0, 0.0, 0.0], [\"P\", \"Q\", \"R\"])[0] == \"R\", \"with two tastes, each film's sum runs over both tastes' weights for that film\""
     },
     {
       "id": "t3",
@@ -107,10 +115,18 @@
         "Dense(784, relu) then Dense(784, sigmoid) with fit(x_tr, x_tr): catches a bottleneck as wide as the input, which lets the network copy the pixels through and learn nothing useful.",
         "Dense(1, relu) then Dense(784, sigmoid) with fit(x_tr, x_tr): catches thinking narrower is always better, when a very narrow bottleneck cannot hold enough and blurs the rebuilds."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "MNIST pixels are scaled to 0 to 1, <code>x_tr</code> holds the training images and <code>y_tr</code> their labels. Which build and fit line give an autoencoder that keeps a digit's shape in its code?",
       "starter": "",
-      "tests": ""
+      "tests": "",
+      "options": [
+        "<code>Dense(32, activation=\"relu\")</code> then <code>Dense(784, activation=\"sigmoid\")</code>, fitted with <code>fit(x_tr, y_tr)</code>",
+        "<code>Dense(32, activation=\"relu\")</code> then <code>Dense(784, activation=\"sigmoid\")</code>, fitted with <code>fit(x_tr, x_tr)</code>",
+        "<code>Dense(784, activation=\"relu\")</code> then <code>Dense(784, activation=\"sigmoid\")</code>, fitted with <code>fit(x_tr, x_tr)</code>",
+        "<code>Dense(1, activation=\"relu\")</code> then <code>Dense(784, activation=\"sigmoid\")</code>, fitted with <code>fit(x_tr, x_tr)</code>"
+      ],
+      "answer": 1,
+      "explain": "An autoencoder's input is also its target, so both arguments of <code>fit</code> are <code>x_tr</code>, and its bottleneck must be narrower than the input. A 32-unit bottleneck is small enough that copying is impossible and wide enough to keep a digit's shape, where 784 units let the network copy the pixels through and a single unit blurs the rebuilds."
     },
     {
       "id": "t4",
@@ -124,10 +140,10 @@
         "Divides by the number of pixels in the image, so the score is a mean; an answer that sums the squares gives 0.06 for the first toy image.",
         "Works for rows of any length, such as three-pixel images; an answer that divides by a fixed 784 or 4 fails it."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>reconstruction_errors(images, rebuilt)</code> on plain lists. <code>images</code> is a list of images, each a list of pixel values, and <code>rebuilt</code> holds their rebuilds in the same order and shape. Return a list with one number per image: the mean of the squared differences between its pixels and their rebuild, as <code>np.mean((x - rebuilt_toy) ** 2, axis=1)</code> gives. An image can have any number of pixels. The page's toy pair, <code>reconstruction_errors([[0.0, 1.0, 1.0, 0.0], [0.0, 1.0, 1.0, 0.0]], [[0.1, 0.9, 0.8, 0.0], [0.6, 0.4, 0.5, 0.7]])</code>, returns about <code>[0.015, 0.365]</code>.",
+      "starter": "def reconstruction_errors(images, rebuilt):\n    ...",
+      "tests": "toy_x = [[0.0, 1.0, 1.0, 0.0], [0.0, 1.0, 1.0, 0.0]]\ntoy_rebuilt = [[0.1, 0.9, 0.8, 0.0], [0.6, 0.4, 0.5, 0.7]]\nassert len(reconstruction_errors(toy_x, toy_rebuilt)) == 2, \"returns one number per image, a list as long as images\"\nassert [round(e, 3) for e in reconstruction_errors(toy_x, toy_rebuilt)] == [0.015, 0.365], \"squares each difference: the toy pair scores 0.015 and 0.365\"\nassert [round(e, 4) for e in reconstruction_errors([[1.0, 1.0, 0.0, 0.0]], [[0.5, 1.0, 0.0, 0.0]])] == [0.0625], \"divides the sum of the squares by the number of pixels, so each score is a mean\"\nassert [round(e, 4) for e in reconstruction_errors([[1.0, 1.0, 1.0], [0.0, 0.0, 0.0]], [[1.0, 1.0, 0.4], [0.3, 0.0, 0.0]])] == [0.12, 0.03], \"works for images of any size, such as three pixels\""
     },
     {
       "id": "t5",
@@ -140,10 +156,18 @@
         "Look for a typo in the import line or the module name: catches reading the failure as a spelling mistake when the cause is a library written for a TensorFlow that no longer ships.",
         "Install a TensorFlow 1 release in Colab so the tutorial runs as written: catches missing the page's point that TFLearn code is worth reading and never worth running, since Keras does the same job."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "A blog post's digit network starts with <code>import tflearn</code> and <code>net = tflearn.input_data(shape=[None, 784])</code>, and on Colab the import fails. What do you do?",
       "starter": "",
-      "tests": ""
+      "tests": "",
+      "options": [
+        "Read the post as history and write the network in Keras, with <code>Input</code> for <code>input_data</code> and <code>Dense</code> for <code>fully_connected</code>",
+        "Run <code>pip install tflearn</code> in a cell and import it again, since the error means the library is missing",
+        "Check the import line for a typo, since the error means the module name is spelled wrong",
+        "Install a TensorFlow 1 release in Colab, so the tutorial runs as the post wrote it"
+      ],
+      "answer": 0,
+      "explain": "TFLearn's source imports a helper, <code>is_sequence</code>, that TensorFlow 2.21 no longer defines, so the failure comes from the library itself and its code is worth reading, never running. Keras is TensorFlow's own high-level API and does the same job, with <code>compile</code> in place of <code>regression</code>."
     },
     {
       "id": "t6",
@@ -156,10 +180,18 @@
         "Call composed.predict on the digits and read its output as the codes: catches missing that composed ends in the decoder, so it returns 784-pixel rebuilds, not 32-number codes.",
         "Rebuild the autoencoder as one stack of two Dense layers, since a part nested in a model cannot be called alone: catches missing that each half is a model and can be called by itself."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "An encoder and a decoder were built as two Sequential models, joined with <code>composed = tf.keras.Sequential([encoder, decoder])</code>, and <code>composed</code> was fitted. You want the 32-number codes of some new digits, <code>new_digits</code>. What do you run?",
       "starter": "",
-      "tests": ""
+      "tests": "",
+      "options": [
+        "Fit <code>encoder</code> again on its own, since only the copy inside <code>composed</code> was trained",
+        "Call <code>composed.predict(new_digits)</code> and read the numbers it returns as the codes",
+        "Rebuild the autoencoder as one stack of two Dense layers, since a nested part cannot be called alone",
+        "Call <code>encoder.predict(new_digits)</code>, since <code>encoder</code> already holds the trained weights"
+      ],
+      "answer": 3,
+      "explain": "The part inside <code>composed</code> is the very same object as <code>encoder</code>, so the weights are shared, training <code>composed</code> trained <code>encoder</code> too, and each half is a model that can be called alone. <code>composed</code> ends in the decoder, so its <code>predict</code> returns the 784-pixel rebuilds."
     },
     {
       "id": "t7",
@@ -172,10 +204,10 @@
         "stack_params(784, [128, 10]) returns 101770; an answer that leaves out the bias per unit returns 101632.",
         "stack_params(784, [128]) returns 100480, the count after pop(); an answer that adds one bias per incoming value instead of per unit returns 101136."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>stack_params(input_width, units)</code>, which returns the parameter count of a Sequential stack of Dense layers. <code>input_width</code> is the width given to <code>tf.keras.Input</code> and <code>units</code> lists the Dense layers' widths in order. Each Dense layer holds one weight per incoming value per unit plus one bias per unit, and its incoming width is the width of the layer before it, or <code>input_width</code> for the first. <code>stack_params(784, [128, 10])</code> returns <code>101770</code>, the count of the page's digit stack.",
+      "starter": "def stack_params(input_width, units):\n    ...",
+      "tests": "assert stack_params(784, [10, 128]) == 9258, \"each layer's incoming width is the width of the layer before it: the swapped stack has 9,258\"\nassert stack_params(784, [128, 10]) == 101770, \"each layer adds one bias per unit: the page's digit stack has 101,770\"\nassert stack_params(784, [128]) == 100480, \"a single Dense layer of 128 units on 784 inputs, as after pop(), has 100,480\""
     },
     {
       "id": "t8",
@@ -188,10 +220,10 @@
         "A probability of exactly 0.5 counts as positive, as the page's >= 0.5 does; an answer that uses > leaves it negative.",
         "With threshold=0.3 a post at 0.4 becomes positive, so false negatives fall and true positives rise; an answer that ignores the threshold argument and keeps 0.5 fails it."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>confusion_counts(probs, labels, threshold=0.5)</code> on plain lists. <code>probs</code> holds the model's probability of label 1, motorcycles, for each post and <code>labels</code> the true labels, 0 or 1. A post is predicted 1 when its probability is at or above <code>threshold</code>, as <code>&gt;= 0.5</code> does on the page, and 0 otherwise. Return the tuple <code>(tn, fp, fn, tp)</code> in the order <code>ravel()</code> gives: a true negative is a true 0 predicted 0, a false positive a true 0 predicted 1, a false negative a true 1 predicted 0 and a true positive a true 1 predicted 1. <code>confusion_counts([0.9, 0.2, 0.6, 0.4], [1, 0, 0, 1])</code> returns <code>(1, 1, 1, 1)</code>.",
+      "starter": "def confusion_counts(probs, labels, threshold=0.5):\n    ...",
+      "tests": "assert confusion_counts([0.9, 0.8, 0.7, 0.6, 0.1, 0.2, 0.3, 0.4, 0.45, 0.35], [1, 1, 1, 0, 0, 0, 0, 1, 1, 0]) == (4, 1, 2, 3), \"returns (tn, fp, fn, tp) in the order ravel() gives, a false positive being a true 0 predicted 1\"\nassert confusion_counts([0.5, 0.5], [1, 0]) == (0, 1, 0, 1), \"a probability of exactly 0.5 counts as positive\"\nassert confusion_counts([0.9, 0.4, 0.2, 0.6], [1, 1, 0, 0], threshold=0.3) == (1, 1, 0, 2), \"with threshold=0.3 a post at 0.4 is called positive\""
     }
   ]
 }

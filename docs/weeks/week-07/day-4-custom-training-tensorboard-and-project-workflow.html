@@ -758,6 +758,76 @@ print(np.allclose(kept.predict(x_val[:100], verbose=0), loaded.predict(x_val[:10
         </div>
       </section>
 
+      <section class="practice" id="practice" hidden>
+        <div class="tag">Practice</div>
+        <h2>Practice</h2>
+        <div class="ix-task" data-id="t1" data-title="What fit does on every batch" data-q="Write &lt;code&gt;count_updates(n_rows, batch_size, epochs)&lt;/code&gt;, which returns how many times the weights change when &lt;code&gt;fit&lt;/code&gt; trains on &lt;code&gt;n_rows&lt;/code&gt; rows for &lt;code&gt;epochs&lt;/code&gt; epochs with that &lt;code&gt;batch_size&lt;/code&gt;. The weights change once per batch, and when &lt;code&gt;n_rows&lt;/code&gt; is not a multiple of &lt;code&gt;batch_size&lt;/code&gt; the leftover rows make one last, shorter batch. For example, &lt;code&gt;count_updates(54000, 128, 2)&lt;/code&gt; returns &lt;code&gt;844&lt;/code&gt;.">
+<pre class="task-starter"><code>def count_updates(n_rows, batch_size, epochs):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert count_updates(54000, 128, 2) == 844, "the short last batch of each epoch is an update too"
+assert count_updates(256, 128, 3) == 6, "rows that divide evenly make no extra batch"
+assert count_updates(54000, 128, 1) == 422, "the weights change once per batch, not once per epoch"</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t2" data-title="The loop written by hand" data-q="A hand-written loop for the 784-128-10 network runs &lt;code&gt;preds = loop_model(xb)&lt;/code&gt; inside &lt;code&gt;with tf.GradientTape() as tape:&lt;/code&gt;, but &lt;code&gt;loss = loss_fn(yb, preds)&lt;/code&gt; sits on the line after the block ends. &lt;code&gt;apply_gradients&lt;/code&gt; fails on the first batch. What is wrong?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t2" value="0"> The last batch holds only 112 rows, so the loop needs extra code to handle that short batch.</label></li>
+            <li><label><input type="radio" name="t2" value="1"> The model was never compiled, so call <code>compile</code> on it before the loop starts.</label></li>
+            <li><label><input type="radio" name="t2" value="2"> The tape never saw the loss, so <code>tape.gradient</code> returns <code>None</code>; move the loss line inside the block.</label></li>
+            <li><label><input type="radio" name="t2" value="3"> The forward pass lacks <code>training=True</code>, so add it to the <code>loop_model</code> call.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 2, "explain": "The tape records only what runs inside its &lt;code&gt;with&lt;/code&gt; block, so it never saw a loss computed after the block and &lt;code&gt;tape.gradient&lt;/code&gt; returns &lt;code&gt;None&lt;/code&gt;. A hand loop can train an uncompiled model, and &lt;code&gt;training=True&lt;/code&gt; changes nothing here, since this network has no &lt;code&gt;Dropout&lt;/code&gt; or &lt;code&gt;BatchNormalization&lt;/code&gt; layer."}</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t3" data-title="TensorBoard: comparing two runs" data-q="After a change to the plain network, you rerun its fit with its callback&#x27;s &lt;code&gt;log_dir&lt;/code&gt; still &lt;code&gt;&quot;logs/compare/plain&quot;&lt;/code&gt;. TensorBoard, opened with &lt;code&gt;--logdir logs/compare&lt;/code&gt;, now draws the plain run as one tangled line where you expected the old and new runs as two. What fixes it?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t3" value="0"> Raise the callback's <code>histogram_freq</code>, so TensorBoard can tell the two runs apart.</label></li>
+            <li><label><input type="radio" name="t3" value="1"> Rebuild the network in TFLearn with <code>tensorboard_verbose=3</code>, so each run logs on its own.</label></li>
+            <li><label><input type="radio" name="t3" value="2"> Restart the Colab runtime so the old events clear, then run the changed fit once more.</label></li>
+            <li><label><input type="radio" name="t3" value="3"> Give each run its own folder under <code>logs/compare</code>, so the rerun no longer writes on top of the first.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 3, "explain": "Rerunning a fit into the same folder adds the second run's events on top of the first, so one line turns into a tangle. With one folder per run under one parent, and &lt;code&gt;--logdir&lt;/code&gt; on that parent, the Scalars tab draws each run as its own line; &lt;code&gt;histogram_freq&lt;/code&gt; only sets how often the weights' histograms are written."}</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t4" data-title="Loading a dataset from code" data-q="A notebook&#x27;s loading cell reads &lt;code&gt;pd.read_csv(&quot;penguins.csv&quot;)&lt;/code&gt; from a file its author uploaded by hand into Colab, and a reviewer cannot rerun the notebook. What change lets anyone rerun it?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t4" value="0"> Read the CSV with <code>pd.read_csv(url)</code>, where <code>url</code> opens the raw file itself.</label></li>
+            <li><label><input type="radio" name="t4" value="1"> Pass <code>pd.read_csv</code> the address of the web page that shows the table.</label></li>
+            <li><label><input type="radio" name="t4" value="2"> Keep the upload, and add a README line asking the reviewer to upload the same file.</label></li>
+            <li><label><input type="radio" name="t4" value="3"> Upload the file once more and leave it sitting in the Colab session for later runs.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 0, "explain": "A notebook that loads its data from code runs anywhere, and &lt;code&gt;pd.read_csv&lt;/code&gt; reads a CSV straight from a web address when the link opens the raw file, not a page that shows it. A file uploaded by hand disappears when the runtime resets."}</code></pre>
+        </div>
+        <div class="ix-task" data-id="t5" data-title="Looking at the data" data-q="Write &lt;code&gt;majority_accuracy(labels)&lt;/code&gt;. &lt;code&gt;labels&lt;/code&gt; is a list of class labels, one per row, and the function returns, as a fraction between 0 and 1, the accuracy of a model that always answers the most common label in the list. For example, for the penguins&#x27; species, 152 &lt;code&gt;&quot;Adelie&quot;&lt;/code&gt;, 124 &lt;code&gt;&quot;Gentoo&quot;&lt;/code&gt; and 68 &lt;code&gt;&quot;Chinstrap&quot;&lt;/code&gt;, it returns &lt;code&gt;152 / 344&lt;/code&gt;, about 0.44.">
+<pre class="task-starter"><code>def majority_accuracy(labels):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert majority_accuracy(["5"] + ["not 5"] * 10) == 10 / 11, "always answering the common class still scores high when one class is rare"
+assert majority_accuracy(["Adelie"] * 152 + ["Gentoo"] * 124 + ["Chinstrap"] * 68) == 152 / 344, "returns the share of rows answered right, not a count"
+assert majority_accuracy(["Gentoo", "Chinstrap", "Adelie", "Adelie", "Adelie"]) == 3 / 5, "finds the most common label wherever it sits in the list"</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t6" data-title="Seeds and Run all" data-q="A notebook runs fine in its author&#x27;s session. After the cell that made &lt;code&gt;scaler&lt;/code&gt; was deleted, Runtime &amp;gt; Run all on a fresh runtime stops with &lt;code&gt;NameError: name &#x27;scaler&#x27; is not defined&lt;/code&gt;. What is the fix?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t6" value="0"> Set the seeds in the top cell, so every rerun of the notebook repeats the same way.</label></li>
+            <li><label><input type="radio" name="t6" value="1"> Put a cell that makes <code>scaler</code> back above its first use, then Run all on a fresh runtime again.</label></li>
+            <li><label><input type="radio" name="t6" value="2"> Run the cells by hand, in the order that worked in the author's session.</label></li>
+            <li><label><input type="radio" name="t6" value="3"> Record the library versions in the README, since Colab's preinstalled versions changed.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 1, "explain": "On a fresh runtime the only state is what the cells create, top to bottom, so it catches a variable left over from a deleted cell: the cell that makes &lt;code&gt;scaler&lt;/code&gt; must sit above the first cell that uses it, and a second fresh Run all proves the fix. Seeds only make random choices repeat, and other library versions can move numbers but do not remove a name."}</code></pre>
+        </div>
+        <div class="ix-task" data-id="t7" data-title="The test set used once" data-q="Write &lt;code&gt;fill_from_training(train, rows)&lt;/code&gt;. &lt;code&gt;train&lt;/code&gt; and &lt;code&gt;rows&lt;/code&gt; are lists of numbers from one column, with &lt;code&gt;None&lt;/code&gt; for a blank: &lt;code&gt;train&lt;/code&gt; holds the training rows and &lt;code&gt;rows&lt;/code&gt; another part of the split. The function returns a list like &lt;code&gt;rows&lt;/code&gt; with each &lt;code&gt;None&lt;/code&gt; replaced by the mean of the numbers in &lt;code&gt;train&lt;/code&gt;, its blanks left out, and with the numbers already in &lt;code&gt;rows&lt;/code&gt; as they were. For example, &lt;code&gt;fill_from_training([1.0, None, 3.0], [None, 10.0])&lt;/code&gt; returns &lt;code&gt;[2.0, 10.0]&lt;/code&gt;.">
+<pre class="task-starter"><code>def fill_from_training(train, rows):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert fill_from_training([1.0, None, 3.0], [None, 10.0]) == [2.0, 10.0], "the fill is the mean of the training rows only"
+assert fill_from_training([2.0, None, None, 4.0], [None]) == [3.0], "blanks in the training rows are left out of the mean"
+assert fill_from_training([1.0, 3.0], [4.0, None, 10.0]) == [4.0, 2.0, 10.0], "numbers already in rows stay as they were"</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t8" data-title="Saving the .keras file" data-q="Your notebook ends with the kept model, &lt;code&gt;kept&lt;/code&gt;, trained, and the hand-in is the saved model. Which way of handing it in works?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t8" value="0"> Save it with <code>kept.save("digits_kept.keras")</code> and leave the file in the session's files, where the reviewer can open it and check it loads.</label></li>
+            <li><label><input type="radio" name="t8" value="1"> Save it with <code>kept.save("digits_kept")</code>, a name with no file ending, check it loads back, then download that file.</label></li>
+            <li><label><input type="radio" name="t8" value="2"> Save it with <code>kept.save("digits_kept.keras")</code>, check that <code>tf.keras.models.load_model</code> gives the same predictions on the same rows, then download the file.</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 2, "explain": "&lt;code&gt;model.save&lt;/code&gt; needs a path that ends in &lt;code&gt;.keras&lt;/code&gt;, and predictions that agree on the same rows after a reload with &lt;code&gt;tf.keras.models.load_model&lt;/code&gt; show the file holds the whole trained model. Colab loses the file when the runtime resets, so the downloaded copy is the hand-in."}</code></pre>
+        </div>
+      </section>
+
       <section class="step" data-diagram="0" data-step="8">
         <div class="tag">Check yourself</div>
         <h2>Check yourself</h2>

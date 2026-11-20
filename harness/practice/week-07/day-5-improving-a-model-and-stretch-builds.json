@@ -59,10 +59,10 @@
         "A history whose lowest validation loss is at position 11 returns 12; an answer that leaves out the + 1 returns 11.",
         "A history whose training loss falls for all 20 epochs while validation loss turns up after epoch 12 still returns 12; an answer that reads \"loss\" instead of \"val_loss\" returns 20."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>best_epoch(history)</code>. <code>history</code> is a dictionary shaped like <code>History.history</code>: a list of numbers under <code>\"loss\"</code> for the training loss and one under <code>\"val_loss\"</code> for the validation loss, one number per epoch. Return the epoch at which the validation loss is lowest, counting epochs from 1, as the page's <code>np.argmin(...) + 1</code> does. Plain Python is enough: <code>min</code> finds the smallest value and a list's <code>index</code> method gives its position, counting from 0. For a 20-epoch history whose smallest <code>val_loss</code> sits at position 11, <code>best_epoch(history)</code> returns <code>12</code>.",
+      "starter": "def best_epoch(history):\n    ...",
+      "tests": "val = [0.30, 0.20, 0.15, 0.12, 0.11, 0.10, 0.095, 0.09, 0.088, 0.086, 0.084, 0.082, 0.083, 0.085, 0.087, 0.089, 0.090, 0.092, 0.094, 0.096]\nsame = {\"loss\": val, \"val_loss\": val}\nfalling = {\"loss\": [0.40 - 0.02 * i for i in range(20)], \"val_loss\": val}\nassert best_epoch(same) == 12, \"counts epochs from 1: the lowest loss at position 11 is epoch 12\"\nassert best_epoch(falling) == 12, \"reads the validation loss, not the training loss that falls for all 20 epochs\""
     },
     {
       "id": "t2",
@@ -75,10 +75,10 @@
         "With training false the values come back unchanged even when keep holds False entries; an answer that applies the mask at predict time returns zeros.",
         "With rate 0.5 a kept 3.0 comes back as 6.0; an answer that hard-codes the 1.25 from the page's example fails."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>dropout(values, keep, rate, training)</code>, the rule a <code>Dropout</code> layer follows, on plain lists. <code>values</code> is a list of numbers and <code>keep</code> a list of <code>True</code> or <code>False</code> of the same length that stands in for the random draw: <code>True</code> means that value is kept. <code>rate</code> is the share dropped, as in <code>Dropout(0.2)</code>. Return a list: with <code>training</code> true, each kept value is multiplied by <code>1 / (1 - rate)</code> and each dropped one becomes <code>0.0</code>; with <code>training</code> false, the values come back unchanged. For example <code>dropout([1.0, 1.0], [True, False], 0.2, True)</code> returns <code>[1.25, 0.0]</code>.",
+      "starter": "def dropout(values, keep, rate, training):\n    ...",
+      "tests": "assert dropout([1.0, 1.0, 1.0], [True, False, True], 0.2, True) == [1.25, 0.0, 1.25], \"in training, kept values are scaled by 1 / (1 - rate) and dropped ones become 0.0\"\nassert dropout([1.0, 2.0], [False, False], 0.2, False) == [1.0, 2.0], \"with training false every value comes back unchanged, whatever keep holds\"\nassert dropout([3.0, 3.0], [True, False], 0.5, True) == [6.0, 0.0], \"the scale follows the rate: at 0.5 a kept 3.0 becomes 6.0\""
     },
     {
       "id": "t3",
@@ -92,10 +92,10 @@
         "Two runs that differ in \"dropout\" and \"seed\" raise ValueError; an answer that skips the seed as if it were not part of the comparison returns \"dropout\".",
         "Two identical runs raise ValueError; an answer that returns None or an empty string when nothing changed fails."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>the_one_change(before, after)</code>. Each argument is a dictionary of one run's settings, both with the same keys, such as <code>\"units\"</code>, <code>\"dropout\"</code>, <code>\"epochs\"</code>, <code>\"seed\"</code> and <code>\"val_rows\"</code>. Return the name of the one setting whose value differs between the two runs. When no setting differs, or more than one does, the comparison cannot say what moved the number, so raise <code>ValueError</code>. Every key counts, the seed and the validation rows included. For example, when only <code>\"dropout\"</code> goes from <code>0.0</code> to <code>0.2</code>, it returns <code>\"dropout\"</code>.",
+      "starter": "def the_one_change(before, after):\n    ...",
+      "tests": "base = {\"units\": 128, \"dropout\": 0.0, \"epochs\": 20, \"seed\": 42, \"val_rows\": 6000}\nwith_dropout = {\"units\": 128, \"dropout\": 0.2, \"epochs\": 20, \"seed\": 42, \"val_rows\": 6000}\nwider_and_dropout = {\"units\": 256, \"dropout\": 0.2, \"epochs\": 20, \"seed\": 42, \"val_rows\": 6000}\nnew_seed_too = {\"units\": 128, \"dropout\": 0.2, \"epochs\": 20, \"seed\": 7, \"val_rows\": 6000}\nsame_again = {\"units\": 128, \"dropout\": 0.0, \"epochs\": 20, \"seed\": 42, \"val_rows\": 6000}\nassert the_one_change(base, with_dropout) == \"dropout\", \"names the one setting that changed\"\nassert raises(ValueError, the_one_change, base, wider_and_dropout), \"raises ValueError when the layer width and dropout changed together\"\nassert raises(ValueError, the_one_change, base, new_seed_too), \"counts the seed: a new seed as well as new dropout raises ValueError\"\nassert raises(ValueError, the_one_change, base, same_again), \"raises ValueError when nothing changed\""
     },
     {
       "id": "t4",
@@ -108,10 +108,10 @@
         "Rows that also carry a \"test_accuracy\" key are still chosen by val_loss; an answer that picks the best test number, the brief's pitfall of choosing on the test set, fails.",
         "An answer that takes the largest val_loss instead of the smallest returns the worse model and fails the page's two-row table."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>kept_model(results)</code>. <code>results</code> is a list of dictionaries shaped like the page's results table, one per trained model, each with a <code>\"model\"</code> name, a <code>\"val_loss\"</code> and a <code>\"val_accuracy\"</code>; a row may carry other keys as well. Return the <code>\"model\"</code> name of the row with the lowest validation loss, wherever that row sits in the list and whatever its other numbers say. For the page's two rows, base 20 epochs at a <code>val_loss</code> of 0.096 and dropout 0.2 at 0.065, it returns <code>\"dropout 0.2\"</code>.",
+      "starter": "def kept_model(results):\n    ...",
+      "tests": "page_rows = [{\"model\": \"base 20 epochs\", \"val_loss\": 0.096, \"val_accuracy\": 0.979}, {\"model\": \"dropout 0.2\", \"val_loss\": 0.065, \"val_accuracy\": 0.984}]\nthree_rows = [{\"model\": \"dropout 0.2\", \"val_loss\": 0.065, \"val_accuracy\": 0.984}, {\"model\": \"dropout 0.5\", \"val_loss\": 0.071, \"val_accuracy\": 0.981}, {\"model\": \"dropout 0.2, 256 units\", \"val_loss\": 0.068, \"val_accuracy\": 0.983}]\nwith_test = [{\"model\": \"base 20 epochs\", \"val_loss\": 0.096, \"val_accuracy\": 0.979, \"test_accuracy\": 0.982}, {\"model\": \"dropout 0.2\", \"val_loss\": 0.065, \"val_accuracy\": 0.984, \"test_accuracy\": 0.980}]\nassert kept_model(page_rows) == \"dropout 0.2\", \"keeps the row with the lowest val_loss in the page's table\"\nassert kept_model(three_rows) == \"dropout 0.2\", \"keeps the lowest val_loss even when it is the first row, not the newest\"\nassert kept_model(with_test) == \"dropout 0.2\", \"chooses on val_loss even when another row's test number is higher\""
     },
     {
       "id": "t5",
@@ -124,10 +124,10 @@
         "A sum that stays inside 0 to 1 comes back as pixel plus scale times noise; an answer that adds the noise without the scale fails.",
         "The caller's pixels list is left as it was, so the clean target survives; an answer that writes the noise into it in place leaves both arrays noisy, as fit(x_noisy, x_noisy) would."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>add_noise(pixels, noise, scale=0.3)</code>, the noisy input of a denoising autoencoder, on plain lists. <code>pixels</code> is a list of pixel values between 0 and 1, and <code>noise</code> a list of numbers of the same length, drawn once beforehand. Return a new list in which each pixel becomes the pixel plus <code>scale</code> times its noise, clipped to <code>0.0</code> at the bottom and <code>1.0</code> at the top, as <code>np.clip(x, 0.0, 1.0)</code> does. Leave <code>pixels</code> itself as it was: it is the clean target. For example <code>add_noise([0.9, 0.1, 0.5], [1.0, -1.0, 0.0])</code> returns <code>[1.0, 0.0, 0.5]</code>.",
+      "starter": "def add_noise(pixels, noise, scale=0.3):\n    ...",
+      "tests": "assert add_noise([0.9, 0.1], [1.0, -1.0]) == [1.0, 0.0], \"clips a sum above 1 to 1.0 and a sum below 0 to 0.0\"\nassert [round(p, 6) for p in add_noise([0.5, 0.2], [1.0, 1.0]) + add_noise([0.25], [0.5], 0.5)] == [0.8, 0.5, 0.5], \"a sum inside 0 to 1 is the pixel plus scale times its noise\"\nclean = [0.5, 0.9]\nnoisy = add_noise(clean, [1.0, 1.0])\nassert clean == [0.5, 0.9], \"leaves the caller's pixels list as it was, so the clean target survives\""
     },
     {
       "id": "t6",
@@ -141,10 +141,10 @@
         "A word missing from the vocabulary becomes 1, the [UNK] id; an answer that drops the word or lets vocabulary.index raise ValueError fails.",
         "A known word becomes its position in the vocabulary, so \"the\" is 2; an answer that counts positions from 1 or skips the two reserved entries is off."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>to_ids(text, vocabulary, length)</code>, what <code>TextVectorization</code> does to one post once it has a vocabulary. <code>vocabulary</code> is a list whose first two entries are the reserved <code>\"\"</code> (padding, id 0) and <code>\"[UNK]\"</code> (an unknown word, id 1). Split <code>text</code> on spaces and turn each word into its id: its position in <code>vocabulary</code>, or <code>1</code> for a word not in it. Return exactly <code>length</code> ids, as <code>output_sequence_length</code> sets: a shorter post is padded with <code>0</code> at the end and a longer one is cut to its first <code>length</code> ids. With <code>vocabulary = [\"\", \"[UNK]\", \"the\", \"bike\", \"car\"]</code>, <code>to_ids(\"the bike hit the car\", vocabulary, 7)</code> returns <code>[2, 3, 1, 2, 4, 0, 0]</code>.",
+      "starter": "def to_ids(text, vocabulary, length):\n    ...",
+      "tests": "vocabulary = [\"\", \"[UNK]\", \"the\", \"bike\", \"car\"]\nassert to_ids(\"the bike\", vocabulary, 5) == [2, 3, 0, 0, 0], \"pads a short post with 0 up to length\"\nassert to_ids(\"the car the bike the car\", vocabulary, 4) == [2, 4, 2, 3], \"cuts a long post to its first length ids\"\nassert to_ids(\"the bike hit the car\", vocabulary, 7) == [2, 3, 1, 2, 4, 0, 0], \"turns a word missing from the vocabulary into 1, the [UNK] id\"\nassert to_ids(\"car bike the\", vocabulary, 3) == [4, 3, 2], \"gives a known word its position in the vocabulary, counting the two reserved entries\""
     }
   ]
 }

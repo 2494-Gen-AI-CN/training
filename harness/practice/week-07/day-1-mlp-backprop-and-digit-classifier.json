@@ -82,10 +82,10 @@
         "cross_entropy_true([0.9, 0.6, 0.1]) returns about 0.973, the batch mean Keras reports; adding the three costs gives about 2.919.",
         "cross_entropy_true([0.1]) returns about 2.303, the steep cost of a confident wrong answer; dropping the minus sign gives -2.303, and log base 10 gives 1.0."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write two loss functions in plain Python, with no numpy or TensorFlow. <code>mse(y_true, y_pred)</code> takes two lists of the same length and returns the mean of the squared differences between them. <code>cross_entropy_true(probs)</code> takes a list of probabilities, each the one a model gave to a row whose true label is 1, and returns the mean of <code>-math.log(p)</code> over the list, the batch mean a Keras loss reports. <code>math.log</code> is the natural logarithm, the same one <code>np.log</code> computes. For example <code>mse([3.0, 5.0, 2.5, 7.0, 4.0], [2.5, 5.0, 4.0, 8.0, 3.0])</code> returns 0.9 and <code>cross_entropy_true([0.9, 0.6, 0.1])</code> returns about 0.973.",
+      "starter": "import math\n\ndef mse(y_true, y_pred):\n    ...\n\ndef cross_entropy_true(probs):\n    ...",
+      "tests": "assert round(mse([3.0, 5.0, 2.5, 7.0, 4.0], [2.5, 5.0, 4.0, 8.0, 3.0]), 3) == 0.9, \"mse is the mean of the page's five squared misses, not their total\"\nassert mse([1.0, 1.0], [2.0, 0.0]) == 1.0, \"a miss above and a miss below both cost something, so they do not cancel\"\nassert round(cross_entropy_true([0.9, 0.6, 0.1]), 3) == 0.973, \"cross_entropy_true is the mean cost over the batch, as Keras reports it\"\nassert round(cross_entropy_true([0.1]), 3) == 2.303, \"a confident wrong answer, 0.1 for the true class, costs about 2.303\""
     },
     {
       "id": "t2",
@@ -98,10 +98,10 @@
         "descend(0.0, 0.2, 2) returns about -6.0, the overshoot the page walks through (0 to 6, then past the bottom again); running one step too many or too few gives 18.0 or 6.0.",
         "descend(0.0, 0.01, 10) is still short of 2 (about 1.606) while descend(0.0, 0.05, 10) reaches about 2.0, so the rate scales each step; ignoring rate or using a fixed step gives the same value for both."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "The starter holds the page's one-weight loss, <code>line_loss(w)</code>: the MSE of <code>w * x</code> against targets <code>2.0 * x</code> for <code>x</code> = 1, 2, 3, 4, written with plain lists. Write <code>descend(w, rate, steps)</code>, plain gradient descent from the starting weight <code>w</code>. Each step finds the slope with the centred nudge, <code>(line_loss(w + 0.001) - line_loss(w - 0.001)) / 0.002</code>, then updates <code>w = w - rate * slope</code>. Take <code>steps</code> steps and return the final <code>w</code>. For example <code>descend(0.0, 0.05, 1)</code> returns about 1.5, and <code>descend(0.0, 0.05, 10)</code> returns about 2.0.",
+      "starter": "xs = [1.0, 2.0, 3.0, 4.0]\nys = [2.0 * x for x in xs]\n\ndef line_loss(w):\n    return sum((w * x - y) ** 2 for x, y in zip(xs, ys)) / len(xs)\n\ndef descend(w, rate, steps):\n    ...",
+      "tests": "assert round(descend(0.0, 0.05, 1), 3) == 1.5, \"one step from 0 at rate 0.05 moves w downhill, towards the best weight of 2\"\nassert round(descend(0.0, 0.2, 2), 3) == -6.0, \"at rate 0.2 two steps overshoot: 0 to 6, then past the bottom to -6\"\nassert [round(descend(0.0, rate, 10), 3) for rate in (0.01, 0.05)] == [1.606, 2.0], \"the rate scales each step: after ten steps w is 1.606 at rate 0.01 and 2.0 at rate 0.05\""
     },
     {
       "id": "t3",
@@ -114,10 +114,10 @@
         "line_accuracy returns a share between 0 and 1 (1.0 for the AND line on the AND table); returning the count of right rows gives 4.",
         "best_xor_accuracy() returns 0.75 and never 1.0, because no line splits XOR's diagonals; keeping the last line's score instead of the best one, as max(best, ...) does on the page, gives 0.5."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>line_accuracy(w1, w2, b, rows, labels)</code>, the page's line check on plain lists. Each row is a pair <code>(x1, x2)</code>, and the line labels it 1 when <code>w1 * x1 + w2 * x2 + b &gt;= 0</code> and 0 otherwise. Return the share of rows whose label matches the one in <code>labels</code>, a number between 0 and 1. Then write <code>best_xor_accuracy()</code>, which tries every <code>w1</code>, <code>w2</code> and <code>b</code> in the starter's <code>grid</code> (-2 to 2 in steps of 0.2) on the four XOR rows and returns the best share any of those lines gets. For example the AND line, scored on the same four corners with the AND labels, <code>line_accuracy(1.0, 1.0, -1.5, xor_rows, [0, 0, 0, 1])</code>, returns 1.0, and <code>best_xor_accuracy()</code> returns 0.75.",
+      "starter": "xor_rows = [(0, 0), (0, 1), (1, 0), (1, 1)]\nxor_labels = [0, 1, 1, 0]\ngrid = [round(-2 + 0.2 * i, 1) for i in range(21)]\n\ndef line_accuracy(w1, w2, b, rows, labels):\n    ...\n\ndef best_xor_accuracy():\n    ...",
+      "tests": "corners = [(0, 0), (0, 1), (1, 0), (1, 1)]\nassert line_accuracy(1.0, 1.0, -1.0, corners, [0, 1, 1, 0]) == 0.75, \"a row whose sum is exactly 0 is labelled 1, so this line gets three XOR rows right\"\nassert line_accuracy(1.0, 1.0, -1.5, corners, [0, 0, 0, 1]) == 1.0, \"the result is a share between 0 and 1: the AND line gets all four AND rows right\"\nassert best_xor_accuracy() == 0.75, \"the best line on the grid gets three of the four XOR rows right, never all four\""
     },
     {
       "id": "t4",
@@ -130,10 +130,10 @@
         "count_params([784, 128, 10]) returns 101770; counting only the hidden layer gives 100,480.",
         "count_params([2, 1]) returns 3, the single neuron with no hidden layer; giving the input its own weights or biases, as if it were a layer, gives more."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>count_params(sizes)</code>. <code>sizes</code> lists the widths of a straight stack of Dense layers from the input to the output, such as <code>[2, 4, 1]</code> for two inputs, a hidden layer of 4 units and an output layer of 1 unit. Return the total number of weights and biases. Each layer after the input holds one weight per input per unit plus one bias per unit, and its inputs are the entry before it in <code>sizes</code>. For example <code>count_params([2, 4, 1])</code> returns 17, the page's XOR MLP, and <code>count_params([784, 128, 10])</code> returns 101770, the digit classifier.",
+      "starter": "def count_params(sizes):\n    ...",
+      "tests": "assert count_params([2, 4, 1]) == 17, \"each unit has one bias as well as its weights, so the XOR MLP holds 17\"\nassert count_params([784, 128, 10]) == 101770, \"the hidden layer and the output layer both count: 101,770 for the digit classifier\"\nassert count_params([2, 1]) == 3, \"the input is not a layer: one neuron on two inputs holds 2 weights and 1 bias\""
     },
     {
       "id": "t5",
@@ -146,8 +146,16 @@
         "An option saying the nudge cannot find a hidden weight's slope, only an output weight's, catches the misreading that a hidden weight's slope needs backprop to exist; step 5 finds w1's slope with the nudge.",
         "An option saying backprop must be added as its own line after fit catches the confusion the page's table names: backprop runs inside fit, with no line of its own."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "A teammate wants to skip backpropagation for the 101,770-weight digit classifier and find every slope with the centred nudge instead, since the nudge worked on one weight in the gradient-descent step. What is wrong with the plan?",
+      "options": [
+        "The nudge gives different slopes from backprop's, so the update would move the weights the wrong way",
+        "The nudge finds only an output weight's slope, since a hidden weight reaches the loss through later layers",
+        "The nudge finds about the same slopes, but it costs two extra forward passes per weight for every update",
+        "Nothing: the plan is sound, since backprop runs only when you add it as its own line after <code>fit</code>"
+      ],
+      "answer": 2,
+      "explain": "The centred nudge approximates the same slopes backprop returns, a hidden weight's included, as the two-weight network shows; its cost is the problem, two extra forward passes per weight, 203,540 for one update. Backprop gets every slope from one forward and one backward pass, and it runs inside <code>fit</code> with no line of its own.",
       "starter": "",
       "tests": ""
     },
@@ -163,10 +171,10 @@
         "Both slopes come from the old weights: updating w2 to 1.48 first and then finding w1's slope with it gives about 0.443 for w1 instead of 0.44.",
         "With the prediction below the target, as in backprop_step(2.0, 3.0, 0.5, 1.5, 0.02), both weights grow; giving w1 the same slope as w2, without the extra multiplication by w2 and x, gives the wrong new w1."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "The page's two-weight network has no bias and no activation: <code>h = w1 * x</code>, <code>prediction = w2 * h</code>, and the loss is <code>(prediction - target) ** 2</code>, which the starter's <code>pair_loss(x, target, w1, w2)</code> computes. Write <code>backprop_step(x, target, w1, w2, rate)</code>, one training step on that network. Find both slopes from the weights the function was given, with the centred nudge or with the chain of multiplications, then take each weight minus <code>rate</code> times its slope. On the chain route, the share arriving at the prediction is <code>2 * (prediction - target)</code>, 1.0 on the page's row. Return the two new weights, new <code>w1</code> first, as <code>return new_w1, new_w2</code> does. For example <code>backprop_step(2.0, 1.0, 0.5, 1.5, 0.02)</code> returns about <code>(0.44, 1.48)</code>.",
+      "starter": "def pair_loss(x, target, w1, w2):\n    h = w1 * x\n    prediction = w2 * h\n    return (prediction - target) ** 2\n\ndef backprop_step(x, target, w1, w2, rate):\n    ...",
+      "tests": "assert sorted(round(v, 3) for v in backprop_step(2.0, 1.0, 0.5, 1.5, 0.02)) == [0.44, 1.48], \"with the prediction above the target, one step on the page's network moves both weights down\"\nassert round(backprop_step(2.0, 1.0, 0.5, 1.5, 0.02)[0], 3) == 0.44, \"the first value returned is the new w1\"\nassert [round(v, 3) for v in backprop_step(1.0, 0.0, 1.0, 1.0, 0.1)] == [0.8, 0.8], \"both slopes come from the weights the step was given, before either one moves\"\nassert [round(v, 3) for v in backprop_step(2.0, 3.0, 0.5, 1.5, 0.02)] == [0.68, 1.56], \"with the prediction below the target both weights grow, and w1's slope passes through w2 and x\""
     },
     {
       "id": "t7",
@@ -179,8 +187,16 @@
         "An option saying to train for more epochs because training loss is still falling catches the pitfall of reading the training curve alone, which hides the rise in validation loss.",
         "An option saying to check the test set's loss to decide catches the pitfall of choosing with the test set, which is held out and used once at the end."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "The 784-128-10 model is trained on only the first 1,000 training rows for 50 epochs and scored each epoch on the 6,000 validation rows. On the chart, the training loss falls the whole way, while the validation loss bottoms out a little past epoch 20 and then rises. What does the chart show, and what do you do?",
+      "options": [
+        "The learning rate is too large, so lower it until the validation loss stops climbing after epoch 20",
+        "The model is memorising the 1,000 rows, so stop near the lowest validation loss, or add rows or cut units",
+        "The model is still learning, so train for more epochs, since the training loss has not stopped falling",
+        "The curves cannot settle it, so evaluate on the test set each epoch and stop where its loss is lowest"
+      ],
+      "answer": 1,
+      "explain": "Training loss falling while validation loss turns and rises is overfitting: with 101,770 weights and 1,000 rows the network memorises those images, so stop where validation loss was lowest, which is what early stopping automates, or give it more rows or fewer hidden units. A learning rate that is too large shows as a training loss that bounces or climbs from the first epoch, and here the training loss falls smoothly.",
       "starter": "",
       "tests": ""
     },
@@ -195,10 +211,10 @@
         "f1 is the harmonic mean, on a case with precision 1.0 and recall 0.5 giving about 0.667; the plain average gives 0.75.",
         "Only rows where both labels equal digit count as true positives; counting every correct prediction as a hit, which is accuracy, inflates both scores on rows of other digits and would hide the always-\"not 5\" trap."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>digit_scores(y_true, y_pred, digit)</code>, which scores one digit against all the others. <code>y_true</code> and <code>y_pred</code> are lists of digit labels of the same length. A row is a true positive when both labels are <code>digit</code>, a false positive when only the prediction is <code>digit</code>, and a false negative when only the true label is. Return <code>(precision, recall, f1)</code> in that order: precision is TP / (TP + FP), recall is TP / (TP + FN), and F1 is their harmonic mean, <code>2 * precision * recall / (precision + recall)</code>. For example, with <code>y_true = [5, 5, 5, 3, 3, 8]</code> and <code>y_pred = [5, 5, 3, 5, 3, 8]</code>, <code>digit_scores(y_true, y_pred, 5)</code> returns about <code>(0.667, 0.667, 0.667)</code>.",
+      "starter": "def digit_scores(y_true, y_pred, digit):\n    ...",
+      "tests": "assert [round(v, 3) for v in digit_scores([5, 5, 5, 3, 3, 8], [5, 5, 3, 5, 3, 8], 5)] == [0.667, 0.667, 0.667], \"only a 5 called 5 is a true positive: the 3 called 3 and the 8 called 8 are not hits for digit 5\"\nassert [round(v, 3) for v in digit_scores([5, 5, 5, 5, 3], [5, 5, 3, 3, 3], 5)][:2] == [1.0, 0.5], \"precision comes first, then recall: every image called 5 is a 5, but half the real 5s were missed\"\nassert round(digit_scores([5, 5, 5, 5, 3], [5, 5, 3, 3, 3], 5)[2], 3) == 0.667, \"f1 is the harmonic mean, pulled towards the smaller of precision 1.0 and recall 0.5\"\nassert [round(v, 3) for v in digit_scores([5, 5, 5, 3, 3, 8], [5, 5, 3, 5, 3, 8], 3)] == [0.5, 0.5, 0.5], \"digit picks the class being scored: for 3 on the same lists every score is 0.5\""
     },
     {
       "id": "t9",
@@ -211,8 +227,16 @@
         "An option reading the test score and then adding a layer or more epochs to raise it catches the page's warning about changing the model after reading the test score.",
         "An option trying a second hidden layer and a new learning rate together in the next run catches the page's rule of changing one thing, so that any difference has one cause."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "The results table holds two rows, both scored on the same 6,000 validation rows: the 784-128-10 model and the deeper 784-128-64-10 model, each with its validation loss and accuracy. A teammate has the test images loaded. What do you do next?",
+      "options": [
+        "Evaluate both models on the test set and keep the one with the higher test accuracy",
+        "Pick a model, read its test score, then add a layer or more epochs until that score stops rising",
+        "Train one more model with a third hidden layer and a new learning rate, then compare all three",
+        "Keep the model with the lower validation loss, then evaluate only that one on the test set once"
+      ],
+      "answer": 3,
+      "explain": "The kept model is chosen on validation loss alone, before the test images are touched, and the test set is then used once, so its score stays an honest estimate on digits the model has never met. Choosing between the models on their test scores, or changing a model after reading its score, turns the test set into a second validation set.",
       "starter": "",
       "tests": ""
     }

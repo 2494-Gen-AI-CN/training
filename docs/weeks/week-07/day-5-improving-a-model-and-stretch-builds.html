@@ -721,6 +721,68 @@ pd.DataFrame(results).round(4)</code></pre>
         (it opens in a new tab): what helped this week, what did not, and what you would change.</p>
       </div>
 
+      <section class="practice" id="practice" hidden>
+        <div class="tag">Practice</div>
+        <h2>Practice</h2>
+        <div class="ix-task" data-id="t1" data-title="Reading the curves" data-q="Write &lt;code&gt;best_epoch(history)&lt;/code&gt;. &lt;code&gt;history&lt;/code&gt; is a dictionary shaped like &lt;code&gt;History.history&lt;/code&gt;: a list of numbers under &lt;code&gt;&quot;loss&quot;&lt;/code&gt; for the training loss and one under &lt;code&gt;&quot;val_loss&quot;&lt;/code&gt; for the validation loss, one number per epoch. Return the epoch at which the validation loss is lowest, counting epochs from 1, as the page&#x27;s &lt;code&gt;np.argmin(...) + 1&lt;/code&gt; does. Plain Python is enough: &lt;code&gt;min&lt;/code&gt; finds the smallest value and a list&#x27;s &lt;code&gt;index&lt;/code&gt; method gives its position, counting from 0. For a 20-epoch history whose smallest &lt;code&gt;val_loss&lt;/code&gt; sits at position 11, &lt;code&gt;best_epoch(history)&lt;/code&gt; returns &lt;code&gt;12&lt;/code&gt;.">
+<pre class="task-starter"><code>def best_epoch(history):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>val = [0.30, 0.20, 0.15, 0.12, 0.11, 0.10, 0.095, 0.09, 0.088, 0.086, 0.084, 0.082, 0.083, 0.085, 0.087, 0.089, 0.090, 0.092, 0.094, 0.096]
+same = {"loss": val, "val_loss": val}
+falling = {"loss": [0.40 - 0.02 * i for i in range(20)], "val_loss": val}
+assert best_epoch(same) == 12, "counts epochs from 1: the lowest loss at position 11 is epoch 12"
+assert best_epoch(falling) == 12, "reads the validation loss, not the training loss that falls for all 20 epochs"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t2" data-title="Dropout" data-q="Write &lt;code&gt;dropout(values, keep, rate, training)&lt;/code&gt;, the rule a &lt;code&gt;Dropout&lt;/code&gt; layer follows, on plain lists. &lt;code&gt;values&lt;/code&gt; is a list of numbers and &lt;code&gt;keep&lt;/code&gt; a list of &lt;code&gt;True&lt;/code&gt; or &lt;code&gt;False&lt;/code&gt; of the same length that stands in for the random draw: &lt;code&gt;True&lt;/code&gt; means that value is kept. &lt;code&gt;rate&lt;/code&gt; is the share dropped, as in &lt;code&gt;Dropout(0.2)&lt;/code&gt;. Return a list: with &lt;code&gt;training&lt;/code&gt; true, each kept value is multiplied by &lt;code&gt;1 / (1 - rate)&lt;/code&gt; and each dropped one becomes &lt;code&gt;0.0&lt;/code&gt;; with &lt;code&gt;training&lt;/code&gt; false, the values come back unchanged. For example &lt;code&gt;dropout([1.0, 1.0], [True, False], 0.2, True)&lt;/code&gt; returns &lt;code&gt;[1.25, 0.0]&lt;/code&gt;.">
+<pre class="task-starter"><code>def dropout(values, keep, rate, training):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert dropout([1.0, 1.0, 1.0], [True, False, True], 0.2, True) == [1.25, 0.0, 1.25], "in training, kept values are scaled by 1 / (1 - rate) and dropped ones become 0.0"
+assert dropout([1.0, 2.0], [False, False], 0.2, False) == [1.0, 2.0], "with training false every value comes back unchanged, whatever keep holds"
+assert dropout([3.0, 3.0], [True, False], 0.5, True) == [6.0, 0.0], "the scale follows the rate: at 0.5 a kept 3.0 becomes 6.0"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t3" data-title="One change at a time" data-q="Write &lt;code&gt;the_one_change(before, after)&lt;/code&gt;. Each argument is a dictionary of one run&#x27;s settings, both with the same keys, such as &lt;code&gt;&quot;units&quot;&lt;/code&gt;, &lt;code&gt;&quot;dropout&quot;&lt;/code&gt;, &lt;code&gt;&quot;epochs&quot;&lt;/code&gt;, &lt;code&gt;&quot;seed&quot;&lt;/code&gt; and &lt;code&gt;&quot;val_rows&quot;&lt;/code&gt;. Return the name of the one setting whose value differs between the two runs. When no setting differs, or more than one does, the comparison cannot say what moved the number, so raise &lt;code&gt;ValueError&lt;/code&gt;. Every key counts, the seed and the validation rows included. For example, when only &lt;code&gt;&quot;dropout&quot;&lt;/code&gt; goes from &lt;code&gt;0.0&lt;/code&gt; to &lt;code&gt;0.2&lt;/code&gt;, it returns &lt;code&gt;&quot;dropout&quot;&lt;/code&gt;.">
+<pre class="task-starter"><code>def the_one_change(before, after):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>base = {"units": 128, "dropout": 0.0, "epochs": 20, "seed": 42, "val_rows": 6000}
+with_dropout = {"units": 128, "dropout": 0.2, "epochs": 20, "seed": 42, "val_rows": 6000}
+wider_and_dropout = {"units": 256, "dropout": 0.2, "epochs": 20, "seed": 42, "val_rows": 6000}
+new_seed_too = {"units": 128, "dropout": 0.2, "epochs": 20, "seed": 7, "val_rows": 6000}
+same_again = {"units": 128, "dropout": 0.0, "epochs": 20, "seed": 42, "val_rows": 6000}
+assert the_one_change(base, with_dropout) == "dropout", "names the one setting that changed"
+assert raises(ValueError, the_one_change, base, wider_and_dropout), "raises ValueError when the layer width and dropout changed together"
+assert raises(ValueError, the_one_change, base, new_seed_too), "counts the seed: a new seed as well as new dropout raises ValueError"
+assert raises(ValueError, the_one_change, base, same_again), "raises ValueError when nothing changed"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t4" data-title="Choosing the kept model" data-q="Write &lt;code&gt;kept_model(results)&lt;/code&gt;. &lt;code&gt;results&lt;/code&gt; is a list of dictionaries shaped like the page&#x27;s results table, one per trained model, each with a &lt;code&gt;&quot;model&quot;&lt;/code&gt; name, a &lt;code&gt;&quot;val_loss&quot;&lt;/code&gt; and a &lt;code&gt;&quot;val_accuracy&quot;&lt;/code&gt;; a row may carry other keys as well. Return the &lt;code&gt;&quot;model&quot;&lt;/code&gt; name of the row with the lowest validation loss, wherever that row sits in the list and whatever its other numbers say. For the page&#x27;s two rows, base 20 epochs at a &lt;code&gt;val_loss&lt;/code&gt; of 0.096 and dropout 0.2 at 0.065, it returns &lt;code&gt;&quot;dropout 0.2&quot;&lt;/code&gt;.">
+<pre class="task-starter"><code>def kept_model(results):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>page_rows = [{"model": "base 20 epochs", "val_loss": 0.096, "val_accuracy": 0.979}, {"model": "dropout 0.2", "val_loss": 0.065, "val_accuracy": 0.984}]
+three_rows = [{"model": "dropout 0.2", "val_loss": 0.065, "val_accuracy": 0.984}, {"model": "dropout 0.5", "val_loss": 0.071, "val_accuracy": 0.981}, {"model": "dropout 0.2, 256 units", "val_loss": 0.068, "val_accuracy": 0.983}]
+with_test = [{"model": "base 20 epochs", "val_loss": 0.096, "val_accuracy": 0.979, "test_accuracy": 0.982}, {"model": "dropout 0.2", "val_loss": 0.065, "val_accuracy": 0.984, "test_accuracy": 0.980}]
+assert kept_model(page_rows) == "dropout 0.2", "keeps the row with the lowest val_loss in the page's table"
+assert kept_model(three_rows) == "dropout 0.2", "keeps the lowest val_loss even when it is the first row, not the newest"
+assert kept_model(with_test) == "dropout 0.2", "chooses on val_loss even when another row's test number is higher"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t5" data-title="Noisy input, clean target" data-q="Write &lt;code&gt;add_noise(pixels, noise, scale=0.3)&lt;/code&gt;, the noisy input of a denoising autoencoder, on plain lists. &lt;code&gt;pixels&lt;/code&gt; is a list of pixel values between 0 and 1, and &lt;code&gt;noise&lt;/code&gt; a list of numbers of the same length, drawn once beforehand. Return a new list in which each pixel becomes the pixel plus &lt;code&gt;scale&lt;/code&gt; times its noise, clipped to &lt;code&gt;0.0&lt;/code&gt; at the bottom and &lt;code&gt;1.0&lt;/code&gt; at the top, as &lt;code&gt;np.clip(x, 0.0, 1.0)&lt;/code&gt; does. Leave &lt;code&gt;pixels&lt;/code&gt; itself as it was: it is the clean target. For example &lt;code&gt;add_noise([0.9, 0.1, 0.5], [1.0, -1.0, 0.0])&lt;/code&gt; returns &lt;code&gt;[1.0, 0.0, 0.5]&lt;/code&gt;.">
+<pre class="task-starter"><code>def add_noise(pixels, noise, scale=0.3):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert add_noise([0.9, 0.1], [1.0, -1.0]) == [1.0, 0.0], "clips a sum above 1 to 1.0 and a sum below 0 to 0.0"
+assert [round(p, 6) for p in add_noise([0.5, 0.2], [1.0, 1.0]) + add_noise([0.25], [0.5], 0.5)] == [0.8, 0.5, 0.5], "a sum inside 0 to 1 is the pixel plus scale times its noise"
+clean = [0.5, 0.9]
+noisy = add_noise(clean, [1.0, 1.0])
+assert clean == [0.5, 0.9], "leaves the caller's pixels list as it was, so the clean target survives"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t6" data-title="Text to word ids" data-q="Write &lt;code&gt;to_ids(text, vocabulary, length)&lt;/code&gt;, what &lt;code&gt;TextVectorization&lt;/code&gt; does to one post once it has a vocabulary. &lt;code&gt;vocabulary&lt;/code&gt; is a list whose first two entries are the reserved &lt;code&gt;&quot;&quot;&lt;/code&gt; (padding, id 0) and &lt;code&gt;&quot;[UNK]&quot;&lt;/code&gt; (an unknown word, id 1). Split &lt;code&gt;text&lt;/code&gt; on spaces and turn each word into its id: its position in &lt;code&gt;vocabulary&lt;/code&gt;, or &lt;code&gt;1&lt;/code&gt; for a word not in it. Return exactly &lt;code&gt;length&lt;/code&gt; ids, as &lt;code&gt;output_sequence_length&lt;/code&gt; sets: a shorter post is padded with &lt;code&gt;0&lt;/code&gt; at the end and a longer one is cut to its first &lt;code&gt;length&lt;/code&gt; ids. With &lt;code&gt;vocabulary = [&quot;&quot;, &quot;[UNK]&quot;, &quot;the&quot;, &quot;bike&quot;, &quot;car&quot;]&lt;/code&gt;, &lt;code&gt;to_ids(&quot;the bike hit the car&quot;, vocabulary, 7)&lt;/code&gt; returns &lt;code&gt;[2, 3, 1, 2, 4, 0, 0]&lt;/code&gt;.">
+<pre class="task-starter"><code>def to_ids(text, vocabulary, length):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>vocabulary = ["", "[UNK]", "the", "bike", "car"]
+assert to_ids("the bike", vocabulary, 5) == [2, 3, 0, 0, 0], "pads a short post with 0 up to length"
+assert to_ids("the car the bike the car", vocabulary, 4) == [2, 4, 2, 3], "cuts a long post to its first length ids"
+assert to_ids("the bike hit the car", vocabulary, 7) == [2, 3, 1, 2, 4, 0, 0], "turns a word missing from the vocabulary into 1, the [UNK] id"
+assert to_ids("car bike the", vocabulary, 3) == [4, 3, 2], "gives a known word its position in the vocabulary, counting the two reserved entries"</code></pre>
+        </div>
+      </section>
+
       <section class="step" data-diagram="0" data-step="6">
         <div class="tag">Check yourself</div>
         <h2>Check yourself</h2>

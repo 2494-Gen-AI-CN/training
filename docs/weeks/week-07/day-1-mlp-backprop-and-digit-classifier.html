@@ -36,7 +36,7 @@
           <span><b>Week 7</b> · Day 1</span>
           <span>Mon Nov 23, 2026</span>
           <span>TensorFlow</span>
-          <span><b>~43 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span><b>~46 min</b> · reference notes @150 wpm · diagram · check</span>
           <span class="verified">Sources checked 2026-11-19 · python 3.13.18 · tensorflow 2.21.0 · keras 3.13.2 · tensorboard 2.21.0 · numpy 2.4.6 · pandas 2.2.3 · scikit-learn 1.6.1 · matplotlib 3.10.0</span>
           <span class="notebook"><a href="https://colab.research.google.com/github/2494-Gen-AI-CN/demos/blob/main/notebooks/week-07/01_monday_mlp_backprop_and_digit_classifier.ipynb" target="_blank" rel="noopener">Open the notebook in Colab</a></span>
         </div>
@@ -831,6 +831,107 @@ print(f"test accuracy {test_acc:.4f}")</code></pre>
           for one digit, and the misclassified images. Then I tried one change, a second hidden layer, compared both on
           the same validation rows, kept the better one and scored it on the test set once. Its limit is that it only
           reads centred digits and ignores which pixels are neighbours.</p>
+        </div>
+      </section>
+
+      <section class="practice" id="practice" hidden>
+        <div class="tag">Practice</div>
+        <h2>Practice</h2>
+        <div class="ix-task" data-id="t1" data-title="Loss" data-q="Write two loss functions in plain Python, with no numpy or TensorFlow. &lt;code&gt;mse(y_true, y_pred)&lt;/code&gt; takes two lists of the same length and returns the mean of the squared differences between them. &lt;code&gt;cross_entropy_true(probs)&lt;/code&gt; takes a list of probabilities, each the one a model gave to a row whose true label is 1, and returns the mean of &lt;code&gt;-math.log(p)&lt;/code&gt; over the list, the batch mean a Keras loss reports. &lt;code&gt;math.log&lt;/code&gt; is the natural logarithm, the same one &lt;code&gt;np.log&lt;/code&gt; computes. For example &lt;code&gt;mse([3.0, 5.0, 2.5, 7.0, 4.0], [2.5, 5.0, 4.0, 8.0, 3.0])&lt;/code&gt; returns 0.9 and &lt;code&gt;cross_entropy_true([0.9, 0.6, 0.1])&lt;/code&gt; returns about 0.973.">
+<pre class="task-starter"><code>import math
+
+def mse(y_true, y_pred):
+    ...
+
+def cross_entropy_true(probs):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert round(mse([3.0, 5.0, 2.5, 7.0, 4.0], [2.5, 5.0, 4.0, 8.0, 3.0]), 3) == 0.9, "mse is the mean of the page's five squared misses, not their total"
+assert mse([1.0, 1.0], [2.0, 0.0]) == 1.0, "a miss above and a miss below both cost something, so they do not cancel"
+assert round(cross_entropy_true([0.9, 0.6, 0.1]), 3) == 0.973, "cross_entropy_true is the mean cost over the batch, as Keras reports it"
+assert round(cross_entropy_true([0.1]), 3) == 2.303, "a confident wrong answer, 0.1 for the true class, costs about 2.303"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t2" data-title="Gradient descent" data-q="The starter holds the page&#x27;s one-weight loss, &lt;code&gt;line_loss(w)&lt;/code&gt;: the MSE of &lt;code&gt;w * x&lt;/code&gt; against targets &lt;code&gt;2.0 * x&lt;/code&gt; for &lt;code&gt;x&lt;/code&gt; = 1, 2, 3, 4, written with plain lists. Write &lt;code&gt;descend(w, rate, steps)&lt;/code&gt;, plain gradient descent from the starting weight &lt;code&gt;w&lt;/code&gt;. Each step finds the slope with the centred nudge, &lt;code&gt;(line_loss(w + 0.001) - line_loss(w - 0.001)) / 0.002&lt;/code&gt;, then updates &lt;code&gt;w = w - rate * slope&lt;/code&gt;. Take &lt;code&gt;steps&lt;/code&gt; steps and return the final &lt;code&gt;w&lt;/code&gt;. For example &lt;code&gt;descend(0.0, 0.05, 1)&lt;/code&gt; returns about 1.5, and &lt;code&gt;descend(0.0, 0.05, 10)&lt;/code&gt; returns about 2.0.">
+<pre class="task-starter"><code>xs = [1.0, 2.0, 3.0, 4.0]
+ys = [2.0 * x for x in xs]
+
+def line_loss(w):
+    return sum((w * x - y) ** 2 for x, y in zip(xs, ys)) / len(xs)
+
+def descend(w, rate, steps):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert round(descend(0.0, 0.05, 1), 3) == 1.5, "one step from 0 at rate 0.05 moves w downhill, towards the best weight of 2"
+assert round(descend(0.0, 0.2, 2), 3) == -6.0, "at rate 0.2 two steps overshoot: 0 to 6, then past the bottom to -6"
+assert [round(descend(0.0, rate, 10), 3) for rate in (0.01, 0.05)] == [1.606, 2.0], "the rate scales each step: after ten steps w is 1.606 at rate 0.01 and 2.0 at rate 0.05"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t3" data-title="Perceptron limits" data-q="Write &lt;code&gt;line_accuracy(w1, w2, b, rows, labels)&lt;/code&gt;, the page&#x27;s line check on plain lists. Each row is a pair &lt;code&gt;(x1, x2)&lt;/code&gt;, and the line labels it 1 when &lt;code&gt;w1 * x1 + w2 * x2 + b &amp;gt;= 0&lt;/code&gt; and 0 otherwise. Return the share of rows whose label matches the one in &lt;code&gt;labels&lt;/code&gt;, a number between 0 and 1. Then write &lt;code&gt;best_xor_accuracy()&lt;/code&gt;, which tries every &lt;code&gt;w1&lt;/code&gt;, &lt;code&gt;w2&lt;/code&gt; and &lt;code&gt;b&lt;/code&gt; in the starter&#x27;s &lt;code&gt;grid&lt;/code&gt; (-2 to 2 in steps of 0.2) on the four XOR rows and returns the best share any of those lines gets. For example the AND line, scored on the same four corners with the AND labels, &lt;code&gt;line_accuracy(1.0, 1.0, -1.5, xor_rows, [0, 0, 0, 1])&lt;/code&gt;, returns 1.0, and &lt;code&gt;best_xor_accuracy()&lt;/code&gt; returns 0.75.">
+<pre class="task-starter"><code>xor_rows = [(0, 0), (0, 1), (1, 0), (1, 1)]
+xor_labels = [0, 1, 1, 0]
+grid = [round(-2 + 0.2 * i, 1) for i in range(21)]
+
+def line_accuracy(w1, w2, b, rows, labels):
+    ...
+
+def best_xor_accuracy():
+    ...</code></pre>
+<pre class="task-tests" hidden><code>corners = [(0, 0), (0, 1), (1, 0), (1, 1)]
+assert line_accuracy(1.0, 1.0, -1.0, corners, [0, 1, 1, 0]) == 0.75, "a row whose sum is exactly 0 is labelled 1, so this line gets three XOR rows right"
+assert line_accuracy(1.0, 1.0, -1.5, corners, [0, 0, 0, 1]) == 1.0, "the result is a share between 0 and 1: the AND line gets all four AND rows right"
+assert best_xor_accuracy() == 0.75, "the best line on the grid gets three of the four XOR rows right, never all four"</code></pre>
+        </div>
+        <div class="ix-task" data-id="t4" data-title="MLP" data-q="Write &lt;code&gt;count_params(sizes)&lt;/code&gt;. &lt;code&gt;sizes&lt;/code&gt; lists the widths of a straight stack of Dense layers from the input to the output, such as &lt;code&gt;[2, 4, 1]&lt;/code&gt; for two inputs, a hidden layer of 4 units and an output layer of 1 unit. Return the total number of weights and biases. Each layer after the input holds one weight per input per unit plus one bias per unit, and its inputs are the entry before it in &lt;code&gt;sizes&lt;/code&gt;. For example &lt;code&gt;count_params([2, 4, 1])&lt;/code&gt; returns 17, the page&#x27;s XOR MLP, and &lt;code&gt;count_params([784, 128, 10])&lt;/code&gt; returns 101770, the digit classifier.">
+<pre class="task-starter"><code>def count_params(sizes):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert count_params([2, 4, 1]) == 17, "each unit has one bias as well as its weights, so the XOR MLP holds 17"
+assert count_params([784, 128, 10]) == 101770, "the hidden layer and the output layer both count: 101,770 for the digit classifier"
+assert count_params([2, 1]) == 3, "the input is not a layer: one neuron on two inputs holds 2 weights and 1 bias"</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t5" data-title="Backprop" data-q="A teammate wants to skip backpropagation for the 101,770-weight digit classifier and find every slope with the centred nudge instead, since the nudge worked on one weight in the gradient-descent step. What is wrong with the plan?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t5" value="0"> The nudge gives different slopes from backprop's, so the update would move the weights the wrong way</label></li>
+            <li><label><input type="radio" name="t5" value="1"> The nudge finds only an output weight's slope, since a hidden weight reaches the loss through later layers</label></li>
+            <li><label><input type="radio" name="t5" value="2"> The nudge finds about the same slopes, but it costs two extra forward passes per weight for every update</label></li>
+            <li><label><input type="radio" name="t5" value="3"> Nothing: the plan is sound, since backprop runs only when you add it as its own line after <code>fit</code></label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 2, "explain": "The centred nudge approximates the same slopes backprop returns, a hidden weight's included, as the two-weight network shows; its cost is the problem, two extra forward passes per weight, 203,540 for one update. Backprop gets every slope from one forward and one backward pass, and it runs inside &lt;code&gt;fit&lt;/code&gt; with no line of its own."}</code></pre>
+        </div>
+        <div class="ix-task" data-id="t6" data-title="Backprop by hand" data-q="The page&#x27;s two-weight network has no bias and no activation: &lt;code&gt;h = w1 * x&lt;/code&gt;, &lt;code&gt;prediction = w2 * h&lt;/code&gt;, and the loss is &lt;code&gt;(prediction - target) ** 2&lt;/code&gt;, which the starter&#x27;s &lt;code&gt;pair_loss(x, target, w1, w2)&lt;/code&gt; computes. Write &lt;code&gt;backprop_step(x, target, w1, w2, rate)&lt;/code&gt;, one training step on that network. Find both slopes from the weights the function was given, with the centred nudge or with the chain of multiplications, then take each weight minus &lt;code&gt;rate&lt;/code&gt; times its slope. On the chain route, the share arriving at the prediction is &lt;code&gt;2 * (prediction - target)&lt;/code&gt;, 1.0 on the page&#x27;s row. Return the two new weights, new &lt;code&gt;w1&lt;/code&gt; first, as &lt;code&gt;return new_w1, new_w2&lt;/code&gt; does. For example &lt;code&gt;backprop_step(2.0, 1.0, 0.5, 1.5, 0.02)&lt;/code&gt; returns about &lt;code&gt;(0.44, 1.48)&lt;/code&gt;.">
+<pre class="task-starter"><code>def pair_loss(x, target, w1, w2):
+    h = w1 * x
+    prediction = w2 * h
+    return (prediction - target) ** 2
+
+def backprop_step(x, target, w1, w2, rate):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert sorted(round(v, 3) for v in backprop_step(2.0, 1.0, 0.5, 1.5, 0.02)) == [0.44, 1.48], "with the prediction above the target, one step on the page's network moves both weights down"
+assert round(backprop_step(2.0, 1.0, 0.5, 1.5, 0.02)[0], 3) == 0.44, "the first value returned is the new w1"
+assert [round(v, 3) for v in backprop_step(1.0, 0.0, 1.0, 1.0, 0.1)] == [0.8, 0.8], "both slopes come from the weights the step was given, before either one moves"
+assert [round(v, 3) for v in backprop_step(2.0, 3.0, 0.5, 1.5, 0.02)] == [0.68, 1.56], "with the prediction below the target both weights grow, and w1's slope passes through w2 and x"</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t7" data-title="Build" data-q="The 784-128-10 model is trained on only the first 1,000 training rows for 50 epochs and scored each epoch on the 6,000 validation rows. On the chart, the training loss falls the whole way, while the validation loss bottoms out a little past epoch 20 and then rises. What does the chart show, and what do you do?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t7" value="0"> The learning rate is too large, so lower it until the validation loss stops climbing after epoch 20</label></li>
+            <li><label><input type="radio" name="t7" value="1"> The model is memorising the 1,000 rows, so stop near the lowest validation loss, or add rows or cut units</label></li>
+            <li><label><input type="radio" name="t7" value="2"> The model is still learning, so train for more epochs, since the training loss has not stopped falling</label></li>
+            <li><label><input type="radio" name="t7" value="3"> The curves cannot settle it, so evaluate on the test set each epoch and stop where its loss is lowest</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 1, "explain": "Training loss falling while validation loss turns and rises is overfitting: with 101,770 weights and 1,000 rows the network memorises those images, so stop where validation loss was lowest, which is what early stopping automates, or give it more rows or fewer hidden units. A learning rate that is too large shows as a training loss that bounces or climbs from the first epoch, and here the training loss falls smoothly."}</code></pre>
+        </div>
+        <div class="ix-task" data-id="t8" data-title="Evaluation" data-q="Write &lt;code&gt;digit_scores(y_true, y_pred, digit)&lt;/code&gt;, which scores one digit against all the others. &lt;code&gt;y_true&lt;/code&gt; and &lt;code&gt;y_pred&lt;/code&gt; are lists of digit labels of the same length. A row is a true positive when both labels are &lt;code&gt;digit&lt;/code&gt;, a false positive when only the prediction is &lt;code&gt;digit&lt;/code&gt;, and a false negative when only the true label is. Return &lt;code&gt;(precision, recall, f1)&lt;/code&gt; in that order: precision is TP / (TP + FP), recall is TP / (TP + FN), and F1 is their harmonic mean, &lt;code&gt;2 * precision * recall / (precision + recall)&lt;/code&gt;. For example, with &lt;code&gt;y_true = [5, 5, 5, 3, 3, 8]&lt;/code&gt; and &lt;code&gt;y_pred = [5, 5, 3, 5, 3, 8]&lt;/code&gt;, &lt;code&gt;digit_scores(y_true, y_pred, 5)&lt;/code&gt; returns about &lt;code&gt;(0.667, 0.667, 0.667)&lt;/code&gt;.">
+<pre class="task-starter"><code>def digit_scores(y_true, y_pred, digit):
+    ...</code></pre>
+<pre class="task-tests" hidden><code>assert [round(v, 3) for v in digit_scores([5, 5, 5, 3, 3, 8], [5, 5, 3, 5, 3, 8], 5)] == [0.667, 0.667, 0.667], "only a 5 called 5 is a true positive: the 3 called 3 and the 8 called 8 are not hits for digit 5"
+assert [round(v, 3) for v in digit_scores([5, 5, 5, 5, 3], [5, 5, 3, 3, 3], 5)][:2] == [1.0, 0.5], "precision comes first, then recall: every image called 5 is a 5, but half the real 5s were missed"
+assert round(digit_scores([5, 5, 5, 5, 3], [5, 5, 3, 3, 3], 5)[2], 3) == 0.667, "f1 is the harmonic mean, pulled towards the smaller of precision 1.0 and recall 0.5"
+assert [round(v, 3) for v in digit_scores([5, 5, 5, 3, 3, 8], [5, 5, 3, 5, 3, 8], 3)] == [0.5, 0.5, 0.5], "digit picks the class being scored: for 3 on the same lists every score is 0.5"</code></pre>
+        </div>
+        <div class="ix-task ix-choice" data-kind="choice" data-id="t9" data-title="Improvement and the test set" data-q="The results table holds two rows, both scored on the same 6,000 validation rows: the 784-128-10 model and the deeper 784-128-64-10 model, each with its validation loss and accuracy. A teammate has the test images loaded. What do you do next?">
+          <ol class="task-options">
+            <li><label><input type="radio" name="t9" value="0"> Evaluate both models on the test set and keep the one with the higher test accuracy</label></li>
+            <li><label><input type="radio" name="t9" value="1"> Pick a model, read its test score, then add a layer or more epochs until that score stops rising</label></li>
+            <li><label><input type="radio" name="t9" value="2"> Train one more model with a third hidden layer and a new learning rate, then compare all three</label></li>
+            <li><label><input type="radio" name="t9" value="3"> Keep the model with the lower validation loss, then evaluate only that one on the test set once</label></li>
+          </ol>
+<pre class="task-answer" hidden><code>{"answer": 3, "explain": "The kept model is chosen on validation loss alone, before the test images are touched, and the test set is then used once, so its score stays an honest estimate on digits the model has never met. Choosing between the models on their test scores, or changing a model after reading its score, turns the test set into a second validation set."}</code></pre>
         </div>
       </section>
 

@@ -67,10 +67,10 @@
         "count_params(784, 128, 10, skip=True) returns 109610; an answer that still sizes the output layer on the hidden width alone, the page's 'calling the output layer on hidden', returns 101770.",
         "count_params(4, 3, 2, skip=True) returns 31; an answer that treats the join as Add, keeping the larger width instead of laying the two side by side as Concatenate does, returns a smaller count."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>count_params(n_in, hidden, n_out, skip=False)</code>. It returns the number of parameters in a network that reads <code>n_in</code> values per row, with one hidden <code>Dense</code> layer of <code>hidden</code> units and an output <code>Dense</code> layer of <code>n_out</code> units. With <code>skip=False</code> the output layer reads the hidden layer's output. With <code>skip=True</code> it reads the input and the hidden output joined by <code>Concatenate</code>, as in the page's skip model. For example, <code>count_params(784, 128, 10)</code> returns <code>101770</code> and <code>count_params(784, 128, 10, skip=True)</code> returns <code>109610</code>.",
+      "starter": "def count_params(n_in, hidden, n_out, skip=False):\n    ...",
+      "tests": "assert count_params(784, 128, 10) == 101770, \"each Dense layer counts its weights and one bias per unit\"\nassert count_params(784, 128, 10, skip=True) == 109610, \"with skip=True the output layer reads the input joined to the hidden output\"\nassert count_params(4, 3, 2, skip=True) == 31, \"Concatenate lays the input and the hidden output side by side, so their widths add\""
     },
     {
       "id": "t2",
@@ -84,10 +84,10 @@
         "conv_pool((13, 13, 16), 32, 3) returns 4640 parameters; an answer that leaves the input channels out of k × k × channels × filters + filters returns 320.",
         "conv_pool((28, 28), 16, 3) raises ValueError; an answer that accepts a grey image with no channel axis, the brief's Conv2D shape pitfall, returns a shape."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>conv_pool(shape, filters, kernel)</code>. <code>shape</code> is one image's shape as a tuple <code>(height, width, channels)</code>, with the batch axis left out, and <code>kernel</code> is the side of a square kernel, like the 3 in <code>Conv2D(16, 3)</code>. The function returns a tuple <code>(conv_shape, pooled_shape, params)</code> for <code>Conv2D(filters, kernel)</code> with its default <code>padding=\"valid\"</code> followed by <code>MaxPooling2D()</code>: the shape the convolution hands on, the shape after pooling, and the convolution's parameter count. When <code>shape</code> has only two items, a grey image with no channel axis such as <code>(28, 28)</code>, raise <code>ValueError</code>. For example, <code>conv_pool((28, 28, 1), 16, 3)</code> returns <code>((26, 26, 16), (13, 13, 16), 160)</code>.",
+      "starter": "def conv_pool(shape, filters, kernel):\n    ...",
+      "tests": "assert conv_pool((28, 28, 1), 16, 3) == ((26, 26, 16), (13, 13, 16), 160), \"a valid kernel sits only where it fits inside the image, so 28 becomes 26\"\nassert conv_pool((13, 13, 16), 32, 3)[1] == (5, 5, 32), \"pooling halves the height and width and rounds down\"\nassert conv_pool((13, 13, 16), 32, 3)[2] == 4640, \"each kernel reads every input channel, and each kernel has one bias\"\nassert raises(ValueError, conv_pool, (28, 28), 16, 3), \"a shape with no channel axis raises ValueError\""
     },
     {
       "id": "t3",
@@ -100,10 +100,10 @@
         "batch_norm([2.0, 4.0, 6.0], False) returns [2.0, 4.0, 6.0]; an answer that uses the batch's own numbers in prediction mode, the page's training-against-prediction distinction, returns [-1.22, 0.0, 1.22].",
         "batch_norm([2.0, 4.0, 6.0], False, 4.0, 4.0) returns [-1.0, 0.0, 1.0]; an answer that ignores the moving averages it is given returns the values unchanged."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>batch_norm(column, training, moving_mean=0.0, moving_variance=1.0)</code>. <code>column</code> is a list of numbers, the values one input of a <code>BatchNormalization</code> layer receives in a batch. The function returns a new list: each value minus a mean, divided by the square root of a variance, rounded to 2 places. When <code>training</code> is <code>True</code> it uses the column's own mean and variance, worked out as the page does for 2, 4 and 6. When <code>training</code> is <code>False</code> it uses <code>moving_mean</code> and <code>moving_variance</code>. Leave out the learned scale and offset. For example, <code>batch_norm([2.0, 4.0, 6.0], True)</code> returns <code>[-1.22, 0.0, 1.22]</code>.",
+      "starter": "def batch_norm(column, training, moving_mean=0.0, moving_variance=1.0):\n    ...",
+      "tests": "assert batch_norm([2.0, 4.0, 6.0], True) == [-1.22, 0.0, 1.22], \"training mode uses the column's own mean and variance, worked as the page works them\"\nassert batch_norm([2.0, 4.0, 6.0], False) == [2.0, 4.0, 6.0], \"prediction mode uses the moving averages, not the batch's own numbers\"\nassert batch_norm([2.0, 4.0, 6.0], False, 4.0, 4.0) == [-1.0, 0.0, 1.0], \"prediction mode uses the moving mean and moving variance it is given\""
     },
     {
       "id": "t4",
@@ -116,10 +116,10 @@
         "early_stopping([0.5, 0.4, 0.45, 0.44, 0.43, 0.3], 2) returns (4, 2); an answer that compares each epoch with the one before instead of with the best so far keeps training and returns (6, 6).",
         "early_stopping([0.5, 0.4, 0.3, 0.2], 2) returns (4, 4); an answer that stops on a count alone, or runs past the list, does not treat the length of val_losses as the epochs ceiling the page names."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>early_stopping(val_losses, patience)</code>. <code>val_losses</code> lists, in order, the validation loss each epoch would reach, and its length is the <code>epochs</code> ceiling. The function returns a tuple <code>(epochs_ran, best_epoch)</code>, both counted from 1, for <code>EarlyStopping(monitor=\"val_loss\", patience=patience, restore_best_weights=True)</code>: training stops once <code>patience</code> epochs in a row have not beaten the best loss so far, and <code>best_epoch</code> is the epoch whose weights come back. For example, <code>early_stopping([0.5, 0.4, 0.45, 0.39, 0.41, 0.42, 0.38], 2)</code> returns <code>(6, 4)</code>.",
+      "starter": "def early_stopping(val_losses, patience):\n    ...",
+      "tests": "assert early_stopping([0.5, 0.4, 0.45, 0.39, 0.41, 0.42, 0.38], 2) == (6, 4), \"best_epoch is the best epoch, whose weights come back, not the last epoch that ran\"\nassert early_stopping([0.5, 0.4, 0.45, 0.44, 0.43, 0.3], 2) == (4, 2), \"an epoch improves only when it beats the best loss so far, not just the epoch before\"\nassert early_stopping([0.5, 0.4, 0.3, 0.2], 2) == (4, 4), \"when every epoch improves, training runs to the end of val_losses\""
     },
     {
       "id": "t5",
@@ -133,8 +133,17 @@
         "Save digits_cnn.keras and leave it where it was written: catches the brief's Colab pitfall, files on the runtime's disk are deleted when the runtime is recycled.",
         "Save with TFLearn's model.save(\"digits.tflearn\"): catches reaching for the curriculum's TFLearn, which no longer imports on TensorFlow 2.21 and whose save maps to model.save with a .keras name."
       ],
-      "approved": null,
-      "q": "",
+      "approved": true,
+      "q": "You trained <code>best_cnn</code> in Colab, and tomorrow you want to load it in the current Keras format and evaluate it without training again. Which plan gets you there?",
+      "options": [
+        "Save with <code>best_cnn.save(\"digits_cnn.h5\")</code>, download the file, and load it tomorrow with <code>tf.keras.models.load_model</code>.",
+        "Call <code>best_cnn.export(\"digits_cnn\")</code>, download the folder, and load it tomorrow with <code>tf.keras.models.load_model</code> as a Keras model.",
+        "Save with <code>best_cnn.save(\"digits_cnn.keras\")</code> and leave the file where it was written, since the Colab runtime keeps it overnight.",
+        "Save with <code>best_cnn.save(\"digits_cnn.keras\")</code>, download it or copy it to Drive, then load it with <code>tf.keras.models.load_model</code>.",
+        "Save with TFLearn's <code>model.save(\"digits.tflearn\")</code>, the curriculum's save, then call <code>model.load(\"digits.tflearn\")</code> tomorrow."
+      ],
+      "answer": 3,
+      "explain": "The <code>.keras</code> ending is what selects the Keras 3 format, and that one file holds the architecture, weights, optimizer state and compile settings, so <code>tf.keras.models.load_model</code> gives back a model that can evaluate at once. Files on the Colab runtime's disk are deleted when the runtime is recycled, so the file has to be downloaded or copied to Drive to be there tomorrow.",
       "starter": "",
       "tests": ""
     },
@@ -149,10 +158,10 @@
         "one_hot([\"Biscoe\"], [\"Torgersen\", \"Dream\", \"Biscoe\", \"Dream\"]) returns [[1, 0, 0]]; an answer that keeps a column per training row instead of per distinct category returns four values, and one that keeps the rows' first-seen order instead of get_dummies' sorted columns returns [[0, 0, 1]].",
         "one_hot([\"Anvers\"], [\"Biscoe\", \"Dream\"]) returns [[0, 0]]; an answer that adds a column for a category the training rows never had, the page's 'a new island has no column', returns three values."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>one_hot(values, train_values)</code>. Both arguments are lists of category names, such as islands. The columns are the distinct names in <code>train_values</code>, in sorted order, as <code>pd.get_dummies</code> gives them for the training rows. The function returns one list of 0s and 1s per entry of <code>values</code>, with a 1 in the column of that entry's name, as <code>reindex(columns=train_columns, fill_value=0)</code> does. A name the training values never had gets no column. For example, <code>one_hot([\"Dream\", \"Dream\"], [\"Biscoe\", \"Dream\", \"Torgersen\"])</code> returns <code>[[0, 1, 0], [0, 1, 0]]</code>.",
+      "starter": "def one_hot(values, train_values):\n    ...",
+      "tests": "assert one_hot([\"Dream\", \"Dream\"], [\"Biscoe\", \"Dream\", \"Torgersen\"]) == [[0, 1, 0], [0, 1, 0]], \"the columns come from the training values, not from the rows being encoded\"\nassert one_hot([\"Biscoe\"], [\"Torgersen\", \"Dream\", \"Biscoe\", \"Dream\"]) == [[1, 0, 0]], \"one column per distinct training value, in sorted order\"\nassert one_hot([\"Anvers\"], [\"Biscoe\", \"Dream\"]) == [[0, 0]], \"a name the training values never had gets no column, so its row is all 0s\""
     },
     {
       "id": "t7",
@@ -165,10 +174,10 @@
         "the same call returns 0.07 as mse; an answer that takes the square root, or averages the sizes instead of the squares, returns 0.2646 or 0.2333, missing that MSE squares each miss.",
         "regression_scores([3.5, None, 5.0], [3.7, 3.9, 4.6]) returns (0.3, 0.1); an answer that fills the missing target with 0 or the mean instead of dropping the row, as the page says never to do, returns other scores."
       ],
-      "approved": null,
-      "q": "",
-      "starter": "",
-      "tests": ""
+      "approved": true,
+      "q": "Write <code>regression_scores(actual, predicted)</code>. The two lists have the same length, one entry per bird, and an <code>actual</code> value of <code>None</code> marks a row with no target. The function returns a tuple <code>(mae, mse)</code>, each rounded to 4 places, worked out over the rows that have a target: a row with no target is dropped, never filled. For example, <code>regression_scores([3.5, 4.0, 5.0], [3.7, 3.9, 4.6])</code> returns <code>(0.2333, 0.07)</code>.",
+      "starter": "def regression_scores(actual, predicted):\n    ...",
+      "tests": "assert regression_scores([3.5, 4.0, 5.0], [3.7, 3.9, 4.6])[0] == 0.2333, \"mae averages the sizes of the errors, so misses above and below do not cancel\"\nassert regression_scores([3.5, 4.0, 5.0], [3.7, 3.9, 4.6])[1] == 0.07, \"mse averages the squared errors\"\nassert regression_scores([3.5, None, 5.0], [3.7, 3.9, 4.6]) == (0.3, 0.1), \"a row whose actual value is None is dropped, never filled\""
     }
   ]
 }
