@@ -36,7 +36,7 @@
           <span><b>Week 6</b> · Day 1</span>
           <span>Mon Nov 16, 2026</span>
           <span>AI/ML fundamentals</span>
-          <span><b>~44 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span><b>~46 min</b> · reference notes @150 wpm · diagram · check</span>
           <span class="verified">Sources checked 2026-11-16 · python 3.13.18 · numpy 2.4.6 · scikit-learn 1.6.1 · matplotlib 3.10.0</span>
           <span class="notebook"><a href="https://colab.research.google.com/github/2494-Gen-AI-CN/demos/blob/main/notebooks/week-06/01_monday_ml_intro_and_supervised_learning.ipynb" target="_blank" rel="noopener">Open the notebook in Colab</a></span>
         </div>
@@ -635,11 +635,29 @@ degree 15: train R2 0.842, test R2 0.679</pre>
         brings.<sup class="cite"><a href="#src-21">21</a></sup> It is also why a training score alone proves nothing. The
         regularised types of linear regression, ridge and lasso, are built to rein in overfitting and come in week
         8.<sup class="cite"><a href="#src-22">22</a></sup></p>
+        <h3>Bias and variance</h3>
+        <p>The same two failures have a second pair of names. A model's error on new data can be split into bias,
+        variance and noise. Bias is the model's average error across different training sets. Variance is how sensitive
+        the model is to which training set it was given. Noise belongs to the data, and no model removes
+        it.<sup class="cite"><a href="#src-28">28</a></sup></p>
+        <p>The degree 1 line is too simple to follow the curve whichever
+        30 rows it is fitted on, so it has high bias. The degree 15 curve fits its own 30 rows closely and would bend
+        differently on another 30, so it has high variance.<sup class="cite"><a href="#src-28">28</a></sup></p>
+        <p>Raising the degree moves a model from the first failure toward the second, and the aim is a setting where
+        bias and variance are both as low as possible. That choice is the bias-variance
+        trade-off.<sup class="cite"><a href="#src-28">28</a></sup> Its two scores show which side a model is on. When the
+        training score and the held-out score are both low, the model is underfitting: high bias. When the training
+        score is high and the held-out score is low, it is overfitting: high
+        variance.<sup class="cite"><a href="#src-28">28</a></sup></p>
+        <p>Choosing the degree by the test score has a cost of its own, because the test rows have then helped to shape
+        the model. The usual answer is a third part, a validation set. The model is fitted on the training set, choices
+        such as the degree are made on the validation set, and the test set is scored once at the
+        end.<sup class="cite"><a href="#src-1">1</a></sup> Week 7 trains every network that way.</p>
         <div class="recap"><div class="k">Takeaways</div><ul>
           <li>Multiple regression returns one coefficient per feature column, in column order.</li>
           <li>A coefficient is the change in prediction per unit of its feature, others held fixed.</li>
           <li>PolynomialFeatures adds powers as columns; the model stays linear in its coefficients.</li>
-          <li>Too low a degree underfits; too high a degree overfits.</li>
+          <li>Too low a degree underfits (high bias); too high a degree overfits (high variance).</li>
         </ul></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
@@ -650,6 +668,10 @@ degree 15: train R2 0.842, test R2 0.679</pre>
           them, so it's still linear in the coefficients. A low degree underfits, scoring badly on train and test; a high
           degree overfits, scoring well on train and badly on test. I pick the degree by a score on held-out data,
           never the training one.</p>
+          <p>In bias and variance terms, the underfit model has high bias: it's too simple whatever data it sees. The
+          overfit model has high variance: it changes a lot with the training rows it happened to get. I'd fit on the
+          training set, make choices like the degree on a validation set, and keep the test set for one final score,
+          so that score still says how the model does on data it has never touched.</p>
         </div>
       </section>
 
@@ -909,7 +931,7 @@ assert baseline_accuracy(["low", "high", "medium", "low", "low"]) == 0.6, "works
         <details class="check"><summary>"Will this ticket close within two days?" and "How many hours will this ticket take?": which is regression and which is classification?</summary><p>The hours question is regression, because the answer is a number. The two-day question is classification, because the answer is yes or no; a threshold on the hours turns one into the other, at the cost of detail.</p></details>
         <details class="check"><summary>A line fitted to <code>bmi</code> values between -0.09 and 0.171 predicts a negative disease progression at -0.3. What went wrong?</summary><p>Nothing in the code: a straight line extends past the training range, and the input was far outside it. Linear regression extrapolates without warning, so checking that new inputs fall inside the training range is the caller's job.</p></details>
         <details class="check"><summary>What does least squares minimise, and what do slope 2 and intercept 5 mean in <code>y = 2x + 5</code>?</summary><p>It minimises the sum of squared residuals, where a residual is the true value minus the prediction. The slope 2 adds 2 to the prediction for each unit of x, and the intercept 5 is the prediction at x = 0; scikit-learn stores them in <code>coef_</code> and <code>intercept_</code>.</p></details>
-        <details class="check"><summary>A model scores R² 0.9 on training data and 0.2 on test data. What does that tell you?</summary><p>It has overfitted: it learned the noise in the training rows and does not generalise. The training score alone proved nothing, which is why the test rows are kept out of training and every choice about the model.</p></details>
+        <details class="check"><summary>A model scores R² 0.9 on training data and 0.2 on test data. What does that tell you in bias and variance terms, and how do training, validation and test sets help you judge whether a model generalises?</summary><p>It has overfitted: it learned the noise in the training rows and does not generalise, which is high variance. Both scores low would be underfitting, which is high bias. The training score alone proves nothing, so the model is fitted on the training set, choices such as the degree are made on a validation set, and the test set is scored once at the end on rows that shaped nothing.</p></details>
         <details class="check"><summary>Why pass <code>random_state</code> and <code>stratify=y</code> to <code>train_test_split</code>?</summary><p><code>random_state</code> fixes the shuffle, so the split and the printed scores are the same on every run. <code>stratify=y</code> keeps the class proportions of the whole dataset in both parts, which matters most when one class is rare.</p></details>
         <details class="check"><summary>Degrees 1, 3 and 15 are fitted to noisy cubic data. Which underfits, which overfits, and why is polynomial regression still a linear model?</summary><p>Degree 1 underfits, scoring poorly on training and test data; degree 15 overfits, with the highest training score and a falling test score. It is still linear because <code>PolynomialFeatures</code> only adds powers as columns, and the model stays linear in its coefficients.</p></details>
         <details class="check"><summary>What is the difference between <code>predict</code> and <code>predict_proba</code> on a <code>LogisticRegression</code>, and what does a <code>ConvergenceWarning</code> mean?</summary><p><code>predict</code> returns one class per row; <code>predict_proba</code> returns one probability per class, each row summing to 1. The warning means the lbfgs solver stopped at its iteration limit, usually on unscaled features; raising <code>max_iter</code> or scaling fixes it.</p></details>
@@ -946,6 +968,7 @@ assert baseline_accuracy(["low", "high", "medium", "low", "low"]) == 0.6, "works
           <li id="src-25"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html" target="_blank" rel="noopener">LogisticRegression</a> — <code>predict_proba</code>, <code>max_iter</code> and the lbfgs solver.</li>
           <li id="src-26"><a href="https://scikit-learn.org/stable/modules/model_evaluation.html#accuracy-score" target="_blank" rel="noopener">Metrics and scoring: accuracy_score</a> — accuracy, and why it misleads on imbalanced classes.</li>
           <li id="src-27"><a href="https://scikit-learn.org/stable/datasets/toy_dataset.html" target="_blank" rel="noopener">Toy datasets: diabetes dataset</a> — why the diabetes feature columns are small numbers around 0.</li>
+          <li id="src-28"><a href="https://scikit-learn.org/stable/modules/learning_curve.html" target="_blank" rel="noopener">Validation curves: plotting scores to evaluate models</a> — bias, variance and noise, and reading training against validation scores.</li>
         </ul>
       </section>
 

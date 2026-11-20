@@ -347,6 +347,9 @@
     { term: "out-of-vocabulary token", def: "The one id a text layer gives every word that is not in its learned vocabulary.", aka: ["OOV token","[UNK]"] },
     { term: "lever", def: "One setting you change to try to improve a model, such as the hidden units, the learning rate or dropout.", aka: ["levers","improvement lever"] },
     { term: "capacity", def: "How much a network can learn, set mostly by its number of layers and units; too little underfits, too much overfits.", aka: ["model capacity"] },
+    { term: "bias-variance trade-off", def: "The balance between a model too simple to fit the pattern (high bias, underfitting) and one that changes with every training set (high variance, overfitting).", aka: ["bias–variance trade-off","bias-variance tradeoff","high bias","high variance"] },
+    { term: "self-attention", def: "A layer in which every position of a sequence looks at every other position at once and weighs how much each one matters to it.", aka: ["self attention"] },
+    { term: "positional encoding", def: "Numbers added to each element of a sequence to mark its position, because attention alone sees no order.", aka: ["positional encodings"] },
     // GLOSSARY:END
   ];
 

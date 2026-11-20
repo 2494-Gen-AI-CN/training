@@ -36,7 +36,7 @@
           <span><b>Week 6</b> · Day 3</span>
           <span>Wed Nov 18, 2026</span>
           <span>AI/ML fundamentals</span>
-          <span><b>~41 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span><b>~44 min</b> · reference notes @150 wpm · diagram · check</span>
           <span class="verified">Sources checked 2026-11-16 · python 3.13.18 · numpy 2.4.6 · scipy 1.16.3 · scikit-learn 1.6.1 · matplotlib 3.10.0</span>
           <span class="notebook"><a href="https://colab.research.google.com/github/2494-Gen-AI-CN/demos/blob/main/notebooks/week-06/03_wednesday_deep_learning_concepts.ipynb" target="_blank" rel="noopener">Open the notebook in Colab</a></span>
         </div>
@@ -168,16 +168,26 @@ test:  0.962</pre>
         <p>A recurrent network (RNN) reads a sequence one element at a time and carries a memory of what came before into
         the next step. The long short-term memory layer, <code>LSTM</code>, is one recurrent layer Keras
         provides.<sup class="cite"><a href="#src-8">8</a></sup> It suits data where order matters: sensor readings over time,
-        a sentence read word by word. The limit is speed. Processing a sequence step by step is slow to train compared with
-        attention over the whole sequence at once.<sup class="cite"><a href="#src-10">10</a></sup></p>
+        a sentence read word by word.</p>
+        <p>Reading step by step has two costs. The steps run one after another, so training is
+        slow compared with attention over the whole sequence at once. What the network read early also has to pass through
+        every step in between to reach a late position, which makes a link between two distant positions harder to
+        learn.<sup class="cite"><a href="#src-10">10</a></sup></p>
         <h3>Transformers</h3>
         <p>A transformer replaces step-by-step reading with attention. Every position in the sequence looks at every
-        other position in one go and decides how much each one matters to it. Keras names the layer
-        <code>MultiHeadAttention</code>, and transformers are the architecture underneath large language
+        other position in one go and decides how much each one matters to it. A layer that lets a sequence attend to
+        its own positions like this is called self-attention.<sup class="cite"><a href="#src-10">10</a></sup> Keras names
+        the layer <code>MultiHeadAttention</code>, and transformers are the architecture underneath large language
         models.<sup class="cite"><a href="#src-9">9</a></sup> The models used through week 5 are transformers.</p>
-        <p>Because the whole sequence is handled together, it trains faster than a recurrent network that waits for each
-        word in turn.<sup class="cite"><a href="#src-10">10</a></sup> Calling a large language model from your own code waits for
-        week 9.</p>
+        <p>Two things follow from giving every position direct access to every other. Distance stops mattering: the
+        first word and the last are one hop apart, where a recurrent network carries the first word through every step
+        between them. The positions are also computed at the same time, which suits GPUs and is why a
+        transformer trains faster than a recurrent network that waits for each word in
+        turn.<sup class="cite"><a href="#src-10">10</a></sup></p>
+        <p>A recurrent network knows the order because it reads in order. An attention layer sees its input as a set of vectors with no order, so "how are you" and "you how are" would look the same to it. A
+        transformer therefore adds a positional encoding to each element before the attention layers, numbers that mark
+        where the element sits in the sequence.<sup class="cite"><a href="#src-10">10</a></sup> Calling a large language
+        model from your own code waits for week 9.</p>
         <h3>Autoencoders</h3>
         <p>An autoencoder is trained to rebuild its own input after squeezing it through a narrow middle
         layer.<sup class="cite"><a href="#src-11">11</a></sup> The narrow middle forces the network to keep a compact
@@ -202,8 +212,8 @@ test:  0.962</pre>
         <div class="ix-spot" data-snippet="Model layers, in order:&#10;  Conv2D&#10;  MaxPooling2D&#10;  Conv2D&#10;  MaxPooling2D&#10;  Flatten&#10;  Dense" data-q="Which type of network is this, and what input does it expect?" data-a="A convolutional network. Conv2D and MaxPooling2D give it away, so it expects grid input such as an image; Flatten and Dense turn the result into a class at the end."></div>
         <div class="recap"><div class="k">Takeaways</div><ul>
           <li>Feedforward networks suit table rows; convolutional networks suit images.</li>
-          <li>Recurrent networks read sequences step by step, which makes them slow to train.</li>
-          <li>Transformers use attention over the whole sequence and underlie large language models.</li>
+          <li>Recurrent networks read sequences step by step: slow to train, and distant positions are hard to link.</li>
+          <li>Transformers use self-attention over the whole sequence, add a positional encoding for order, and underlie large language models.</li>
           <li>An autoencoder rebuilds its input through a narrow middle, so it needs no labels.</li>
         </ul></div>
         <div class="callout interview">
@@ -211,9 +221,11 @@ test:  0.962</pre>
           <p>I'd name five: feedforward networks for table rows, convolutional networks for images, recurrent networks
           like LSTMs for sequences, transformers for text at scale, and autoencoders for compressing unlabelled data. The
           shape of the input usually decides which one fits.</p>
-          <p>A recurrent network reads a sequence one step at a time, so it's slow to train. A transformer uses attention,
-          so every position looks at every other position at once, which trains in parallel. That's the architecture
-          behind large language models.</p>
+          <p>A recurrent network reads a sequence one step at a time and carries a memory forward. That makes it slow
+          to train, and early information has to survive every step in between to reach the end. A transformer uses
+          self-attention: every position looks at every other position directly, so distance doesn't matter and the
+          work runs in parallel. Attention alone has no sense of order, so the model adds a positional encoding to
+          each element. That's the architecture behind large language models.</p>
           <p>An autoencoder learns to rebuild its input through a narrow middle layer, so it needs no labels and ends up
           with a compact summary of the data.</p>
         </div>
@@ -835,9 +847,10 @@ assert bag_of_words("Login blocked refund works", vocab) == [1, 1, 1, 1], "the s
       <section class="step" data-diagram="0" data-step="7">
         <div class="tag">Check yourself</div>
         <h2>Check yourself</h2>
-        <p>Nine retrieval questions, at least one per section. Answer each out loud before you open it.</p>
+        <p>Ten retrieval questions, at least one per section. Answer each out loud before you open it.</p>
         <details class="check"><summary>What is the main difference between a deep network and logistic regression, and when would you still choose logistic regression?</summary><p>Logistic regression learns from columns a person chose, while a deep network takes raw pixels or words and learns its own features. Logistic regression or a tree is still the better choice for a small table, or when each decision has to be explained.</p></details>
         <details class="check"><summary>Which network type reads each of these best: an image, sensor readings in time order, text at large scale, unlabelled data you want to compress?</summary><p>A convolutional network for the image, a recurrent network such as an LSTM for the time series, a transformer for text at scale, and an autoencoder for the unlabelled data.</p></details>
+        <details class="check"><summary>At a high level, how does self-attention in a transformer differ from recurrence in an RNN or LSTM, and what does the transformer have to add because of it?</summary><p>A recurrent network reads one element at a time and carries a memory forward, so it trains slowly and early information must pass through every step to reach a distant position. Self-attention lets every position look at every other directly and all at once, so long-range links are easier to learn and the work runs in parallel. Attention sees a set with no order, so a transformer adds a positional encoding.</p></details>
         <details class="check"><summary>A dense layer reads 64 inputs and has 16 units. What shapes are its weights and bias, and how many parameters does it hold?</summary><p>The weight matrix is (64, 16) and the bias is (16,). That is 64 × 16 + 16 = 1,040 parameters.</p></details>
         <details class="check"><summary>Why does the 64-16-10 network with random weights score about 0.1 on the digits?</summary><p>Its weights are random, so its guesses carry no information and it does about as well as picking one of ten classes by chance. Only training, which is week 7's backpropagation, changes that.</p></details>
         <details class="check"><summary>Why does the page run its edge kernel with <code>correlate2d</code> and not <code>convolve2d</code>?</summary><p><code>correlate2d</code> slides the kernel unflipped, which is what a <code>Conv2D</code> layer computes. <code>convolve2d</code> flips the kernel first, so a left-dark, right-bright edge comes out negative, as if it were the opposite edge.</p></details>
@@ -859,7 +872,7 @@ assert bag_of_words("Login blocked refund works", vocab) == [1, 1, 1, 1], "the s
           <li id="src-7"><a href="https://www.tensorflow.org/tutorials/images/cnn" target="_blank" rel="noopener">TensorFlow — Convolutional Neural Network (CNN) tutorial</a> — the convolution, pooling, flatten and dense stack.</li>
           <li id="src-8"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/layers/LSTM" target="_blank" rel="noopener">TensorFlow — tf.keras.layers.LSTM</a> — the common recurrent layer.</li>
           <li id="src-9"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/layers/MultiHeadAttention" target="_blank" rel="noopener">TensorFlow — tf.keras.layers.MultiHeadAttention</a> — the attention layer inside transformers.</li>
-          <li id="src-10"><a href="https://www.tensorflow.org/text/tutorials/transformer" target="_blank" rel="noopener">TensorFlow Text — Neural machine translation with a Transformer and Keras</a> — attention against step-by-step recurrent reading.</li>
+          <li id="src-10"><a href="https://www.tensorflow.org/text/tutorials/transformer" target="_blank" rel="noopener">TensorFlow Text — Neural machine translation with a Transformer and Keras</a> — attention against step-by-step recurrent reading, long-range links and positional encoding.</li>
           <li id="src-11"><a href="https://www.tensorflow.org/tutorials/generative/autoencoder" target="_blank" rel="noopener">TensorFlow — Intro to Autoencoders</a> — rebuilding the input through a narrow middle.</li>
           <li id="src-12"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/layers/Dense" target="_blank" rel="noopener">TensorFlow — tf.keras.layers.Dense</a> — what a dense layer computes and the shapes of its weights.</li>
           <li id="src-13"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/activations/sigmoid" target="_blank" rel="noopener">TensorFlow — tf.keras.activations.sigmoid</a> — squashing a value into 0 to 1.</li>
