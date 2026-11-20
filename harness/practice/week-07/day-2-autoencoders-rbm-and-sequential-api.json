@@ -1,0 +1,197 @@
+{
+  "day": "w07d2",
+  "page": "docs/weeks/week-07/day-2-autoencoders-rbm-and-sequential-api.html",
+  "assessed": "2026-11-19",
+  "verdict": "full",
+  "summary": "The arithmetic behind the library calls (rebuilding an RBM row and ranking its blanks, reconstruction error per image, a Dense stack's parameter count, confusion counts at a threshold) works as plain-Python functions on lists, and the judgements the page names wrong ways for (cold start, what an autoencoder trains on, a failing import tflearn, reusing a nested encoder) work as choice questions, while nothing can run scikit-learn, numpy or TensorFlow in the browser.",
+  "steps": [
+    {
+      "step": 0,
+      "title": "Collaborative filtering: recommending from a ratings table",
+      "suitable": true,
+      "reason": "The step has no behaviour a check can see without numpy, and computing how alike two users are is deferred to week 8. It does teach a judgement the page names the wrong ways for: a brand-new user has an empty row nobody can be matched with, and a 0 cannot tell a rejected film from an unseen one, so a choice question on what to show a new user fits.",
+      "task": "t1"
+    },
+    {
+      "step": 1,
+      "title": "Restricted Boltzmann machines: hidden tastes that rebuild a row",
+      "suitable": true,
+      "reason": "BernoulliRBM cannot run in the browser, but the page spells out the recommending arithmetic: hidden tastes times the weights, plus each film's bias, through a sigmoid, then the highest score among the films the user has a 0 for. On plain lists with math.exp that returns a film and a score a check can read, with nothing faked.",
+      "task": "t2"
+    },
+    {
+      "step": 2,
+      "title": "Autoencoders: a network that rebuilds its own input",
+      "suitable": true,
+      "reason": "The model is Keras, which the runtime lacks, and its parameter arithmetic is practised in step 6. The step teaches a judgement with named wrong ways: the input is also the target (fit(x_tr, y_tr) is the brief's first pitfall), a bottleneck as wide as the input just copies and a very narrow one blurs, so a choice question on which build and fit line is right fits.",
+      "task": "t3"
+    },
+    {
+      "step": 3,
+      "title": "An autoencoder as an anomaly detector",
+      "suitable": true,
+      "reason": "Reconstruction error per image is worked by hand on the page (the toy pair scores 0.015 and 0.365), so a plain-Python function over lists of pixel rows returns numbers a check compares, and the axis=1 point (one number per image) is a mistake a check catches. If the trainer prefers the brief's threshold pitfalls (training errors, reading 1 percent flagged as 1 percent odd), the same step carries a choice question on those instead.",
+      "task": "t4"
+    },
+    {
+      "step": 4,
+      "title": "TFLearn and its Keras equivalents",
+      "suitable": true,
+      "reason": "TFLearn and Keras are not in the runtime and the mapping table alone is recall, but the step and the brief's fourth pitfall name the wrong moves when a copied TFLearn tutorial fails on import tflearn: a pip install, a typo hunt, trying to run it at all. A choice question on that failure fits.",
+      "task": "t5"
+    },
+    {
+      "step": 5,
+      "title": "Composing models: a model is a layer",
+      "suitable": true,
+      "reason": "Nesting Keras models has no plain-Python stand-in that would not be faked. The step teaches a judgement the reader can get wrong: after composed is fitted, encoder is the very same object with the trained weights and can be called alone for its 32-number codes, so a choice question on getting codes for new digits fits, with copied weights and composed.predict as the named wrong ways.",
+      "task": "t6"
+    },
+    {
+      "step": 6,
+      "title": "Sequential composition: three ways to build one stack",
+      "suitable": true,
+      "reason": "The page states that a Dense layer builds its weights from whatever width arrives, one weight per input per unit plus one bias per unit, and shows the swapped stack's 9,258 against 101,770. A function that returns a stack's parameter count from the input width and the list of units is behaviour a check can see, and an answer that ignores order fails it.",
+      "task": "t7"
+    },
+    {
+      "step": 7,
+      "title": "A text classifier built in a project's order",
+      "suitable": true,
+      "reason": "The page turns probabilities into labels with >= 0.5 and reads the confusion matrix as tn, fp, fn, tp with each cell defined in its table, so a function that returns those four counts from probabilities, labels and a threshold is checkable on plain lists; the 0.3 threshold that raises recall is one check. The precision and recall formulas are on Monday's page, so the task stops at the counts; the vectorizer-leak pitfall would suit a choice question if the trainer prefers it.",
+      "task": "t8"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "kind": "choice",
+      "title": "Collaborative filtering",
+      "step": 0,
+      "idea": "A new user, Ivy, signs up to the film service and her row in the ratings table is all zeros. What can the recommender show her? The right answer: popular films, or a few favourites she picks at sign-up, until her row has ratings to match on, because a collaborative filter has nobody to match an empty row with.",
+      "checks": [
+        "Run the collaborative filter on her row and recommend what similar users liked: catches missing the cold-start problem, that an empty row agrees with nobody.",
+        "Her zeros mean she dislikes all six films, so recommend nothing until she rates one: catches reading 0 as \"did not like it\" when the page says 0 also means \"has not seen it\".",
+        "Add a genre column to the ratings table so the filter can match her on genres: catches thinking collaborative filtering reads facts about the items, when it reads only who rated what."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t2",
+      "kind": "python",
+      "title": "Recommending with an RBM",
+      "step": 1,
+      "idea": "The reader writes recommend(row, hidden, components, biases, films): row is a user's 0/1 ratings, hidden the user's taste probabilities, components one list of film weights per hidden unit, biases one per film, films the film names. For each film the score is the sigmoid, 1 / (1 + math.exp(-z)), of the sum over tastes of hidden times that taste's weight for the film plus the film's bias; the function returns (film, score) for the highest-scoring film the user has a 0 for, as the page's Dev -> Robot Dawn 0.51 does.",
+      "checks": [
+        "Never returns a film the user has rated 1, even when that film's rebuilt score is the highest; an answer that ranks every film fails it.",
+        "With every hidden probability 0 the film biases alone decide the pick; an answer that leaves out the visible bias returns the wrong film or score.",
+        "The returned score lies between 0 and 1 and equals the sigmoid of the weighted sum; an answer that skips the sigmoid returns the raw sum.",
+        "With two hidden units and weights that differ per unit, the sum runs over the tastes for each film; an answer that reads components with films as rows picks the wrong film."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t3",
+      "kind": "choice",
+      "title": "Autoencoders",
+      "step": 2,
+      "idea": "MNIST pixels are scaled to 0 to 1 and x_tr holds the training images, y_tr their labels. Which build and fit line make an autoencoder? The right answer: Dense(32, relu) then Dense(784, sigmoid), fitted with fit(x_tr, x_tr), since the input is also the target and the bottleneck is narrower than the input.",
+      "checks": [
+        "The same layers fitted with fit(x_tr, y_tr): catches the page's classic slip and the brief's first pitfall, passing the labels as targets.",
+        "Dense(784, relu) then Dense(784, sigmoid) with fit(x_tr, x_tr): catches a bottleneck as wide as the input, which lets the network copy the pixels through and learn nothing useful.",
+        "Dense(1, relu) then Dense(784, sigmoid) with fit(x_tr, x_tr): catches thinking narrower is always better, when a very narrow bottleneck cannot hold enough and blurs the rebuilds."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t4",
+      "kind": "python",
+      "title": "Reconstruction error",
+      "step": 3,
+      "idea": "The reader writes reconstruction_errors(images, rebuilt): both are lists of pixel rows of the same shape, and the function returns a list with one number per image, the mean of the squared differences between its pixels and their rebuild. The page's toy pair, [[0.0, 1.0, 1.0, 0.0], [0.0, 1.0, 1.0, 0.0]] against [[0.1, 0.9, 0.8, 0.0], [0.6, 0.4, 0.5, 0.7]], gives about [0.015, 0.365].",
+      "checks": [
+        "Returns one number per image, a list as long as images; an answer that averages over every pixel of every image returns a single number, the axis=1 point the page makes.",
+        "Squares each difference, so the first toy image scores 0.015; an answer that averages the differences without squaring them (0.1, 0.1, 0.2 and 0) scores 0.1.",
+        "Divides by the number of pixels in the image, so the score is a mean; an answer that sums the squares gives 0.06 for the first toy image.",
+        "Works for rows of any length, such as three-pixel images; an answer that divides by a fixed 784 or 4 fails it."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t5",
+      "kind": "choice",
+      "title": "TFLearn and Keras",
+      "step": 4,
+      "idea": "A blog post's digit network starts with import tflearn and tflearn.input_data(shape=[None, 784]), and on Colab the import fails. What do you do? The right answer: read it as history and write the same network in Keras with the mapping table, Input for input_data, Dense for fully_connected, compile for regression.",
+      "checks": [
+        "Run pip install tflearn and try again: catches the brief's fourth pitfall, treating the failure as a missing install when the library itself needs a helper TensorFlow 2.21 no longer defines.",
+        "Look for a typo in the import line or the module name: catches reading the failure as a spelling mistake when the cause is a library written for a TensorFlow that no longer ships.",
+        "Install a TensorFlow 1 release in Colab so the tutorial runs as written: catches missing the page's point that TFLearn code is worth reading and never worth running, since Keras does the same job."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t6",
+      "kind": "choice",
+      "title": "Composing models",
+      "step": 5,
+      "idea": "An encoder and a decoder were built as two Sequential models, joined as composed = tf.keras.Sequential([encoder, decoder]) and composed was fitted. You want the 32-number codes of some new digits. The right answer: call encoder.predict on them, because encoder is the very same object inside composed and already holds the trained weights.",
+      "checks": [
+        "Fit encoder on its own first, since only composed was trained: catches thinking composed holds a copy, when the weights are shared and training composed trained encoder too.",
+        "Call composed.predict on the digits and read its output as the codes: catches missing that composed ends in the decoder, so it returns 784-pixel rebuilds, not 32-number codes.",
+        "Rebuild the autoencoder as one stack of two Dense layers, since a part nested in a model cannot be called alone: catches missing that each half is a model and can be called by itself."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t7",
+      "kind": "python",
+      "title": "Sequential composition",
+      "step": 6,
+      "idea": "The reader writes stack_params(input_width, units): input_width is the width of the Input and units the list of Dense widths in order, and the function returns the stack's parameter count, where each layer has one weight per incoming value per unit plus one bias per unit and takes its incoming width from the layer before. stack_params(784, [128, 10]) returns 101770.",
+      "checks": [
+        "stack_params(784, [10, 128]) returns 9258, the page's swapped stack; an answer that counts every layer from the input width returns the same total for both orders.",
+        "stack_params(784, [128, 10]) returns 101770; an answer that leaves out the bias per unit returns 101632.",
+        "stack_params(784, [128]) returns 100480, the count after pop(); an answer that adds one bias per incoming value instead of per unit returns 101136."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t8",
+      "kind": "python",
+      "title": "Confusion counts",
+      "step": 7,
+      "idea": "The reader writes confusion_counts(probs, labels, threshold=0.5): probs are the model's probabilities of label 1 (motorcycles), labels the true 0/1 labels, and the function returns (tn, fp, fn, tp) in the order ravel() gives, calling a post positive when its probability is at least the threshold. confusion_counts([0.9, 0.2, 0.6, 0.4], [1, 0, 0, 1]) returns (1, 1, 1, 1).",
+      "checks": [
+        "Returns the four counts as tn, fp, fn, tp, with a false positive a true 0 predicted 1; an answer that swaps fp and fn, or returns tp first, fails it.",
+        "A probability of exactly 0.5 counts as positive, as the page's >= 0.5 does; an answer that uses > leaves it negative.",
+        "With threshold=0.3 a post at 0.4 becomes positive, so false negatives fall and true positives rise; an answer that ignores the threshold argument and keeps 0.5 fails it."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    }
+  ]
+}

@@ -1,0 +1,174 @@
+{
+  "day": "w07d3",
+  "page": "docs/weeks/week-07/day-3-functional-api-layers-and-custom-training.html",
+  "assessed": "2026-11-19",
+  "verdict": "full",
+  "summary": "TensorFlow, numpy, pandas and scikit-learn do not run in the page, but the arithmetic the page works by hand (Dense and Concatenate parameter counts, Conv2D and pooling shapes, batch normalization in both modes, the early stopping rule, one-hot columns fixed by the training rows, MAE and MSE) rebuilds in a few lines of plain Python, and the saving step's named mistakes (an .h5 name, model.export, a file left on the Colab runtime) fit one choice question.",
+  "steps": [
+    {
+      "step": 0,
+      "title": "Functional composition: layers called like functions",
+      "suitable": true,
+      "reason": "No Keras in the runtime, so no check can see a Model, but the page counts parameters by hand (n × u + u per Dense layer, 784 + 128 = 912 values after Concatenate) and names the mistake of calling the output layer on hidden instead of the join. A function that returns the count with and without the skip is behaviour a check can see.",
+      "task": "t1"
+    },
+    {
+      "step": 1,
+      "title": "Predefined layers: chosen by what they read",
+      "suitable": true,
+      "reason": "The step states the shape rules a check can hold as return values on tuples: a valid 3 by 3 kernel turns 28 into 26, pooling halves and rounds down (11 to 5), a Conv2D holds k × k × channels × filters + filters numbers, and a shape with no channel axis is refused, the brief's second pitfall.",
+      "task": "t2"
+    },
+    {
+      "step": 2,
+      "title": "Batch normalization, measured like any change",
+      "suitable": true,
+      "reason": "The page works the layer by hand on the column 2, 4, 6 in both modes: training mode uses the batch's mean and variance, prediction mode uses the moving averages. A plain-Python function on a list of numbers shows both modes as return values, and using batch numbers at prediction time fails a check.",
+      "task": "t3"
+    },
+    {
+      "step": 3,
+      "title": "Build: a CNN digit classifier, in a project's order",
+      "suitable": true,
+      "reason": "The CNN itself cannot run, but the step states the early stopping rule exactly (stop when validation loss has not beaten its best for patience epochs, then restore the best epoch) and the brief names reading the final epoch instead of the restored one as a pitfall. A function over a list of validation losses returns both numbers.",
+      "task": "t4"
+    },
+    {
+      "step": 4,
+      "title": "Saving and loading a model",
+      "suitable": true,
+      "reason": "Saving a Keras file has no behaviour the runtime can show without faking it, but the step teaches a judgement with named wrong ways: an .h5 name or a bare folder selects another format, model.export writes a SavedModel that does not reload as a Keras model, and a file left on the Colab runtime is gone after a reset. A choice question on keeping a model for the next session fits.",
+      "task": "t5"
+    },
+    {
+      "step": 5,
+      "title": "Build: classifying penguins from a table",
+      "suitable": true,
+      "reason": "pandas is not in the runtime, but the step's one-hot trap is plain list logic: the columns come from the training rows, a validation table that lacks a category still gets every training column, and a category the training rows never had gets no column. A function on lists of island names shows each rule as a return value.",
+      "task": "t6"
+    },
+    {
+      "step": 6,
+      "title": "Variant: predicting a number",
+      "suitable": true,
+      "reason": "The page computes MAE and MSE by hand on three birds and states that a row with no target is dropped, never filled. A plain-Python function returning both scores, skipping rows whose actual value is None, shows each rule as a return value.",
+      "task": "t7"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "kind": "python",
+      "title": "Functional composition",
+      "step": 0,
+      "idea": "The reader writes count_params(n_in, hidden, n_out, skip=False): the number of parameters in a network with one hidden Dense layer and one output Dense layer, where with skip=True the output layer reads the input joined to the hidden output by Concatenate. count_params(784, 128, 10) returns 101770 and count_params(784, 128, 10, skip=True) returns 109610.",
+      "checks": [
+        "count_params(784, 128, 10) returns 101770; an answer that leaves out the + u bias in the page's n × u + u rule returns 101632.",
+        "count_params(784, 128, 10, skip=True) returns 109610; an answer that still sizes the output layer on the hidden width alone, the page's 'calling the output layer on hidden', returns 101770.",
+        "count_params(4, 3, 2, skip=True) returns 31; an answer that treats the join as Add, keeping the larger width instead of laying the two side by side as Concatenate does, returns a smaller count."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t2",
+      "kind": "python",
+      "title": "Predefined layers",
+      "step": 1,
+      "idea": "The reader writes conv_pool(shape, filters, kernel): shape is (height, width, channels), and the function returns (conv_shape, pooled_shape, params) for a Conv2D(filters, kernel) with the default valid padding followed by MaxPooling2D(), raising ValueError when shape has no channel axis. conv_pool((28, 28, 1), 16, 3) returns ((26, 26, 16), (13, 13, 16), 160).",
+      "checks": [
+        "conv_pool((28, 28, 1), 16, 3) returns (26, 26, 16) as its first item; an answer that keeps the image size, as if the kernel could sit past the edge, returns (28, 28, 16).",
+        "conv_pool((13, 13, 16), 32, 3) returns (5, 5, 32) as its pooled shape; an answer that rounds half of 11 up returns (6, 6, 32), where the page rounds down.",
+        "conv_pool((13, 13, 16), 32, 3) returns 4640 parameters; an answer that leaves the input channels out of k × k × channels × filters + filters returns 320.",
+        "conv_pool((28, 28), 16, 3) raises ValueError; an answer that accepts a grey image with no channel axis, the brief's Conv2D shape pitfall, returns a shape."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t3",
+      "kind": "python",
+      "title": "Batch normalization",
+      "step": 2,
+      "idea": "The reader writes batch_norm(column, training, moving_mean=0.0, moving_variance=1.0): column is a list of numbers, and the function returns each value minus a mean, divided by the square root of a variance, rounded to 2 places, using the column's own mean and variance (divided by the count) when training is True and the moving averages when it is False; no learned scale or offset, no small constant. batch_norm([2.0, 4.0, 6.0], True) returns [-1.22, 0.0, 1.22].",
+      "checks": [
+        "batch_norm([2.0, 4.0, 6.0], True) returns [-1.22, 0.0, 1.22]; an answer that divides the squared differences by count minus one returns [-1.0, 0.0, 1.0], where the page's variance is (4 + 0 + 4) / 3.",
+        "batch_norm([2.0, 4.0, 6.0], False) returns [2.0, 4.0, 6.0]; an answer that uses the batch's own numbers in prediction mode, the page's training-against-prediction distinction, returns [-1.22, 0.0, 1.22].",
+        "batch_norm([2.0, 4.0, 6.0], False, 4.0, 4.0) returns [-1.0, 0.0, 1.0]; an answer that ignores the moving averages it is given returns the values unchanged."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t4",
+      "kind": "python",
+      "title": "Early stopping",
+      "step": 3,
+      "idea": "The reader writes early_stopping(val_losses, patience): val_losses holds the validation loss each epoch would reach, and the function returns (epochs_ran, best_epoch), both counted from 1, under the page's rule: training stops once patience epochs in a row have not beaten the best loss so far, and restore_best_weights puts back the best epoch. early_stopping([0.5, 0.4, 0.45, 0.39, 0.41, 0.42, 0.38], 2) returns (6, 4).",
+      "checks": [
+        "early_stopping([0.5, 0.4, 0.45, 0.39, 0.41, 0.42, 0.38], 2) returns 4 as best_epoch; an answer that reports the last epoch that ran, the brief's pitfall of reading the final epoch without restore_best_weights, returns 6.",
+        "early_stopping([0.5, 0.4, 0.45, 0.44, 0.43, 0.3], 2) returns (4, 2); an answer that compares each epoch with the one before instead of with the best so far keeps training and returns (6, 6).",
+        "early_stopping([0.5, 0.4, 0.3, 0.2], 2) returns (4, 4); an answer that stops on a count alone, or runs past the list, does not treat the length of val_losses as the epochs ceiling the page names."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t5",
+      "kind": "choice",
+      "title": "Saving and loading",
+      "step": 4,
+      "idea": "After training best_cnn in Colab, the reader wants to load it tomorrow and evaluate it without training again. The right answer: save with best_cnn.save(\"digits_cnn.keras\"), then download the file from the Files panel or copy it to Drive, and load it with tf.keras.models.load_model.",
+      "checks": [
+        "Save with best_cnn.save(\"digits_cnn.h5\"): catches the page's named file-name mistake, an .h5 name selects the legacy format, which Keras reads and writes only with a warning.",
+        "Call best_cnn.export(\"digits_cnn\") and load the folder tomorrow: catches mistaking model.export, a SavedModel for serving, for a file that reloads as a Keras model.",
+        "Save digits_cnn.keras and leave it where it was written: catches the brief's Colab pitfall, files on the runtime's disk are deleted when the runtime is recycled.",
+        "Save with TFLearn's model.save(\"digits.tflearn\"): catches reaching for the curriculum's TFLearn, which no longer imports on TensorFlow 2.21 and whose save maps to model.save with a .keras name."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t6",
+      "kind": "python",
+      "title": "One-hot columns from the training rows",
+      "step": 5,
+      "idea": "The reader writes one_hot(values, train_values): both are lists of category names, the columns are the distinct training values in sorted order as pd.get_dummies gives them, and the function returns one list of 0s and 1s per entry of values, the reindex(columns=train_columns, fill_value=0) result. one_hot([\"Dream\", \"Dream\"], [\"Biscoe\", \"Dream\", \"Torgersen\"]) returns [[0, 1, 0], [0, 1, 0]].",
+      "checks": [
+        "one_hot([\"Dream\", \"Dream\"], [\"Biscoe\", \"Dream\", \"Torgersen\"]) returns [[0, 1, 0], [0, 1, 0]]; an answer that builds the columns from the rows being encoded, the page's one-hot trap, returns [[1], [1]].",
+        "one_hot([\"Biscoe\"], [\"Torgersen\", \"Dream\", \"Biscoe\", \"Dream\"]) returns [[1, 0, 0]]; an answer that keeps a column per training row instead of per distinct category returns four values, and one that keeps the rows' first-seen order instead of get_dummies' sorted columns returns [[0, 0, 1]].",
+        "one_hot([\"Anvers\"], [\"Biscoe\", \"Dream\"]) returns [[0, 0]]; an answer that adds a column for a category the training rows never had, the page's 'a new island has no column', returns three values."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t7",
+      "kind": "python",
+      "title": "Regression scores",
+      "step": 6,
+      "idea": "The reader writes regression_scores(actual, predicted): two lists of the same length, where an actual value of None marks a row with no target, and the function returns (mae, mse), each rounded to 4 places, over the rows that have a target. regression_scores([3.5, 4.0, 5.0], [3.7, 3.9, 4.6]) returns (0.2333, 0.07).",
+      "checks": [
+        "regression_scores([3.5, 4.0, 5.0], [3.7, 3.9, 4.6]) returns 0.2333 as mae; an answer that averages the signed errors, so 0.2 and the two misses below cancel, returns -0.1.",
+        "the same call returns 0.07 as mse; an answer that takes the square root, or averages the sizes instead of the squares, returns 0.2646 or 0.2333, missing that MSE squares each miss.",
+        "regression_scores([3.5, None, 5.0], [3.7, 3.9, 4.6]) returns (0.3, 0.1); an answer that fills the missing target with 0 or the mean instead of dropping the row, as the page says never to do, returns other scores."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    }
+  ]
+}

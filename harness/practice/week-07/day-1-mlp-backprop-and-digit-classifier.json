@@ -1,0 +1,220 @@
+{
+  "day": "w07d1",
+  "page": "docs/weeks/week-07/day-1-mlp-backprop-and-digit-classifier.html",
+  "assessed": "2026-11-19",
+  "verdict": "full",
+  "summary": "The arithmetic under the Keras calls (MSE and cross-entropy, a gradient-descent loop with the centred nudge, a line's accuracy on XOR, Dense parameter counts, one backprop update on two weights, precision, recall and F1 for one digit) rebuilds in standard-library Python on lists, and the three steps that only TensorFlow can run (why backprop beats nudging, reading the two curves, keeping a model and using the test set once) teach judgements the page names wrong ways for, so they take choice tasks; no task can run numpy, TensorFlow, scikit-learn or TensorBoard in the browser.",
+  "steps": [
+    {
+      "step": 0,
+      "title": "Loss: one number for how wrong a model is",
+      "suitable": true,
+      "reason": "MSE and the true-label-1 cross-entropy are a few lines of plain Python with math.log, and their values are returned numbers a check reads. The page names the mistakes: misses above and below cancelling without the square, and a sum where Keras averages over the batch (0.973 for the three probabilities).",
+      "task": "t1"
+    },
+    {
+      "step": 1,
+      "title": "Gradient descent: small steps downhill",
+      "suitable": true,
+      "reason": "The one-weight loop on x = 1, 2, 3, 4 with the centred nudge runs in plain Python, and the weight it returns after a given number of steps shows the update's sign, the step count and the learning rate's effect, including the overshoot at 0.2 the page walks through.",
+      "task": "t2"
+    },
+    {
+      "step": 2,
+      "title": "The limit of one perceptron: XOR",
+      "suitable": true,
+      "reason": "The page's brute-force grid is plain loops over 21 values, so a function scoring one line on the four XOR rows and a search for the best line return numbers a check reads (0.75 at best). The Keras neuron cell needs TensorFlow, so the task stays on the line check; a step written as > 0 instead of >= 0 and a count instead of a share give other values.",
+      "task": "t3"
+    },
+    {
+      "step": 3,
+      "title": "Multi-layer perceptrons: a hidden layer and what it adds",
+      "suitable": true,
+      "reason": "The step's checkable rule is the Dense parameter count, one weight per input per unit plus one bias per unit, which gives 17 for 2-4-1 and 101,770 for 784-128-10; leaving out the biases or counting only the hidden layer gives other totals. Training the tanh MLP needs TensorFlow, and the TFLearn block is history the page says never to run.",
+      "task": "t4"
+    },
+    {
+      "step": 4,
+      "title": "The backpropagation algorithm",
+      "suitable": true,
+      "reason": "The step is a concept with no behaviour a Python check can see apart from trivial arithmetic (two passes per weight), but it teaches a judgement the reader can get wrong: why the digit classifier's slopes come from backprop and not the centred nudge. The page names the wrong beliefs (the nudge gives different slopes, the nudge cannot reach a hidden weight, backprop is a separate line after fit), so it fits a choice task.",
+      "task": "t5"
+    },
+    {
+      "step": 5,
+      "title": "Understanding backprop on a two-weight network",
+      "suitable": true,
+      "reason": "One forward pass, two slopes and one update on x = 2.0, w1 = 0.5, w2 = 1.5 is plain arithmetic whose new weights a check reads. The page names what goes wrong: adding the slope instead of subtracting it, mixing up which slope is whose, and updating one weight before the other's slope is found. tf.GradientTape stays out, since the browser has no TensorFlow.",
+      "task": "t6"
+    },
+    {
+      "step": 6,
+      "title": "Build: an MLP digit classifier, in a project's order",
+      "suitable": true,
+      "reason": "Every cell is TensorFlow, matplotlib or a TensorBoard notebook command, and the one piece plain Python could redo (flattening and scaling pixels) catches a single named mistake. The step's judgement is reading training and validation loss on one chart, and the page names the wrong readings (a learning rate too large, more epochs needed, trusting the training curve alone), so it fits a choice task.",
+      "task": "t7"
+    },
+    {
+      "step": 7,
+      "title": "Evaluating a classifier on the validation data",
+      "suitable": true,
+      "reason": "Precision, recall and F1 for one digit against the rest are TP, FP and FN counts over two lists, returned as numbers a check reads. The page names the mistakes: precision and recall swapped, F1 taken as a plain average, and counting every correct prediction as a hit, which is accuracy and hides the always-\"not 5\" trap. Averaging over all ten digits is week 8's and stays out.",
+      "task": "t8"
+    },
+    {
+      "step": 8,
+      "title": "One improvement attempt, the test set once, and limitations",
+      "suitable": true,
+      "reason": "The code is Keras and pandas, and picking the lower of two numbers is too thin for a Python task, but the step teaches a judgement the page names wrong ways for: choosing the kept model on validation loss before touching the test set. Choosing on the test score, changing the model after reading it, and changing two things at once are the page's named mistakes, so it fits a choice task.",
+      "task": "t9"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "kind": "python",
+      "title": "Loss",
+      "step": 0,
+      "idea": "The reader writes two functions in plain Python. mse(y_true, y_pred) returns the mean of the squared differences between two equal-length lists, and cross_entropy_true(probs) returns the mean of -math.log(p) over a list of probabilities given to rows whose true label is 1. mse([3.0, 5.0, 2.5, 7.0, 4.0], [2.5, 5.0, 4.0, 8.0, 3.0]) returns 0.9, and cross_entropy_true([0.9, 0.6, 0.1]) returns about 0.973.",
+      "checks": [
+        "mse on the page's five rows returns 0.9; returning the sum of the squared misses gives 4.5.",
+        "mse([1.0, 1.0], [2.0, 0.0]) returns 1.0; leaving out the square lets the miss above and the miss below cancel to 0.",
+        "cross_entropy_true([0.9, 0.6, 0.1]) returns about 0.973, the batch mean Keras reports; adding the three costs gives about 2.919.",
+        "cross_entropy_true([0.1]) returns about 2.303, the steep cost of a confident wrong answer; dropping the minus sign gives -2.303, and log base 10 gives 1.0."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t2",
+      "kind": "python",
+      "title": "Gradient descent",
+      "step": 1,
+      "idea": "The starter holds the page's line_loss(w) on x = 1, 2, 3, 4 with targets 2.0 * x, in plain Python. The reader writes descend(w, rate, steps), which finds the slope with the centred nudge (line_loss(w + 0.001) - line_loss(w - 0.001)) / 0.002, applies w = w - rate * slope, repeats steps times and returns the final w. descend(0.0, 0.05, 1) returns 1.5, and descend(0.0, 0.05, 10) returns about 2.0.",
+      "checks": [
+        "descend(0.0, 0.05, 1) returns about 1.5; adding rate * slope instead of subtracting it moves w to -1.5, uphill.",
+        "descend(0.0, 0.2, 2) returns about -6.0, the overshoot the page walks through (0 to 6, then past the bottom again); running one step too many or too few gives 18.0 or 6.0.",
+        "descend(0.0, 0.01, 10) is still short of 2 (about 1.606) while descend(0.0, 0.05, 10) reaches about 2.0, so the rate scales each step; ignoring rate or using a fixed step gives the same value for both."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t3",
+      "kind": "python",
+      "title": "Perceptron limits",
+      "step": 2,
+      "idea": "The reader writes line_accuracy(w1, w2, b, rows, labels), which labels each (x1, x2) row 1 when w1 * x1 + w2 * x2 + b >= 0 and 0 otherwise, and returns the share of rows it gets right, and best_xor_accuracy(), which tries every w1, w2 and b on the page's grid from -2 to 2 in steps of 0.2 against the four XOR rows and returns the best share. line_accuracy(1.0, 1.0, -1.5, and_rows, and_labels) returns 1.0, and best_xor_accuracy() returns 0.75.",
+      "checks": [
+        "line_accuracy(1.0, 1.0, -1.0, xor_rows, xor_labels) returns 0.75; a step written as > 0 labels the rows whose sum is exactly 0 as 0 and gives 0.25.",
+        "line_accuracy returns a share between 0 and 1 (1.0 for the AND line on the AND table); returning the count of right rows gives 4.",
+        "best_xor_accuracy() returns 0.75 and never 1.0, because no line splits XOR's diagonals; keeping the last line's score instead of the best one, as max(best, ...) does on the page, gives 0.5."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t4",
+      "kind": "python",
+      "title": "MLP",
+      "step": 3,
+      "idea": "The reader writes count_params(sizes), which takes the layer sizes of a straight stack of Dense layers from input to output as a list of ints and returns the total number of weights and biases: for each layer, inputs times units plus one bias per unit. count_params([2, 4, 1]) returns 17, the page's XOR MLP, and count_params([784, 128, 10]) returns 101,770.",
+      "checks": [
+        "count_params([2, 4, 1]) returns 17; leaving out the one bias per unit gives 12.",
+        "count_params([784, 128, 10]) returns 101770; counting only the hidden layer gives 100,480.",
+        "count_params([2, 1]) returns 3, the single neuron with no hidden layer; giving the input its own weights or biases, as if it were a layer, gives more."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t5",
+      "kind": "choice",
+      "title": "Backprop",
+      "step": 4,
+      "idea": "A teammate wants to skip backprop for the 101,770-weight digit classifier and find every slope with step 1's centred nudge, since that worked on one weight. The question asks what is wrong with the plan. The right answer: the nudge approximates the same slopes, but it needs two extra forward passes per weight, 203,540 for one update, where backprop gets every slope from one forward and one backward pass.",
+      "checks": [
+        "An option saying the nudge gives different, wrong slopes catches the belief the page corrects: it approximates the same numbers backprop returns, and its cost is the problem.",
+        "An option saying the nudge cannot find a hidden weight's slope, only an output weight's, catches the misreading that a hidden weight's slope needs backprop to exist; step 5 finds w1's slope with the nudge.",
+        "An option saying backprop must be added as its own line after fit catches the confusion the page's table names: backprop runs inside fit, with no line of its own."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t6",
+      "kind": "python",
+      "title": "Backprop by hand",
+      "step": 5,
+      "idea": "The reader writes backprop_step(x, target, w1, w2, rate) for the page's two-weight network with no bias or activation (h = w1 * x, prediction = w2 * h, loss = (prediction - target) ** 2). It finds both slopes from the current weights, with the centred nudge or the chain of multiplications, then returns the tuple (new_w1, new_w2), each weight minus rate times its slope. backprop_step(2.0, 1.0, 0.5, 1.5, 0.02) returns about (0.44, 1.48).",
+      "checks": [
+        "backprop_step(2.0, 1.0, 0.5, 1.5, 0.02) returns about (0.44, 1.48); adding the slopes instead of subtracting them moves both weights up and the prediction further from the target.",
+        "The tuple holds new_w1 first; returning the weights in the order tape.gradient gave the slopes, w2 first, gives (1.48, 0.44).",
+        "Both slopes come from the old weights: updating w2 to 1.48 first and then finding w1's slope with it gives about 0.443 for w1 instead of 0.44.",
+        "With the prediction below the target, as in backprop_step(2.0, 3.0, 0.5, 1.5, 0.02), both weights grow; giving w1 the same slope as w2, without the extra multiplication by w2 and x, gives the wrong new w1."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t7",
+      "kind": "choice",
+      "title": "Build",
+      "step": 6,
+      "idea": "The 784-128-10 shape is trained on 1,000 rows for 50 epochs, and the chart shows training loss falling the whole way while validation loss bottoms out a little past epoch 20 and then rises. The question asks what the chart shows and what to do. The right answer: the model is overfitting, memorising the 1,000 rows, so stop near the epoch where validation loss was lowest or give it more training rows or fewer hidden units.",
+      "checks": [
+        "An option blaming a learning rate that is too large catches the mix-up with step 1's sign of that, a loss that bounces or climbs from the first epoch; here the training loss falls smoothly.",
+        "An option saying to train for more epochs because training loss is still falling catches the pitfall of reading the training curve alone, which hides the rise in validation loss.",
+        "An option saying to check the test set's loss to decide catches the pitfall of choosing with the test set, which is held out and used once at the end."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t8",
+      "kind": "python",
+      "title": "Evaluation",
+      "step": 7,
+      "idea": "The reader writes digit_scores(y_true, y_pred, digit), which treats digit as the positive class against all the others, counts TP, FP and FN over two equal-length lists of labels, and returns the tuple (precision, recall, f1), with F1 the harmonic mean 2 * p * r / (p + r). For y_true = [5, 5, 5, 3, 3, 8] and y_pred = [5, 5, 3, 5, 3, 8], digit_scores(y_true, y_pred, 5) returns about (0.667, 0.667, 0.667); a run where precision and recall differ shows the order.",
+      "checks": [
+        "precision is TP / (TP + FP) and recall is TP / (TP + FN), in that order in the tuple, on a case where they differ; swapping them fails it.",
+        "f1 is the harmonic mean, on a case with precision 1.0 and recall 0.5 giving about 0.667; the plain average gives 0.75.",
+        "Only rows where both labels equal digit count as true positives; counting every correct prediction as a hit, which is accuracy, inflates both scores on rows of other digits and would hide the always-\"not 5\" trap."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t9",
+      "kind": "choice",
+      "title": "Improvement and the test set",
+      "step": 8,
+      "idea": "The results table holds the 784-128-10 model and the deeper 784-128-64-10 model with their validation loss and accuracy on the same 6,000 rows, and a teammate has the test images loaded. The question asks what to do next. The right answer: keep the model with the lower validation loss, then evaluate only that model on the test set once and report that figure.",
+      "checks": [
+        "An option evaluating both models on the test set and keeping the higher test accuracy catches the pitfall of choosing with the test set, which turns it into a second validation set.",
+        "An option reading the test score and then adding a layer or more epochs to raise it catches the page's warning about changing the model after reading the test score.",
+        "An option trying a second hidden layer and a new learning rate together in the next run catches the page's rule of changing one thing, so that any difference has one cause."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    }
+  ]
+}

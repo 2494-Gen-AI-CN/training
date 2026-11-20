@@ -1,0 +1,150 @@
+{
+  "day": "w07d5",
+  "page": "docs/weeks/week-07/day-5-improving-a-model-and-stretch-builds.html",
+  "assessed": "2026-11-19",
+  "verdict": "full",
+  "summary": "Each step's rule rebuilds in a few lines of plain Python on lists and dictionaries (the best epoch from a history, dropout's mask and scaling, one change per run, the kept row, clipped noise, padded word ids), while nothing can run TensorFlow, NumPy, pandas or scikit-learn in the page, so no task trains or scores a real model.",
+  "steps": [
+    {
+      "step": 0,
+      "title": "Part A, read first: the curves and the wrong examples, before changing anything",
+      "suitable": true,
+      "reason": "TensorFlow is not in the runtime, but History.history is a plain dictionary of lists, and finding the epoch of the lowest validation loss is a return value a check can read. The page names two mistakes a check catches: forgetting the + 1 that turns a position counting from 0 into an epoch, and reading the training list instead of its val_ twin.",
+      "task": "t1"
+    },
+    {
+      "step": 1,
+      "title": "The levers: what each is for and the sign that says to pull it",
+      "suitable": true,
+      "reason": "The lever table is lookup, but dropout's rule is behaviour that runs in plain Python once the random mask is given as a list: dropped values become 0, kept ones are scaled by 1 / (1 - rate), and with training=False everything passes through. The page names forgetting the scaling and expecting dropout to act at predict time.",
+      "task": "t2"
+    },
+    {
+      "step": 2,
+      "title": "One change at a time: measured on the same validation data",
+      "suitable": true,
+      "reason": "The rule that each run changes exactly one setting against the run before it, seed and validation rows included, shows up as a return value or a raised error over two settings dictionaries. The noise threshold and the test-set-once rule are judgements with no exact number on the page; if the trainer prefers them, a choice task on scoring the test set after every change fits instead.",
+      "task": "t3"
+    },
+    {
+      "step": 3,
+      "title": "Worked example: one improvement on the digit network",
+      "suitable": true,
+      "reason": "Picking the kept model from the results table, the row with the lowest validation loss, is a return value over a list of dictionaries shaped like the page's results list. The page names picking by the test number and assuming the newest change is the kept one; the TFLearn keep_prob conversion is one subtraction, too small for a task of its own.",
+      "task": "t4"
+    },
+    {
+      "step": 4,
+      "title": "Part B, build 1: a denoising autoencoder",
+      "suitable": true,
+      "reason": "The model needs TensorFlow, but making the noisy input is plain arithmetic on a list of pixels with the noise passed in, drawn once: pixel plus 0.3 times noise, clipped to 0 to 1. The page's named mistakes, no clip and a noisy target (which an in-place change of the clean list produces), each fail a check.",
+      "task": "t5"
+    },
+    {
+      "step": 5,
+      "title": "Part B, build 2: text with TextVectorization and Embedding",
+      "suitable": true,
+      "reason": "TextVectorization's output, a fixed-length list of word ids with 0 for padding and 1 for an unknown word, rebuilds in plain Python with split and a vocabulary list. The page and the brief name leaving output_sequence_length unset, so lengths do not match; the Embedding layer and what its vectors mean stay out, as the anti-spoiler row defers similarity to week 8.",
+      "task": "t6"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "kind": "python",
+      "title": "Reading the curves",
+      "step": 0,
+      "idea": "The reader writes best_epoch(history), where history is a dictionary shaped like History.history with lists under \"loss\" and \"val_loss\", and returns the epoch, counting from 1, at which the validation loss is lowest. For a 20-epoch history whose smallest val_loss sits at position 11 it returns 12.",
+      "checks": [
+        "A history whose lowest validation loss is at position 11 returns 12; an answer that leaves out the + 1 returns 11.",
+        "A history whose training loss falls for all 20 epochs while validation loss turns up after epoch 12 still returns 12; an answer that reads \"loss\" instead of \"val_loss\" returns 20."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t2",
+      "kind": "python",
+      "title": "Dropout",
+      "step": 1,
+      "idea": "The reader writes dropout(values, keep, rate, training): values is a list of numbers, keep a list of True or False of the same length standing in for the random draw, and the function returns a new list. With training true, a kept value is multiplied by 1 / (1 - rate) and a dropped one becomes 0.0; with training false the values come back unchanged. dropout([1.0, 1.0], [True, False], 0.2, True) returns [1.25, 0.0].",
+      "checks": [
+        "With rate 0.2 and training true, kept ones come back as 1.25 and dropped ones as 0.0; an answer that zeroes the dropped values but does not scale the rest returns 1.0.",
+        "With training false the values come back unchanged even when keep holds False entries; an answer that applies the mask at predict time returns zeros.",
+        "With rate 0.5 a kept 3.0 comes back as 6.0; an answer that hard-codes the 1.25 from the page's example fails."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t3",
+      "kind": "python",
+      "title": "One change at a time",
+      "step": 2,
+      "idea": "The reader writes the_one_change(before, after): two dictionaries of a run's settings with the same keys, such as \"units\", \"dropout\", \"epochs\", \"seed\" and \"val_rows\", and the function returns the name of the one setting that differs, or raises ValueError when none or more than one differs. With only \"dropout\" going from 0.0 to 0.2 it returns \"dropout\".",
+      "checks": [
+        "Two runs that differ only in \"dropout\" return \"dropout\".",
+        "Two runs that differ in \"units\" and \"dropout\" raise ValueError, the page's case of a wider layer and dropout changed together; an answer that returns the first difference it finds fails.",
+        "Two runs that differ in \"dropout\" and \"seed\" raise ValueError; an answer that skips the seed as if it were not part of the comparison returns \"dropout\".",
+        "Two identical runs raise ValueError; an answer that returns None or an empty string when nothing changed fails."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t4",
+      "kind": "python",
+      "title": "Choosing the kept model",
+      "step": 3,
+      "idea": "The reader writes kept_model(results), where results is a list of dictionaries shaped like the page's results table, each with \"model\", \"val_loss\" and \"val_accuracy\", and returns the \"model\" name of the row with the lowest validation loss. For the page's two rows it returns \"dropout 0.2\".",
+      "checks": [
+        "When the lowest val_loss is in the first row of three, that row's name comes back; an answer that keeps the newest row, the last change tried, fails.",
+        "Rows that also carry a \"test_accuracy\" key are still chosen by val_loss; an answer that picks the best test number, the brief's pitfall of choosing on the test set, fails.",
+        "An answer that takes the largest val_loss instead of the smallest returns the worse model and fails the page's two-row table."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t5",
+      "kind": "python",
+      "title": "Noisy input, clean target",
+      "step": 4,
+      "idea": "The reader writes add_noise(pixels, noise, scale=0.3): pixels is a list of values between 0 and 1, noise a list of numbers of the same length drawn once beforehand, and the function returns a new list with each pixel plus scale times its noise, clipped to 0.0 at the bottom and 1.0 at the top. add_noise([0.9, 0.1, 0.5], [1.0, -1.0, 0.0]) returns [1.0, 0.0, 0.5].",
+      "checks": [
+        "A sum above 1 comes back as 1.0 and a sum below 0 as 0.0; an answer without the clip returns 1.2 and -0.2.",
+        "A sum that stays inside 0 to 1 comes back as pixel plus scale times noise; an answer that adds the noise without the scale fails.",
+        "The caller's pixels list is left as it was, so the clean target survives; an answer that writes the noise into it in place leaves both arrays noisy, as fit(x_noisy, x_noisy) would."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t6",
+      "kind": "python",
+      "title": "Text to word ids",
+      "step": 5,
+      "idea": "The reader writes to_ids(text, vocabulary, length): vocabulary is a list that starts with \"\" and \"[UNK]\", the text is split on spaces, and the function returns exactly length ids, each word's position in the vocabulary, 1 for a word not in it, padded with 0 at the end or cut to length. With vocabulary [\"\", \"[UNK]\", \"the\", \"bike\", \"car\"], to_ids(\"the bike hit the car\", vocabulary, 7) returns [2, 3, 1, 2, 4, 0, 0].",
+      "checks": [
+        "A post shorter than length is padded with 0 up to length; an answer that returns only the words' ids, as an unset output_sequence_length would, comes back too short.",
+        "A post longer than length is cut to its first length ids; an answer that only pads returns a list too long.",
+        "A word missing from the vocabulary becomes 1, the [UNK] id; an answer that drops the word or lets vocabulary.index raise ValueError fails.",
+        "A known word becomes its position in the vocabulary, so \"the\" is 2; an answer that counts positions from 1 or skips the two reserved entries is off."
+      ],
+      "approved": null,
+      "q": "",
+      "starter": "",
+      "tests": ""
+    }
+  ]
+}
