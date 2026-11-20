@@ -1,8 +1,8 @@
 {
   "day": "w07d5",
   "page": "docs/weeks/week-07/day-5-improving-a-model-and-stretch-builds.html",
-  "assessed": "2026-11-19",
-  "verdict": "partial",
+  "assessed": "2026-11-20",
+  "verdict": "full",
   "summary": "Each step's rule rebuilds in a few lines of plain Python on lists and dictionaries (the best epoch from a history, dropout's mask and scaling, one change per run, the kept row, clipped noise, padded word ids), while nothing can run TensorFlow, NumPy, pandas or scikit-learn in the page, so no task trains or scores a real model.",
   "steps": [
     {
@@ -36,23 +36,23 @@
     {
       "step": 4,
       "title": "When stuck: the symptom, its likely cause and the first check",
-      "suitable": false,
-      "reason": "Not assessed by the suitability stage: this lookup step (two symptom tables) was added to the page on 2026-11-20, after the tasks were approved and built, and it carries no task by instruction. No task is proposed or approved for it.",
-      "task": null
+      "suitable": true,
+      "reason": "Proposed by hand on 2026-11-20, after the step was added to the page (D-0104), and approved by the trainer in session. Three of the step's five error rows come from a loss that does not match the form of the labels or the output layer. The rule that pairs them is a small lookup with one special case, two classes, and each wrong pairing the table names fails a check.",
+      "task": "t5"
     },
     {
       "step": 5,
       "title": "Part B, build 1: a denoising autoencoder",
       "suitable": true,
       "reason": "The model needs TensorFlow, but making the noisy input is plain arithmetic on a list of pixels with the noise passed in, drawn once: pixel plus 0.3 times noise, clipped to 0 to 1. The page's named mistakes, no clip and a noisy target (which an in-place change of the clean list produces), each fail a check.",
-      "task": "t5"
+      "task": "t6"
     },
     {
       "step": 6,
       "title": "Part B, build 2: text with TextVectorization and Embedding",
       "suitable": true,
       "reason": "TextVectorization's output, a fixed-length list of word ids with 0 for padding and 1 for an unknown word, rebuilds in plain Python with split and a vocabulary list. The page and the brief name leaving output_sequence_length unset, so lengths do not match; the Embedding layer and what its vectors mean stay out, as the anti-spoiler row defers similarity to week 8.",
-      "task": "t6"
+      "task": "t7"
     }
   ],
   "tasks": [
@@ -123,6 +123,23 @@
     {
       "id": "t5",
       "kind": "python",
+      "title": "Matching the loss to the labels",
+      "step": 4,
+      "idea": "The reader writes pick_loss(label_form, n_classes) and returns a tuple of the loss name, the number of output units and the output activation, following the week's builds: integer labels take sparse_categorical_crossentropy, one-hot labels take categorical_crossentropy, both with one softmax unit per class, and two classes with integer 0 and 1 labels take one sigmoid unit with binary_crossentropy.",
+      "checks": [
+        "Integer labels over ten classes return the sparse loss with ten softmax units; an answer that swaps the sparse and the one-hot loss fails.",
+        "One-hot labels over three classes return categorical_crossentropy; an answer that always returns the sparse loss fails.",
+        "Integer labels over two classes return binary_crossentropy with one sigmoid unit; a one-unit softmax, the table's \"always return the value 1\" row, fails.",
+        "Integer labels over three classes return three units; an answer with the unit count fixed at ten fails."
+      ],
+      "approved": true,
+      "q": "Write <code>pick_loss(label_form, n_classes)</code>. <code>label_form</code> is <code>\"integer\"</code> when each label is one whole number, or <code>\"one-hot\"</code> when each label is a row of zeros with a single 1. Return a tuple of three values: the loss name, the number of units in the output layer and its activation. Follow the week's builds. Integer labels take <code>\"sparse_categorical_crossentropy\"</code> and one-hot labels take <code>\"categorical_crossentropy\"</code>, each with one <code>\"softmax\"</code> unit per class. The one special case is integer labels with two classes: they take <code>\"binary_crossentropy\"</code> with 1 unit and <code>\"sigmoid\"</code>. For example, <code>pick_loss(\"integer\", 10)</code> returns <code>(\"sparse_categorical_crossentropy\", 10, \"softmax\")</code>.",
+      "starter": "def pick_loss(label_form, n_classes):\n    ...",
+      "tests": "assert pick_loss(\"integer\", 10) == (\"sparse_categorical_crossentropy\", 10, \"softmax\"), \"integer labels over ten classes take the sparse loss and ten softmax units\"\nassert pick_loss(\"one-hot\", 3) == (\"categorical_crossentropy\", 3, \"softmax\"), \"one-hot labels take categorical_crossentropy\"\nassert pick_loss(\"integer\", 2) == (\"binary_crossentropy\", 1, \"sigmoid\"), \"two classes with 0 and 1 labels take one sigmoid unit and binary_crossentropy\"\nassert pick_loss(\"integer\", 3) == (\"sparse_categorical_crossentropy\", 3, \"softmax\"), \"the unit count follows the number of classes\""
+    },
+    {
+      "id": "t6",
+      "kind": "python",
       "title": "Noisy input, clean target",
       "step": 5,
       "idea": "The reader writes add_noise(pixels, noise, scale=0.3): pixels is a list of values between 0 and 1, noise a list of numbers of the same length drawn once beforehand, and the function returns a new list with each pixel plus scale times its noise, clipped to 0.0 at the bottom and 1.0 at the top. add_noise([0.9, 0.1, 0.5], [1.0, -1.0, 0.0]) returns [1.0, 0.0, 0.5].",
@@ -137,7 +154,7 @@
       "tests": "assert add_noise([0.9, 0.1], [1.0, -1.0]) == [1.0, 0.0], \"clips a sum above 1 to 1.0 and a sum below 0 to 0.0\"\nassert [round(p, 6) for p in add_noise([0.5, 0.2], [1.0, 1.0]) + add_noise([0.25], [0.5], 0.5)] == [0.8, 0.5, 0.5], \"a sum inside 0 to 1 is the pixel plus scale times its noise\"\nclean = [0.5, 0.9]\nnoisy = add_noise(clean, [1.0, 1.0])\nassert clean == [0.5, 0.9], \"leaves the caller's pixels list as it was, so the clean target survives\""
     },
     {
-      "id": "t6",
+      "id": "t7",
       "kind": "python",
       "title": "Text to word ids",
       "step": 6,
