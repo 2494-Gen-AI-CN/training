@@ -10,125 +10,61 @@
       "title": "Loading a dataset from code",
       "suitable": true,
       "reason": "The four routes need packages and a network, so no Python task fits, and the route names alone are recall. The step still teaches a judgement with named wrong ways: a hand-uploaded file vanishes on a reset and nobody else can rerun it, and a CSV link must open the raw file, not a page that shows it. A choice question on which loading line makes the notebook rerunnable fits.",
-      "task": "t4"
+      "task": "t1"
     },
     {
       "step": 1,
       "title": "Looking at the data before modelling",
       "suitable": true,
       "reason": "The pandas calls do not run in the browser, but the step's point that uneven classes make plain accuracy mislead shows up as a return value: the accuracy of a model that always answers the most common class, about 91% for 5 against not-5 on MNIST. Counting labels with a dict is standard library.",
-      "task": "t5"
+      "task": "t2"
     },
     {
       "step": 2,
       "title": "Seeds and Runtime > Run all on a fresh runtime",
       "suitable": true,
       "reason": "The seed call is TensorFlow's and the check is a Colab menu, so no Python task fits; Python's own random.seed is not taught on the page. The step names three causes a fresh runtime catches (out-of-order cells, a variable from a deleted cell, an uploaded file) and what seeds cannot fix, so a choice question on a Run all that stops with a NameError fits.",
-      "task": "t6"
+      "task": "t3"
     },
     {
       "step": 3,
       "title": "The test set used once, and a results table kept as you go",
       "suitable": true,
       "reason": "The rule that every fill for blanks is learned from the training rows only shows up as a return value: a function that fills blanks in other rows with the mean of the training rows' values. A fill computed over all the rows, the leak the page and the brief name, fails a check.",
-      "task": "t7"
+      "task": "t4"
     },
     {
       "step": 4,
       "title": "Saving the .keras file, the README and a short deck",
       "suitable": true,
       "reason": "Saving and reloading need TensorFlow, and the README table is a convention, but the step names how a hand-in file goes wrong: left in the Colab session it vanishes on a reset, and the path must end in .keras; the check is a reload compared on predictions. A choice question on handing in the saved model fits.",
-      "task": "t8"
+      "task": "t5"
     },
     {
       "step": 5,
       "title": "What fit does on every batch",
       "suitable": true,
       "reason": "TensorFlow is not in the runtime, but the step's count of weight updates (one per batch, a short last batch when the rows do not divide evenly, 422 batches and 844 updates for two epochs) is plain arithmetic a function returns. Floor division (421 batches) and one update per epoch are the wrong readings the page rules out.",
-      "task": "t1"
+      "task": "t6"
     },
     {
       "step": 6,
       "title": "The same loop written by hand with tf.GradientTape",
       "suitable": true,
       "reason": "No check can run a tape in the browser, and the batch slicing is already practised in t1, but the step names a judgement the reader can get wrong: the loss computed outside the with block gives None gradients, while the short last batch, the uncompiled model and training=True are named as harmless here. A choice question on a broken hand loop fits.",
-      "task": "t2"
+      "task": "t7"
     },
     {
       "step": 7,
       "title": "TensorBoard: comparing two runs",
       "suitable": true,
       "reason": "TensorBoard runs only in Colab, so no Python task fits, but the page names what tangles the overlay (a rerun into the same folder) and the fix (one folder per run under one parent, --logdir on the parent), and the brief names reaching for TFLearn. A choice question on one tangled line fits.",
-      "task": "t3"
+      "task": "t8"
     }
   ],
   "tasks": [
     {
       "id": "t1",
-      "kind": "python",
-      "title": "What fit does on every batch",
-      "step": 5,
-      "idea": "The reader writes count_updates(n_rows, batch_size, epochs), which returns how many times the weights change: one update per batch, with a short last batch when n_rows is not a multiple of batch_size. count_updates(54000, 128, 2) returns 844.",
-      "checks": [
-        "count_updates(54000, 128, 2) returns 844; an answer that drops the short last batch with floor division returns 842.",
-        "count_updates(256, 128, 3) returns 6; an answer that always adds one batch for leftover rows returns 9 when the rows divide evenly.",
-        "count_updates(54000, 128, 1) returns 422; an answer that counts one update per epoch returns 1."
-      ],
-      "approved": true,
-      "q": "Write <code>count_updates(n_rows, batch_size, epochs)</code>, which returns how many times the weights change when <code>fit</code> trains on <code>n_rows</code> rows for <code>epochs</code> epochs with that <code>batch_size</code>. The weights change once per batch, and when <code>n_rows</code> is not a multiple of <code>batch_size</code> the leftover rows make one last, shorter batch. For example, <code>count_updates(54000, 128, 2)</code> returns <code>844</code>.",
-      "starter": "def count_updates(n_rows, batch_size, epochs):\n    ...",
-      "tests": "assert count_updates(54000, 128, 2) == 844, \"the short last batch of each epoch is an update too\"\nassert count_updates(256, 128, 3) == 6, \"rows that divide evenly make no extra batch\"\nassert count_updates(54000, 128, 1) == 422, \"the weights change once per batch, not once per epoch\""
-    },
-    {
-      "id": "t2",
-      "kind": "choice",
-      "title": "The loop written by hand",
-      "step": 6,
-      "idea": "A hand-written loop has the forward pass inside with tf.GradientTape() as tape:, but loss = loss_fn(yb, preds) sits on the line after the block, and apply_gradients fails on the first batch. The right answer: the tape never saw the loss, so tape.gradient returns None; move the loss line inside the block.",
-      "checks": [
-        "The last batch holds only 112 rows and breaks the loop, so add code for it: catches missing the page's point that a numpy slice past the end stops at the end and the loop needs no special code.",
-        "The model was never compiled, so call compile before the loop: catches the page's line that a hand loop trains an uncompiled model and compile is needed only for evaluate and fit.",
-        "The forward pass lacks training=True, so add it: catches the page's note that the flag changes the output only for layers such as Dropout and BatchNormalization, which this network does not have."
-      ],
-      "approved": true,
-      "q": "A hand-written loop for the 784-128-10 network runs <code>preds = loop_model(xb)</code> inside <code>with tf.GradientTape() as tape:</code>, but <code>loss = loss_fn(yb, preds)</code> sits on the line after the block ends. <code>apply_gradients</code> fails on the first batch. What is wrong?",
-      "options": [
-        "The last batch holds only 112 rows, so the loop needs extra code to handle that short batch.",
-        "The model was never compiled, so call <code>compile</code> on it before the loop starts.",
-        "The tape never saw the loss, so <code>tape.gradient</code> returns <code>None</code>; move the loss line inside the block.",
-        "The forward pass lacks <code>training=True</code>, so add it to the <code>loop_model</code> call."
-      ],
-      "answer": 2,
-      "explain": "The tape records only what runs inside its <code>with</code> block, so it never saw a loss computed after the block and <code>tape.gradient</code> returns <code>None</code>. A hand loop can train an uncompiled model, and <code>training=True</code> changes nothing here, since this network has no <code>Dropout</code> or <code>BatchNormalization</code> layer.",
-      "starter": "",
-      "tests": ""
-    },
-    {
-      "id": "t3",
-      "kind": "choice",
-      "title": "TensorBoard: comparing two runs",
-      "step": 7,
-      "idea": "After a change, the plain fit is run again with log_dir=\"logs/compare/plain\", and the Scalars tab now shows one tangled line where two runs were expected. The right answer: the second run's events landed on top of the first; give each run its own folder under logs/compare and point --logdir at the parent.",
-      "checks": [
-        "Add histogram_freq=1 so TensorBoard separates the runs: catches confusing the weight histograms the setting writes with keeping runs apart, which is the folder's job.",
-        "Rebuild the model in TFLearn with tensorboard_verbose=3: catches the brief's pitfall of reaching for TFLearn from an old tutorial, which is unmaintained and does not import on Colab's TensorFlow.",
-        "Restart the runtime so the old events clear and run again: catches the page's warning that the logs folder disappears when the runtime resets, which loses both runs rather than separating them."
-      ],
-      "approved": true,
-      "q": "After a change to the plain network, you rerun its fit with its callback's <code>log_dir</code> still <code>\"logs/compare/plain\"</code>. TensorBoard, opened with <code>--logdir logs/compare</code>, now draws the plain run as one tangled line where you expected the old and new runs as two. What fixes it?",
-      "options": [
-        "Raise the callback's <code>histogram_freq</code>, so TensorBoard can tell the two runs apart.",
-        "Rebuild the network in TFLearn with <code>tensorboard_verbose=3</code>, so each run logs on its own.",
-        "Restart the Colab runtime so the old events clear, then run the changed fit once more.",
-        "Give each run its own folder under <code>logs/compare</code>, so the rerun no longer writes on top of the first."
-      ],
-      "answer": 3,
-      "explain": "Rerunning a fit into the same folder adds the second run's events on top of the first, so one line turns into a tangle. With one folder per run under one parent, and <code>--logdir</code> on that parent, the Scalars tab draws each run as its own line; <code>histogram_freq</code> only sets how often the weights' histograms are written.",
-      "starter": "",
-      "tests": ""
-    },
-    {
-      "id": "t4",
       "kind": "choice",
       "title": "Loading a dataset from code",
       "step": 0,
@@ -152,7 +88,7 @@
       "tests": ""
     },
     {
-      "id": "t5",
+      "id": "t2",
       "kind": "python",
       "title": "Looking at the data",
       "step": 1,
@@ -168,7 +104,7 @@
       "tests": "assert majority_accuracy([\"5\"] + [\"not 5\"] * 10) == 10 / 11, \"always answering the common class still scores high when one class is rare\"\nassert majority_accuracy([\"Adelie\"] * 152 + [\"Gentoo\"] * 124 + [\"Chinstrap\"] * 68) == 152 / 344, \"returns the share of rows answered right, not a count\"\nassert majority_accuracy([\"Gentoo\", \"Chinstrap\", \"Adelie\", \"Adelie\", \"Adelie\"]) == 3 / 5, \"finds the most common label wherever it sits in the list\""
     },
     {
-      "id": "t6",
+      "id": "t3",
       "kind": "choice",
       "title": "Seeds and Run all",
       "step": 2,
@@ -192,7 +128,7 @@
       "tests": ""
     },
     {
-      "id": "t7",
+      "id": "t4",
       "kind": "python",
       "title": "The test set used once",
       "step": 3,
@@ -208,7 +144,7 @@
       "tests": "assert fill_from_training([1.0, None, 3.0], [None, 10.0]) == [2.0, 10.0], \"the fill is the mean of the training rows only\"\nassert fill_from_training([2.0, None, None, 4.0], [None]) == [3.0], \"blanks in the training rows are left out of the mean\"\nassert fill_from_training([1.0, 3.0], [4.0, None, 10.0]) == [4.0, 2.0, 10.0], \"numbers already in rows stay as they were\""
     },
     {
-      "id": "t8",
+      "id": "t5",
       "kind": "choice",
       "title": "Saving the .keras file",
       "step": 4,
@@ -226,6 +162,70 @@
       ],
       "answer": 2,
       "explain": "<code>model.save</code> needs a path that ends in <code>.keras</code>, and predictions that agree on the same rows after a reload with <code>tf.keras.models.load_model</code> show the file holds the whole trained model. Colab loses the file when the runtime resets, so the downloaded copy is the hand-in.",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t6",
+      "kind": "python",
+      "title": "What fit does on every batch",
+      "step": 5,
+      "idea": "The reader writes count_updates(n_rows, batch_size, epochs), which returns how many times the weights change: one update per batch, with a short last batch when n_rows is not a multiple of batch_size. count_updates(54000, 128, 2) returns 844.",
+      "checks": [
+        "count_updates(54000, 128, 2) returns 844; an answer that drops the short last batch with floor division returns 842.",
+        "count_updates(256, 128, 3) returns 6; an answer that always adds one batch for leftover rows returns 9 when the rows divide evenly.",
+        "count_updates(54000, 128, 1) returns 422; an answer that counts one update per epoch returns 1."
+      ],
+      "approved": true,
+      "q": "Write <code>count_updates(n_rows, batch_size, epochs)</code>, which returns how many times the weights change when <code>fit</code> trains on <code>n_rows</code> rows for <code>epochs</code> epochs with that <code>batch_size</code>. The weights change once per batch, and when <code>n_rows</code> is not a multiple of <code>batch_size</code> the leftover rows make one last, shorter batch. For example, <code>count_updates(54000, 128, 2)</code> returns <code>844</code>.",
+      "starter": "def count_updates(n_rows, batch_size, epochs):\n    ...",
+      "tests": "assert count_updates(54000, 128, 2) == 844, \"the short last batch of each epoch is an update too\"\nassert count_updates(256, 128, 3) == 6, \"rows that divide evenly make no extra batch\"\nassert count_updates(54000, 128, 1) == 422, \"the weights change once per batch, not once per epoch\""
+    },
+    {
+      "id": "t7",
+      "kind": "choice",
+      "title": "The loop written by hand",
+      "step": 6,
+      "idea": "A hand-written loop has the forward pass inside with tf.GradientTape() as tape:, but loss = loss_fn(yb, preds) sits on the line after the block, and apply_gradients fails on the first batch. The right answer: the tape never saw the loss, so tape.gradient returns None; move the loss line inside the block.",
+      "checks": [
+        "The last batch holds only 112 rows and breaks the loop, so add code for it: catches missing the page's point that a numpy slice past the end stops at the end and the loop needs no special code.",
+        "The model was never compiled, so call compile before the loop: catches the page's line that a hand loop trains an uncompiled model and compile is needed only for evaluate and fit.",
+        "The forward pass lacks training=True, so add it: catches the page's note that the flag changes the output only for layers such as Dropout and BatchNormalization, which this network does not have."
+      ],
+      "approved": true,
+      "q": "A hand-written loop for the 784-128-10 network runs <code>preds = loop_model(xb)</code> inside <code>with tf.GradientTape() as tape:</code>, but <code>loss = loss_fn(yb, preds)</code> sits on the line after the block ends. <code>apply_gradients</code> fails on the first batch. What is wrong?",
+      "options": [
+        "The last batch holds only 112 rows, so the loop needs extra code to handle that short batch.",
+        "The model was never compiled, so call <code>compile</code> on it before the loop starts.",
+        "The tape never saw the loss, so <code>tape.gradient</code> returns <code>None</code>; move the loss line inside the block.",
+        "The forward pass lacks <code>training=True</code>, so add it to the <code>loop_model</code> call."
+      ],
+      "answer": 2,
+      "explain": "The tape records only what runs inside its <code>with</code> block, so it never saw a loss computed after the block and <code>tape.gradient</code> returns <code>None</code>. A hand loop can train an uncompiled model, and <code>training=True</code> changes nothing here, since this network has no <code>Dropout</code> or <code>BatchNormalization</code> layer.",
+      "starter": "",
+      "tests": ""
+    },
+    {
+      "id": "t8",
+      "kind": "choice",
+      "title": "TensorBoard: comparing two runs",
+      "step": 7,
+      "idea": "After a change, the plain fit is run again with log_dir=\"logs/compare/plain\", and the Scalars tab now shows one tangled line where two runs were expected. The right answer: the second run's events landed on top of the first; give each run its own folder under logs/compare and point --logdir at the parent.",
+      "checks": [
+        "Add histogram_freq=1 so TensorBoard separates the runs: catches confusing the weight histograms the setting writes with keeping runs apart, which is the folder's job.",
+        "Rebuild the model in TFLearn with tensorboard_verbose=3: catches the brief's pitfall of reaching for TFLearn from an old tutorial, which is unmaintained and does not import on Colab's TensorFlow.",
+        "Restart the runtime so the old events clear and run again: catches the page's warning that the logs folder disappears when the runtime resets, which loses both runs rather than separating them."
+      ],
+      "approved": true,
+      "q": "After a change to the plain network, you rerun its fit with its callback's <code>log_dir</code> still <code>\"logs/compare/plain\"</code>. TensorBoard, opened with <code>--logdir logs/compare</code>, now draws the plain run as one tangled line where you expected the old and new runs as two. What fixes it?",
+      "options": [
+        "Raise the callback's <code>histogram_freq</code>, so TensorBoard can tell the two runs apart.",
+        "Rebuild the network in TFLearn with <code>tensorboard_verbose=3</code>, so each run logs on its own.",
+        "Restart the Colab runtime so the old events clear, then run the changed fit once more.",
+        "Give each run its own folder under <code>logs/compare</code>, so the rerun no longer writes on top of the first."
+      ],
+      "answer": 3,
+      "explain": "Rerunning a fit into the same folder adds the second run's events on top of the first, so one line turns into a tangle. With one folder per run under one parent, and <code>--logdir</code> on that parent, the Scalars tab draws each run as its own line; <code>histogram_freq</code> only sets how often the weights' histograms are written.",
       "starter": "",
       "tests": ""
     }
