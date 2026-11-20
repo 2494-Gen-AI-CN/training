@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w07d3">
+<title>W7·D3 — Functional API, layers, batch norm, saving &amp; two full builds | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261119">
+<script src="../../assets/js/theme.js?v=20261119"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="../../exit-criteria/index.html">Exit criteria</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>Functional API, layers, batch norm, saving &amp; two full builds</h1>
+        <div class="meta">
+          <span><b>Week 7</b> · Day 3</span>
+          <span>Wed Nov 25, 2026</span>
+          <span>TensorFlow</span>
+          <span><b>~40 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span class="verified">Sources checked 2026-11-19 · colab-python 3.13.18 · tensorflow 2.21.0 · keras 3.13.2 · numpy 2.4.6 · pandas 2.2.3 · scikit-learn 1.6.1 · seaborn 0.13.2 · matplotlib 3.10.0</span>
+          <span class="notebook"><a href="https://colab.research.google.com/github/2494-Gen-AI-CN/demos/blob/main/notebooks/week-07/03_wednesday_functional_api_layers_and_custom_training.ipynb" target="_blank" rel="noopener">Open the notebook in Colab</a></span>
+        </div>
+        <p class="summary">Tuesday's page built every model as a straight <code>Sequential</code> stack, and this page
+        assumes that idea: layers in a list, each feeding the next. It teaches the Functional API, the ready-made layers a
+        team picks by the shapes they read, batch normalization measured as an improvement attempt, and saving a model to a
+        <code>.keras</code> file. Between them sit two complete builds in a project's order: a CNN on handwritten digits
+        with early stopping and dropout, and a penguin table with blanks and category columns, classified and then
+        regressed. Afterwards you can say when <code>Sequential</code> is not enough, work out a CNN's shapes and
+        parameter count, and walk an interviewer through either build.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="0">
+        <div class="tag">Functional composition</div>
+        <h2>Functional composition: layers called like functions</h2>
+        <p>Every model so far this week was a straight stack built with <code>tf.keras.Sequential</code>: each layer
+        feeds the next one. The Functional API builds the same networks a second way, and it can also build
+        shapes where the data branches and joins.</p>
+        <h3>Inputs, layer calls and <code>Model</code></h3>
+        <p>The Functional API builds a model in three moves. You create an input with <code>tf.keras.Input</code>, call
+        each layer on the result of the one before as if the layer were a function, and hand the first and last results to
+        <code>tf.keras.Model(inputs, outputs)</code>.<sup class="cite"><a href="#src-1">1</a></sup> Calling a layer on a
+        Keras tensor returns a new Keras tensor, which is why the calls chain.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <p>A Keras tensor is a placeholder. It records a shape and the layers that led to it, and it holds no numbers yet.
+        The calls draw a map of the network; real data flows along that map later.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>import numpy as np
+import tensorflow as tf
+
+inputs = tf.keras.Input(shape=(784,))
+x = tf.keras.layers.Dense(128, activation="relu")(inputs)
+outputs = tf.keras.layers.Dense(10, activation="softmax")(x)
+functional_model = tf.keras.Model(inputs, outputs)
+
+print(x.shape, outputs.shape)
+print(functional_model.count_params())
+print(functional_model(np.zeros((2, 784), dtype="float32")).shape)</code></pre>
+<pre class="out">(None, 128) (None, 10)
+101770
+(2, 10)</pre>
+        <p>The line that does the work is the one starting <code>x =</code>. <code>Dense(128, activation="relu")</code>
+        makes the layer, and the <code>(inputs)</code> straight after it calls the layer on the input. The first output
+        line shows what each call returned: a placeholder with 128 values per row, then one with 10. <code>None</code>
+        stands for the batch size, which is not known until data arrives.</p>
+        <p>The count of 101,770 is the same as Monday's Sequential digit network. A <code>Dense</code> layer on n inputs
+        with u units holds n × u + u numbers.<sup class="cite"><a href="#src-2">2</a></sup> Here that is 784 × 128 + 128 =
+        100,480 for the hidden layer and 128 × 10 + 10 = 1,290 for the output layer.</p>
+        <p>The last line runs the recorded map on
+        two rows of zeros and gets two rows of ten probabilities back, which is why the same layer calls work on real
+        data later.</p>
+        <p><code>functional_model.summary()</code> prints the same facts as a table, one row per layer with its output shape and
+        parameter count. For this network the Functional table and the Sequential table match row for
+        row.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <table>
+          <thead><tr><th></th><th><code>Sequential</code></th><th>Functional API</th></tr></thead>
+          <tbody>
+            <tr><td>Shapes it builds</td><td>A plain stack with one input tensor and one output tensor<sup class="cite"><a href="#src-3">3</a></sup></td><td>Branches, merges, several inputs or outputs<sup class="cite"><a href="#src-1">1</a></sup></td></tr>
+            <tr><td>How it is written</td><td>A list of layers</td><td>An input, layer calls, then <code>Model(inputs, outputs)</code></td></tr>
+            <tr><td>Spotted in code by</td><td><code>tf.keras.Sequential([...])</code></td><td><code>layer(...)(x)</code> and <code>tf.keras.Model(inputs, outputs)</code></td></tr>
+          </tbody>
+        </table>
+        <p>The trade-off is length. <code>Sequential</code> is shorter and is enough for a straight stack, so a team reaches
+        for the Functional API only when the model branches, merges or has several inputs or
+        outputs.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <h3>A skip connection: a shape <code>Sequential</code> cannot build</h3>
+        <p>A skip connection carries a layer's input past one or more layers and joins it to a later layer's output.
+        <code>tf.keras.layers.Concatenate</code> does the joining: it takes a list of tensors and lays them side by side
+        along the last axis, the axis that holds each row's values.<sup class="cite"><a href="#src-4">4</a></sup> Below,
+        the raw 784 pixels skip past the hidden layer and are joined to its 128 outputs, so the output layer reads both the
+        image and what the hidden layer made of it.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>inputs = tf.keras.Input(shape=(784,))
+hidden = tf.keras.layers.Dense(128, activation="relu")(inputs)
+joined = tf.keras.layers.Concatenate()([inputs, hidden])
+outputs = tf.keras.layers.Dense(10, activation="softmax")(joined)
+skip_model = tf.keras.Model(inputs, outputs)
+
+print(joined.shape)
+print(skip_model.count_params())</code></pre>
+<pre class="out">(None, 912)
+109610</pre>
+        <p>784 + 128 = 912 values per row reach the output layer. That layer now holds 912 × 10 + 10 = 9,130 numbers, and
+        with the hidden layer's 100,480 the model holds 109,610.<sup class="cite"><a href="#src-4">4</a></sup> Deleting the
+        <code>joined</code> line and calling the output layer on <code>hidden</code> brings the count back to 101,770.</p>
+        <p><code>Sequential</code> cannot express this model, because <code>inputs</code> is used twice: once by the hidden
+        layer and once by the join. A <code>Sequential</code> model passes each layer's output only to the next
+        layer.<sup class="cite"><a href="#src-3">3</a></sup> In other people's code you spot the pattern as
+        <code>Concatenate()([a, b])</code> or <code>Add()([a, b])</code> inside a Functional model.</p>
+        <p>To see the branch as a picture, <code>tf.keras.utils.plot_model(skip_model, show_shapes=True)</code> draws the
+        layer graph with each shape on it. It needs <code>pydot</code> and Graphviz, two graph-drawing
+        tools that Colab already has installed.<sup class="cite"><a href="#src-5">5</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>The Functional API calls layers on tensors like functions, then wraps the ends in a Model.</li>
+          <li>A layer call on an Input records the network; numbers flow through it later.</li>
+          <li>A skip connection reuses a tensor twice, so it needs the Functional API.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I use the Functional API when the model isn't a straight stack: a branch, a merge, or more than one input or
+          output. I create an Input, call each layer on the previous result as if it were a function, and wrap the first and
+          last tensors in a Model. For a plain stack, Sequential is shorter, so I'd use that.</p>
+          <p>A skip connection carries a layer's input past it and joins it to a later output, for example with
+          Concatenate. It needs the Functional API because the input is used twice, and Sequential only hands each output
+          to the next layer.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">Predefined layers</div>
+        <h2>Predefined layers: chosen by what they read</h2>
+        <p>Keras ships ready-made layers, and a team rarely writes its own. Choosing one starts from a plain question: what
+        shape of data does this layer read, and what shape does it hand on?</p>
+        <h3>The layers a team reaches for</h3>
+        <p>All seven layers in the table below live in
+        <code>tf.keras.layers</code>.<sup class="cite"><a href="#src-6">6</a></sup> The table reads each one by its input
+        and output for a single example; the batch axis in front is left out.</p>
+        <table>
+          <thead><tr><th>Layer</th><th>Reads</th><th>Hands on</th></tr></thead>
+          <tbody>
+            <tr><td><code>Dense</code></td><td>A row of numbers</td><td>A row of <code>units</code> numbers</td></tr>
+            <tr><td><code>Flatten</code></td><td>Several axes, such as a 28 by 28 image</td><td>One long row of 784</td></tr>
+            <tr><td><code>Dropout</code></td><td>Any values</td><td>The same shape, a random share set to 0 while training</td></tr>
+            <tr><td><code>BatchNormalization</code></td><td>Any values</td><td>The same shape, rescaled per batch</td></tr>
+            <tr><td><code>Conv2D</code></td><td>An image with a channel axis</td><td>A stack of feature maps</td></tr>
+            <tr><td><code>MaxPooling2D</code></td><td>Feature maps</td><td>The same maps at half the height and width</td></tr>
+            <tr><td><code>Embedding</code></td><td>Whole-number token ids</td><td>One vector per id</td></tr>
+          </tbody>
+        </table>
+        <p>A channel axis is the last axis of an image array, holding one number per pixel for each colour; a grey digit has
+        one channel. A feature map is a convolution's output grid, one number per position the filter visited. A token id is
+        one word of a text replaced by its number in a vocabulary. Steps 3 and
+        4 put <code>BatchNormalization</code> and <code>Dropout</code> to work.</p>
+        <h3>Shapes in and out</h3>
+        <p>Every layer expects a particular input shape. The quickest check that two layers fit together is to print the
+        shape each one hands on.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>images = np.random.rand(32, 28, 28).astype("float32")
+flat = tf.keras.layers.Flatten()(images)
+dense_out = tf.keras.layers.Dense(128)(flat)
+print(images.shape, flat.shape, dense_out.shape)</code></pre>
+<pre class="out">(32, 28, 28) (32, 784) (32, 128)</pre>
+        <p><code>np.random.rand(32, 28, 28)</code> makes a batch of 32 random grey images, values between 0 and 1, standing
+        in for MNIST; <code>astype("float32")</code> gives the 32-bit floats a network reads. Calling a layer on a real
+        array computes numbers at once, unlike a call on an <code>Input</code>.</p>
+        <p><code>Flatten</code> keeps the first axis, the batch of 32, and joins the rest into one row of 28 × 28 =
+        784.<sup class="cite"><a href="#src-7">7</a></sup> <code>Dense(128)</code> reads that row and hands on 128 values
+        per image. When a layer gets a shape it cannot read, Keras raises an error naming that layer and the shape it was
+        given. Read it as "the layer before this one handed on the wrong shape", which usually means a missing reshape.</p>
+        <h3>Image layers: <code>Conv2D</code> and <code>MaxPooling2D</code></h3>
+        <p><a href="../week-06/day-3-deep-learning-concepts.html">Week 6's page on kernels and pooling</a> slid a small
+        grid of weights, a kernel, across an image by hand. <code>Conv2D</code> is that operation as a layer that learns
+        its kernels during training. One set of small kernels slides across the whole image, so the
+        layer's parameter count does not depend on the image size.<sup class="cite"><a href="#src-8">8</a></sup> (Keras
+        also calls a <code>Dense</code> layer's weight table its kernel; in this step the word means the sliding grid.)</p>
+        <p><code>Conv2D</code> reads a batch shaped (batch, height, width, channels).<sup class="cite"><a href="#src-8">8</a></sup>
+        The grey images above have no channel axis, so <code>images[..., np.newaxis]</code> adds one: the
+        <code>...</code> keeps every existing axis and <code>np.newaxis</code> puts an axis of length 1 after
+        them.<sup class="cite"><a href="#src-8">8</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>images_4d = images[..., np.newaxis]
+conv = tf.keras.layers.Conv2D(16, 3)
+maps = conv(images_4d)
+pooled = tf.keras.layers.MaxPooling2D()(maps)
+print(images_4d.shape, maps.shape, pooled.shape)
+print(conv.count_params())</code></pre>
+<pre class="out">(32, 28, 28, 1) (32, 26, 26, 16) (32, 13, 13, 16)
+160</pre>
+        <p><code>Conv2D(16, 3)</code> means 16 kernels, each 3 by 3. With the default <code>padding="valid"</code> a kernel
+        sits only where it fits inside the image, so it has 28 − 3 + 1 = 26 positions along each side and each kernel makes
+        one 26 by 26 map.<sup class="cite"><a href="#src-8">8</a></sup> The 160 parameters are 3 × 3 × 1 × 16 = 144 weights
+        plus one bias per kernel.</p>
+        <p><code>MaxPooling2D()</code> is the layer version of that page's pooling. It uses a 2 by 2 window by default and keeps the largest value in each window, so 26 by
+        26 becomes 13 by 13. It has no parameters.<sup class="cite"><a href="#src-9">9</a></sup> Pooling shrinks the maps
+        the next layer has to read while keeping the strongest response in each patch.</p>
+        <p>A <code>Dense</code> layer on a flattened image
+        ignores which pixels are neighbours. <code>Conv2D</code> keeps that structure with far fewer parameters: step 4's
+        CNN holds 12,810 against the Dense digit network's 101,770.<sup class="cite"><a href="#src-8">8</a></sup> In other
+        people's code a CNN shows up as <code>Conv2D(16, 3, activation="relu")</code>, then <code>MaxPooling2D()</code>,
+        repeated, then <code>Flatten()</code> before the last <code>Dense</code>.</p>
+        <p>The text counterpart is <code>Embedding(input_dim, output_dim)</code>, which maps whole-number token ids to
+        vectors: a batch shaped (batch, length) becomes (batch, length, output_dim).<sup class="cite"><a href="#src-10">10</a></sup>
+        What those vectors mean is a week 8 topic.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Pick a layer by the shape it reads and the shape it hands on.</li>
+          <li>Flatten keeps the batch axis and turns each image into one long row.</li>
+          <li>Conv2D needs a channel axis; a 3 by 3 kernel shrinks 28 to 26.</li>
+          <li>Max pooling halves height and width and has no parameters.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Flatten turns each example's axes into one long row and keeps the batch axis, so a 28 by 28 image becomes 784
+          values a Dense layer can read. A Conv2D with 16 filters of 3 by 3 on a 28 by 28 by 1 image outputs 26 by 26 by
+          16, because with no padding the filter only fits 26 positions each way.</p>
+          <p>To check two layers fit together I print the shape each one hands on, or read model.summary. A shape error
+          names the layer that got the wrong shape, and the fix is usually a reshape in front of it.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">Batch normalization</div>
+        <h2>Batch normalization, measured like any change</h2>
+        <h3>The idea: a scaler inside the network</h3>
+        <p>Week 6 scaled input columns with <code>StandardScaler</code>: subtract each column's mean, divide by its
+        standard deviation (its spread), and every column sits around 0 with a spread of 1. A
+        <code>BatchNormalization</code> layer does the same rescaling inside the network, to the values a layer receives,
+        and recomputes it on every training batch. It then multiplies by a learned scale and adds a learned offset, so
+        training can undo the rescaling where that helps.<sup class="cite"><a href="#src-11">11</a></sup></p>
+        <p>The layer behaves differently in training and in prediction. While training it uses the current batch's mean
+        and variance (the spread squared). When predicting there may be a single row, with no useful spread of its own.
+        So the layer uses the moving averages it kept during training: running averages, nudged towards each batch's mean
+        and variance as training goes.<sup class="cite"><a href="#src-11">11</a></sup> The <code>training</code> argument
+        below picks the mode by hand; <code>fit</code> runs training mode, <code>predict</code> and <code>evaluate</code>
+        run prediction mode.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>bn = tf.keras.layers.BatchNormalization()
+batch = np.array([[2.0], [4.0], [6.0]], dtype="float32")
+print(bn(batch, training=False).numpy().round(2).ravel())
+print(bn(batch, training=True).numpy().round(2).ravel())</code></pre>
+<pre class="out">[2. 4. 6.]
+[-1.22  0.    1.22]</pre>
+        <p>The batch is one column holding 2, 4 and 6. In prediction mode this fresh layer has learned no averages from
+        training yet, so the values pass through almost unchanged. In training mode it uses the batch's own numbers: the
+        mean is 4, the variance is (4 + 0 + 4) / 3 ≈ 2.67, and the spread is about 1.63. So 2 becomes (2 − 4) / 1.63 ≈
+        −1.22, which is the first value printed.</p>
+        <p>A <code>BatchNormalization</code> layer after a 128-unit <code>Dense</code> layer holds four numbers per
+        input, 512 in all. 256 are trainable (the scale and the offset) and 256 are not trained by the optimizer (the
+        moving mean and moving variance); <code>summary()</code> shows both counts.<sup class="cite"><a href="#src-11">11</a></sup>
+        In other people's code you spot it as <code>BatchNormalization()</code> placed between a <code>Dense</code> layer
+        and the next layer.</p>
+        <h3>A worked improvement attempt</h3>
+        <p>Batch normalization was introduced to reduce "internal covariate shift", the drift in a layer's inputs as the
+        layers before it change, and so to speed up training. Later work disputes that
+        explanation.<sup class="cite"><a href="#src-12">12</a></sup> Treat it as a project treats
+        any change: train with and without it on the same validation rows and compare.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>(x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+x_train = x_train.reshape(-1, 784).astype("float32") / 255.0
+x_test = x_test.reshape(-1, 784).astype("float32") / 255.0
+x_tr, y_tr = x_train[:54000], y_train[:54000]
+x_val, y_val = x_train[54000:], y_train[54000:]
+print(x_tr.shape, x_val.shape, x_test.shape)</code></pre>
+<pre class="out">(54000, 784) (6000, 784) (10000, 784)</pre>
+        <p>This is the week's MNIST split. Each 28 by 28 image becomes a row of 784 pixels scaled to 0 to 1, the first
+        54,000 training images train, the last 6,000 are the validation rows, and <code>x_test</code> stays aside.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>import pandas as pd
+tf.keras.utils.set_random_seed(42)
+
+def make_digit_model(batch_norm, name):
+    layers = [tf.keras.Input(shape=(784,)), tf.keras.layers.Dense(128, activation="relu")]
+    if batch_norm:
+        layers.append(tf.keras.layers.BatchNormalization())
+    layers.append(tf.keras.layers.Dense(10, activation="softmax"))
+    model = tf.keras.Sequential(layers, name=name)
+    model.compile(optimizer="adam", loss="sparse_categorical_crossentropy", metrics=["accuracy"])
+    return model
+
+plain_model = make_digit_model(False, "plain_model")
+bn_model = make_digit_model(True, "bn_model")
+print(plain_model.count_params(), bn_model.count_params())</code></pre>
+<pre class="out">101770 102282</pre>
+        <p>The two networks differ only by the batch-norm layer, and 101,770 + 512 = 102,282. Everything else, from the
+        784-128-10 shape to the loss for whole-number labels, is the digit network of earlier in the week.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>results = []
+for model in (plain_model, bn_model):
+    model.fit(x_tr, y_tr, epochs=5, batch_size=128, validation_data=(x_val, y_val), verbose=0)
+    val_loss, val_acc = model.evaluate(x_val, y_val, verbose=0)
+    results.append({"model": model.name, "val_loss": val_loss, "val_accuracy": val_acc})
+print(pd.DataFrame(results).round(4))</code></pre>
+<pre class="out">         model  val_loss  val_accuracy
+0  plain_model    0.0897        0.9733
+1     bn_model    0.0816        0.9748</pre>
+        <p>That is one run's table; your numbers will move a little. Here <code>bn_model</code> came out a little ahead,
+        with validation loss about 0.082 against about 0.090. Both models saw the same validation rows, which is what
+        makes the rows comparable.<sup class="cite"><a href="#src-2">2</a></sup> On a network this shallow any gain is
+        small and not guaranteed.<sup class="cite"><a href="#src-12">12</a></sup></p>
+        <p>Read the gap before you call a winner. One validation image is 1 / 6,000 ≈ 0.017 percent of the accuracy, so a
+        difference of a few hundredths of a percent is a handful of images and counts as noise. Here 0.9748 − 0.9733 =
+        0.0015, which is 9 images out of 6,000, so the loss gap is the clearer sign. Write one sentence: batch
+        normalization helped if its validation loss is clearly lower, and otherwise the simpler model stays.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Batch normalization rescales a layer's inputs per batch, then applies a learned scale and offset.</li>
+          <li>Training uses the batch's mean and variance; prediction uses the moving averages.</li>
+          <li>Judge it like any change: same validation rows, and a tiny gap is noise.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A batch normalization layer rescales the values coming into it to about mean zero and spread one, using each
+          training batch's own mean and variance, and then applies a learned scale and offset. At prediction time there may
+          be a single row, so it uses the moving averages it kept during training instead.</p>
+          <p>To tell whether it helped, I train the same network with and without it on the same validation data and
+          compare validation loss and accuracy. A difference of a few images is noise, so I keep the simpler model unless
+          the gain is clear.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="3">
+        <div class="tag">Build: image</div>
+        <h2>Build: a CNN digit classifier, in a project's order</h2>
+        <p>This step builds a CNN (a convolutional neural network, one built from <code>Conv2D</code> layers) end to
+        end, in the order a project notebook follows.</p>
+        <h3>Problem, data and the reshape</h3>
+        <p>The problem: read a 28 by 28 grey image of a handwritten digit and say which of 0 to 9 it is, the job a form
+        scanner or a mail sorter does. The data is MNIST, split 54,000 for training, 6,000 for validation and 10,000 for
+        the test. The test set is held out now and used once, at the end; every choice before then is made on the
+        validation data.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>x_tr_img = x_tr.reshape(-1, 28, 28, 1)
+x_val_img = x_val.reshape(-1, 28, 28, 1)
+x_test_img = x_test.reshape(-1, 28, 28, 1)
+print(x_tr_img.shape, x_val_img.shape, x_test_img.shape)</code></pre>
+<pre class="out">(54000, 28, 28, 1) (6000, 28, 28, 1) (10000, 28, 28, 1)</pre>
+        <p>The <code>-1</code> tells numpy to work that axis out from the others, so each 784-long row folds back into a 28
+        by 28 image with one channel. <code>Conv2D</code> raises a shape error on rows without that
+        axis.<sup class="cite"><a href="#src-8">8</a></sup></p>
+        <h3>The model and a reason for each choice</h3>
+        <p class="run-label">Run in Colab</p>
+<pre><code>def make_cnn(dropout=0.0, name="cnn"):
+    tf.keras.utils.set_random_seed(42)
+    layers = [tf.keras.Input(shape=(28, 28, 1)),
+              tf.keras.layers.Conv2D(16, 3, activation="relu"),
+              tf.keras.layers.MaxPooling2D(),
+              tf.keras.layers.Conv2D(32, 3, activation="relu"),
+              tf.keras.layers.MaxPooling2D(),
+              tf.keras.layers.Flatten()]
+    if dropout:
+        layers.append(tf.keras.layers.Dropout(dropout))
+    layers.append(tf.keras.layers.Dense(10, activation="softmax"))
+    model = tf.keras.Sequential(layers, name=name)
+    model.compile(optimizer="adam", loss="sparse_categorical_crossentropy", metrics=["accuracy"])
+    return model
+
+cnn_base = make_cnn(name="cnn_base")
+print(cnn_base.count_params())</code></pre>
+<pre class="out">12810</pre>
+        <p>The first pair gives step 2's 13 by 13 by 16; the second gives 11 by 11 by 32, then 5 by 5 by 32 (half of 11,
+        rounded down), and <code>Flatten</code> makes 800 values. The parameters are 160 + 4,640 (3 × 3 × 16 × 32 + 32)
+        + 8,010 (800 × 10 + 10) = 12,810.<sup class="cite"><a href="#src-8">8</a></sup></p>
+        <table>
+          <thead><tr><th>Choice</th><th>Reason</th></tr></thead>
+          <tbody>
+            <tr><td>Two <code>Conv2D</code> layers</td><td>They read neighbouring pixels together, so a stroke is found wherever it sits</td></tr>
+            <tr><td><code>MaxPooling2D</code> after each</td><td>It shrinks the maps the next layer reads</td></tr>
+            <tr><td><code>Flatten</code></td><td>It hands the last maps to <code>Dense</code> as one row</td></tr>
+            <tr><td><code>Dense(10, activation="softmax")</code></td><td>One probability per digit, adding up to 1</td></tr>
+            <tr><td><code>sparse_categorical_crossentropy</code>, Adam</td><td>The loss for whole-number labels; Adam is the week's default</td></tr>
+          </tbody>
+        </table>
+        <h3>Training with early stopping</h3>
+        <p>Early stopping ends training when the monitored value, here the validation loss, has not improved for
+        <code>patience</code> epochs. With <code>restore_best_weights=True</code> it then puts back the weights from the best
+        epoch.<sup class="cite"><a href="#src-13">13</a></sup> It is passed to <code>fit</code> as a callback, in
+        <code>callbacks=[...]</code>.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>import matplotlib.pyplot as plt
+
+early_stop = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=2, restore_best_weights=True)
+history_base = cnn_base.fit(x_tr_img, y_tr, epochs=20, batch_size=128,
+                            validation_data=(x_val_img, y_val), callbacks=[early_stop], verbose=0)
+print(len(history_base.epoch), "epochs ran")
+epochs = range(1, len(history_base.epoch) + 1)
+plt.plot(epochs, history_base.history["loss"], label="training loss")
+plt.plot(epochs, history_base.history["val_loss"], label="validation loss")
+plt.xlabel("epoch")
+plt.legend()
+plt.show()</code></pre>
+<pre class="out">14 epochs ran</pre>
+        <p><code>history.epoch</code> has one entry per epoch that ran,<sup class="cite"><a href="#src-13">13</a></sup> and
+        <code>range(1, ...)</code> numbers the epochs from 1 on the chart. <code>epochs=20</code> is only the ceiling, and
+        <code>batch_size=128</code> updates the weights after every 128 images.</p>
+        <p>On this run validation loss was lowest at epoch 12, about 0.041, and epochs 13 and 14 did not beat it. So
+        <code>patience=2</code> stopped training after 14 of the 20 epochs, and epoch 12's weights came
+        back.<sup class="cite"><a href="#src-13">13</a></sup> Meanwhile training loss kept falling: the overfitting
+        pattern from <a href="day-1-mlp-backprop-and-digit-classifier.html">Monday's page</a>, which early stopping cuts
+        off.<sup class="cite"><a href="#src-14">14</a></sup></p>
+        <h3>Evaluation and error analysis</h3>
+        <p class="run-label">Run in Colab</p>
+<pre><code>from sklearn.metrics import ConfusionMatrixDisplay
+
+val_pred = cnn_base.predict(x_val_img, verbose=0).argmax(axis=1)
+print("validation accuracy:", (val_pred == y_val).mean().round(4))
+print("wrong:", (val_pred != y_val).sum(), "of", len(y_val))
+ConfusionMatrixDisplay.from_predictions(y_val, val_pred)
+plt.show()
+
+wrong = np.where(val_pred != y_val)[0][:10]
+fig, axes = plt.subplots(2, 5, figsize=(11, 4.8))
+for ax, i in zip(axes.ravel(), wrong):
+    ax.imshow(x_val[i].reshape(28, 28), cmap="gray")
+    ax.set_title(f"true {y_val[i]}, predicted {val_pred[i]}")
+    ax.axis("off")
+plt.show()</code></pre>
+<pre class="out">validation accuracy: 0.9888
+wrong: 67 of 6000</pre>
+        <p>As on <a href="day-1-mlp-backprop-and-digit-classifier.html">Monday's page</a>, <code>argmax(axis=1)</code> picks each row's predicted digit
+        and the confusion matrix counts mistakes off its diagonal.<sup class="cite"><a href="#src-15">15</a></sup> On this
+        run 67 of the 6,000 validation images were wrong, about 98.9% right. Monday's Dense network got about 0.976 on
+        the same rows.</p>
+        <p>The last plot shows the first ten wrong images. <code>np.where(val_pred != y_val)[0]</code> gives the
+        positions where the two differ, <code>[:10]</code> keeps ten, and <code>plt.subplots(2, 5)</code> makes the
+        grid. Read the ten for what they share, such as a cramped stroke or a digit a person would hesitate over
+        too.</p>
+        <h3>One improvement attempt: dropout</h3>
+        <p><code>Dropout(rate)</code> sets a random share <code>rate</code> of its inputs to 0 at each training step and
+        scales the rest up to make up for them. It does nothing when predicting or
+        evaluating.<sup class="cite"><a href="#src-16">16</a></sup> With 0.3 after <code>Flatten</code>, about 240 of the
+        800 values are switched off on each step, so the network cannot lean on any one of them. Dropout is a
+        regularisation technique, a change made to reduce overfitting.<sup class="cite"><a href="#src-14">14</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>cnn_model = make_cnn(dropout=0.3, name="cnn_model")
+history_dropout = cnn_model.fit(x_tr_img, y_tr, epochs=20, batch_size=128,
+                                validation_data=(x_val_img, y_val), callbacks=[early_stop], verbose=0)
+print(len(history_dropout.epoch), "epochs ran")
+epochs = range(1, len(history_dropout.epoch) + 1)
+plt.plot(epochs, history_dropout.history["loss"], label="training loss")
+plt.plot(epochs, history_dropout.history["val_loss"], label="validation loss")
+plt.xlabel("epoch")
+plt.legend()
+plt.show()</code></pre>
+<pre class="out">12 epochs ran</pre>
+        <p>Here early stopping fired again: validation loss was lowest at epoch 10, and training stopped after epoch 12.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>results = []
+for m in (cnn_base, cnn_model):
+    val_loss, val_acc = m.evaluate(x_val_img, y_val, verbose=0)
+    results.append({"model": m.name, "val_loss": val_loss, "val_accuracy": val_acc})
+print(pd.DataFrame(results).round(4))
+best_cnn = cnn_model if results[1]["val_loss"] &lt; results[0]["val_loss"] else cnn_base
+print("kept:", best_cnn.name)</code></pre>
+<pre class="out">       model  val_loss  val_accuracy
+0   cnn_base    0.0413        0.9888
+1  cnn_model    0.0330        0.9907
+kept: cnn_model</pre>
+        <p><code>best_cnn</code> is the model with the lower validation loss. Dropout lowers training accuracy on
+        purpose, so judge it on validation: a lower validation loss and a narrower gap between the curves mean it
+        helped.<sup class="cite"><a href="#src-14">14</a></sup> On this run it did: about 0.033 against 0.041, and 56
+        wrong images against 67.</p>
+        <p>At each model's best epoch, <code>cnn_base</code>'s validation loss sat about 0.013 above its training loss
+        and <code>cnn_model</code>'s about 0.012 below it. The gap turns negative because dropout is on while training
+        loss is measured and off for validation.<sup class="cite"><a href="#src-16">16</a></sup></p>
+        <h3>The test set, once, and limitations</h3>
+        <p class="run-label">Run in Colab</p>
+<pre><code>test_loss, test_accuracy = best_cnn.evaluate(x_test_img, y_test, verbose=0)
+print(best_cnn.name, "test accuracy:", round(test_accuracy, 4))</code></pre>
+<pre class="out">cnn_model test accuracy: 0.9898</pre>
+        <p>This is the only place the test images are scored: about 0.990 on this run.
+        <a href="day-1-mlp-backprop-and-digit-classifier.html">Monday's page</a> reports about 0.974 for its Dense network on the same test images,
+        with 101,770 parameters against this CNN's 12,810. One limitation: the model has only seen centred, clean grey
+        digits of one size. A photo of a digit on a form, or a letter, is outside what it learned.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Early stopping halts when validation loss stops improving and restores the best epoch.</li>
+          <li>Dropout switches off a random share of values while training and nothing when predicting.</li>
+          <li>Judge a change on validation loss and the gap between the curves.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I built a small CNN that classifies handwritten digits. I held the test set out first and kept 6,000 training
+          images for validation. The model is two convolution and pooling blocks and a softmax output, trained with early
+          stopping on validation loss.</p>
+          <p>I read the confusion matrix and the digits it got wrong, tried dropout as one change, kept the model with the
+          lower validation loss, and scored the test set once at the end.</p>
+          <p>Dropout switches off a random share of values at each training step so the network can't lean on any one of
+          them. Early stopping ends training when validation loss stops improving and puts back the best epoch's
+          weights.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">Saving and loading</div>
+        <h2>Saving and loading a model</h2>
+        <p>A trained model lives in the notebook's memory until it is written to a file. Saving it means the minutes of
+        training never have to run again, and a project hands its model in as exactly such a file.</p>
+        <h3>Save, load, same predictions</h3>
+        <p><code>model.save("name.keras")</code> writes one file holding the architecture, the weights and the optimizer
+        state, and <code>tf.keras.models.load_model</code> rebuilds the model from it. The <code>.keras</code> ending is what
+        selects the Keras 3 format.<sup class="cite"><a href="#src-17">17</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>best_cnn.save("digits_cnn.keras")
+loaded = tf.keras.models.load_model("digits_cnn.keras")
+before = best_cnn.predict(x_val_img[:100], verbose=0)
+after = loaded.predict(x_val_img[:100], verbose=0)
+print(np.allclose(before, after))</code></pre>
+<pre class="out">True</pre>
+        <p><code>np.allclose</code> compares the two arrays number by number and returns <code>True</code> when they all
+        match. Here that is 100 images × 10 probabilities, 1,000 numbers, all the same: the loaded model is the trained
+        model, and <code>np.allclose</code> on the same inputs is the check.<sup class="cite"><a href="#src-17">17</a></sup></p>
+        <p>The file also keeps the compile settings, so <code>loaded.evaluate(x_val_img, y_val)</code> runs without calling
+        <code>compile</code> again.<sup class="cite"><a href="#src-17">17</a></sup> That is what makes a restart cheap.
+        After Runtime &gt; Restart session, which wipes every variable, rerun only the imports, the MNIST cell and the
+        reshape, then load the file and evaluate it. No training runs.</p>
+        <h3>Where the file lives in Colab</h3>
+        <p>A Colab runtime is a temporary virtual machine that runs the notebook's code, and files written there live on
+        its disk. They are deleted when the runtime is recycled, so download the file from the Files panel or copy it to
+        Drive to keep it.<sup class="cite"><a href="#src-18">18</a></sup> A saved model that is missing the next morning
+        usually went with the runtime.</p>
+        <p>The file name matters as well. A name ending <code>.h5</code>, or a bare folder name, selects a different format.
+        Three related ways to write a model to disk:</p>
+        <ul>
+          <li><code>.h5</code> is the legacy format, which Keras still reads and writes with a
+          warning.<sup class="cite"><a href="#src-17">17</a></sup></li>
+          <li><code>model.export(path)</code> writes a TensorFlow SavedModel for serving, which is not reloaded as a Keras
+          model; serving models is week 11.<sup class="cite"><a href="#src-17">17</a></sup></li>
+          <li><code>tf.keras.callbacks.ModelCheckpoint</code> saves the model, or only its weights, during
+          <code>fit</code>, optionally only the best epoch, which protects a long fit.<sup class="cite"><a href="#src-19">19</a></sup></li>
+        </ul>
+        <h3>TFLearn's save and load, and where its ideas went</h3>
+        <p>The curriculum names TFLearn, an older high-level library on top of TensorFlow. As checked on 2026-11-18, its
+        last release is 0.5.0 (2020-11-11) and the last commit on its <code>master</code> branch is
+        2020-11-30.<sup class="cite"><a href="#src-20">20</a></sup><sup class="cite"><a href="#src-21">21</a></sup> It does
+        not import on TensorFlow 2.21, because one of its files imports a TensorFlow helper, <code>is_sequence</code>, that
+        2.21 no longer defines.<sup class="cite"><a href="#src-21">21</a></sup> It still turns up in old tutorials, so
+        it pays to read it.</p>
+        <p class="run-label">TFLearn (history, do not run)</p>
+<pre><code>import tflearn
+net = tflearn.input_data(shape=[None, 784])
+net = tflearn.fully_connected(net, 128, activation="relu")
+net = tflearn.fully_connected(net, 10, activation="softmax")
+net = tflearn.regression(net)
+model = tflearn.DNN(net)
+model.fit(X, Y)
+model.save("digits.tflearn")
+model.load("digits.tflearn")</code></pre>
+        <p>That is the 784-128-10 digit network written in TFLearn. Every idea in it has a maintained home in Keras, and the
+        table maps each one.<sup class="cite"><a href="#src-20">20</a></sup></p>
+        <table>
+          <thead><tr><th>TFLearn</th><th>Keras in TensorFlow 2</th></tr></thead>
+          <tbody>
+            <tr><td><code>input_data</code></td><td><code>tf.keras.Input</code></td></tr>
+            <tr><td><code>fully_connected</code></td><td><code>tf.keras.layers.Dense</code></td></tr>
+            <tr><td>Layer stacking</td><td><code>tf.keras.Sequential</code></td></tr>
+            <tr><td><code>merge</code></td><td><code>tf.keras.layers.Concatenate</code> in the Functional API</td></tr>
+            <tr><td><code>batch_normalization</code></td><td><code>tf.keras.layers.BatchNormalization</code></td></tr>
+            <tr><td><code>regression</code></td><td><code>model.compile</code></td></tr>
+            <tr><td><code>DNN(...)</code> and its <code>fit</code></td><td><code>model.fit</code></td></tr>
+            <tr><td><code>DNN.save</code> and <code>DNN.load</code></td><td><code>model.save("....keras")</code> and <code>tf.keras.models.load_model</code></td></tr>
+            <tr><td><code>DNN(tensorboard_dir=...)</code></td><td><code>tf.keras.callbacks.TensorBoard(log_dir=...)</code><sup class="cite"><a href="#src-22">22</a></sup></td></tr>
+          </tbody>
+        </table>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A .keras file holds the architecture, weights, optimizer state and compile settings.</li>
+          <li>Check a loaded model with np.allclose on the same inputs.</li>
+          <li>Colab files vanish with the runtime; download them or copy them to Drive.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I save with model.save and a path ending in .keras. That one file holds the architecture, the weights, the
+          optimizer state and the compile settings, and tf.keras.models.load_model rebuilds it. I check the loaded model
+          gives the same predictions with np.allclose, and it can evaluate straight away without compiling again.</p>
+          <p>In Colab the file sits on a temporary machine's disk, so it's gone when the runtime resets. I download it or
+          copy it to Drive. For long fits I'd add a ModelCheckpoint callback so the best epoch is saved as training
+          runs.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
+        <div class="tag">Build: table</div>
+        <h2>Build: classifying penguins from a table</h2>
+        <p>The tabular option, end to end, on a real table with blank cells and category columns.</p>
+        <h3>Problem, data and splitting first</h3>
+        <p>The problem: tell three penguin species (Adelie, Chinstrap and Gentoo) apart from field measurements, for
+        researchers counting birds in a colony. The data is the penguins table, 344 birds in 7 columns: species, island,
+        bill length, bill depth, flipper length, body mass and sex. seaborn, a plotting library that also ships a few small
+        example tables, loads it with <code>sns.load_dataset</code>.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>import seaborn as sns
+from sklearn.model_selection import train_test_split
+
+penguins = sns.load_dataset("penguins")
+print(penguins.shape)
+print(penguins.isna().sum())</code></pre>
+<pre class="out">(344, 7)
+species               0
+island                0
+bill_length_mm        2
+bill_depth_mm         2
+flipper_length_mm     2
+body_mass_g           2
+sex                  11
+dtype: int64</pre>
+        <p><code>isna().sum()</code> counts the blank cells (missing values) in each column. A network cannot read a blank, so they have to be filled, and the fill values have to
+        come from the training rows. That is why the split comes first.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>NUMERIC = ["bill_length_mm", "bill_depth_mm", "flipper_length_mm", "body_mass_g"]
+CATEGORIES = ["island", "sex"]
+SPECIES = ["Adelie", "Chinstrap", "Gentoo"]
+X = penguins[NUMERIC + CATEGORIES]
+y = penguins["species"].map(SPECIES.index)
+
+X_rest, X_test, species_rest, species_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
+X_tr, X_val, species_tr, species_val = train_test_split(
+    X_rest, species_rest, test_size=0.25, stratify=species_rest, random_state=42)
+print(len(X_tr), len(X_val), len(X_test))</code></pre>
+<pre class="out">206 69 69</pre>
+        <p><code>map(SPECIES.index)</code> turns each name into its position in the list: Adelie 0, Chinstrap 1, Gentoo 2.
+        <code>stratify</code> keeps each species' share the same in every part.<sup class="cite"><a href="#src-23">23</a></sup>
+        The test set takes 20% (69 birds), and 25% of the remaining 275 becomes validation, which leaves 206 for
+        training.</p>
+        <h3>Preprocessing from the training rows only</h3>
+        <p>Fitting a scaler or a fill value on data that includes the validation or test rows is data leakage: those rows
+        shape training, so the evaluation no longer measures unseen data.<sup class="cite"><a href="#src-24">24</a></sup>
+        Three steps prepare the table, each learned from the training rows:</p>
+        <ul>
+          <li>Fill the blanks: the training median for a measurement, the training rows' most common value for a category.</li>
+          <li>One-hot encode: <code>pd.get_dummies</code> turns a category column into one 0-or-1 column per
+          category.<sup class="cite"><a href="#src-25">25</a></sup></li>
+          <li>Scale: <code>StandardScaler.fit</code> learns each column's mean and spread from the training rows, and
+          <code>transform</code> applies them to all three tables.<sup class="cite"><a href="#src-26">26</a></sup></li>
+        </ul>
+        <p>One-hot encoding has a trap. A table that lacks a category gets fewer columns, so the validation table can
+        come out a different shape from the training table:</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>tiny_train = pd.get_dummies(pd.DataFrame({"island": ["Biscoe", "Dream", "Torgersen"]}), columns=["island"])
+tiny_val = pd.get_dummies(pd.DataFrame({"island": ["Dream", "Dream"]}), columns=["island"])
+print(list(tiny_val.columns))
+print(tiny_val.reindex(columns=tiny_train.columns, fill_value=0).astype(int).values)</code></pre>
+<pre class="out">['island_Dream']
+[[0 1 0]
+ [0 1 0]]</pre>
+        <p>The validation table has only Dream birds, so it gets one column. <code>reindex(columns=..., fill_value=0)</code>
+        gives it the training columns in the training order and fills the missing ones with
+        0.<sup class="cite"><a href="#src-27">27</a></sup> Each row now reads Biscoe 0, Dream 1, Torgersen 0.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>from sklearn.preprocessing import StandardScaler
+
+fills = {**X_tr[NUMERIC].median().to_dict(), **X_tr[CATEGORIES].mode().iloc[0].to_dict()}
+print(fills)
+
+def prepare(df, columns=None):
+    df = pd.get_dummies(df.fillna(fills), columns=CATEGORIES)
+    return df if columns is None else df.reindex(columns=columns, fill_value=0)
+
+X_tr_enc = prepare(X_tr)
+train_columns = X_tr_enc.columns
+X_val_enc, X_test_enc = prepare(X_val, train_columns), prepare(X_test, train_columns)
+scaler = StandardScaler().fit(X_tr_enc)
+X_tr_s, X_val_s, X_test_s = (scaler.transform(t).astype("float32") for t in (X_tr_enc, X_val_enc, X_test_enc))
+print(list(train_columns))
+print(X_tr_s.shape, X_val_s.shape, X_test_s.shape)</code></pre>
+<pre class="out">{'bill_length_mm': 45.0, 'bill_depth_mm': 17.4, 'flipper_length_mm': 197.0, 'body_mass_g': 4050.0, 'island': 'Biscoe', 'sex': 'Male'}
+['bill_length_mm', 'bill_depth_mm', 'flipper_length_mm', 'body_mass_g', 'island_Biscoe', 'island_Dream', 'island_Torgersen', 'sex_Female', 'sex_Male']
+(206, 9) (69, 9) (69, 9)</pre>
+        <p><code>fills</code> holds four training medians and the two most common training values, and <code>fillna</code> uses it on all three tables. <code>mode()</code> can return several equally common values, so
+        <code>.iloc[0]</code> takes the first; <code>{**a, **b}</code> merges two dictionaries into one. The 9 columns are 4 measurements, 3 islands
+        and 2 sexes.</p>
+        <h3>The model, training and evaluation per species</h3>
+        <p class="run-label">Run in Colab</p>
+<pre><code>from sklearn.metrics import classification_report
+
+def make_penguin_model(units):
+    tf.keras.utils.set_random_seed(42)
+    model = tf.keras.Sequential([tf.keras.Input(shape=(9,)),
+                                 tf.keras.layers.Dense(units, activation="relu"),
+                                 tf.keras.layers.Dense(3, activation="softmax")])
+    model.compile(optimizer="adam", loss="sparse_categorical_crossentropy", metrics=["accuracy"])
+    return model
+
+penguin_model = make_penguin_model(8)
+history_penguins = penguin_model.fit(X_tr_s, species_tr, epochs=50, batch_size=16,
+                                     validation_data=(X_val_s, species_val), verbose=0)
+val_pred = penguin_model.predict(X_val_s, verbose=0).argmax(axis=1)
+print(classification_report(species_val, val_pred, target_names=SPECIES, digits=3))
+ConfusionMatrixDisplay.from_predictions(species_val, val_pred, display_labels=SPECIES)
+plt.show()</code></pre>
+<pre class="out">              precision    recall  f1-score   support
+
+      Adelie      0.969     1.000     0.984        31
+   Chinstrap      1.000     0.923     0.960        13
+      Gentoo      1.000     1.000     1.000        25
+
+    accuracy                          0.986        69
+   macro avg      0.990     0.974     0.981        69
+weighted avg      0.986     0.986     0.985        69</pre>
+        <p>The model is small on purpose: 9 × 8 + 8 = 80 numbers in the hidden layer and 8 × 3 + 3 = 27 in the output,
+        107 in all, for 206 training rows. Plot
+        <code>history_penguins</code> as in step 4 to see both curves.</p>
+        <p><code>classification_report</code> prints precision, recall, F1 and support for each species, then two average rows
+        (a week 8 topic).<sup class="cite"><a href="#src-28">28</a></sup> Read the species rows: precision is the
+        share of birds called Chinstrap that really are, recall is the share of real Chinstraps found, F1 is high only
+        when both are, and support is how many validation birds that species has.</p>
+        <p>On this run one bird of 69 was wrong, a Chinstrap called an Adelie, which is why Chinstrap's recall is 0.923
+        (12 of 13 found) and Adelie's precision 0.969 (31 of 32).</p>
+        <h3>Error analysis, one improvement and the test set</h3>
+        <p class="run-label">Run in Colab</p>
+<pre><code>proba = penguin_model.predict(X_val_s, verbose=0)
+view = X_val.copy()
+view["true"] = [SPECIES[i] for i in species_val]
+view["predicted"] = [SPECIES[i] for i in val_pred]
+view["p_true"] = proba[np.arange(len(proba)), species_val.to_numpy()].round(3)
+print(view[view["true"] != view["predicted"]])
+print(view.nsmallest(5, "p_true"))</code></pre>
+<pre class="out">     bill_length_mm  bill_depth_mm  flipper_length_mm  body_mass_g island  \
+172            42.4           17.3              181.0       3600.0  Dream
+
+        sex       true predicted  p_true
+172  Female  Chinstrap    Adelie    0.33
+     bill_length_mm  bill_depth_mm  flipper_length_mm  body_mass_g  island  \
+172            42.4           17.3              181.0       3600.0   Dream
+184            42.5           16.7              187.0       3350.0   Dream
+95             40.8           18.9              208.0       4300.0   Dream
+32             39.5           17.8              188.0       3300.0   Dream
+110            38.1           16.5              198.0       3825.0  Biscoe
+
+        sex       true  predicted  p_true
+172  Female  Chinstrap     Adelie   0.330
+184  Female  Chinstrap  Chinstrap   0.615
+95     Male     Adelie     Adelie   0.756
+32   Female     Adelie     Adelie   0.779
+110  Female     Adelie     Adelie   0.829</pre>
+        <p><code>p_true</code> is the probability the model gave each bird's true species:
+        <code>np.arange(len(proba))</code> lists the row numbers, and paired with the true labels it picks one column
+        per row. The cell prints the wrong rows, then the five least sure rows, so
+        there is always something to read.</p>
+        <p>Row 172 is the wrong bird, from Dream, with <code>p_true</code> 0.33, and four of the five least sure birds
+        are from Dream too. Check whether such birds' measurements sit between two
+        species.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>wide_model = make_penguin_model(32)
+wide_model.fit(X_tr_s, species_tr, epochs=50, batch_size=16, validation_data=(X_val_s, species_val), verbose=0)
+results = []
+for name, m in [("8 units", penguin_model), ("32 units", wide_model)]:
+    val_loss, val_acc = m.evaluate(X_val_s, species_val, verbose=0)
+    results.append({"model": name, "val_loss": val_loss, "val_accuracy": val_acc})
+print(pd.DataFrame(results).round(4))
+best_penguin_model = wide_model if results[1]["val_loss"] &lt; results[0]["val_loss"] else penguin_model</code></pre>
+<pre class="out">      model  val_loss  val_accuracy
+0   8 units    0.0601        0.9855
+1  32 units    0.0307        1.0000</pre>
+        <p>The improvement attempt widens the hidden layer from 8 to 32 units. On this run that model got every
+        validation bird right with about half the loss, so it is kept. One validation bird is 1 / 69 ≈ 1.4 percentage
+        points, so the gap is one bird.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>test_accuracy = best_penguin_model.evaluate(X_test_s, species_test, verbose=0)[1]
+print("test accuracy:", round(test_accuracy, 4))
+best_penguin_model.save("penguins.keras")</code></pre>
+<pre class="out">test accuracy: 1.0</pre>
+        <p>The kept model meets the test set once and is saved as <code>penguins.keras</code>. It got all 69 test birds
+        right on this run, but 69 birds are too few to trust a perfect score: one more mistake would read about
+        0.986.</p>
+        <p>The model knows only 344 birds from three islands. A new island has no column, and a fourth species can only be
+        called one of the three.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Split first, then learn every fill, encoding and scale from the training rows.</li>
+          <li>Reindex validation and test to the training columns after one-hot encoding.</li>
+          <li>Read per-class precision, recall and F1, then the wrong and least sure rows.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I classified three penguin species from a 344-row table. I split off a stratified test set first, then
+          validation. I filled blanks with training medians and most common values, one-hot encoded island and sex, and
+          scaled with a scaler fitted on the training rows.</p>
+          <p>A small Dense network with a softmax output trained for fifty epochs. I read the per-species report and the
+          wrong rows, tried a wider hidden layer, kept the better one on validation loss and scored the test set
+          once.</p>
+          <p>Fitting the scaler on every row is data leakage: the validation rows help set the mean and spread, so the
+          validation score no longer measures unseen data.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="6">
+        <div class="tag">Regression variant</div>
+        <h2>Variant: predicting a number</h2>
+        <p>A regression predicts a number instead of a class. The same penguin table and the same three splits can predict
+        each bird's body mass, and only a few parts of the build change.</p>
+        <h3>What changes: the output layer, the loss and the metric</h3>
+        <table>
+          <thead><tr><th></th><th>Classifier (step 6)</th><th>Regression</th></tr></thead>
+          <tbody>
+            <tr><td>Output layer</td><td><code>Dense(3, activation="softmax")</code></td><td><code>Dense(1)</code>, no activation</td></tr>
+            <tr><td>Loss</td><td><code>sparse_categorical_crossentropy</code></td><td><code>"mse"</code>, mean squared error</td></tr>
+            <tr><td>Reported metric</td><td>Accuracy, precision, recall, F1</td><td><code>"mae"</code>, mean absolute error</td></tr>
+            <tr><td>Plot</td><td>Confusion matrix</td><td>Predicted against actual</td></tr>
+          </tbody>
+        </table>
+        <p>A regression network ends in <code>Dense(1)</code> with no activation, a linear output, so it can produce any
+        number, not one squeezed between 0 and 1. It is compiled with <code>loss="mse"</code> and often
+        <code>metrics=["mae"]</code>, and its predictions are compared with the actual
+        values.<sup class="cite"><a href="#src-29">29</a></sup> Both scores fit in a few lines of numpy:</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>actual = np.array([3.5, 4.0, 5.0])
+predicted = np.array([3.7, 3.9, 4.6])
+errors = predicted - actual
+mae = np.mean(np.abs(errors))
+mse = np.mean(errors ** 2)
+print(f"MAE {mae:.4f} kg ({mae * 1000:.0f} g), MSE {mse:.4f}")</code></pre>
+<pre class="out">MAE 0.2333 kg (233 g), MSE 0.0700</pre>
+        <p>The errors are 0.2, −0.1 and −0.4 kg. MAE averages their sizes, (0.2 + 0.1 + 0.4) / 3 ≈ 0.233 kg, so the
+        predictions are off by about 233 g on average, in the target's own unit. Monday's page computed MSE as the average
+        squared miss; here it is 0.07, from (0.04 + 0.01 + 0.16) / 3, in kilograms squared. The one 0.4 kg miss supplies 0.16 of that 0.21 total, so MSE weighs big
+        misses most.</p>
+        <h3>Evaluating a regression</h3>
+        <p>Rows with no body mass are dropped. A row with no target is dropped, never filled, because a filled target would
+        teach the model an answer someone made up. The inputs are the other three measurements plus species, island and
+        sex, prepared as in step 6.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>MASS_CATEGORIES = ["species", "island", "sex"]
+MASS_INPUTS = ["bill_length_mm", "bill_depth_mm", "flipper_length_mm"] + MASS_CATEGORIES
+
+def mass_table(X_part, species_part):
+    df = X_part.assign(species=[SPECIES[i] for i in species_part])
+    df = df[df["body_mass_g"].notna()]
+    return df[MASS_INPUTS].fillna(fills), (df["body_mass_g"] / 1000).to_numpy("float32")
+
+rows_tr, mass_tr = mass_table(X_tr, species_tr)
+rows_val, mass_val = mass_table(X_val, species_val)
+rows_test, mass_test = mass_table(X_test, species_test)
+m_tr = pd.get_dummies(rows_tr, columns=MASS_CATEGORIES)
+m_val = pd.get_dummies(rows_val, columns=MASS_CATEGORIES).reindex(columns=m_tr.columns, fill_value=0)
+m_test = pd.get_dummies(rows_test, columns=MASS_CATEGORIES).reindex(columns=m_tr.columns, fill_value=0)
+mass_scaler = StandardScaler().fit(m_tr)
+M_tr, M_val, M_test = (mass_scaler.transform(t).astype("float32") for t in (m_tr, m_val, m_test))
+print(len(mass_tr), len(mass_val), len(mass_test), M_tr.shape[1])</code></pre>
+<pre class="out">204 69 69 11</pre>
+        <p>Two training birds had no body mass, so 204 training rows remain; validation and test keep all 69. The 11 input
+        columns are 3 measurements, 3 species, 3 islands and 2 sexes. The fills, the columns and the scaler all come from
+        the training rows again.<sup class="cite"><a href="#src-24">24</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>tf.keras.utils.set_random_seed(42)
+mass_model = tf.keras.Sequential([tf.keras.Input(shape=(11,)),
+                                  tf.keras.layers.Dense(16, activation="relu"),
+                                  tf.keras.layers.Dense(1)])
+mass_model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.01), loss="mse", metrics=["mae"])
+history_mass = mass_model.fit(M_tr, mass_tr, epochs=100, batch_size=16,
+                              validation_data=(M_val, mass_val), verbose=0)
+val_mse, val_mae = mass_model.evaluate(M_val, mass_val, verbose=0)
+print(f"validation MSE {val_mse:.4f}, MAE {val_mae:.3f} kg ({val_mae * 1000:.0f} g)")</code></pre>
+<pre class="out">validation MSE 0.0880, MAE 0.232 kg (232 g)</pre>
+        <p><code>Adam(learning_rate=0.01)</code> sets the optimizer's step size by hand, one of the <code>fit</code> knobs
+        named in step 4. On this run the model is about 0.23 kg, about 230 g, off per validation bird on average.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>pred = mass_model.predict(M_val, verbose=0)[:, 0]
+lims = [mass_val.min(), mass_val.max()]
+plt.scatter(mass_val, pred)
+plt.plot(lims, lims)
+plt.xlabel("actual kg")
+plt.ylabel("predicted kg")
+plt.show()
+errors = pred - mass_val
+largest = np.argsort(np.abs(errors))[-5:][::-1]
+print(rows_val.iloc[largest].assign(actual_kg=mass_val[largest], predicted_kg=pred[largest].round(2),
+                                    error_kg=errors[largest].round(2)))</code></pre>
+<pre class="out">     bill_length_mm  bill_depth_mm  flipper_length_mm    species  island  \
+47             37.5           18.9              179.0     Adelie   Dream
+39             39.8           19.1              184.0     Adelie   Dream
+268            44.9           13.3              213.0     Gentoo  Biscoe
+110            38.1           16.5              198.0     Adelie  Biscoe
+168            50.3           20.0              197.0  Chinstrap   Dream
+
+        sex  actual_kg  predicted_kg  error_kg
+47     Male      2.975          3.87      0.90
+39     Male      4.650          3.94     -0.71
+268  Female      5.100          4.47     -0.63
+110  Female      3.825          3.25     -0.57
+168    Male      3.300          3.87      0.57</pre>
+        <p>The model returns one column per row, and <code>[:, 0]</code> takes that column as a flat array of
+        predictions, which the plot draws as one dot per bird of actual mass against predicted mass. A perfect model puts
+        every dot on the diagonal line, and the distance of a dot from the line is that bird's
+        error.<sup class="cite"><a href="#src-29">29</a></sup></p>
+        <p><code>np.argsort</code> orders the errors from smallest to largest, so its last five positions are the five
+        largest misses, and <code>[::-1]</code> puts the largest first. On this run the largest is an Adelie of 2.975 kg,
+        the lightest validation bird, predicted at about 3.87 kg. Read such rows for what they share.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>test_mse, test_mae = mass_model.evaluate(M_test, mass_test, verbose=0)
+print(f"test MAE {test_mae:.3f} kg ({test_mae * 1000:.0f} g)")</code></pre>
+<pre class="out">test MAE 0.212 kg (212 g)</pre>
+        <p>The test MAE prints once, at the end: about 0.21 kg on this run, close to the validation number.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A regression ends in one linear unit, trains on MSE and reports MAE.</li>
+          <li>MAE is in the target's unit; MSE squares the errors, so big misses dominate.</li>
+          <li>Drop rows with no target, then read predicted against actual and the largest errors.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>To turn a classifier into a regression I change three things. The output becomes one Dense unit with no
+          activation so it can produce any number, the loss becomes mean squared error, and I report mean absolute error,
+          which is in the target's own unit, like grams.</p>
+          <p>Then I plot predicted against actual, where a perfect model sits on the diagonal, and read the rows with the
+          largest errors. Rows with no target I drop, I never fill them.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="7">
+        <div class="tag">Check yourself</div>
+        <h2>Check yourself</h2>
+        <p>Eight questions, at least one per section. Answer each out loud before you open it.</p>
+        <details class="check"><summary>When would you use the Functional API instead of <code>Sequential</code>, and what does <code>Dense(128)(inputs)</code> return?</summary><p>When the model is not a straight stack: it branches, merges, or has several inputs or outputs. The call returns a new Keras tensor, a placeholder with a shape of (None, 128) that records the layer; no numbers are computed until real data goes through the finished <code>Model</code>.</p></details>
+        <details class="check"><summary>The skip model has 109,610 parameters and the plain digit network 101,770. Where does the difference come from?</summary><p><code>Concatenate</code> hands the output layer 784 + 128 = 912 values per row instead of 128. The output layer then holds 912 × 10 + 10 = 9,130 numbers instead of 1,290, and 9,130 − 1,290 = 7,840 is the difference.</p></details>
+        <details class="check"><summary>What does <code>Conv2D(16, 3)</code> output for a batch of 32 grey 28 by 28 images, and what must happen to the images first?</summary><p>The images need a channel axis, (32, 28, 28) to (32, 28, 28, 1), with <code>images[..., np.newaxis]</code> or a reshape. The output is (32, 26, 26, 16): 16 maps, each 26 by 26 because a 3 by 3 kernel with no padding fits 26 positions per side.</p></details>
+        <details class="check"><summary>Why does a batch normalization layer behave differently in training and in prediction, and how would you tell whether it helped?</summary><p>In training it rescales with the current batch's mean and variance; in prediction there may be one row, so it uses the moving averages kept during training. Train the same network with and without it on the same validation rows and compare validation loss and accuracy; a gap of a few images is noise.</p></details>
+        <details class="check"><summary>A CNN's training loss keeps falling while its validation loss rises after epoch 12. What is happening, and which two tools from the CNN build address it?</summary><p>The network is overfitting: it is learning the training images rather than digits in general. Early stopping with <code>restore_best_weights=True</code> keeps epoch 12's weights, and dropout switches off a random share of values while training so the network cannot lean on any one of them.</p></details>
+        <details class="check"><summary>What does a <code>.keras</code> file hold, and why might a model saved in Colab be gone the next morning?</summary><p>The architecture, the weights, the optimizer state and the compile settings, so <code>load_model</code> gives back a model that predicts the same and can evaluate at once. Colab writes files to a temporary machine's disk that is deleted when the runtime is recycled, so download the file or copy it to Drive.</p></details>
+        <details class="check"><summary>A teammate fills the penguin blanks with whole-table medians and fits <code>StandardScaler</code> on all 344 rows, then splits. What is wrong, and what is the fix?</summary><p>That is data leakage: the validation and test birds helped set the fill values, the mean and the spread, so the validation score no longer measures unseen data. Split first, learn every fill, encoding and scale from the training rows, and reindex validation and test to the training columns.</p></details>
+        <details class="check"><summary>What three things change when the penguin classifier becomes a body-mass regression, and why report MAE?</summary><p>The output becomes one <code>Dense(1)</code> unit with no activation, the loss becomes <code>"mse"</code>, and the reported metric becomes MAE. MAE is in the target's own unit, so 0.233 kg reads as "about 233 g off per bird", while MSE is in kilograms squared.</p></details>
+      </section>
+
+      <section class="reading-sources" aria-label="Sources and deeper dive">
+        <h2>Sources &amp; deeper dive</h2>
+        <ul>
+          <li id="src-1"><a href="https://www.tensorflow.org/guide/keras/functional_api" target="_blank" rel="noopener">The Functional API</a> — <code>Input</code>, layer calls, <code>Model(inputs, outputs)</code> and what <code>Sequential</code> cannot build.</li>
+          <li id="src-2"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/Model" target="_blank" rel="noopener">tf.keras.Model</a> — <code>summary</code>, <code>fit</code>, <code>evaluate</code>, <code>predict</code> and parameter counts.</li>
+          <li id="src-3"><a href="https://www.tensorflow.org/guide/keras/sequential_model" target="_blank" rel="noopener">The Sequential model</a> — when a plain stack is the right tool.</li>
+          <li id="src-4"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/layers/Concatenate" target="_blank" rel="noopener">tf.keras.layers.Concatenate</a> — joining tensors along the last axis for a skip connection.</li>
+          <li id="src-5"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/utils/plot_model" target="_blank" rel="noopener">tf.keras.utils.plot_model</a> — drawing a model's layer graph.</li>
+          <li id="src-6"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/layers" target="_blank" rel="noopener">Layers API</a> — every predefined layer in one list.</li>
+          <li id="src-7"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/layers/Flatten" target="_blank" rel="noopener">tf.keras.layers.Flatten</a> — one long row per example, batch axis kept.</li>
+          <li id="src-8"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/layers/Conv2D" target="_blank" rel="noopener">tf.keras.layers.Conv2D</a> — input layout, default padding and kernel weights.</li>
+          <li id="src-9"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/layers/MaxPooling2D" target="_blank" rel="noopener">tf.keras.layers.MaxPooling2D</a> — the default 2 by 2 window.</li>
+          <li id="src-10"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/layers/Embedding" target="_blank" rel="noopener">tf.keras.layers.Embedding</a> — token ids in, vectors out.</li>
+          <li id="src-11"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/layers/BatchNormalization" target="_blank" rel="noopener">tf.keras.layers.BatchNormalization</a> — training against prediction behaviour and its four numbers per input.</li>
+          <li id="src-12"><a href="https://arxiv.org/abs/1502.03167" target="_blank" rel="noopener">Batch Normalization (Ioffe and Szegedy)</a> — the original paper and its covariate-shift explanation.</li>
+          <li id="src-13"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/callbacks/EarlyStopping" target="_blank" rel="noopener">tf.keras.callbacks.EarlyStopping</a> — <code>patience</code> and <code>restore_best_weights</code>.</li>
+          <li id="src-14"><a href="https://www.tensorflow.org/tutorials/keras/overfit_and_underfit" target="_blank" rel="noopener">Overfit and underfit</a> — reading the gap between curves, and dropout as regularisation.</li>
+          <li id="src-15"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.metrics.ConfusionMatrixDisplay.html" target="_blank" rel="noopener">ConfusionMatrixDisplay</a> — drawing a confusion matrix.</li>
+          <li id="src-16"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/layers/Dropout" target="_blank" rel="noopener">tf.keras.layers.Dropout</a> — what the layer does in training and in prediction.</li>
+          <li id="src-17"><a href="https://www.tensorflow.org/guide/keras/serialization_and_saving" target="_blank" rel="noopener">Save, serialize, and export models</a> — <code>.keras</code> files, <code>.h5</code> and <code>model.export</code>.</li>
+          <li id="src-18"><a href="https://research.google.com/colaboratory/faq.html" target="_blank" rel="noopener">Colab FAQ</a> — where runtime files live and when they are deleted.</li>
+          <li id="src-19"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/callbacks/ModelCheckpoint" target="_blank" rel="noopener">tf.keras.callbacks.ModelCheckpoint</a> — saving during <code>fit</code>.</li>
+          <li id="src-20"><a href="https://pypi.org/project/tflearn/" target="_blank" rel="noopener">tflearn on PyPI</a> — the last release and its date.</li>
+          <li id="src-21"><a href="https://github.com/tflearn/tflearn" target="_blank" rel="noopener">TFLearn repository</a> — the last commit and the import that fails on current TensorFlow.</li>
+          <li id="src-22"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/callbacks/TensorBoard" target="_blank" rel="noopener">tf.keras.callbacks.TensorBoard</a> — the Keras home of TFLearn's TensorBoard settings.</li>
+          <li id="src-23"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.train_test_split.html" target="_blank" rel="noopener">train_test_split</a> — <code>test_size</code> and <code>stratify</code>.</li>
+          <li id="src-24"><a href="https://scikit-learn.org/stable/common_pitfalls.html" target="_blank" rel="noopener">Common pitfalls: data leakage</a> — why every fit belongs on the training rows.</li>
+          <li id="src-25"><a href="https://pandas.pydata.org/docs/reference/api/pandas.get_dummies.html" target="_blank" rel="noopener">pandas.get_dummies</a> — one-hot encoding category columns.</li>
+          <li id="src-26"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.StandardScaler.html" target="_blank" rel="noopener">StandardScaler</a> — <code>fit</code> learns mean and spread, <code>transform</code> applies them.</li>
+          <li id="src-27"><a href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.reindex.html" target="_blank" rel="noopener">pandas.DataFrame.reindex</a> — giving every table the training columns.</li>
+          <li id="src-28"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.metrics.classification_report.html" target="_blank" rel="noopener">classification_report</a> — per-class precision, recall, F1 and support.</li>
+          <li id="src-29"><a href="https://www.tensorflow.org/tutorials/keras/regression" target="_blank" rel="noopener">Basic regression: Predict fuel efficiency</a> — a linear output, MSE, MAE and predicted against actual.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · after you have read the page</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 7 Day 3</footer>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 3 — goals</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Build a model with the Functional API, including a skip connection <code>Sequential</code> cannot express, and say when each API fits</li>
+      <li>Choose predefined layers by the shapes they read and hand on, and work out a small CNN's shapes and parameter count</li>
+      <li>Add batch normalization, dropout and early stopping, and judge each one on the same validation data</li>
+      <li>Save a trained model to a <code>.keras</code> file, load it back with the same predictions, and keep it past a Colab reset</li>
+      <li>Take a table with blanks and category columns through a classification build and a regression variant without leaking validation or test rows</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Day 4 — Custom training loops, TensorBoard runs & project workflow →", href: "day-4-custom-training-tensorboard-and-project-workflow.html" };
+window.DIAGRAM = {
+  title: "Day 3 · from layer calls to two finished builds",
+  width: 500, height: 430,
+  nodes: [
+    { id:"functional", step:0, x:24, y:14, w:200, h:56, label:"Functional API\n  Input · layer(x) · Model\n  Concatenate skip", detail:"Layers called on Keras tensors like functions, wrapped in Model(inputs, outputs). The skip model reuses the input, 109,610 parameters against 101,770." },
+    { id:"layers", step:1, x:276, y:14, w:200, h:56, label:"Layers by shape\n  Flatten · Conv2D\n  MaxPooling2D", detail:"(32, 28, 28) to (32, 784) with Flatten; (32, 28, 28, 1) to (32, 26, 26, 16) with Conv2D(16, 3); pooling halves to 13 by 13." },
+    { id:"bn", step:2, x:24, y:100, w:200, h:56, label:"Batch normalization\n  per-batch rescale\n  measured on validation", detail:"Batch mean and variance in training, moving averages in prediction. 512 numbers after a 128-unit layer; the pair is compared on the same 6,000 validation rows." },
+    { id:"cnn", step:3, kind:"example", x:276, y:100, w:200, h:56, label:"BUILD: CNN digits\n  12,810 params\n  early stopping · dropout", detail:"Test set held out first; EarlyStopping on val_loss with patience 2; Dropout(0.3) as the one improvement; best_cnn meets the test set once." },
+    { id:"save", step:4, x:276, y:186, w:200, h:56, label:"Save and load\n  .keras · load_model\n  np.allclose", detail:"One file holds architecture, weights, optimizer state and compile settings. Colab files vanish with the runtime: download or copy to Drive." },
+    { id:"penguins", step:5, kind:"example", x:24, y:186, w:200, h:56, label:"BUILD: penguins\n  split first · fill\n  one-hot · scale", detail:"206 / 69 / 69 rows; fills, columns and scaler from the training rows only; per-species report, wrong and least sure rows; penguins.keras saved." },
+    { id:"reg", step:6, x:24, y:272, w:200, h:56, label:"Variant: regression\n  Dense(1) · mse · mae\n  predicted vs actual", detail:"Body mass in kg from 11 columns. MAE in the target's unit; MSE squares the errors so big misses dominate." },
+    { id:"check", step:7, x:24, y:370, w:452, h:40, label:"CHECK YOURSELF\n  answer out loud, then open" }
+  ],
+  edges: [
+    { id:"e1", step:1, from:"functional", to:"layers", label:"pick by shape" },
+    { id:"e2", step:2, from:"functional", to:"bn", label:"784-128-10" },
+    { id:"e3", step:3, from:"layers", to:"cnn", label:"Conv2D + pooling" },
+    { id:"e4", step:3, from:"bn", to:"cnn", label:"same validation rows" },
+    { id:"e5", step:4, from:"cnn", to:"save", label:"best_cnn.save" },
+    { id:"e6", step:5, from:"penguins", to:"save", label:"penguins.keras" },
+    { id:"e7", step:6, from:"penguins", to:"reg", label:"same splits" },
+    { id:"e8", step:7, from:"reg", to:"check", dir:"-" }
+  ],
+  captions: [
+    "The Functional API calls layers on tensors and wraps the ends in a Model, which lets a skip connection reuse the input. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "Layers are chosen by the shapes they read and hand on: Flatten for Dense, a channel axis for Conv2D, pooling to halve the maps.",
+    "Batch normalization rescales a layer's inputs per batch, and the pair with and without it is judged on the same validation rows.",
+    "The CNN build runs in a project's order: test set aside, reasons for each layer, early stopping, errors read, dropout tried, test once.",
+    "A .keras file carries the whole trained model; loading it gives the same predictions, and in Colab it must be downloaded to last.",
+    "The penguin build splits first and learns every fill, encoding and scale from the training rows, then reads per-species metrics.",
+    "The regression variant keeps the splits and swaps the output layer, the loss and the metric, then plots predicted against actual.",
+    "You can now explain when Sequential is not enough, read a CNN's shapes, judge a change on validation data and walk through both builds."
+  ]
+};
+window.QUIZ = {
+  id: "w07-d3",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "What does Conv2D(16, 3) output for a batch shaped (32, 28, 28, 1), with the default padding?",
+      options: ["(32, 28, 28, 16)", "(32, 26, 26, 16)", "(32, 13, 13, 16)", "(32, 26, 26, 1)"], answer: 1,
+      explain: "16 kernels make 16 maps. With padding \"valid\" a 3 by 3 kernel fits 28 - 3 + 1 = 26 positions per side. 13 by 13 is what MaxPooling2D makes of it afterwards." },
+    { type: "scq", stem: "Why can't tf.keras.Sequential build the skip-connection model that joins the input to the hidden layer's output?",
+      options: ["Sequential has no Dense layer", "The input tensor is used by two layers, and Sequential passes each output only to the next layer", "Concatenate only works on images", "Sequential models cannot be saved"], answer: 1,
+      explain: "The input feeds both the hidden layer and the Concatenate. A Sequential model is a plain stack with one input and one output tensor, so a tensor used twice needs the Functional API." },
+    { type: "tf", stem: "A Dropout(0.3) layer also switches off 30% of its values when the model predicts.", answer: false,
+      explain: "Dropout acts only during training steps. predict and evaluate pass every value through, which is why dropout is judged on validation loss rather than training accuracy." },
+    { type: "tf", stem: "A model loaded from a .keras file can call evaluate straight away, without compile.", answer: true,
+      explain: "The .keras file keeps the architecture, the weights, the optimizer state and the compile settings." },
+    { type: "mcq", stem: "Which of these leak validation or test rows into training? Select all that apply.",
+      options: ["Fitting StandardScaler on all 344 penguin rows before splitting", "Filling blanks with the median of the whole table", "Reindexing the validation table to the training columns", "Fitting the scaler on the training rows and transforming the validation rows with it"], answer: [0, 1],
+      explain: "Any value learned from rows that include validation or test rows is leakage. Reindexing only copies the training column list, and transforming with a training-fitted scaler is the correct pattern." },
+    { type: "match", stem: "Match each piece to what it does.",
+      pairs: [
+        { l: "Flatten", r: "turns each image into one long row, keeping the batch axis" },
+        { l: "MaxPooling2D", r: "keeps the largest value in each 2 by 2 window" },
+        { l: "EarlyStopping", r: "stops when validation loss stops improving and restores the best epoch" },
+        { l: "Dense(1) with no activation", r: "a linear output for predicting a number" }
+      ],
+      explain: "Flatten hands images to Dense; pooling halves the maps; early stopping watches val_loss with a patience; a regression ends in one linear unit." }
+  ]
+};
+</script>
+
+<script src="../../assets/js/diagram.js?v=20261119"></script>
+<script src="../../assets/js/scrolly.js?v=20261119"></script>
+<script src="../../assets/js/modals.js?v=20261119"></script>
+<script src="../../assets/js/quiz.js?v=20261119"></script>
+<script src="../../assets/js/widgets.js?v=20261119"></script>
+<script src="../../assets/js/glossary.js?v=20261119"></script>
+</body>
+</html>

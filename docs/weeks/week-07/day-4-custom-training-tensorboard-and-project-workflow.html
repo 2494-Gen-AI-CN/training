@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w07d4">
+<title>W7·D4 — Custom training loops, TensorBoard runs &amp; project workflow | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261119">
+<script src="../../assets/js/theme.js?v=20261119"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="../../exit-criteria/index.html">Exit criteria</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>Custom training loops, TensorBoard runs &amp; working on a model project alone</h1>
+        <div class="meta">
+          <span><b>Week 7</b> · Day 4</span>
+          <span>Thu Nov 26, 2026</span>
+          <span>TensorFlow</span>
+          <span><b>~43 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span class="verified">Sources checked 2026-11-19 · python 3.13.18 · tensorflow 2.21.0 · keras 3.13.2 · tensorboard 2.21.0 · numpy 2.4.6 · pandas 2.2.3 · scikit-learn 1.6.1 · tensorflow-datasets 4.9.10</span>
+        </div>
+        <p class="summary">Today is project work on your own, and this page holds two TensorFlow topics in
+        <a href="#part-a">Part A</a> (steps 1 to 3: a training loop written by hand, and two runs compared in TensorBoard)
+        and a checklist for working on a model project alone in <a href="#part-b">Part B</a> (steps 4 to 8). Each part
+        reads on its own, so you can start with either; to run Part B's example cells, first run the setup cell of step 1
+        and the two runs of step 3. The page assumes one thing from the week: the 784-128-10 digit network, compiled with
+        Adam and fitted on MNIST. Afterwards you can explain what <code>fit</code> does on every batch, write the same
+        loop with <code>tf.GradientTape</code>, read two runs in TensorBoard, and tell an interviewer how you made a model
+        project reproducible and honest.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" id="part-a" data-diagram="0" data-step="0">
+        <div class="tag">Part A · Training</div>
+        <h2>What <code>fit</code> does on every batch</h2>
+        <p>Part A starts here. Use it when you want to know what <code>fit</code> is doing while its progress bar fills,
+        or before you read someone else's training code.</p>
+        <p>Here is one way to spend the day, in minutes:</p>
+        <table>
+          <thead><tr><th>When</th><th>Minutes</th><th>What to do</th></tr></thead>
+          <tbody>
+            <tr><td>Before lunch</td><td>75</td><td>Part A, running each "Run in Colab" cell in a fresh Colab notebook</td></tr>
+            <tr><td>Before lunch</td><td>15</td><td>a break</td></tr>
+            <tr><td>Before lunch</td><td>70</td><td>project work: your dataset loaded from code and looked at, with steps 4 and 5 as the checklist</td></tr>
+            <tr><td>Lunch</td><td>60</td><td>lunch</td></tr>
+            <tr><td>After lunch</td><td>40</td><td>Part B read against your own notebook: seeds set, Run all checked, the test set put aside, a results table started</td></tr>
+            <tr><td>After lunch</td><td>110</td><td>project work: preprocessing and a first model with both curves on one chart</td></tr>
+            <tr><td>After lunch</td><td>10</td><td>a break</td></tr>
+          </tbody>
+        </table>
+        <h3>Setup: the digits and the split</h3>
+        <p>Every example on this page runs in one fresh Colab notebook, cell after cell, starting with the cell below.
+        It imports the libraries, sets the seeds (step 6 explains those lines) and loads MNIST, the handwritten
+        digits.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>import numpy as np
+import pandas as pd
+import tensorflow as tf
+
+RANDOM_STATE = 42
+np.random.seed(RANDOM_STATE)
+tf.keras.utils.set_random_seed(RANDOM_STATE)
+
+(x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+x_train = x_train.reshape(-1, 784).astype("float32") / 255.0
+x_test = x_test.reshape(-1, 784).astype("float32") / 255.0
+x_tr, y_tr = x_train[:54000], y_train[:54000]
+x_val, y_val = x_train[54000:], y_train[54000:]
+print(x_tr.shape, x_val.shape)</code></pre>
+<pre class="out">(54000, 784) (6000, 784)</pre>
+        <p>The cell prepares MNIST exactly as <a href="day-1-mlp-backprop-and-digit-classifier.html">Monday's page</a>
+        did: each image flattened to 784 pixel values between 0 and 1. The output reads as 54,000 training rows and 6,000
+        validation rows, each 784 numbers wide.
+        <code>x_test</code> and <code>y_test</code> stay untouched until step
+        7.</p>
+        <h3>One batch: forward pass, loss, gradients, update</h3>
+        <p>Under its progress bar, <code>fit</code> loops over epochs, and inside each epoch it loops over
+        batches.<sup class="cite"><a href="#src-1">1</a></sup> A batch is the small group of rows the model sees before
+        its weights change once, 128 rows here. An epoch is one pass over all the training rows. On every batch the same
+        four things happen, in this order:<sup class="cite"><a href="#src-2">2</a></sup></p>
+        <ol>
+          <li>The batch goes through the layers and comes out as predictions, ten probabilities per row. This is the forward pass.</li>
+          <li>The predictions are compared with the true labels, which gives the loss: one number, large when the model is wrong.</li>
+          <li>For every trainable weight, TensorFlow works out the gradient, the slope of the loss for that weight.</li>
+          <li>The optimizer moves every weight a small step in the direction that lowers the loss.</li>
+        </ol>
+        <p>Monday's gradient descent did the last two lines by hand for one weight, finding each slope by nudging the
+        weight a hair each way. The 784-128-10 network has 101,770 weights, so <code>fit</code> asks TensorFlow for all
+        the slopes at once. The cell below trains that network for two epochs with <code>fit</code>, as
+        <code>fit_model</code>. Step 2 writes the same loop by hand and compares the two.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>fit_model = tf.keras.Sequential([
+    tf.keras.Input(shape=(784,)),
+    tf.keras.layers.Dense(128, activation="relu"),
+    tf.keras.layers.Dense(10, activation="softmax"),
+])
+fit_model.compile(optimizer="adam", loss="sparse_categorical_crossentropy", metrics=["accuracy"])
+history = fit_model.fit(x_tr, y_tr, epochs=2, batch_size=128, validation_data=(x_val, y_val))</code></pre>
+        <p>Keras prints one progress bar per epoch, ending at <code>422/422</code>, followed by <code>loss</code>,
+        <code>accuracy</code>, <code>val_loss</code> and <code>val_accuracy</code>. The 422 is the number of batches:
+        54,000 rows divided by 128 is 421.875, and the leftover rows make one last, shorter batch. The first two numbers
+        are measured on the training rows and the last two on the validation rows.</p>
+        <p>On a healthy run both losses are lower after epoch 2 than after epoch 1. In one run of this cell,
+        <code>val_loss</code> fell from about 0.17 to about 0.13, and <code>val_accuracy</code> ended near 0.97.</p>
+        <h3>Batches, epochs and the knobs of <code>fit</code></h3>
+        <p>The weights change once per batch, many times per epoch. Two epochs of 422 batches make 844 updates. Each update
+        looks at only 128 rows, so it is cheap and a little rough, and hundreds of small corrections per epoch move the
+        weights much further than a single correction per pass would.</p>
+        <p>The arguments you pass to <code>fit</code> are its knobs. This page sets them and leaves them alone, because
+        tuning is Friday's subject.<sup class="cite"><a href="#src-3">3</a></sup><sup class="cite"><a href="#src-2">2</a></sup></p>
+        <table>
+          <thead><tr><th>Knob</th><th>What it sets</th><th>On this page</th></tr></thead>
+          <tbody>
+            <tr><td><code>epochs</code></td><td>how many passes over the training rows</td><td>2 here, 5 in step 3</td></tr>
+            <tr><td><code>batch_size</code></td><td>how many rows go into each update</td><td>128</td></tr>
+            <tr><td><code>validation_data</code></td><td>rows scored after every epoch and never trained on</td><td><code>(x_val, y_val)</code></td></tr>
+            <tr><td><code>callbacks</code></td><td>objects <code>fit</code> calls during training, such as a logger</td><td>TensorBoard's, in step 3</td></tr>
+            <tr><td><code>shuffle</code></td><td>reorders the training rows every epoch; on by default</td><td>left on</td></tr>
+            <tr><td><code>verbose</code></td><td>how much <code>fit</code> prints while it runs</td><td>2 in step 3: one line per epoch</td></tr>
+          </tbody>
+        </table>
+        <p>You recognise these knobs in anyone's code by where they sit: inside the <code>fit(...)</code> call, after
+        the training arrays. The model's layers and the <code>compile</code> line decide what is trained, and the
+        knobs decide how long and in what pieces.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>On every batch, fit runs a forward pass, computes the loss, gets the gradients and updates the weights.</li>
+          <li>Weights change once per batch: 422 batches of 128 rows make one epoch.</li>
+          <li>The knobs of fit are its arguments: epochs, batch size, validation data, callbacks, shuffle and verbose.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Inside fit there are two loops: epochs, and inside each epoch the batches. For every batch it runs the
+          forward pass to get predictions, computes the loss against the labels, gets the gradient of the loss for every
+          trainable weight, and has the optimizer take one small step with those gradients. So the weights change once per
+          batch, many times per epoch.</p>
+          <p>The knobs I set on fit are the number of epochs, the batch size, the validation data, any callbacks such as
+          TensorBoard's logger, and whether to shuffle, which is on by default.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">Part A · Training</div>
+        <h2>The same loop written by hand with <code>tf.GradientTape</code></h2>
+        <p>Step 1 listed the four things <code>fit</code> does on every batch; this step writes them as Python on the
+        same 784-128-10 network.</p>
+        <h3>The tape</h3>
+        <p>A hand-written loop needs the gradients that <code>fit</code> gets behind the scenes.
+        <code>tf.GradientTape</code> is TensorFlow's tool for them. It records the operations run inside its
+        <code>with</code> block, and afterwards <code>tape.gradient(loss, variables)</code> returns the slope of the loss
+        for each variable.<sup class="cite"><a href="#src-4">4</a></sup></p>
+        <p>TensorFlow can work out how the loss depends on a weight only if it saw
+        every step from that weight to the loss. If the loss is computed outside the block, the tape never saw it, and
+        <code>tape.gradient</code> returns <code>None</code> instead of slopes.<sup class="cite"><a href="#src-4">4</a></sup></p>
+        <h3>The loop, batch by batch</h3>
+        <p>The first cell makes three objects: a fresh, uncompiled copy of the network, the loss and the
+        optimizer.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>loop_model = tf.keras.Sequential([
+    tf.keras.Input(shape=(784,)),
+    tf.keras.layers.Dense(128, activation="relu"),
+    tf.keras.layers.Dense(10, activation="softmax"),
+])
+loss_fn = tf.keras.losses.SparseCategoricalCrossentropy()
+optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)</code></pre>
+        <p>The cell prints nothing. <code>SparseCategoricalCrossentropy</code> is the loss that the string
+        <code>"sparse_categorical_crossentropy"</code> names in <code>compile</code>: it takes labels as the integers 0 to
+        9 and the ten probabilities from the softmax layer.<sup class="cite"><a href="#src-5">5</a></sup> 
+        <code>compile</code> chose Adam by name; a hand loop makes the optimizer object itself, here with a learning rate
+        of 0.001.<sup class="cite"><a href="#src-6">6</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>for epoch in range(2):
+    batch_losses = []
+    for start in range(0, len(x_tr), 128):
+        xb = x_tr[start:start + 128]
+        yb = y_tr[start:start + 128]
+        with tf.GradientTape() as tape:
+            preds = loop_model(xb, training=True)
+            loss = loss_fn(yb, preds)
+        grads = tape.gradient(loss, loop_model.trainable_variables)
+        optimizer.apply_gradients(zip(grads, loop_model.trainable_variables))
+        batch_losses.append(float(loss))
+    print(f"epoch {epoch + 1}: mean loss {np.mean(batch_losses):.4f}")</code></pre>
+        <p>The cell prints two lines, <code>epoch 1</code> and <code>epoch 2</code>, each with the mean of that epoch's
+        batch losses. The second should be lower than the first, because the weights improved over the 422 updates of
+        epoch 1; in one run they read about 0.39 and about 0.19. The lines that do the work:</p>
+        <ul>
+          <li><code>range(0, len(x_tr), 128)</code> gives the first row of each batch: 0, 128, 256 and so on.<sup class="cite"><a href="#src-8">8</a></sup></li>
+          <li><code>x_tr[start:start + 128]</code> slices out the next 128 rows of images, and the same slice of <code>y_tr</code> gives their labels.</li>
+          <li>Inside the tape, <code>loop_model(xb, training=True)</code> is the forward pass and <code>loss_fn(yb, preds)</code> is the loss.</li>
+          <li><code>tape.gradient</code> returns one gradient per trainable variable, and <code>apply_gradients</code> uses them for one update.<sup class="cite"><a href="#src-7">7</a></sup> A model's trainable variables are its weights and biases, the numbers training changes.</li>
+        </ul>
+        <p><code>zip</code> pairs each gradient with its variable, and <code>float(loss)</code> turns the batch's loss into
+        a plain number so the list can be averaged. The <code>training=True</code> flag tells each layer it is training.
+        It changes the output only for layers such as <code>Dropout</code> and <code>BatchNormalization</code>; this
+        network has neither, so here it is a habit.<sup class="cite"><a href="#src-9">9</a></sup></p>
+        <p>One corner of the slicing:</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>starts = list(range(0, len(x_tr), 128))
+print(len(starts), starts[-1], len(x_tr) - starts[-1])</code></pre>
+<pre class="out">422 53888 112</pre>
+        <p>There are 422 batches, the same count <code>fit</code> printed. The last one starts at row 53,888 and holds
+        only 112 rows, because 54,000 is not a multiple of 128. A numpy slice past the end simply stops at the end, so
+        the loop needs no special code for it.</p>
+        <h3>Comparing the hand loop with <code>fit</code></h3>
+        <p class="run-label">Run in Colab</p>
+<pre><code>loop_model.compile(loss=loss_fn, metrics=["accuracy"])
+print("hand loop:", loop_model.evaluate(x_val, y_val, verbose=0))
+print("fit:      ", fit_model.evaluate(x_val, y_val, verbose=0))</code></pre>
+        <p>A hand loop can train a model that was never compiled; <code>compile</code> is needed only for
+        <code>evaluate</code> and <code>fit</code>, so the first line exists purely so <code>evaluate</code> can
+        run.<sup class="cite"><a href="#src-3">3</a></sup> Each printed line is a pair, validation loss then validation
+        accuracy, on the same 6,000 rows.</p>
+        <p>Expect the two pairs to differ a little. In one run the hand loop scored a validation accuracy of about
+        0.964 and <code>fit</code> about 0.966, with validation losses near 0.13 for both. <code>fit</code> shuffles the
+        rows every epoch while the loop takes them in order.<sup class="cite"><a href="#src-1">1</a></sup>
+        Compare these validation numbers, not the printed epoch losses: <code>fit</code> shows a running average over the
+        epoch, and the loop prints whatever its author chose to average.<sup class="cite"><a href="#src-3">3</a></sup></p>
+        <h3>When a team writes its own loop</h3>
+        <p><code>fit</code> with callbacks is the default. Teams write the loop themselves in a few
+        situations:<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <ul>
+          <li>a custom loss or a custom update rule, such as clipping the gradients before they are applied</li>
+          <li>several models trained against each other, as in a GAN, where one network makes images and a second judges them</li>
+          <li>research code that tries a new way of training</li>
+        </ul>
+        <p>The price of that control is that the loop above lacks four things <code>fit</code> gives for free, each of
+        them code you would add:<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <ul>
+          <li>shuffling the rows each epoch</li>
+          <li>a validation score after each epoch</li>
+          <li>metrics such as accuracy</li>
+          <li>callbacks</li>
+        </ul>
+        <p>You recognise a hand loop in a repository by three lines together: a
+        <code>with tf.GradientTape() as tape:</code> block, a call to <code>tape.gradient</code> and a call to
+        <code>apply_gradients</code>.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>tf.GradientTape records the forward pass so tape.gradient can return a slope for each weight.</li>
+          <li>The loss must be computed inside the tape's block, or the gradients come back as None.</li>
+          <li>Compare the hand loop with fit on validation numbers; fit shuffles each epoch, so they differ slightly.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>GradientTape records the operations TensorFlow runs inside its with block. After the forward pass and the
+          loss, I ask the tape for the gradient of the loss with respect to the model's trainable variables, and I get
+          one gradient per variable. Then the optimizer's apply_gradients takes one step. The loss has to be computed
+          inside the block, or the tape has nothing to differentiate and returns None.</p>
+          <p>I'd use fit by default, and write the loop myself for a custom loss or update rule, a GAN where two models
+          train against each other, or research code, knowing I then own shuffling, metrics and validation.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">Part A · TensorBoard</div>
+        <h2>TensorBoard: comparing two runs</h2>
+        <p>TensorBoard is a dashboard that draws what a training run wrote to disk. <a href="day-1-mlp-backprop-and-digit-classifier.html">Monday's
+        page</a> opened one run's curves in it. This step compares two runs on the same chart, which is how you see whether one change helped.</p>
+        <h3>TFLearn's <code>tensorboard_verbose</code>, as history</h3>
+        <p>The curriculum names this topic "TensorBoard with TFLearn". TFLearn was a high-level library on top of
+        TensorFlow, and it is unmaintained: its last release is 0.5.0, from 2020-11-11, its last commit is from
+        2020-11-30, and it does not import on Colab's current TensorFlow.<sup class="cite"><a href="#src-12">12</a></sup>
+        Old tutorials still use it, so you should recognise its logging setting, which sat on the model object:</p>
+        <p class="run-label">TFLearn (history, do not run)</p>
+<pre><code>net = tflearn.input_data(shape=[None, 784])
+net = tflearn.fully_connected(net, 128, activation="relu")
+net = tflearn.fully_connected(net, 10, activation="softmax")
+net = tflearn.regression(net)
+model = tflearn.DNN(net, tensorboard_verbose=3, tensorboard_dir="logs")</code></pre>
+        <p>In TFLearn this built the 784-128-10 network and told the model to log for TensorBoard.
+        <code>tensorboard_verbose</code> set how much it logged and <code>tensorboard_dir</code> set where. In Keras the
+        same job is a callback passed to <code>fit</code>: <code>tf.keras.callbacks.TensorBoard(log_dir=...)</code> in
+        <code>fit(callbacks=[...])</code>.<sup class="cite"><a href="#src-10">10</a></sup> <a href="day-2-autoencoders-rbm-and-sequential-api.html">Tuesday's
+        page</a> has the full mapping; these rows cover the block above.</p>
+        <table>
+          <thead><tr><th>TFLearn</th><th>Keras today</th></tr></thead>
+          <tbody>
+            <tr><td><code>tflearn.input_data</code></td><td><code>tf.keras.Input</code></td></tr>
+            <tr><td><code>tflearn.fully_connected</code></td><td><code>tf.keras.layers.Dense</code></td></tr>
+            <tr><td><code>tflearn.regression</code></td><td><code>model.compile</code></td></tr>
+            <tr><td><code>DNN(tensorboard_verbose=..., tensorboard_dir=...)</code></td><td><code>tf.keras.callbacks.TensorBoard(log_dir=...)</code> passed to <code>fit</code></td></tr>
+          </tbody>
+        </table>
+        <h3>Two runs, two log folders</h3>
+        <p>The Keras <code>TensorBoard</code> callback writes event files, the run's numbers epoch by epoch, into
+        <code>log_dir</code> while <code>fit</code> runs. With <code>histogram_freq=1</code> it also writes the weights'
+        histograms every epoch.<sup class="cite"><a href="#src-10">10</a></sup> To compare two runs, give each run its
+        own folder under one parent folder.<sup class="cite"><a href="#src-11">11</a></sup></p>
+        <p>The pair below is <a href="day-3-functional-api-layers-and-custom-training.html">Wednesday's</a>
+        batch-normalization comparison. One run is the plain network. The other adds
+        one <code>BatchNormalization</code> layer after the hidden layer, which rescales the hidden layer's outputs with
+        each batch's own mean and spread while training.<sup class="cite"><a href="#src-9">9</a></sup> Everything else is
+        the same.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>tf.keras.utils.set_random_seed(RANDOM_STATE)
+plain_model = tf.keras.Sequential([
+    tf.keras.Input(shape=(784,)),
+    tf.keras.layers.Dense(128, activation="relu"),
+    tf.keras.layers.Dense(10, activation="softmax"),
+])
+plain_model.compile(optimizer="adam", loss="sparse_categorical_crossentropy", metrics=["accuracy"])
+plain_model.fit(x_tr, y_tr, epochs=5, batch_size=128, validation_data=(x_val, y_val), verbose=2,
+                callbacks=[tf.keras.callbacks.TensorBoard(log_dir="logs/compare/plain", histogram_freq=1)])</code></pre>
+        <p>The cell prints the training and validation loss and accuracy as each of the five epochs ends; in one run
+        the fifth line ended near <code>val_loss</code> 0.090 and <code>val_accuracy</code> 0.973. The seed line restarts
+        the random numbers so both runs start from the same seed. The <code>log_dir</code> is the line that matters for
+        TensorBoard.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>tf.keras.utils.set_random_seed(RANDOM_STATE)
+bn_model = tf.keras.Sequential([
+    tf.keras.Input(shape=(784,)),
+    tf.keras.layers.Dense(128, activation="relu"),
+    tf.keras.layers.BatchNormalization(),
+    tf.keras.layers.Dense(10, activation="softmax"),
+])
+bn_model.compile(optimizer="adam", loss="sparse_categorical_crossentropy", metrics=["accuracy"])
+bn_model.fit(x_tr, y_tr, epochs=5, batch_size=128, validation_data=(x_val, y_val), verbose=2,
+             callbacks=[tf.keras.callbacks.TensorBoard(log_dir="logs/compare/batchnorm", histogram_freq=1)])</code></pre>
+        <p>The same five epochs report again, now for the second run in its own folder; in the same run it ended near
+        <code>val_loss</code> 0.083 and <code>val_accuracy</code> 0.973. The <code>training=True</code>
+        flag from step 2 matters here: <code>fit</code> sets it, so the layer uses each batch's mean and spread during
+        training, and <code>evaluate</code> uses the moving averages it collected instead.<sup class="cite"><a href="#src-9">9</a></sup>
+        <a href="day-3-functional-api-layers-and-custom-training.html">Wednesday's page</a> explains those moving
+        averages.</p>
+        <h3>Reading the overlay in the Scalars tab</h3>
+        <p class="run-label">Run in Colab</p>
+<pre><code>%load_ext tensorboard
+%tensorboard --logdir logs/compare</code></pre>
+        <p>As on Monday's page, the <code>%</code> lines load TensorBoard and open it in the cell's output, here reading
+        the parent folder. Because that folder
+        holds one subfolder per run, the Scalars tab draws <code>plain</code> and <code>batchnorm</code> as separate
+        coloured lines on the same charts.<sup class="cite"><a href="#src-11">11</a></sup> What to read:</p>
+        <ul>
+          <li>On the <code>epoch_loss</code> chart, the two validation lines. The run that ends with the lower validation loss did better on the measure every before-and-after this week uses.</li>
+          <li>Each run's gap between its training and validation lines, the same reading as one run's two curves on one chart, now done across two runs.</li>
+          <li>The Histograms tab, which shows how each layer's weights spread and shift epoch by epoch, written because of <code>histogram_freq=1</code>.</li>
+        </ul>
+        <p>Two mistakes leave the dashboard wrong. An empty TensorBoard usually means <code>--logdir</code> points at the
+        wrong path, or the fit never ran with the callback.<sup class="cite"><a href="#src-11">11</a></sup> Rerunning a
+        fit into the same folder adds a second run's events on top of the first, so one line turns into a tangle; the fix
+        is a new folder name for each run.<sup class="cite"><a href="#src-11">11</a></sup> The <code>logs</code> folder also disappears when the Colab runtime resets.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>TFLearn is unmaintained; its tensorboard settings became the Keras TensorBoard callback.</li>
+          <li>The callback writes a run's numbers to log_dir; histogram_freq=1 adds weight histograms.</li>
+          <li>One folder per run under one parent lets the Scalars tab overlay the runs.</li>
+          <li>An empty dashboard usually means a wrong logdir; a reused folder merges two runs.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>TensorBoard is a dashboard for training runs. Its files come from the Keras TensorBoard callback, which I
+          pass to fit with a log directory, and it writes the loss and metrics every epoch. To compare two runs I give
+          each its own folder under one parent and point TensorBoard at the parent, so the Scalars tab overlays them and I
+          compare the validation loss.</p>
+          <p>TFLearn was a high-level library on top of TensorFlow. Its last release was in 2020 and it doesn't import on
+          current TensorFlow, so where an old tutorial sets tensorboard_verbose on its model, today I'd use Keras and the
+          TensorBoard callback.</p>
+        </div>
+      </section>
+
+      <section class="step" id="part-b" data-diagram="0" data-step="3">
+        <div class="tag">Part B · Project</div>
+        <h2>Loading a dataset from code</h2>
+        <p>Part B starts here. Steps 4 to 8 follow the order a model project notebook runs in, from the data to the
+        hand-in, and each opens with what to do in your own notebook, then why.</p>
+        <p>In your notebook, load the data with a line of code, so no file has to be uploaded by hand.</p>
+        <h3>Four routes with no upload</h3>
+        <p>A notebook that
+        loads its data from code runs anywhere: on a fresh runtime, on a reviewer's laptop, a month from now. A file
+        uploaded by hand into Colab disappears when the runtime resets, and nobody else can rerun the notebook without
+        it. Four routes need no upload:</p>
+        <table>
+          <thead><tr><th>Route</th><th>The call</th><th>What comes back</th></tr></thead>
+          <tbody>
+            <tr><td>Keras built-in</td><td><code>tf.keras.datasets.&lt;name&gt;.load_data()</code></td><td>numpy arrays, already split into training and test<sup class="cite"><a href="#src-13">13</a></sup><sup class="cite"><a href="#src-14">14</a></sup></td></tr>
+            <tr><td>scikit-learn loader</td><td><code>fetch_&lt;name&gt;(...)</code>, such as <code>fetch_california_housing</code></td><td>the data and its labels, cached after the first download<sup class="cite"><a href="#src-15">15</a></sup></td></tr>
+            <tr><td>TensorFlow Datasets</td><td><code>tfds.load(name, split=..., as_supervised=True)</code></td><td>a named dataset from a large catalogue<sup class="cite"><a href="#src-16">16</a></sup></td></tr>
+            <tr><td>A public CSV</td><td><code>pd.read_csv(url)</code></td><td>a pandas DataFrame, the table type<sup class="cite"><a href="#src-18">18</a></sup></td></tr>
+          </tbody>
+        </table>
+        <p>The first route is the MNIST cell at the top of this page: <code>load_data()</code> downloads the data once,
+        keeps a cached copy, and returns two pairs of arrays.<sup class="cite"><a href="#src-13">13</a></sup> Each example
+        below loads a dataset the week's notebooks have used already, so the cells show how each route works and are not
+        suggestions for your project's data.</p>
+        <h3>A fetch loader, a catalogue and a URL</h3>
+        <p>scikit-learn's <code>fetch_</code> loaders download a dataset once and cache it in a folder named
+        <code>scikit_learn_data</code> in your home folder. Where a loader takes <code>random_state</code>, it controls the
+        shuffling, so the order repeats.<sup class="cite"><a href="#src-15">15</a></sup> This one fetches the two forum
+        topics of Tuesday's text build.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>from sklearn.datasets import fetch_20newsgroups
+
+posts = fetch_20newsgroups(subset="train", categories=["rec.autos", "rec.motorcycles"],
+                           random_state=RANDOM_STATE)
+print(len(posts.data), posts.target_names)
+print(posts.data[0][:300])</code></pre>
+        <p>The first line printed reads <code>1192 ['rec.autos', 'rec.motorcycles']</code>: 1,192 training posts and
+        the two topic names. <code>posts.data</code> is a list of strings, one per post, and
+        <code>posts.target</code> holds a label for each: 0 for the first name, 1 for the second. The second line shows
+        the first 300 characters of one post, so you see the raw text before any model does.</p>
+        <p>TensorFlow Datasets is TensorFlow's catalogue of ready-made datasets, and it comes preinstalled on Colab, so it
+        needs no <code>!pip install</code>.<sup class="cite"><a href="#src-19">19</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>import tensorflow_datasets as tfds
+
+images, labels = tfds.as_numpy(tfds.load("mnist", split="train", batch_size=-1, as_supervised=True))
+print(images.shape, labels.shape)</code></pre>
+<pre class="out">(60000, 28, 28, 1) (60000,)</pre>
+        <p>The two shapes are the images' and the labels', and both start with 60,000, the number of images in the
+        training split. Each image is 28 by 28 pixels with one grey channel, the channel axis
+        <a href="day-3-functional-api-layers-and-custom-training.html">Wednesday's page</a> added before
+        <code>Conv2D</code>.</p>
+        <p>Three arguments do the work. <code>as_supervised=True</code> returns images and labels as a pair,
+        <code>batch_size=-1</code> returns the whole split at once, and <code>tfds.as_numpy</code> turns the result into
+        numpy arrays.<sup class="cite"><a href="#src-17">17</a></sup> That way you never handle a <code>tf.data</code>
+        pipeline, TensorFlow's streaming format, which this course leaves aside. If <code>tensorflow_datasets</code> fails to import
+        on your runtime, use another route.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>url = "https://raw.githubusercontent.com/allisonhorst/palmerpenguins/main/inst/extdata/penguins.csv"
+penguins = pd.read_csv(url)
+print(penguins.shape)</code></pre>
+<pre class="out">(344, 8)</pre>
+        <p><code>pd.read_csv</code> reads a CSV straight from a web address.<sup class="cite"><a href="#src-18">18</a></sup>
+        The shape is a pair: 344 rows, one per penguin, and 8 columns. Any public CSV works the same way, as long as the
+        link opens the raw file itself and not a web page that shows it. Step 5 looks inside this table.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Load data from code so the notebook runs on a fresh runtime and on anyone's machine.</li>
+          <li>The four routes are Keras load_data, scikit-learn fetch loaders, TensorFlow Datasets and pd.read_csv on a URL.</li>
+          <li>With batch_size=-1 and tfds.as_numpy, TensorFlow Datasets hands back plain numpy arrays.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>The first thing that makes a notebook reproducible is that the data loads from code, never from a file I
+          uploaded by hand. I use a Keras built-in with load_data, a scikit-learn fetch loader, TensorFlow Datasets, or a
+          public CSV read with pandas straight from its URL. Then anyone can open the notebook on a fresh runtime and
+          get the same data.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">Part B · Project</div>
+        <h2>Looking at the data before modelling</h2>
+        <p>In your notebook, right after the loading cell and before any model, write down:</p>
+        <ul>
+          <li>the size: how many rows, and how many columns or pixels per row</li>
+          <li>the columns and their types, or for images the classes</li>
+          <li>the blanks in each column</li>
+          <li>how many examples each class has</li>
+          <li>a few rows or images, looked at with your own eyes</li>
+        </ul>
+        <p>A model learns only what is in the data, and one accuracy number hides most of what can go wrong: blank
+        cells, a column read as the wrong type, one class far rarer than the others. A few lines of pandas find these
+        before any model is built, and a reader of the notebook meets the data before the model.</p>
+        <h3>A table: size, columns, blanks, classes</h3>
+        <p>For a table, pandas gives each item in one line: <code>df.shape</code>, <code>df.dtypes</code>,
+        <code>df.isna().sum()</code>, <code>df.head()</code> and <code>value_counts()</code> on the label
+        column.<sup class="cite"><a href="#src-20">20</a></sup> Here they run on the penguins table from step 4.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>print(penguins.dtypes)
+print(penguins.isna().sum())</code></pre>
+        <p>The first list prints one line per column with its type, as <code>dtypes</code> reports
+        it.<sup class="cite"><a href="#src-20">20</a></sup> A text column such as <code>species</code> shows as
+        <code>object</code>, and a measurement as a decimal type such as <code>float64</code>. Text columns need encoding
+        before a network can read them.</p>
+        <p>The second list counts the blanks per column: the four measurement columns
+        have 2 each and <code>sex</code> has 11. Those blanks need a fill learned from the training rows, as Wednesday's penguins build
+        did, and step 7 explains why the order matters.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>print(penguins["species"].value_counts())
+penguins.head()</code></pre>
+        <p>The first output lists each species with its number of rows: 152 Adelie, 124 Gentoo and 68 Chinstrap, so
+        the rarest class has under half the rows of the largest. If one class is much rarer than the others, plain
+        accuracy can mislead. A model that never once predicts the rare class can still be right on every row of the
+        common ones, so its accuracy looks high.</p>
+        <p><a href="day-1-mlp-backprop-and-digit-classifier.html">Monday's page</a> put a number on it: on MNIST, where
+        about one image in eleven is a 5, a model that always answers "not 5" scores about 91% accuracy and finds none
+        of the 5s, a recall of 0.</p>
+        <p>Below the counts, <code>head()</code> draws the first five rows as a table, where a blank shows as
+        <code>NaN</code>, pandas' mark for a missing value.</p>
+        <h3>Images: classes and pixel range</h3>
+        <p>Image labels are a plain numpy array with no column name. <code>pd.Series(y_tr)</code> wraps them in a pandas
+        column so the same <code>value_counts()</code> can count each digit, and the array's own <code>min()</code> and
+        <code>max()</code> give the pixel range. The cell uses the setup cell's <code>x_tr</code> and
+        <code>y_tr</code>.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>print(pd.Series(y_tr).value_counts())
+print(x_tr.min(), x_tr.max())</code></pre>
+<pre class="out">1    6112
+7    5597
+3    5504
+9    5373
+2    5358
+6    5347
+0    5336
+8    5254
+4    5247
+5    4872
+Name: count, dtype: int64
+0.0 1.0</pre>
+        <p>The counts come sorted from the most common digit to the rarest: 6,112 images of 1 down to 4,872 of 5. All ten
+        sit close together, so the classes are close to even and plain accuracy is a fair first measure. The last line
+        is the smallest and the largest pixel value, 0.0 and 1.0, which confirms the division by 255 in the setup cell
+        worked.</p>
+        <p>For images, also draw a handful with their labels before training, the way the week's notebooks did with
+        their image grid.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Before modelling, check the size, the columns or classes, the blanks, the class counts and a few samples.</li>
+          <li>pandas gives shape, dtypes, isna().sum(), head() and value_counts() in one line each.</li>
+          <li>Uneven classes make plain accuracy misleading: ignoring a rare class can still score high.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Before I build anything I look at the data: its size, the columns and their types, the blanks per column,
+          how many examples each class has, and a few rows or images. Blanks tell me I need fills learned from the
+          training rows, and uneven class counts tell me plain accuracy won't be enough to judge the model.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
+        <div class="tag">Part B · Project</div>
+        <h2>Seeds and Runtime &gt; Run all on a fresh runtime</h2>
+        <p>In your notebook, set the seeds in the top cell, and check the whole notebook with Runtime &gt; Run all on a
+        fresh runtime. Both make it reproducible: it gives the same results when someone else runs it from the top.
+        Loading the data from code, step 4, was the first habit, and these are the other two.</p>
+        <h3>Seeds at the top</h3>
+        <p>Training is full of random choices:</p>
+        <ul>
+          <li>the starting weights</li>
+          <li>the order <code>fit</code> shuffles the rows into</li>
+          <li>the rows a split puts aside</li>
+        </ul>
+        <p>A random seed is a starting number that makes those choices repeat on a rerun.
+        <code>tf.keras.utils.set_random_seed(n)</code> sets the Python, NumPy and TensorFlow seeds in one
+        call.<sup class="cite"><a href="#src-21">21</a></sup> This cell shows the effect on numpy's random numbers.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>tf.keras.utils.set_random_seed(RANDOM_STATE)
+print(np.random.rand(3).round(3))
+tf.keras.utils.set_random_seed(RANDOM_STATE)
+print(np.random.rand(3).round(3))</code></pre>
+<pre class="out">[0.375 0.951 0.732]
+[0.375 0.951 0.732]</pre>
+        <p>It prints two lines of three numbers each, and the two lines are the same. <code>np.random.rand(3)</code>
+        draws three random numbers between 0 and 1, and <code>round(3)</code> keeps three decimals. Because the seed is
+        set again before the second draw, the second line repeats the first exactly.
+        Without that second seed line, the second draw would give three new numbers. The same thing happens to a
+        network's starting weights, which is why <code>fit</code> gives the same curves on a rerun.</p>
+        <p>You recognise the pattern at the top of most model notebooks: a constant such as
+        <code>RANDOM_STATE = 42</code>, then <code>np.random.seed(RANDOM_STATE)</code> and
+        <code>tf.keras.utils.set_random_seed(RANDOM_STATE)</code>. Every later call that takes a seed gets the same
+        constant, as in <code>train_test_split(..., random_state=RANDOM_STATE)</code>.</p>
+        <p>Seeds have a limit. They make a rerun on the same runtime repeat, and on a CPU that is the aim. Different
+        hardware, other library versions or a GPU may still change the numbers.<sup class="cite"><a href="#src-21">21</a></sup>
+        Colab's preinstalled versions also change over time,<sup class="cite"><a href="#src-19">19</a></sup> so record
+        the ones your run used.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>print(tf.__version__, np.__version__, pd.__version__)</code></pre>
+        <p>It prints three version numbers: TensorFlow, numpy and pandas. Copy them into your README, so a reader knows
+        what your numbers were measured on.</p>
+        <h3>The real check: a fresh runtime</h3>
+        <p>A notebook can work in your session and fail for everyone else. A fresh runtime catches three causes:</p>
+        <ul>
+          <li>cells that were run out of order</li>
+          <li>a variable left over from a cell you deleted</li>
+          <li>a file you uploaded once that is still sitting in the session</li>
+        </ul>
+        <p>None of that shows until someone starts from nothing. The check takes three moves:</p>
+        <ol>
+          <li>Start a fresh runtime, one with none of your session's variables or files.</li>
+          <li>Runtime &gt; Run all, which runs every cell from the top, in order.</li>
+          <li>Read down the outputs: every cell finished without an error, and the numbers match the ones in your markdown and your results table.</li>
+        </ol>
+        <p>On a fresh runtime the only state is what the cells create, top to bottom, so a pass means anyone can
+        reproduce your notebook. Run the check at the end of each working session, not only before the hand-in. It also
+        catches the Colab trap from step 3: files such as the <code>logs</code> folder and a saved <code>.keras</code>
+        model vanish when the runtime resets, so the cell that writes a file must come before the cell that reads it.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>set_random_seed sets the Python, NumPy and TensorFlow seeds in one call.</li>
+          <li>Seeds make reruns repeat on the same runtime; other hardware or versions may still differ.</li>
+          <li>Start a fresh runtime, then Run all, and check every output before trusting a notebook.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>The data loads from code, so there's no file to upload. The top cell sets one seed constant
+          for Python, NumPy and TensorFlow, and every split or shuffle uses it. And before I trust the notebook I start a
+          fresh runtime and run all the cells from the top, so nothing depends on leftovers from my session. Seeds give me
+          the same numbers on the same runtime, but a different machine or library version can still move them, so I
+          record the versions too.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="6">
+        <div class="tag">Part B · Project</div>
+        <h2>The test set used once, and a results table kept as you go</h2>
+        <p>In your notebook, split off the test set first and run the test cell once, at the end. Between the two, keep a
+        results table of every model on validation data. The final number of a model project should say how the model
+        will do on data it has never met, and the test set can measure that only if nothing about it shaped the
+        model.</p>
+        <h3>Split first, test last</h3>
+        <p>The rule is short: the test set is held out at the start and used once, at the end, and every choice before
+        then is made on the validation data. It fixes the order of the notebook:</p>
+        <ol>
+          <li>Split off the test set first, right after loading and looking at the data.</li>
+          <li>Split the remaining rows into training and validation rows.</li>
+          <li>Fit every fill for blanks, every encoder and every scaler on the training rows only, then apply them to the other two parts.<sup class="cite"><a href="#src-22">22</a></sup></li>
+          <li>Choose the layers, the epochs and every change by the validation numbers.</li>
+          <li>Run the test cell once, on the model you keep.</li>
+        </ol>
+        <p>Item 3 is where the test set most often leaks. A scaler fitted on all the rows has learned the test rows'
+        averages, so the test rows helped shape the model, and the final number looks better than the model deserves.
+        Fitting it on the training rows keeps the test rows unseen.</p>
+        <p>For a table with uneven classes, pass <code>stratify=y</code> to <code>train_test_split</code>, which keeps
+        the class proportions the same in each part.<sup class="cite"><a href="#src-22">22</a></sup> Without it, a plain
+        random split can leave the rarest class with only a handful of rows in the test set, or none, and the test number
+        then says little about that class. In code you recognise the habit as
+        <code>train_test_split(X, y, test_size=0.2, stratify=y, random_state=RANDOM_STATE)</code>.</p>
+        <p>MNIST arrives with its test set already split off, and the setup cell took the last 6,000 training rows as
+        validation. On this page <code>x_test</code> appears in one cell only, the last one in this step.</p>
+        <h3>A results table</h3>
+        <p>A results table is a short table kept as you go, with one row per trained model and its validation numbers.
+        It puts every before-and-after on record, including the changes that did not help, so "what I tried" in a README
+        is honest. The cell below starts one for the two TensorBoard runs of step 3.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>results = []
+for name, model in [("plain", plain_model), ("batchnorm", bn_model)]:
+    val_loss, val_accuracy = model.evaluate(x_val, y_val, verbose=0)
+    results.append({"model": name, "val_loss": val_loss, "val_accuracy": val_accuracy})
+pd.DataFrame(results).round(4)</code></pre>
+        <p><code>evaluate</code> returns the loss and then each metric named in <code>compile</code>, here accuracy, so
+        the two names before the <code>=</code> receive them in that order.<sup class="cite"><a href="#src-3">3</a></sup>
+        Each <code>append</code> adds one dictionary, one row. The last line draws a two-row table with the columns
+        <code>model</code>, <code>val_loss</code> and <code>val_accuracy</code>, rounded to four decimals.</p>
+        <p>In one run the table read about 0.090 for <code>plain</code> and about 0.083 for <code>batchnorm</code>, with a validation accuracy
+        near 0.973 for both. Under the table, write one plain sentence: did batch normalization lower the validation loss
+        or not.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>if results[0]["val_loss"] &lt;= results[1]["val_loss"]:
+    kept, kept_name = plain_model, "plain"
+else:
+    kept, kept_name = bn_model, "batchnorm"
+print("kept:", kept_name)</code></pre>
+        <p>It prints <code>kept:</code> and the name of the run with the lower validation loss, <code>batchnorm</code> in
+        the run above. The choice is made here, in one line of logic, before the test set is touched.</p>
+        <h3>The test cell</h3>
+        <p class="run-label">Run in Colab</p>
+<pre><code>test_loss, test_accuracy = kept.evaluate(x_test, y_test, verbose=0)
+print(f"test accuracy of {kept_name}: {test_accuracy:.4f}")</code></pre>
+        <p>It prints one line, the kept model's accuracy on the 10,000 test images, to four decimals: about 0.972 in the
+        run above. That is the
+        number a README reports as the final result, beside the validation numbers in the results table.</p>
+        <p>Run this cell once. If you run it, dislike the number, change the model and run it again, the test set has
+        started choosing the model, and its number has become a validation number in disguise. A later idea goes into
+        the results table on validation data, and the README reports the first test number.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Split the test set off first; fit every fill, encoder and scaler on the training rows only.</li>
+          <li>stratify=y keeps the class proportions the same in every part of the split.</li>
+          <li>Keep a results table with one row per model and its validation numbers.</li>
+          <li>Choose the kept model on validation data, then run the test cell once.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>The test set is my estimate of how the model does on data it has never seen, so nothing about it may shape
+          the model. I split it off first, fit scalers and fills on the training rows only, make every choice on the
+          validation set, and run the test once on the model I keep. If I tuned against the test set, its number would
+          just be another validation number and would flatter the model.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="7">
+        <div class="tag">Part B · Project</div>
+        <h2>Saving the <code>.keras</code> file, the README and a short deck</h2>
+        <p>In your notebook, save the kept model as a <code>.keras</code> file and check that it loads back, then write
+        the README and a short deck. A trained model is only weights in memory, and Colab forgets them when the runtime
+        resets, so the saved file and the words that explain it are what a reader receives.</p>
+        <h3>Save, reload, compare</h3>
+        <p><code>model.save("name.keras")</code> writes one zip file that holds:<sup class="cite"><a href="#src-23">23</a></sup></p>
+        <ul>
+          <li>the model's architecture</li>
+          <li>its weights</li>
+          <li>its compile settings</li>
+          <li>the optimizer's state</li>
+        </ul>
+        <p><code>tf.keras.models.load_model</code> reads it back, and the TensorFlow guide checks a reload by comparing
+        predictions.<sup class="cite"><a href="#src-23">23</a></sup> The cell below saves <code>kept</code>, the model
+        step 7 chose on validation loss.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>kept.save("digits_kept.keras")
+loaded = tf.keras.models.load_model("digits_kept.keras")
+print(np.allclose(kept.predict(x_val[:100], verbose=0), loaded.predict(x_val[:100], verbose=0)))</code></pre>
+<pre class="out">True</pre>
+        <p><code>np.allclose</code> prints <code>True</code> when two arrays agree to within rounding. Both models gave
+        the same ten probabilities for each of the first 100 validation images, so the file holds the whole trained
+        model, weights included. The path must end in <code>.keras</code>.<sup class="cite"><a href="#src-23">23</a></sup>
+        Colab loses the file when the runtime resets, so download it once it is final.</p>
+        <h3>What a README for a model says</h3>
+        <p>Teams document a trained model in a short written card that says how it was developed and how it
+        performs.<sup class="cite"><a href="#src-24">24</a></sup> A project README plays that role. It tells one story,
+        in the order the notebook ran:</p>
+        <table>
+          <thead><tr><th>Section</th><th>What it says</th></tr></thead>
+          <tbody>
+            <tr><td>Problem</td><td>what the model predicts, why it matters and who would use it</td></tr>
+            <tr><td>Data</td><td>the source and the line that loads it, the size, the classes or columns, the blanks</td></tr>
+            <tr><td>Preprocessing</td><td>each step, and that each was fitted on the training rows</td></tr>
+            <tr><td>Model</td><td>the layers, activations, output layer, loss and optimizer, with a reason for each</td></tr>
+            <tr><td>Results</td><td>the results table with the before and after, and the test number, used once</td></tr>
+            <tr><td>Limitations</td><td>two sentences on where the model would fail</td></tr>
+            <tr><td>How to rerun</td><td>open the notebook in Colab on a fresh runtime, Run all; the library versions</td></tr>
+          </tbody>
+        </table>
+        <p>The results table you kept as you went is what makes the Results section honest. A change that did not help
+        is still a row, and one sentence saying so reads as careful work. A reader should be able to rerun the notebook
+        from the last section alone and get your numbers.</p>
+        <h3>A short deck</h3>
+        <p>A short slide deck for a model tells the same story faster, one idea per slide, in the same order. A
+        reasonable set of slides:</p>
+        <ul>
+          <li>the problem and who would use the model</li>
+          <li>the data, with a few examples shown</li>
+          <li>the model and why each choice was made</li>
+          <li>the training and validation curves on one chart</li>
+          <li>the results table and the test number</li>
+          <li>a few examples the model gets wrong, and what they share</li>
+          <li>the limitations and what you would try next</li>
+        </ul>
+        <p>Charts and short lines beat paragraphs on a slide. The detail lives in the README and the notebook, which the
+        deck points at, so a question the slides do not answer is answered there.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>model.save with a .keras path writes architecture, weights, compile settings and optimizer state.</li>
+          <li>Check a reload by comparing predictions on the same rows with np.allclose.</li>
+          <li>A README tells the notebook's story in order and ends with how to rerun it.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A README for a model tells the story in the order the notebook ran: the problem and who it's for, where the
+          data comes from and its size, the preprocessing and what it was fitted on, the model with a reason for each
+          choice, the results table with the before and after and the one test number, the limitations, and how to rerun
+          it. It plays the role a model card plays on a team.</p>
+          <p>I hand in the model as a .keras file, which holds the architecture, the weights and the compile settings,
+          and I check it by loading it back and comparing predictions with the original.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="8">
+        <div class="tag">Check yourself</div>
+        <h2>Check yourself</h2>
+        <p>Answer each question out loud first, the way you would in an interview, then open it to compare.</p>
+        <details class="check"><summary>What happens on every batch inside <code>fit</code>, and how many weight updates do two epochs on 54,000 rows at a batch size of 128 make?</summary><p>A forward pass gives predictions, the loss compares them with the labels, the gradients give the slope of the loss for every weight, and the optimizer takes one step. One epoch is 422 batches, the last one short, so two epochs make 844 updates.</p></details>
+        <details class="check"><summary>A hand-written loop computes the loss on the line after the <code>with tf.GradientTape() as tape:</code> block ends. What goes wrong?</summary><p>The tape records only what runs inside its block, so it never saw the loss being computed. <code>tape.gradient</code> returns <code>None</code>, and <code>apply_gradients</code> then fails or changes nothing. Move the loss line inside the block.</p></details>
+        <details class="check"><summary>Your hand loop and <code>fit</code> trained the same network for two epochs, and their validation accuracies differ slightly. Is that a bug?</summary><p>No. <code>fit</code> shuffles the rows every epoch while the loop takes them in order. Compare validation numbers and expect a small difference; the printed epoch losses are averaged differently, so they are compared loosely at best.</p></details>
+        <details class="check"><summary>When would a team write its own training loop, and what does it give up?</summary><p>For a custom loss or update rule, for models trained against each other such as a GAN, or for research code. It gives up what <code>fit</code> does for free: shuffling, metrics, validation after each epoch and callbacks all become code the team writes.</p></details>
+        <details class="check"><summary>TensorBoard shows an empty page, and on another day one tangled line where you expected two runs. What happened each time?</summary><p>An empty page usually means <code>--logdir</code> points at the wrong folder or the fit never ran with the callback. The tangle means two runs were written into the same folder; give each run its own folder under one parent and point TensorBoard at the parent.</p></details>
+        <details class="check"><summary>An old tutorial builds its model with <code>tflearn.DNN(net, tensorboard_verbose=3, tensorboard_dir="logs")</code>. What do you use instead?</summary><p>TFLearn is unmaintained since 2020 and does not import on current TensorFlow. Build the network in Keras and pass <code>tf.keras.callbacks.TensorBoard(log_dir=...)</code> to <code>fit</code> through <code>callbacks</code>.</p></details>
+        <details class="check"><summary>Name four ways to load a dataset into Colab with no upload.</summary><p>A Keras built-in with <code>load_data()</code>, a scikit-learn <code>fetch_</code> loader, <code>tfds.load</code> from TensorFlow Datasets, and <code>pd.read_csv</code> on the URL of a public CSV.</p></details>
+        <details class="check"><summary>Why is a scaler fitted on the training rows only, and why does the test cell run only once?</summary><p>A scaler fitted on every row has learned the test rows' averages, so the test rows leak into the model. Running the test cell, changing the model and running it again lets the test set choose the model; its number then says no more than a validation number.</p></details>
+        <details class="check"><summary>How do you show a notebook is reproducible, and what can seeds not promise?</summary><p>Load the data from code, set one seed constant at the top with <code>tf.keras.utils.set_random_seed</code>, then start a fresh runtime, Run all, and check every output. Seeds make reruns on the same runtime repeat, but other hardware, library versions or a GPU can still change the numbers.</p></details>
+        <details class="check"><summary>What does a <code>.keras</code> file hold, and how do you check that a saved model loads back correctly?</summary><p>The architecture, the weights, the compile settings and the optimizer's state, in one zip file. Load it with <code>tf.keras.models.load_model</code> and compare its predictions with the original model's on the same rows using <code>np.allclose</code>.</p></details>
+      </section>
+
+      <section class="reading-sources" aria-label="Sources and deeper dive">
+        <h2>Sources &amp; deeper dive</h2>
+        <ul>
+          <li id="src-1"><a href="https://www.tensorflow.org/guide/keras/writing_a_training_loop_from_scratch" target="_blank" rel="noopener">Writing a training loop from scratch</a> — what fit does per batch, the hand loop, and when teams write their own.</li>
+          <li id="src-2"><a href="https://keras.io/api/models/model_training_apis/" target="_blank" rel="noopener">Keras: Model training APIs</a> — compile, fit and evaluate, and the arguments fit takes.</li>
+          <li id="src-3"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/Model" target="_blank" rel="noopener">tf.keras.Model</a> — fit's knobs and shuffle default, evaluate's return values, and when compile is needed.</li>
+          <li id="src-4"><a href="https://www.tensorflow.org/api_docs/python/tf/GradientTape" target="_blank" rel="noopener">tf.GradientTape</a> — recording operations and tape.gradient, including the None case.</li>
+          <li id="src-5"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/losses/SparseCategoricalCrossentropy" target="_blank" rel="noopener">tf.keras.losses.SparseCategoricalCrossentropy</a> — the loss for integer labels and softmax probabilities.</li>
+          <li id="src-6"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/optimizers/Adam" target="_blank" rel="noopener">tf.keras.optimizers.Adam</a> — the Adam optimizer object and its learning rate.</li>
+          <li id="src-7"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/optimizers/Optimizer" target="_blank" rel="noopener">tf.keras.optimizers.Optimizer</a> — apply_gradients and one update step.</li>
+          <li id="src-8"><a href="https://docs.python.org/3/library/stdtypes.html#range" target="_blank" rel="noopener">Python docs: range</a> — the start, stop and step that give each batch's first row.</li>
+          <li id="src-9"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/layers/BatchNormalization" target="_blank" rel="noopener">tf.keras.layers.BatchNormalization</a> — batch statistics while training, moving averages in evaluation, and the training flag.</li>
+          <li id="src-10"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/callbacks/TensorBoard" target="_blank" rel="noopener">tf.keras.callbacks.TensorBoard</a> — log_dir, histogram_freq and the event files a run writes.</li>
+          <li id="src-11"><a href="https://www.tensorflow.org/tensorboard/get_started" target="_blank" rel="noopener">Get started with TensorBoard</a> — the notebook commands, one folder per run, and why a dashboard comes up empty.</li>
+          <li id="src-12"><a href="https://pypi.org/project/tflearn/" target="_blank" rel="noopener">tflearn on PyPI</a> — TFLearn's last release and its status.</li>
+          <li id="src-13"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/datasets" target="_blank" rel="noopener">tf.keras.datasets</a> — the Keras built-in datasets and load_data.</li>
+          <li id="src-14"><a href="https://keras.io/api/datasets/" target="_blank" rel="noopener">Keras: Datasets</a> — the list of datasets Keras loads from code.</li>
+          <li id="src-15"><a href="https://scikit-learn.org/stable/datasets.html" target="_blank" rel="noopener">scikit-learn: Dataset loading utilities</a> — the fetch loaders, their cache folder and random_state.</li>
+          <li id="src-16"><a href="https://www.tensorflow.org/datasets" target="_blank" rel="noopener">TensorFlow Datasets</a> — the catalogue of ready-made datasets.</li>
+          <li id="src-17"><a href="https://www.tensorflow.org/datasets/api_docs/python/tfds/load" target="_blank" rel="noopener">tfds.load</a> — split, as_supervised and batch_size=-1.</li>
+          <li id="src-18"><a href="https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html" target="_blank" rel="noopener">pandas.read_csv</a> — reading a CSV straight from a URL.</li>
+          <li id="src-19"><a href="https://raw.githubusercontent.com/googlecolab/backend-info/main/pip-freeze.txt" target="_blank" rel="noopener">Colab backend-info: preinstalled packages</a> — the library versions Colab ships, TensorFlow Datasets among them.</li>
+          <li id="src-20"><a href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html" target="_blank" rel="noopener">pandas: DataFrame</a> — shape, dtypes, isna, head and value_counts.</li>
+          <li id="src-21"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/utils/set_random_seed" target="_blank" rel="noopener">tf.keras.utils.set_random_seed</a> — one call for the Python, NumPy and TensorFlow seeds, and its limits.</li>
+          <li id="src-22"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.train_test_split.html" target="_blank" rel="noopener">scikit-learn: train_test_split</a> — splitting first, and stratify.</li>
+          <li id="src-23"><a href="https://www.tensorflow.org/guide/keras/serialization_and_saving" target="_blank" rel="noopener">Save, serialize, and export models</a> — what a .keras file holds and checking a reload.</li>
+          <li id="src-24"><a href="https://www.tensorflow.org/responsible_ai/model_card_toolkit/guide" target="_blank" rel="noopener">Model Card Toolkit guide</a> — the short written card teams keep for a trained model.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · after you have read the page</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 7 Day 4</footer>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 4 — goals</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Explain what <code>fit</code> does on every batch and name the knobs you set on it</li>
+      <li>Write a training loop by hand with <code>tf.GradientTape</code>, compare it with <code>fit</code>, and say when a team writes its own</li>
+      <li>Compare two training runs in TensorBoard with one log folder per run, and say what replaced TFLearn's TensorBoard settings</li>
+      <li>Load a dataset from code, look at it, make the notebook reproducible, hold the test set out, keep a results table, and save and document a <code>.keras</code> model</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Day 5 — Improving a model & stretch builds →", href: "day-5-improving-a-model-and-stretch-builds.html" };
+window.DIAGRAM = {
+  title: "Day 4 · from fit to your own project",
+  width: 500, height: 600,
+  nodes: [
+    { id:"fit", step:0, kind:"example", x:24, y:14, w:452, h:50, label:"FIT, ON EVERY BATCH\n  forward pass · loss · gradients · update", detail:"Two loops: epochs, and batches inside each epoch. 54,000 rows at batch_size=128 make 422 batches, so the weights change 422 times per epoch." },
+    { id:"tape", step:1, x:24, y:86, w:200, h:56, label:"tf.GradientTape\n  record, then tape.gradient\n  then apply_gradients", detail:"The loss must be computed inside the with block, or tape.gradient returns None. fit shuffles each epoch, so its validation numbers differ slightly from the hand loop's." },
+    { id:"when", step:1, x:276, y:86, w:200, h:56, label:"Own loop when\n  custom loss or update\n  GANs · research code", detail:"The price: shuffling, metrics, validation and callbacks become code you write." },
+    { id:"tflearn", step:2, x:24, y:164, w:200, h:56, label:"TFLearn (history)\n  DNN(tensorboard_verbose=...)\n  0.5.0, 2020, no import", detail:"Today: tf.keras.callbacks.TensorBoard(log_dir=...) passed to fit through callbacks." },
+    { id:"tb", step:2, x:276, y:164, w:200, h:56, label:"TensorBoard\n  one folder per run\n  Scalars overlay", detail:"logs/compare/plain and logs/compare/batchnorm, opened with %tensorboard --logdir logs/compare. histogram_freq=1 fills the Histograms tab." },
+    { id:"load", step:3, kind:"example", x:24, y:242, w:452, h:50, label:"LOAD FROM CODE, NO UPLOAD\n  load_data() · fetch_ · tfds.load · pd.read_csv(url)", detail:"The notebook then runs on a fresh runtime and on anyone's machine." },
+    { id:"look", step:4, x:24, y:314, w:200, h:56, label:"Look first\n  size · types · blanks\n  class counts · samples", detail:"Tables: shape, dtypes, isna().sum(), head(), value_counts(). Images: value_counts() of the labels and the pixel range." },
+    { id:"seed", step:5, x:276, y:314, w:200, h:56, label:"Reproducible\n  set_random_seed(42)\n  fresh runtime, Run all", detail:"Seeds repeat a rerun on the same runtime; other hardware or versions may still differ, so record the versions." },
+    { id:"split", step:6, x:24, y:392, w:200, h:56, label:"Test set\n  split first\n  used once, at the end", detail:"Every fill, encoder and scaler is fitted on the training rows only; stratify=y keeps class proportions." },
+    { id:"results", step:6, x:276, y:392, w:200, h:56, label:"Results table\n  one row per model\n  val_loss · val_accuracy", detail:"Numbers from model.evaluate on the validation data; the kept model is chosen before the test cell." },
+    { id:"save", step:7, x:24, y:470, w:200, h:56, label:"model.save(\"...keras\")\n  load_model\n  np.allclose: True", detail:"One zip file: architecture, weights, compile settings, optimizer state. Colab deletes it on reset, so download it." },
+    { id:"readme", step:7, x:276, y:470, w:200, h:56, label:"README and deck\n  problem → data → model\n  results → limits → rerun", detail:"The notebook's story in order, like a team's model card; the deck tells it one slide per idea." },
+    { id:"check", step:8, x:24, y:548, w:452, h:40, label:"CHECK YOURSELF\n  answer out loud, then open" }
+  ],
+  edges: [
+    { id:"e1", step:1, from:"fit", to:"tape", label:"by hand" },
+    { id:"e2", step:1, from:"tape", to:"when", label:"worth it if" },
+    { id:"e3", step:2, from:"tflearn", to:"tb", label:"became" },
+    { id:"e4", step:2, from:"fit", to:"tb", label:"callbacks" },
+    { id:"e5", step:3, from:"tb", to:"load", label:"your project" },
+    { id:"e6", step:4, from:"load", to:"look", label:"then" },
+    { id:"e7", step:5, from:"load", to:"seed", label:"rerun" },
+    { id:"e8", step:6, from:"look", to:"split", label:"then" },
+    { id:"e9", step:6, from:"split", to:"results", label:"choose on val" },
+    { id:"e10", step:7, from:"results", to:"readme", label:"reported in" },
+    { id:"e11", step:7, from:"split", to:"save", label:"kept model" },
+    { id:"e12", step:8, from:"save", to:"check", dir:"-" },
+    { id:"e13", step:8, from:"readme", to:"check", dir:"-" }
+  ],
+  captions: [
+    "On every batch fit runs a forward pass, computes the loss, gets the gradients and updates the weights. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "tf.GradientTape writes the same loop by hand; teams do it for a custom loss or update, GANs or research code.",
+    "TFLearn's TensorBoard settings became the Keras callback; one log folder per run lets the Scalars tab overlay two runs.",
+    "A project's data loads from code: a Keras built-in, a scikit-learn fetch loader, TensorFlow Datasets or a public CSV.",
+    "Before modelling, look at the size, the types, the blanks, the class counts and a few samples.",
+    "Seeds at the top and Run all on a fresh runtime make the notebook reproducible.",
+    "The test set is split off first and used once; a results table records every model on validation data.",
+    "The kept model is saved as a .keras file and checked on reload; the README and deck tell the story in order.",
+    "You can now explain fit, write a GradientTape loop, compare runs in TensorBoard and run a model project reproducibly."
+  ]
+};
+window.QUIZ = {
+  id: "w07-d4",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "fit trains on 54,000 rows with batch_size=128. How many times do the weights change in one epoch?",
+      options: ["Once, at the end of the epoch", "128", "422", "54,000"], answer: 2,
+      explain: "The weights change once per batch. 54,000 divided by 128 is 421.875, so there are 421 full batches and one short batch of 112 rows: 422 updates." },
+    { type: "tf", stem: "A hand-written GradientTape loop on the same data, seed, batch size and epochs gives exactly the same validation accuracy as fit.", answer: false,
+      explain: "The two numbers differ slightly: fit shuffles the rows every epoch while the page's loop takes them in order." },
+    { type: "mcq", stem: "Which of these load a dataset into a Colab notebook with no upload? Select all that apply.",
+      options: ["tf.keras.datasets.mnist.load_data()", "fetch_20newsgroups(subset=\"train\", categories=[...])", "pd.read_csv on the URL of a raw public CSV", "uploading a CSV file from your laptop into the Colab session"], answer: [0, 1, 2],
+      explain: "Keras built-ins, scikit-learn fetch loaders and pd.read_csv on a URL all load from code. An uploaded file disappears when the runtime resets and nobody else can rerun the notebook." },
+    { type: "match", stem: "Match each TFLearn name from an old tutorial to what replaces it in Keras today.",
+      pairs: [
+        { l: "tflearn.input_data", r: "tf.keras.Input" },
+        { l: "tflearn.fully_connected", r: "tf.keras.layers.Dense" },
+        { l: "tflearn.regression", r: "model.compile" },
+        { l: "DNN(tensorboard_verbose=..., tensorboard_dir=...)", r: "tf.keras.callbacks.TensorBoard(log_dir=...) in fit" }
+      ],
+      explain: "TFLearn is unmaintained and does not import on current TensorFlow, so each piece maps to its Keras equivalent; logging became a callback passed to fit." },
+    { type: "scq", stem: "Two runs wrote their logs to logs/compare/plain and logs/compare/batchnorm. Which command overlays them in the Scalars tab?",
+      options: ["%tensorboard --logdir logs/compare/plain", "%tensorboard --logdir logs/compare", "%tensorboard with no --logdir", "%tensorboard --logdir logs/compare/batchnorm"], answer: 1,
+      explain: "Point TensorBoard at the parent folder. Each subfolder is one run, and the Scalars tab draws each as its own line on the same charts." },
+    { type: "open", stem: "In two or three sentences: why is the test set held out at the start and used only once?",
+      hint: "What the test number is for, and what happens if it shapes the model.",
+      model: "The test number estimates how the model does on data it has never seen, so nothing about the test rows may shape the model. Every fill, scaler and choice is made on training and validation data, and the test cell runs once on the kept model. Running it again after a change lets the test set choose the model, and its number becomes a validation number in disguise." }
+  ]
+};
+</script>
+
+<script src="../../assets/js/diagram.js?v=20261119"></script>
+<script src="../../assets/js/scrolly.js?v=20261119"></script>
+<script src="../../assets/js/modals.js?v=20261119"></script>
+<script src="../../assets/js/quiz.js?v=20261119"></script>
+<script src="../../assets/js/widgets.js?v=20261119"></script>
+<script src="../../assets/js/glossary.js?v=20261119"></script>
+</body>
+</html>

@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w07d1">
+<title>W7·D1 — Multi-layer perceptrons, backprop &amp; digit classifier | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261119">
+<script src="../../assets/js/theme.js?v=20261119"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="../../exit-criteria/index.html">Exit criteria</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>Multi-layer perceptrons, backprop &amp; digit classifier: how a network learns, and a first full build</h1>
+        <div class="meta">
+          <span><b>Week 7</b> · Day 1</span>
+          <span>Mon Nov 23, 2026</span>
+          <span>TensorFlow</span>
+          <span><b>~43 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span class="verified">Sources checked 2026-11-19 · python 3.13.18 · tensorflow 2.21.0 · keras 3.13.2 · tensorboard 2.21.0 · numpy 2.4.6 · pandas 2.2.3 · scikit-learn 1.6.1 · matplotlib 3.10.0</span>
+          <span class="notebook"><a href="https://colab.research.google.com/github/2494-Gen-AI-CN/demos/blob/main/notebooks/week-07/01_monday_mlp_backprop_and_digit_classifier.ipynb" target="_blank" rel="noopener">Open the notebook in Colab</a></span>
+        </div>
+        <p class="summary">Last week ended on one sigmoid neuron built, compiled and fitted in Keras, and this page
+        assumes only that model and its <code>compile</code>, <code>fit</code> and <code>evaluate</code> lines. It
+        explains what a loss is, how gradient descent and backpropagation use it to train every weight, and why one
+        neuron fails on XOR while one hidden layer succeeds. It then builds a digit classifier on MNIST in a project's
+        order: a held-out test set, training curves read in TensorBoard too, a confusion matrix, precision and recall, the
+        wrong digits, one improvement and the limits. Afterwards you can work one backprop update by hand, read training
+        and validation curves together, and walk an interviewer through a model you built.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="0">
+        <div class="tag">Loss</div>
+        <h2>Loss: one number for how wrong a model is</h2>
+        <p>Last week's sigmoid neuron was compiled with a loss and trained with <code>fit</code>, and both got one line
+        each. This step opens up the loss, because the rest of the page leans on it: gradient descent lowers it,
+        backpropagation shares it out among the weights, and the digit classifier is trained on it.</p>
+        <h3>Mean squared error, when the answer is a number</h3>
+        <p>A model makes a prediction, and the training data holds the target, the right answer for that row. A loss
+        function turns the gap between the two into one number, and training tries to make that number
+        smaller.<sup class="cite"><a href="#src-1">1</a></sup> Lower is better, and 0 means every prediction was exactly
+        right. Which loss you use depends on the kind of answer the model gives.</p>
+        <p>When the answer is a number, such as a price or a temperature, the usual loss is mean squared error, or MSE. It
+        averages the squared differences between targets and predictions.<sup class="cite"><a href="#src-2">2</a></sup>
+        Squaring makes a miss above and a miss below both count as positive, and it makes a big miss cost far more than a
+        small one.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>import numpy as np
+import tensorflow as tf
+
+y_true = np.array([3.0, 5.0, 2.5, 7.0, 4.0])
+y_pred = np.array([2.5, 5.0, 4.0, 8.0, 3.0])
+
+print((y_pred - y_true) ** 2)
+print(f"numpy MSE {np.mean((y_true - y_pred) ** 2):.3f}")
+mse = tf.keras.losses.MeanSquaredError()
+print(f"Keras MSE {float(mse(y_true, y_pred)):.3f}")</code></pre>
+<pre class="out">[0.25 0.   2.25 1.   1.  ]
+numpy MSE 0.900
+Keras MSE 0.900</pre>
+        <p>The first line holds each squared miss. The third prediction is 1.5 off and costs 2.25, while the first is 0.5
+        off and costs 0.25: three times the miss, nine times the cost. The five costs add up to 4.5, and 4.5 divided by 5
+        is 0.9. The Keras loss object returns the same number. Because of the squaring, one wild prediction can dominate
+        the average, so a single bad row can make a decent model look poor.</p>
+        <h3>Cross-entropy, when the answer is a class</h3>
+        <p>When the answer is a class, the model outputs a probability, and the loss asks how much probability went to
+        the true class. Binary cross-entropy is the loss for two classes.<sup class="cite"><a href="#src-3">3</a></sup>
+        For a row whose true label is 1, it is minus the logarithm of the predicted probability. That is close to 0 when
+        the model says 0.9, and it grows fast as the probability heads towards 0.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>bce = tf.keras.losses.BinaryCrossentropy()
+for p in [0.9, 0.6, 0.1]:
+    by_hand = -np.log(p)
+    keras_value = float(bce([[1.0]], [[p]]))
+    print(f"true 1, predicted {p}: numpy {by_hand:.3f}, Keras {keras_value:.3f}")</code></pre>
+<pre class="out">true 1, predicted 0.9: numpy 0.105, Keras 0.105
+true 1, predicted 0.6: numpy 0.511, Keras 0.511
+true 1, predicted 0.1: numpy 2.303, Keras 2.303</pre>
+        <p>Confident and right costs 0.105, unsure costs 0.511, and confident and wrong costs 2.303, about twenty times the
+        first. That steep cost for a confident mistake is why cross-entropy is the loss for classes. The cell calls the
+        loss once per prediction on purpose. A Keras loss averages over the batch it is
+        given,<sup class="cite"><a href="#src-3">3</a></sup> so passing all three rows in one call would print their
+        mean, about 0.973.</p>
+        <p>Last week's <code>"binary_crossentropy"</code> string was this number, averaged over each batch of rows. You
+        recognise the choice of loss in a <code>compile</code> line:</p>
+        <ul>
+          <li><code>loss="mse"</code> when the model predicts a number<sup class="cite"><a href="#src-2">2</a></sup></li>
+          <li><code>loss="binary_crossentropy"</code> when it predicts one of two classes with a sigmoid
+          output<sup class="cite"><a href="#src-3">3</a></sup></li>
+          <li><code>metrics=["accuracy"]</code> beside either one, which is reported each epoch but is not the number
+          training lowers<sup class="cite"><a href="#src-1">1</a></sup></li>
+        </ul>
+        <div class="ix-predict" data-q="A model gives the true class a probability of 0.01. Is its binary cross-entropy above or below the 2.303 it scored at 0.1?" data-a="Above. Minus the log of 0.01 is about 4.605, twice the cost at 0.1. The more confident the wrong answer, the larger the loss."></div>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A loss is one number for how wrong the predictions are; lower is better.</li>
+          <li>Mean squared error suits a numeric answer and punishes big misses most.</li>
+          <li>Cross-entropy suits a class and costs most when the model is confident and wrong.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A loss function turns how wrong the model is into one number, and training tries to push it down. If the
+          model predicts a number I'd use mean squared error, the average squared miss. If it predicts a class I'd use
+          cross-entropy, which is small when the true class gets a high probability and very large when the model is
+          confident and wrong.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">Gradient descent</div>
+        <h2>Gradient descent: small steps downhill</h2>
+        <p>A loss says how wrong the model is. Gradient descent is how training makes it less wrong: it changes each
+        weight by a small step in the direction that lowers the loss, then does it again, many times.</p>
+        <h3>Downhill on one weight</h3>
+        <p>Take the smallest model there is: one weight <code>w</code>, and a prediction of <code>w * x</code>. The data is
+        <code>x</code> = 1, 2, 3, 4 with targets <code>y = 2.0 * x</code>, so the best weight is 2. Every candidate
+        <code>w</code> has an MSE, and drawn against <code>w</code> those losses make a bowl: high at 0, zero at 2, and
+        rising again past 2.</p>
+        <p>The slope of the bowl at the current <code>w</code> says which way is downhill. A positive slope means the loss
+        rises as <code>w</code> grows, so <code>w</code> should shrink, and a negative slope means it should grow. You
+        can find the slope without any calculus: move the weight a hair each way and see how much the loss changes. That
+        is the centred nudge, <code>(loss(w + 0.001) - loss(w - 0.001)) / 0.002</code>.</p>
+        <p>Plain gradient descent then updates the weight as <code>w = w - learning_rate * g</code>, where <code>g</code>
+        is the slope: a small step against it.<sup class="cite"><a href="#src-4">4</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>x = np.array([1.0, 2.0, 3.0, 4.0])
+y = 2.0 * x
+
+def line_loss(w):
+    return np.mean((w * x - y) ** 2)
+
+def slope(w):
+    return (line_loss(w + 0.001) - line_loss(w - 0.001)) / 0.002
+
+w = 0.0
+for step in range(6):
+    print(f"step {step}: w = {w:.3f}, loss = {line_loss(w):.3f}, slope = {slope(w):.3f}")
+    w = w - 0.05 * slope(w)</code></pre>
+<pre class="out">step 0: w = 0.000, loss = 30.000, slope = -30.000
+step 1: w = 1.500, loss = 1.875, slope = -7.500
+step 2: w = 1.875, loss = 0.117, slope = -1.875
+step 3: w = 1.969, loss = 0.007, slope = -0.469
+step 4: w = 1.992, loss = 0.000, slope = -0.117
+step 5: w = 1.998, loss = 0.000, slope = -0.029</pre>
+        <p>At <code>w = 0</code> every prediction is 0, so the misses are 2, 4, 6 and 8, and their squares average to 30.
+        The slope is −30, negative, so the update adds 0.05 × 30 = 1.5 and <code>w</code> moves to 1.5. The last line
+        of the loop is the whole method. Near the bottom the bowl flattens, the slope shrinks, and the steps shrink with
+        it, so <code>w</code> settles at 2 without being told where 2 is.</p>
+        <h3>The learning rate is the step size</h3>
+        <p>The learning rate multiplies the slope before the step is
+        taken.<sup class="cite"><a href="#src-4">4</a></sup> Too small and training crawls. Too large and each step
+        overshoots the bottom of the bowl, lands higher up the far side, and the loss bounces or grows instead of
+        falling.<sup class="cite"><a href="#src-4">4</a></sup> The cell runs ten steps at three rates.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>for rate in [0.01, 0.05, 0.2]:
+    w = 0.0
+    for step in range(10):
+        w = w - rate * slope(w)
+    print(f"rate {rate}: w = {w:.3f}, loss = {line_loss(w):.1f}")</code></pre>
+<pre class="out">rate 0.01: w = 1.606, loss = 1.2
+rate 0.05: w = 2.000, loss = 0.0
+rate 0.2: w = -2046.000, loss = 31457280.0</pre>
+        <p>At 0.01 the weight is still at 1.606 after ten steps. At 0.05 it reaches 2. At 0.2 the first step takes
+        <code>w</code> from 0 to 6, four past the target where it started two short of it. Every later step doubles the
+        distance and flips the side, so the loss explodes.</p>
+        <table>
+          <thead><tr><th>Learning rate</th><th>What the loss does</th><th>What to try</th></tr></thead>
+          <tbody>
+            <tr><td>too small</td><td>falls slowly and is still falling at the end</td><td>a larger rate or more epochs</td></tr>
+            <tr><td>about right</td><td>falls quickly, then flattens</td><td>leave it</td></tr>
+            <tr><td>too large</td><td>bounces, or climbs</td><td>a smaller rate</td></tr>
+          </tbody>
+        </table>
+        <p>In someone else's code, <code>tf.keras.optimizers.SGD(learning_rate=0.01)</code> is this same plain update with
+        its step size spelled out.<sup class="cite"><a href="#src-4">4</a></sup> The string <code>"adam"</code> in a
+        <code>compile</code> line is a refinement of it that step 5 names.</p>
+        <div class="ix-predict" data-q="At a rate of 0.1 the first step takes w from 0 to 3, one past the target. Does training settle or blow up?" data-a="It settles. The distance from 2 halves each step (2, then 1, then 0.5) while flipping sides, so after ten steps w is 1.998. At 0.15 the distance grows each step instead, and w ends at about -16.6."></div>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Gradient descent steps each weight against its slope, again and again.</li>
+          <li>The slope can be measured by nudging the weight a hair each way.</li>
+          <li>The learning rate is the step size: too small crawls, too large overshoots and diverges.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Gradient descent works out which way each weight should move to lower the loss, the slope, and takes a
+          small step the other way, over and over. The learning rate is the size of that step. Too small and training
+          crawls; too large and it overshoots the minimum, so the loss bounces around or blows up.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">Perceptron limits</div>
+        <h2>The limit of one perceptron: XOR</h2>
+        <p>Last week's perceptron learned the AND table, and its page showed that the learning rule never settles when
+        the two classes cannot be split by a straight line. This step names the classic table where that happens. It is
+        the reason networks have hidden layers.</p>
+        <h3>Four points no straight line separates</h3>
+        <p>XOR, short for "exclusive or", outputs 1 when exactly one of its two inputs is 1. Its four rows are (0, 0) → 0,
+        (0, 1) → 1, (1, 0) → 1 and (1, 1) → 0, and no single straight line splits the 1s from the
+        0s.<sup class="cite"><a href="#src-5">5</a></sup></p>
+        <p>Picture the four points on the corners of a square. The two 1s
+        sit on one diagonal and the two 0s on the other, so any line that puts both 1s on one side takes at least one 0
+        with them.</p>
+        <p>A perceptron is a linear classifier: it draws one straight line and labels each point by the side it falls
+        on.<sup class="cite"><a href="#src-5">5</a></sup> The best any line can do on XOR is three points out of four, an
+        accuracy of 0.75. The cell below checks that by brute force. It tries every line whose two weights and bias lie
+        on a grid from −2 to 2 in steps of 0.2, which is 21 × 21 × 21 = 9,261 lines.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>X_xor = np.array([[0, 0], [0, 1], [1, 0], [1, 1]], dtype="float32")
+y_xor = np.array([0, 1, 1, 0])
+
+best = 0.0
+values = np.linspace(-2, 2, 21)
+for w1 in values:
+    for w2 in values:
+        for b in values:
+            pred = (X_xor @ np.array([w1, w2]) + b &gt;= 0).astype(int)
+            best = max(best, np.mean(pred == y_xor))
+print("best accuracy of any line tried:", best)</code></pre>
+<pre class="out">best accuracy of any line tried: 0.75</pre>
+        <p>The line inside the loop is last week's perceptron. <code>X_xor @ np.array([w1, w2])</code> multiplies each
+        row's two inputs by the two weights and adds them, giving one sum per row, and <code>&gt;= 0</code> is the step.
+        <code>np.mean(pred == y_xor)</code> is the share of rows the line gets right. No line on the grid beats 0.75.</p>
+        <h3>One sigmoid neuron trained on XOR</h3>
+        <p>Swapping the step for a sigmoid does not help. A sigmoid output with no hidden layer still has a straight
+        decision boundary.<sup class="cite"><a href="#src-6">6</a></sup> Its output is a probability, but the line where
+        that probability crosses 0.5 is straight. The cell trains last week's one-neuron Keras model on the four rows.
+        The learning rate is set to 0.05 by hand so that four points train in a few hundred steps.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>tf.keras.utils.set_random_seed(42)
+neuron = tf.keras.Sequential([
+    tf.keras.Input(shape=(2,)),
+    tf.keras.layers.Dense(1, activation="sigmoid"),
+])
+neuron.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.05),
+               loss="binary_crossentropy", metrics=["accuracy"])
+neuron.fit(X_xor, y_xor, epochs=300, verbose=0)
+print(neuron.evaluate(X_xor, y_xor, verbose=0))</code></pre>
+        <p>The cell prints <code>[loss, accuracy]</code>. The loss is about 0.693, minus the log of 0.5: the neuron gives
+        every point a probability of about 0.5. That close to 0.5, rounding decides which side of the cut each point
+        lands on, so the accuracy can print 0.25, 0.5 or 0.75, never 1.0.</p>
+        <p>Accuracy stuck below 1.0 on these four points means the model cannot learn the
+        table, so more epochs will not help.<sup class="cite"><a href="#src-5">5</a></sup> A single neuron can only
+        learn what one straight line can split, however long it trains. The property it lacks is called linear
+        separability: two classes are linearly separable when one straight line, or one flat surface in more dimensions,
+        puts them on opposite sides.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>XOR's 1s and 0s sit on opposite diagonals, so no straight line splits them.</li>
+          <li>One neuron draws one straight boundary, so its best on XOR is three of four points.</li>
+          <li>More epochs cannot fix a model that cannot draw the needed shape.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A perceptron is one neuron: a weighted sum plus a bias, through a step or a sigmoid. Whatever its weights, it
+          draws one straight line, so it can only separate classes that are linearly separable.</p>
+          <p>It cannot do XOR. The two 1s are on one diagonal of the square and the two 0s on the
+          other, so the best line gets three of four right. Adding one hidden layer with a non-linear activation fixes
+          it.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="3">
+        <div class="tag">MLP</div>
+        <h2>Multi-layer perceptrons: a hidden layer and what it adds</h2>
+        <p>A multi-layer perceptron, or MLP, is a network of Dense layers with at least one hidden layer between the
+        input and the output. A layer is hidden because its outputs are neither the inputs you supply nor the answer you
+        read: they are numbers the network makes for its own use.</p>
+        <h3>One hidden layer solves XOR</h3>
+        <p>An MLP, one or more hidden layers with a non-linear activation, can learn decision boundaries that a single
+        linear unit cannot.<sup class="cite"><a href="#src-7">7</a></sup> The smallest one for XOR puts four tanh units
+        between the two inputs and the sigmoid output. Tanh, from last week, squashes a sum into the range −1 to 1. The
+        cell differs from the single neuron's by one line, the hidden <code>Dense(4, activation="tanh")</code>.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>tf.keras.utils.set_random_seed(42)
+xor_mlp = tf.keras.Sequential([
+    tf.keras.Input(shape=(2,)),
+    tf.keras.layers.Dense(4, activation="tanh"),
+    tf.keras.layers.Dense(1, activation="sigmoid"),
+])
+xor_mlp.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.05),
+                loss="binary_crossentropy", metrics=["accuracy"])
+xor_mlp.fit(X_xor, y_xor, epochs=300, verbose=0)
+print(xor_mlp.count_params())
+print(xor_mlp.evaluate(X_xor, y_xor, verbose=0))</code></pre>
+        <p>The first line prints 17. A Dense layer holds one weight per input per unit plus one bias per
+        unit,<sup class="cite"><a href="#src-6">6</a></sup> so the hidden layer has 2 × 4 + 4 = 12 and the output layer
+        4 × 1 + 1 = 5. The second line is <code>[loss, accuracy]</code>: with this seed the loss falls to about 0.003
+        and the accuracy reaches 1.0, all four rows right, where the single neuron stayed at a loss of 0.693.</p>
+        <h3>Why the hidden layer needs a non-linear activation</h3>
+        <p>Last week's page showed that two weighted sums in a row collapse into one: 3x + 1 followed by 2z + 4 is just
+        6x + 6. Whole layers behave the same way. Without a non-linear activation, stacked Dense layers collapse into one
+        linear map, which draws one straight boundary again; <code>relu</code> and <code>tanh</code> supply the
+        bend.<sup class="cite"><a href="#src-8">8</a></sup> A network of ten Dense layers with no activations would
+        still fail XOR.</p>
+        <p>With the bend in place, the hidden units re-describe the four points. Each point goes in as two numbers and
+        comes out of the hidden layer as four new ones, and in that new description one straight line does separate the
+        1s from the 0s.<sup class="cite"><a href="#src-7">7</a></sup> The output neuron draws that line. So a hidden layer
+        is a learned change of coordinates, chosen by training so that the last layer's job becomes easy.</p>
+        <p>Each layer's activation follows from what it has to produce:</p>
+        <table>
+          <thead><tr><th>Layer</th><th>Activation</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td>hidden</td><td><code>relu</code> or <code>tanh</code></td><td>supplies the bend that stops the layers collapsing</td></tr>
+            <tr><td>output, two classes</td><td><code>sigmoid</code></td><td>one probability between 0 and 1</td></tr>
+            <tr><td>output, ten classes</td><td><code>softmax</code></td><td>ten probabilities that sum to 1<sup class="cite"><a href="#src-8">8</a></sup></td></tr>
+          </tbody>
+        </table>
+        <p>Width has a cost. More hidden units fit more shapes, but on a small training set they also memorise its
+        rows, noise included.<sup class="cite"><a href="#src-9">9</a></sup> That memorising is overfitting, and step 7
+        produces it on purpose.</p>
+        <h3>The same network in old TFLearn code</h3>
+        <p>The curriculum names TFLearn, and older tutorials write networks like this one in it. As checked on
+        2026-11-18, its last release is 0.5.0, from 2020-11-11,<sup class="cite"><a href="#src-10">10</a></sup> and the
+        last commit on its <code>master</code> branch is from 2020-11-30.<sup class="cite"><a href="#src-11">11</a></sup>
+        It does not import on Colab's TensorFlow 2.21. One of its files imports a helper, <code>is_sequence</code>, that
+        TensorFlow 2.21 no longer defines, and its start-up file switches TensorFlow back to version 1
+        behaviour.<sup class="cite"><a href="#src-11">11</a></sup> Read it as history and never install it.</p>
+        <p class="run-label">TFLearn (history, do not run)</p>
+<pre><code>net = tflearn.input_data(shape=[None, 2])
+net = tflearn.fully_connected(net, 4, activation="tanh")
+net = tflearn.fully_connected(net, 1, activation="sigmoid")
+net = tflearn.regression(net, optimizer="adam", loss="binary_crossentropy")
+model = tflearn.DNN(net)
+model.fit(X_xor, y_xor)</code></pre>
+        <p>Each layer is called on the one before it, and every line has a Keras
+        counterpart:<sup class="cite"><a href="#src-12">12</a></sup></p>
+        <table>
+          <thead><tr><th>TFLearn</th><th>Keras</th></tr></thead>
+          <tbody>
+            <tr><td><code>tflearn.input_data</code></td><td><code>tf.keras.Input</code></td></tr>
+            <tr><td><code>tflearn.fully_connected</code></td><td><code>tf.keras.layers.Dense</code></td></tr>
+            <tr><td>each layer called on the one before</td><td>the list form of <code>tf.keras.Sequential</code></td></tr>
+            <tr><td><code>tflearn.regression</code></td><td><code>model.compile</code></td></tr>
+            <tr><td><code>tflearn.DNN(...)</code> and its <code>fit</code></td><td><code>model.fit</code></td></tr>
+          </tbody>
+        </table>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>An MLP is Dense layers with at least one hidden layer between input and output.</li>
+          <li>Four tanh hidden units solve XOR, which one neuron cannot.</li>
+          <li>Without a non-linear activation, stacked layers collapse into one straight boundary.</li>
+          <li>More hidden units fit more shapes but can memorise a small training set.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A multi-layer perceptron is a stack of fully connected layers with at least one hidden layer between the
+          input and the output. The hidden layer has to have a non-linear activation like ReLU or tanh, because without
+          it the layers collapse into one linear map and you're back to a single straight boundary.</p>
+          <p>What the hidden units learn is a new description of the input, where the classes become separable by a line
+          that the output layer can draw. That's how one hidden layer of four units solves XOR.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">Backprop</div>
+        <h2>The backpropagation algorithm</h2>
+        <p>Gradient descent needs a slope for every weight. With one weight, nudging it was cheap. The digit classifier
+        later on this page has 101,770 weights, and backpropagation is how a network gets all of their slopes at
+        once.</p>
+        <h3>One training step: forward, loss, backward, update</h3>
+        <p>Backpropagation computes the slope of the loss with respect to every weight by passing it backward through the
+        network, layer by layer, and an optimizer then applies the
+        update.<sup class="cite"><a href="#src-13">13</a></sup> One training step has four parts, and training repeats
+        them for every batch:<sup class="cite"><a href="#src-13">13</a></sup></p>
+        <ol>
+          <li>Forward pass: the batch goes through the layers, input to output, and becomes predictions.</li>
+          <li>Loss: the predictions are compared with the targets, giving one number.</li>
+          <li>Backward pass: starting at the loss, each layer works out its own weights' share of the loss and hands the
+          rest back to the layer before it.</li>
+          <li>Update: every weight takes a gradient-descent step against its slope.</li>
+        </ol>
+        <p>A weight's slope is also called its gradient: how much the loss would change if that weight moved a little.
+        The output layer's weights touch the loss directly. A hidden weight affects the loss only through the layers after
+        it, so its slope is built from theirs. That is why the pass runs backward, from the loss towards the input.</p>
+        <p>In code, one call to <code>model.fit(...)</code> runs all four parts for every batch, epoch after epoch. Older
+        TFLearn tutorials do the same with <code>tflearn.regression(...)</code> followed by
+        <code>tflearn.DNN(net).fit(...)</code>, which in Keras is <code>compile</code> then <code>fit</code>.</p>
+        <h3>Why passing the loss backward beats nudging each weight</h3>
+        <p>Step 2's centred nudge also finds slopes, and it approximates the same numbers backprop
+        returns.<sup class="cite"><a href="#src-13">13</a></sup> Its cost is the problem. Each weight needs two extra
+        forward passes, one with the weight a hair up and one a hair down. For 101,770 weights that is 203,540 forward
+        passes for a single update. Backpropagation gets every slope from one forward pass and one backward pass through
+        the same layers.</p>
+        <p>Backprop has a requirement of its own. Every layer must be differentiable, which means it has a slope, and so
+        must the loss; a step function gives no slope.<sup class="cite"><a href="#src-13">13</a></sup> The step is flat
+        everywhere except at its jump, so nudging a weight changes nothing and the slope comes out as 0, with no direction
+        to move. That is why networks trained this way use sigmoid, tanh and ReLU instead of the perceptron's step.</p>
+        <div class="ix-predict" data-q="A hidden layer uses last week's step function as its activation. What slope does a weight feeding it get from a small nudge?" data-a="Zero, almost always. The step's output only changes at the jump, so a tiny nudge leaves the loss where it was and gradient descent has no direction to move that weight."></div>
+        <h3>Backprop finds the slopes; the optimizer takes the step</h3>
+        <p>Backprop and gradient descent are two halves of one training step. Backprop supplies the slopes, and the
+        optimizer decides how far to move each weight. Plain gradient descent, <code>SGD</code> in Keras, moves every
+        weight by the learning rate times its slope.<sup class="cite"><a href="#src-4">4</a></sup> Adam, the optimizer
+        behind every <code>"adam"</code> string on this page, is gradient descent whose step size adapts for each
+        weight.<sup class="cite"><a href="#src-14">14</a></sup></p>
+        <table>
+          <thead><tr><th>Part</th><th>Its job</th><th>Where it appears in Keras</th></tr></thead>
+          <tbody>
+            <tr><td>loss</td><td>one number for how wrong the batch was</td><td><code>loss=</code> in <code>compile</code></td></tr>
+            <tr><td>backpropagation</td><td>a slope for every weight</td><td>inside <code>fit</code>, with no line of its own</td></tr>
+            <tr><td>optimizer</td><td>the step each weight takes</td><td><code>optimizer=</code> in <code>compile</code></td></tr>
+          </tbody>
+        </table>
+        <p>The learning rate sits inside the optimizer. It scales every step, so the same backprop slopes give a timid
+        update at 0.001 and a reckless one at 1.0.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A training step is forward pass, loss, backward pass, update, repeated for every batch.</li>
+          <li>Backprop gets every weight's slope in one backward pass, where nudging needs two passes per weight.</li>
+          <li>Backprop finds the slopes; the optimizer, scaled by the learning rate, takes the step.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Backpropagation is how a network works out which way each weight should move. You run the batch forward,
+          compute the loss, then pass the loss backward layer by layer, so every weight gets its share of the blame as a
+          slope. The optimizer then moves each weight a step against its slope, and the learning rate sets how big that
+          step is.</p>
+          <p>Nudging weights one at a time would need two forward passes per weight, so this is much cheaper.
+          Backprop gets all the slopes from one forward and one backward pass.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
+        <div class="tag">Backprop by hand</div>
+        <h2>Understanding backprop on a two-weight network</h2>
+        <p>The algorithm is easier to trust once you have pushed numbers through it by hand. This step uses the smallest
+        network that still has a hidden layer: one input, one hidden unit and one output, joined by two weights, with no
+        bias and no activation.</p>
+        <h3>The forward pass and the loss</h3>
+        <p>The input is <code>x = 2.0</code> and the target is 1.0. The hidden weight is <code>w1 = 0.5</code> and the
+        output weight is <code>w2 = 1.5</code>. The forward pass multiplies its way through. The hidden value is
+        h = w1 × x = 1.0, and the prediction is w2 × h = 1.5. The squared-error loss for this one row is
+        (1.5 − 1.0)² = 0.25.</p>
+        <p>The prediction is too high, so both weights should shrink: a smaller <code>w1</code> makes h smaller, and a
+        smaller <code>w2</code> scales h down. An update that subtracts the slope does exactly that when both slopes are
+        positive.<sup class="cite"><a href="#src-4">4</a></sup></p>
+        <h3>Each weight's slope, and why w1's is larger</h3>
+        <p>The cell finds each slope with the centred nudge, holding the other weight still, then takes one step at a
+        learning rate of 0.02.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>x_row, target = 2.0, 1.0
+w1, w2 = 0.5, 1.5
+
+def pair_loss(w1, w2):
+    h = w1 * x_row
+    prediction = w2 * h
+    return (prediction - target) ** 2
+
+print(f"prediction {w2 * w1 * x_row}, loss {pair_loss(w1, w2)}")
+slope_w2 = (pair_loss(w1, w2 + 0.001) - pair_loss(w1, w2 - 0.001)) / 0.002
+slope_w1 = (pair_loss(w1 + 0.001, w2) - pair_loss(w1 - 0.001, w2)) / 0.002
+print(f"slope w2 {slope_w2:.3f}, slope w1 {slope_w1:.3f}")
+w2 = w2 - 0.02 * slope_w2
+w1 = w1 - 0.02 * slope_w1
+print(f"w2 {w2:.2f}, w1 {w1:.2f}, prediction {w2 * w1 * x_row:.2f}, loss {pair_loss(w1, w2):.3f}")</code></pre>
+<pre class="out">prediction 1.5, loss 0.25
+slope w2 1.000, slope w1 3.000
+w2 1.48, w1 0.44, prediction 1.30, loss 0.091</pre>
+        <p>The second line holds the two slopes, and both are positive, as the reasoning above expected. <code>w1</code>, the weight furthest from the output, gets the larger one. Nudge the prediction itself and
+        the loss moves by 1.0 per unit; that is the share of the loss arriving at the output.</p>
+        <ul>
+          <li><code>w2</code> multiplies h = 1.0 on its way to the prediction, so its slope is 1.0 × 1.0 = 1.0.</li>
+          <li><code>w1</code>'s change reaches the prediction twice multiplied: by x = 2.0 into h, then by w2 = 1.5 out of
+          it. Passed back, its share is 1.0 × 1.5 × 2.0 = 3.0.</li>
+        </ul>
+        <p>That is the chain of slopes backprop follows: an earlier weight's slope is multiplied by every weight it
+        passes on the way back. You can see it here without a derivative: it is the multiplications of the forward pass
+        run in reverse.</p>
+        <h3>One update and the new loss</h3>
+        <p>The update is plain gradient descent, each weight minus 0.02 times its
+        slope.<sup class="cite"><a href="#src-4">4</a></sup> So <code>w2</code> becomes 1.5 − 0.02 × 1.0 = 1.48 and
+        <code>w1</code> becomes 0.5 − 0.02 × 3.0 = 0.44. Run forward again: h = 0.44 × 2.0 = 0.88, and the prediction is
+        0.88 × 1.48, about 1.30. The loss falls from 0.25 to about 0.091, which is the third line of the
+        output.<sup class="cite"><a href="#src-13">13</a></sup></p>
+        <p>The prediction moved from 1.5 towards 1.0 without passing it, so this step did not overshoot. That depends
+        on this row and the rate of 0.02, and at a large enough rate the same slopes would carry the prediction past
+        the target. Repeat the step and the loss keeps shrinking, which is all <code>fit</code>
+        does, for many weights and many rows at once.</p>
+        <h3>TensorFlow finds the same slopes</h3>
+        <p>This check is optional. <code>tf.GradientTape</code> records the operations inside its <code>with</code>
+        block, and <code>tape.gradient(loss, variables)</code> returns the
+        slopes.<sup class="cite"><a href="#src-13">13</a></sup> It is the machinery <code>fit</code> uses on every
+        batch.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>w1_t = tf.Variable(0.5)
+w2_t = tf.Variable(1.5)
+with tf.GradientTape() as tape:
+    loss_t = (w2_t * (w1_t * 2.0) - 1.0) ** 2
+grad_w2, grad_w1 = tape.gradient(loss_t, [w2_t, w1_t])
+print(f"slope w2 {float(grad_w2):.1f}, slope w1 {float(grad_w1):.1f}")</code></pre>
+<pre class="out">slope w2 1.0, slope w1 3.0</pre>
+        <p>The slopes come back in the order the variables were passed in, <code>w2</code> first, so 1.0 and 3.0 match
+        the nudges exactly. This example is small: with no activation and no bias it shows the bookkeeping
+        and leaves out the full behaviour of a real Dense layer.<sup class="cite"><a href="#src-6">6</a></sup> Writing a whole
+        training loop around the tape is Thursday's page.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Forward pass: h = 1.0, prediction 1.5, loss 0.25.</li>
+          <li>Slopes are 1.0 for w2 and 3.0 for w1, because w1's share passes through w2 and x.</li>
+          <li>One step at learning rate 0.02 drops the loss from 0.25 to about 0.091.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Take one input of two, a hidden weight of 0.5 and an output weight of 1.5. The forward pass gives a hidden
+          value of 1 and a prediction of 1.5 against a target of 1, so the squared error is 0.25. The prediction is too
+          high, so both weights need to come down.</p>
+          <p>The output weight's slope is 1. The hidden weight's slope is 3, because its effect is multiplied by the
+          output weight and the input on the way back. At a learning rate of 0.02 the weights become 1.48 and 0.44, and
+          the loss drops to about 0.09.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="6">
+        <div class="tag">Build</div>
+        <h2>Build: an MLP digit classifier, in a project's order</h2>
+        <p>This step and the next two put the ideas to work on one full build, in a project's order:</p>
+        <ol>
+          <li>the problem;</li>
+          <li>the data, with the test set held out;</li>
+          <li>preprocessing;</li>
+          <li>the model and a reason for each choice;</li>
+          <li>training with both curves;</li>
+          <li>evaluation;</li>
+          <li>the wrong examples;</li>
+          <li>one improvement;</li>
+          <li>the test set once;</li>
+          <li>limitations.</li>
+        </ol>
+        <h3>The problem, the dataset, the split and preprocessing</h3>
+        <p>The problem is to read a handwritten digit from its pixels, the job a post office or a bank does when it reads
+        forms. The dataset is MNIST: <code>tf.keras.datasets.mnist.load_data()</code> returns 60,000 training and 10,000
+        test images of 28 × 28 pixels, each labelled with its digit, 0 to
+        9.<sup class="cite"><a href="#src-15">15</a></sup></p>
+        <p>The test set is held out now and used once, at the end; every choice before then is made on the validation
+        data. The validation rows are the last 6,000 training images: the model is scored on them during training but
+        never learns from them.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>(x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+print(x_train.shape, x_train.min(), x_train.max())
+x_train = x_train.reshape(-1, 784).astype("float32") / 255.0
+x_test = x_test.reshape(-1, 784).astype("float32") / 255.0
+x_tr, y_tr = x_train[:54000], y_train[:54000]
+x_val, y_val = x_train[54000:], y_train[54000:]
+print(x_tr.shape, x_val.shape, x_test.shape)</code></pre>
+<pre class="out">(60000, 28, 28) 0 255
+(54000, 784) (6000, 784) (10000, 784)</pre>
+        <p>The first line shows the raw form: 60,000 grids of 28 by 28, with pixels from 0 (black) to 255 (white).
+        <code>reshape(-1, 784)</code> flattens each grid into one row of 784 numbers, where <code>-1</code> means "as many
+        rows as there are images". Dividing by 255.0 puts every pixel between 0 and
+        1.<sup class="cite"><a href="#src-16">16</a></sup> The second line shows the three sets: 54,000 rows to train on,
+        6,000 to validate and 10,000 to test.</p>
+        <h3>The model, with a reason for each choice</h3>
+        <p class="run-label">Run in Colab</p>
+<pre><code>digit_model = tf.keras.Sequential([
+    tf.keras.Input(shape=(784,)),
+    tf.keras.layers.Dense(128, activation="relu"),
+    tf.keras.layers.Dense(10, activation="softmax"),
+])
+digit_model.compile(optimizer="adam", loss="sparse_categorical_crossentropy",
+                    metrics=["accuracy"])
+digit_model.summary()</code></pre>
+        <p>The summary's total is 101,770 parameters: 784 × 128 + 128 = 100,480 in the hidden layer and
+        128 × 10 + 10 = 1,290 in the output.<sup class="cite"><a href="#src-6">6</a></sup> Each choice has a reason:</p>
+        <table>
+          <thead><tr><th>Choice</th><th>Reason</th></tr></thead>
+          <tbody>
+            <tr><td>one hidden <code>Dense(128)</code></td><td>the simplest MLP: one hidden layer at a common starting width</td></tr>
+            <tr><td><code>relu</code> in the hidden layer</td><td>the bend that stops the two layers collapsing into one</td></tr>
+            <tr><td><code>Dense(10, activation="softmax")</code></td><td>ten probabilities that sum to 1; <code>argmax</code> picks the digit<sup class="cite"><a href="#src-17">17</a></sup></td></tr>
+            <tr><td>sparse categorical cross-entropy</td><td>step 1's cross-entropy, for labels given as the integers 0 to 9<sup class="cite"><a href="#src-18">18</a></sup></td></tr>
+            <tr><td>Adam</td><td>gradient descent with a step that adapts for each weight</td></tr>
+          </tbody>
+        </table>
+        <p>The non-sparse <code>CategoricalCrossentropy</code> expects each label as a one-hot vector, ten numbers with a
+        single 1, instead.<sup class="cite"><a href="#src-18">18</a></sup> Mixing the two up is a common error.</p>
+        <h3>Training with both curves on one chart</h3>
+        <p>Passing <code>validation_data=(x_val, y_val)</code> to <code>fit</code> reports <code>val_loss</code> each epoch
+        on rows the weights are never updated from, and <code>History.history</code> holds both
+        curves.<sup class="cite"><a href="#src-1">1</a></sup> <code>batch_size=128</code> means one update per 128 rows,
+        so one epoch is 422 updates.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>import matplotlib.pyplot as plt
+
+def plot_history(history, metric="loss", title=""):
+    """Draw the training and validation curves of one metric on one chart."""
+    plt.plot(history.history[metric], label="training")
+    plt.plot(history.history["val_" + metric], label="validation")
+    plt.xlabel("epoch")
+    plt.ylabel(metric)
+    plt.title(title)
+    plt.legend()
+    plt.show()
+
+history = digit_model.fit(x_tr, y_tr, epochs=10, batch_size=128,
+                          validation_data=(x_val, y_val),
+                          callbacks=[tf.keras.callbacks.TensorBoard(log_dir="logs/fit")],
+                          verbose=0)
+plot_history(history, title="784-128-10 on MNIST")
+print(f"last validation accuracy {history.history['val_accuracy'][-1]:.3f}")</code></pre>
+        <p>Both lines fall and stay close together: that is a network learning. The printed validation accuracy comes
+        out at about 0.976 on this setup, about 145 wrong digits in 6,000.<sup class="cite"><a href="#src-16">16</a></sup> A callback is an object
+        that <code>fit</code> calls as training runs; this one writes the loss and metrics after each epoch to a folder
+        for TensorBoard.<sup class="cite"><a href="#src-20">20</a></sup></p>
+        <h3>Overfitting on purpose</h3>
+        <p>Train the same shape on only the first 1,000 rows for 50 epochs, against the same 6,000 validation rows.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>small_model = tf.keras.Sequential([
+    tf.keras.Input(shape=(784,)),
+    tf.keras.layers.Dense(128, activation="relu"),
+    tf.keras.layers.Dense(10, activation="softmax"),
+])
+small_model.compile(optimizer="adam", loss="sparse_categorical_crossentropy",
+                    metrics=["accuracy"])
+small_history = small_model.fit(x_tr[:1000], y_tr[:1000], epochs=50, batch_size=128,
+                                validation_data=(x_val, y_val), verbose=0)
+plot_history(small_history, title="1,000 training rows, 50 epochs")</code></pre>
+        <p>The training loss keeps falling, but the validation loss turns and rises: overfitting. With 101,770 weights
+        and 1,000 rows, the network memorises those images instead of learning digits in
+        general.<sup class="cite"><a href="#src-9">9</a></sup> The turn is gentle: the validation loss bottoms out at
+        about 0.34 a little past epoch 20 and is a few hundredths higher by epoch 50.</p>
+        <p>A training curve alone would hide this, which is why both go on one chart. Early stopping halts training when a watched number such as <code>val_loss</code> stops
+        improving;<sup class="cite"><a href="#src-19">19</a></sup> Wednesday's page uses it in code.</p>
+        <h3>The same curves in TensorBoard's Scalars tab</h3>
+        <p>TensorBoard is the browser dashboard last week opened for its Graphs tab. The callback wrote loss and metrics
+        per epoch to <code>logs/fit</code>, with training and validation in separate subfolders, so the
+        <code>epoch_loss</code> chart shows two lines.<sup class="cite"><a href="#src-20">20</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>%load_ext tensorboard
+%tensorboard --logdir logs/fit</code></pre>
+        <p>These two lines are notebook commands, not Python. The Scalars tab draws the curves <code>plot_history</code>
+        drew; the Graphs tab showed structure, and this one shows learning. Its smoothing slider averages neighbouring
+        points, and at 0 it shows each epoch's value as <code>History.history</code> holds
+        it.<sup class="cite"><a href="#src-21">21</a></sup> An empty tab usually means the <code>--logdir</code> does not
+        match the callback's <code>log_dir</code>.<sup class="cite"><a href="#src-21">21</a></sup> In old TFLearn code,
+        <code>tflearn.DNN(net, tensorboard_dir=...)</code> did this job.<sup class="cite"><a href="#src-20">20</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Hold the test set out first; make every choice on the validation rows.</li>
+          <li>Flatten each image to 784 numbers and scale pixels to between 0 and 1.</li>
+          <li>Both curves falling is learning; validation rising while training falls is overfitting.</li>
+          <li>TensorBoard's Scalars tab draws the same two curves from the callback's log folder.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I read the training and validation loss together on one chart. If both fall, the model is learning. If
+          training keeps falling while validation turns up, it's overfitting, memorising the training rows, and that's
+          where I'd stop or change something.</p>
+          <p>I hold the test set out at the very start and use it once at the end. If I chose models by their test score,
+          that score would stop being an honest estimate of new data.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="7">
+        <div class="tag">Evaluation</div>
+        <h2>Evaluating a classifier on the validation data</h2>
+        <p>A validation accuracy of 0.97 says how often the model is right. It does not say which digits it gets wrong,
+        or whether it ignores one of them. This step looks underneath that number, still on the validation
+        rows.</p>
+        <h3>The confusion matrix</h3>
+        <p>A confusion matrix is a table of true classes against predicted classes, so it shows which classes get
+        mistaken for which. <code>confusion_matrix(y_true, y_pred)</code> puts the true classes on the rows and the
+        predicted classes on the columns.<sup class="cite"><a href="#src-22">22</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+
+val_pred = digit_model.predict(x_val, verbose=0).argmax(axis=1)
+cm = confusion_matrix(y_val, val_pred)
+ConfusionMatrixDisplay(cm).plot()
+plt.show()</code></pre>
+        <p><code>predict</code> returns 6,000 rows of ten probabilities. <code>argmax(axis=1)</code> picks, for each row,
+        the column holding the largest probability, which is the predicted digit. The chart is ten by ten. The diagonal
+        counts correct answers, and every other cell counts one kind of mistake: the cell at row 4, column 9 counts 4s
+        read as 9s. Read the largest off-diagonal counts first.</p>
+        <h3>Precision, recall and F1 for one digit</h3>
+        <p>To score one digit, ask a yes-or-no question of every image: is it a 5? A true positive (TP) is a 5 called 5,
+        a false positive (FP) is another digit called 5, and a false negative (FN) is a 5 called something else.</p>
+        <ul>
+          <li>Precision is TP / (TP + FP): of the images called 5, the share that really are
+          5s.<sup class="cite"><a href="#src-23">23</a></sup></li>
+          <li>Recall is TP / (TP + FN): of the real 5s, the share the model
+          found.<sup class="cite"><a href="#src-23">23</a></sup></li>
+          <li>F1 combines precision and recall into one number, their harmonic mean, an average pulled towards
+          the smaller of the two, so it is high only when both are.<sup class="cite"><a href="#src-23">23</a></sup></li>
+        </ul>
+        <p>With made-up counts: the model calls 100 images 5, 95 of them are 5s, and there are 105 real 5s. Precision is
+        95 / 100 = 0.95, recall is 95 / 105, about 0.905, and F1 is about 0.927.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>from sklearn.metrics import precision_score, recall_score, f1_score
+
+is_five_true = y_val == 5
+is_five_pred = val_pred == 5
+print(f"precision {precision_score(is_five_true, is_five_pred):.3f}")
+print(f"recall    {recall_score(is_five_true, is_five_pred):.3f}")
+print(f"F1        {f1_score(is_five_true, is_five_pred):.3f}")</code></pre>
+        <p>The two <code>== 5</code> lines turn the digit labels into True or False for "is a 5". Each score lies between
+        0 and 1, and higher is better. Precision below recall means the model invents 5s more often than it misses them;
+        the reverse means it misses more. Averaging these scores over all ten digits is week 8's topic.</p>
+        <h3>When accuracy misleads</h3>
+        <p>5s are about one image in eleven. A model that always answers "not 5" is right about ten times in eleven
+        without looking at a single pixel.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>always_not_five = np.zeros_like(is_five_true)
+print(f"accuracy {np.mean(always_not_five == is_five_true):.3f}")
+print(f"recall   {recall_score(is_five_true, always_not_five):.3f}")</code></pre>
+        <p>The accuracy comes out at about 0.91 and the recall at 0.000: it never finds a 5.<sup class="cite"><a href="#src-23">23</a></sup>
+        On an unbalanced problem, where one class is rare, accuracy
+        rewards ignoring the rare class. Recall counts the misses, so it exposes the trick at once.</p>
+        <h3>Error analysis: the digits it gets wrong</h3>
+        <p>The last check is to look at the mistakes themselves. The helper draws images in a grid with a title under
+        each.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>def show_image_grid(images, titles, columns=5):
+    """Draw 28 by 28 images in rows of `columns`, each with its title."""
+    rows = int(np.ceil(len(images) / columns))
+    plt.figure(figsize=(2.2 * columns, 2.4 * rows))
+    for i, (image, title) in enumerate(zip(images, titles)):
+        plt.subplot(rows, columns, i + 1)
+        plt.imshow(image.reshape(28, 28), cmap="gray")
+        plt.title(title)
+        plt.axis("off")
+    plt.show()
+
+wrong = np.where(val_pred != y_val)[0][:15]
+show_image_grid(x_val[wrong], [f"true {y_val[i]}, predicted {val_pred[i]}" for i in wrong])</code></pre>
+        <p><code>np.where(val_pred != y_val)[0]</code> gives the positions of the wrong rows, and <code>[:15]</code> keeps
+        the first fifteen. Each image is reshaped back to 28 by 28 to be drawn. Read the grid for what the mistakes
+        share:</p>
+        <ul>
+          <li>digits written in a less common way, such as a 7 with a crossbar read as a 3 or a 9, or a 1 with a flag
+          and a foot read as a 2;</li>
+          <li>3s, 5s and 8s that differ by a few pixels of loop;</li>
+          <li>strokes much thicker or thinner than usual, and some tilted digits.</li>
+        </ul>
+        <p>A shared cause is something an improvement can target.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A confusion matrix shows which digits get mistaken for which.</li>
+          <li>Precision asks how many called 5 are 5s; recall asks how many 5s were found.</li>
+          <li>Always answering "not 5" scores about 91% accuracy with a recall of 0.</li>
+          <li>The misclassified images show what the mistakes have in common.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Accuracy hides which mistakes the model makes, so I look at a confusion matrix, true classes against
+          predicted, and then precision and recall per class. Precision is how many of the things I flagged were right;
+          recall is how many of the real ones I found. F1 combines them and is only high when both are.</p>
+          <p>Accuracy misleads when classes are unbalanced. If fives are one in eleven, a model that never says five
+          gets about ninety-one percent accuracy and finds none of them.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="8">
+        <div class="tag">Build</div>
+        <h2>One improvement attempt, the test set once, and limitations</h2>
+        <p>The build ends the way a project should: one change measured fairly, one look at the test set, and a plain
+        note on what the model cannot do.</p>
+        <h3>One change, measured on the same validation rows</h3>
+        <p>Change one thing, so that any difference has one cause. Here the change is a second hidden layer of 64 ReLU
+        units, fitted exactly as before. The validation rows stay fixed, the last 6,000 of the training images, and that
+        is what makes the before-and-after comparison fair.<sup class="cite"><a href="#src-1">1</a></sup> A results list
+        keeps one row per trained model, with the numbers <code>evaluate</code> returns on the validation data.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>import pandas as pd
+
+results = []
+val_loss, val_acc = digit_model.evaluate(x_val, y_val, verbose=0)
+results.append({"model": "784-128-10", "val_loss": val_loss, "val_accuracy": val_acc})
+
+deeper_model = tf.keras.Sequential([
+    tf.keras.Input(shape=(784,)),
+    tf.keras.layers.Dense(128, activation="relu"),
+    tf.keras.layers.Dense(64, activation="relu"),
+    tf.keras.layers.Dense(10, activation="softmax"),
+])
+deeper_model.compile(optimizer="adam", loss="sparse_categorical_crossentropy",
+                     metrics=["accuracy"])
+deeper_model.fit(x_tr, y_tr, epochs=10, batch_size=128,
+                 validation_data=(x_val, y_val), verbose=0)
+val_loss, val_acc = deeper_model.evaluate(x_val, y_val, verbose=0)
+results.append({"model": "784-128-64-10", "val_loss": val_loss, "val_accuracy": val_acc})
+print(pd.DataFrame(results).round(4))</code></pre>
+        <p>The table has two rows, one per model. Compare <code>val_loss</code> first, since it is the number training
+        lowered; the row with the lower one is the model you keep. Then write one plain sentence: it helped, it did not,
+        or the gap is too small to matter. On 6,000 rows an accuracy gap of 0.001 is six images.</p>
+        <p>On these settings the second layer did not lower the validation loss (about 0.10 against 0.08), so the first
+        model is kept. "It did not help" is still a result, and its row stays in the table. A gap this small can tip
+        the other way on another library version. Other levers, such as
+        more epochs or a different learning rate, are Friday's page.</p>
+        <h3>The test set, used once</h3>
+        <p class="run-label">Run in Colab</p>
+<pre><code>kept_model = deeper_model if results[1]["val_loss"] &lt; results[0]["val_loss"] else digit_model
+test_loss, test_acc = kept_model.evaluate(x_test, y_test, verbose=0)
+print(f"test accuracy {test_acc:.4f}")</code></pre>
+        <p>The first line picks the kept model on validation loss alone, before the test images are touched. The printed
+        test accuracy comes out at about 0.974, close to the validation
+        figure.<sup class="cite"><a href="#src-16">16</a></sup> It is the honest estimate of how the model does on digits
+        it has never met, and it is the reference figure a convolutional network is compared against on Wednesday.</p>
+        <p>If you changed the model after reading the test score, the test set would become a
+        second validation set, and the score would stop being an honest estimate.</p>
+        <h3>What the model cannot do</h3>
+        <p>It reads only digits like MNIST's: centred, about the same size, and white on a black background, so a dark
+        digit on white paper or one in a corner is outside what it learned. Flattening each image into 784 numbers throws
+        away which pixels are neighbours, and a convolutional network keeps
+        that.<sup class="cite"><a href="#src-24">24</a></sup></p>
+        <div class="ix-spot" data-snippet="history = model.fit(x_train, y_train, epochs=10)&#10;print(model.evaluate(x_test, y_test))&#10;# try 20 epochs and compare test scores again&#10;history = model.fit(x_train, y_train, epochs=20)&#10;print(model.evaluate(x_test, y_test))" data-q="What is wrong with how this notebook chooses between 10 and 20 epochs?" data-a="It chooses on the test set, so the test score is no longer an honest estimate, and it has no validation data at all. Hold the test set out, compare the two runs on fixed validation rows, and evaluate the kept model on the test set once."></div>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Change one thing and compare it on the same validation rows in a results table.</li>
+          <li>Choose the kept model on validation loss, then evaluate it on the test set once.</li>
+          <li>The model reads centred MNIST-style digits only, and flattening loses which pixels are neighbours.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I built a digit classifier on MNIST. I held the test set out first and kept the last six thousand training
+          images for validation. I flattened each image to 784 numbers scaled to between zero and one, and used one
+          hidden ReLU layer of 128 units, a ten-way softmax output, sparse categorical cross-entropy and Adam.</p>
+          <p>I trained for ten epochs with both loss curves on one chart, read the confusion matrix, precision and recall
+          for one digit, and the misclassified images. Then I tried one change, a second hidden layer, compared both on
+          the same validation rows, kept the better one and scored it on the test set once. Its limit is that it only
+          reads centred digits and ignores which pixels are neighbours.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="9">
+        <div class="tag">Check yourself</div>
+        <h2>Check yourself</h2>
+        <p>Ten questions, at least one per step. Answer each out loud before you open it.</p>
+        <details class="check"><summary>Five predictions miss their targets by 0.5, 0, 1.5, 1 and 1. What is the mean squared error, and which miss costs the most?</summary><p>The squared misses are 0.25, 0, 2.25, 1 and 1, which add up to 4.5, so the MSE is 4.5 / 5 = 0.9. The miss of 1.5 costs 2.25 on its own, because squaring makes big misses count far more than small ones.</p></details>
+        <details class="check"><summary>One model gives the true class a probability of 0.9 and another gives it 0.1. What is each one's cross-entropy, and why is the gap so large?</summary><p>About 0.105 and 2.303. Cross-entropy is minus the log of the probability given to the true class, so it grows fast as that probability heads towards 0, and a confident wrong answer costs the most.</p></details>
+        <details class="check"><summary>From the first epoch, the training loss bounces up and down and then climbs. What is the likely cause, and what do you change?</summary><p>The learning rate is too large: each step overshoots the bottom of the loss and lands higher on the far side. Lower the learning rate.</p></details>
+        <details class="check"><summary>Why can a single sigmoid neuron not learn XOR, however many epochs it trains?</summary><p>One neuron draws one straight boundary, and XOR's 1s and 0s sit on opposite diagonals of a square, so the best any line can do is three points of four. Accuracy stuck below 1.0 means the model is not able to draw the shape, not that it needs more training.</p></details>
+        <details class="check"><summary>A colleague stacks three Dense layers with no activation and is surprised it still fails XOR. What do you tell them?</summary><p>Without a non-linear activation, stacked Dense layers collapse into one linear map, which draws one straight boundary. A hidden layer with ReLU or tanh supplies the bend, and four tanh units are enough for XOR.</p></details>
+        <details class="check"><summary>Name the four parts of one training step, and say why backprop is cheaper than nudging every weight.</summary><p>Forward pass, loss, backward pass for the slopes, then the update. Nudging needs two extra forward passes per weight, over 200,000 for the digit classifier, while backprop gets every slope from one forward and one backward pass.</p></details>
+        <details class="check"><summary>On the network with x = 2.0, w1 = 0.5, w2 = 1.5 and target 1.0, why does w1 get a slope of 3 when w2 gets 1?</summary><p>w2 multiplies the hidden value 1.0 on its way to the prediction, so its slope is 1.0. w1's effect is multiplied by x = 2.0 and then by w2 = 1.5, so passed back its share is 1.0 × 1.5 × 2.0 = 3.0. One step at learning rate 0.02 drops the loss from 0.25 to about 0.091.</p></details>
+        <details class="check"><summary>Training loss keeps falling while validation loss turns and rises. What is happening, and what would you do?</summary><p>The model is overfitting: it is memorising the training rows instead of learning the pattern. Stop at the epoch where validation loss was lowest, which is what early stopping automates, or use fewer hidden units.</p></details>
+        <details class="check"><summary>A model that always answers "not 5" scores about 91% accuracy on MNIST. What is its recall for 5, and what does that teach you about accuracy?</summary><p>Its recall is 0: it finds none of the real 5s. On an unbalanced problem accuracy rewards ignoring the rare class, so you read recall and precision per class, and a confusion matrix, beside it.</p></details>
+        <details class="check"><summary>Why is the test set used only once, at the end, and what do you compare models on before that?</summary><p>If you chose or changed the model after reading the test score, the test set would become a second validation set and the score would stop being an honest estimate. Every comparison before then, such as the second hidden layer, is made on the fixed validation rows.</p></details>
+      </section>
+
+      <section class="reading-sources" aria-label="Sources and deeper dive">
+        <h2>Sources &amp; deeper dive</h2>
+        <ul>
+          <li id="src-1"><a href="https://www.tensorflow.org/guide/keras/training_with_built_in_methods" target="_blank" rel="noopener">Training and evaluation with the built-in methods</a> — what a loss is for, <code>validation_data</code> and the History of both curves.</li>
+          <li id="src-2"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/losses/MeanSquaredError" target="_blank" rel="noopener">tf.keras.losses.MeanSquaredError</a> — the average squared difference, for numeric answers.</li>
+          <li id="src-3"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/losses/BinaryCrossentropy" target="_blank" rel="noopener">tf.keras.losses.BinaryCrossentropy</a> — the two-class loss, and its average over a batch.</li>
+          <li id="src-4"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/optimizers/SGD" target="_blank" rel="noopener">tf.keras.optimizers.SGD</a> — the plain update, weight minus learning rate times slope.</li>
+          <li id="src-5"><a href="https://scikit-learn.org/stable/modules/linear_model.html#perceptron" target="_blank" rel="noopener">scikit-learn user guide — Perceptron</a> — a perceptron as a linear classifier, and why XOR defeats it.</li>
+          <li id="src-6"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/layers/Dense" target="_blank" rel="noopener">tf.keras.layers.Dense</a> — weights and biases per unit, and the parameter counts on this page.</li>
+          <li id="src-7"><a href="https://scikit-learn.org/stable/modules/neural_networks_supervised.html" target="_blank" rel="noopener">scikit-learn user guide — Neural network models</a> — what an MLP's hidden layers let it learn.</li>
+          <li id="src-8"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/activations" target="_blank" rel="noopener">tf.keras.activations</a> — ReLU, tanh and softmax, and why stacked layers need them.</li>
+          <li id="src-9"><a href="https://www.tensorflow.org/tutorials/keras/overfit_and_underfit" target="_blank" rel="noopener">Overfit and underfit</a> — capacity, memorising a small training set and rising validation loss.</li>
+          <li id="src-10"><a href="https://pypi.org/project/tflearn/" target="_blank" rel="noopener">tflearn on PyPI</a> — the last release and its date.</li>
+          <li id="src-11"><a href="https://github.com/tflearn/tflearn" target="_blank" rel="noopener">tflearn on GitHub</a> — the last commit and the imports that fail on TensorFlow 2.21.</li>
+          <li id="src-12"><a href="https://www.tensorflow.org/guide/keras/sequential_model" target="_blank" rel="noopener">The Sequential model</a> — the Keras list form that replaces TFLearn's layer stacking.</li>
+          <li id="src-13"><a href="https://www.tensorflow.org/guide/autodiff" target="_blank" rel="noopener">Introduction to gradients and automatic differentiation</a> — backprop's slopes and <code>tf.GradientTape</code>.</li>
+          <li id="src-14"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/optimizers/Adam" target="_blank" rel="noopener">tf.keras.optimizers.Adam</a> — gradient descent with a step that adapts per weight.</li>
+          <li id="src-15"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/datasets/mnist/load_data" target="_blank" rel="noopener">tf.keras.datasets.mnist.load_data</a> — MNIST's 60,000 training and 10,000 test images.</li>
+          <li id="src-16"><a href="https://www.tensorflow.org/tutorials/quickstart/beginner" target="_blank" rel="noopener">TensorFlow 2 quickstart for beginners</a> — scaling pixels by 255 and the accuracy a small MLP reaches.</li>
+          <li id="src-17"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/activations/softmax" target="_blank" rel="noopener">tf.keras.activations.softmax</a> — probabilities that sum to 1.</li>
+          <li id="src-18"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/losses/SparseCategoricalCrossentropy" target="_blank" rel="noopener">tf.keras.losses.SparseCategoricalCrossentropy</a> — integer labels against one-hot labels.</li>
+          <li id="src-19"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/callbacks/EarlyStopping" target="_blank" rel="noopener">tf.keras.callbacks.EarlyStopping</a> — stopping when a watched metric stops improving.</li>
+          <li id="src-20"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/callbacks/TensorBoard" target="_blank" rel="noopener">tf.keras.callbacks.TensorBoard</a> — the log folder and its training and validation runs.</li>
+          <li id="src-21"><a href="https://www.tensorflow.org/tensorboard/get_started" target="_blank" rel="noopener">Get started with TensorBoard</a> — the notebook commands, the Scalars tab and its smoothing slider.</li>
+          <li id="src-22"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.metrics.confusion_matrix.html" target="_blank" rel="noopener">sklearn.metrics.confusion_matrix</a> — true classes on the rows, predicted on the columns.</li>
+          <li id="src-23"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.metrics.precision_recall_fscore_support.html" target="_blank" rel="noopener">sklearn.metrics.precision_recall_fscore_support</a> — precision, recall and F1 from the counts.</li>
+          <li id="src-24"><a href="https://www.tensorflow.org/tutorials/images/cnn" target="_blank" rel="noopener">Convolutional Neural Network (CNN)</a> — the image model that keeps which pixels are neighbours.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · after you have read the page</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 7 Day 1</footer>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 1 — goals</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Explain a loss as one number for how wrong a model is, choose mean squared error or cross-entropy, and describe gradient descent and the learning rate</li>
+      <li>Show why one perceptron cannot learn XOR and how a hidden layer with a non-linear activation fixes it</li>
+      <li>Explain backpropagation in plain words and work one update on a two-weight network by hand</li>
+      <li>Build an MLP digit classifier in a project's order, with the test set held out and both training curves read on one chart and in TensorBoard</li>
+      <li>Evaluate it with a confusion matrix, precision, recall and F1, then measure one improvement and use the test set once</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Day 2 — Autoencoders, RBM & the Keras Sequential API →", href: "day-2-autoencoders-rbm-and-sequential-api.html" };
+window.DIAGRAM = {
+  title: "Day 1 · from one number for how wrong to a full digit build",
+  width: 500, height: 530,
+  nodes: [
+    { id:"loss", step:0, x:24, y:14, w:200, h:48, label:"Loss\n  MSE · cross-entropy", detail:"One number for how wrong. MSE of the five hand-made predictions is 0.9; cross-entropy at 0.9, 0.6 and 0.1 is 0.105, 0.511 and 2.303." },
+    { id:"gd", step:1, x:276, y:14, w:200, h:48, label:"Gradient descent\n  w = w - rate * slope", detail:"From w = 0 to 2 in a few steps at rate 0.05; 0.01 crawls and 0.2 diverges." },
+    { id:"xor", step:2, x:24, y:86, w:200, h:48, label:"One perceptron\n  XOR: best line 0.75", detail:"The 1s and 0s sit on opposite diagonals, so no straight line splits them." },
+    { id:"mlp", step:3, x:276, y:86, w:200, h:48, label:"MLP\n  2 -> 4 tanh -> 1 sigmoid", detail:"17 parameters reach accuracy 1.0 on XOR. Without a non-linear activation the layers collapse into one." },
+    { id:"bp", step:4, x:24, y:160, w:452, h:48, label:"BACKPROPAGATION\n  forward · loss · backward · update", detail:"Every weight's slope from one backward pass; the optimizer, scaled by the learning rate, takes the step." },
+    { id:"hand", step:5, x:24, y:232, w:452, h:56, label:"BY HAND\n  x = 2, w1 = 0.5, w2 = 1.5, target 1\n  slopes 3.0 and 1.0 · loss 0.25 -> 0.091", detail:"w1's share passes back through w2 = 1.5 and x = 2.0, so its slope is three times w2's." },
+    { id:"build", step:6, x:24, y:312, w:200, h:64, label:"Build: digits\n  test held out · 784-128-10\n  both curves · TensorBoard", detail:"101,770 parameters. Both curves falling is learning; on 1,000 rows validation loss rises: overfitting." },
+    { id:"eval", step:7, x:276, y:312, w:200, h:64, label:"Evaluate\n  confusion matrix\n  precision · recall · F1", detail:"Digit 5 against the rest. Always 'not 5' scores about 91% accuracy with recall 0." },
+    { id:"improve", step:8, x:24, y:400, w:452, h:48, label:"One change · the test set once · limits", detail:"A second hidden layer compared on the same validation rows; the kept model scored on the test set once." },
+    { id:"check", step:9, x:24, y:472, w:452, h:40, label:"CHECK YOURSELF\n  answer out loud, then open" }
+  ],
+  edges: [
+    { id:"e1", step:1, from:"loss", to:"gd", label:"lowered by" },
+    { id:"e2", step:3, from:"xor", to:"mlp", label:"add a hidden layer" },
+    { id:"e3", step:4, from:"gd", to:"bp", label:"needs every slope" },
+    { id:"e4", step:4, from:"mlp", to:"bp", dir:"-" },
+    { id:"e5", step:5, from:"bp", to:"hand", label:"one step, worked" },
+    { id:"e6", step:6, from:"hand", to:"build", dir:"-" },
+    { id:"e7", step:7, from:"build", to:"eval", label:"validation rows" },
+    { id:"e8", step:8, from:"eval", to:"improve", dir:"-" },
+    { id:"e9", step:9, from:"improve", to:"check", dir:"-" }
+  ],
+  captions: [
+    "A loss turns how wrong the model is into one number: mean squared error for a number, cross-entropy for a class. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "Gradient descent lowers the loss in small steps against the slope, and the learning rate sets the step size.",
+    "One perceptron draws one straight line, and XOR's four points cannot be split by one.",
+    "A hidden layer with a non-linear activation re-describes the points so a line can split them.",
+    "Backpropagation passes the loss backward so every weight gets its slope; the optimizer takes the step.",
+    "On a two-weight network the slopes are 1.0 and 3.0, and one update drops the loss from 0.25 to about 0.091.",
+    "The digit build: test set held out, 784-128-10, both curves on one chart and in TensorBoard, overfitting shown on purpose.",
+    "Evaluation on the validation rows: which digits are confused, precision and recall for 5, and why accuracy alone misleads.",
+    "One change measured on the same validation rows, the test set used once, and two sentences of limits.",
+    "You can now explain how a network learns, work one backprop step by hand, and walk through a model you built."
+  ]
+};
+window.QUIZ = {
+  id: "w07-d1",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "How many parameters does Dense(128) hold when it reads a 784-long input?",
+      options: ["100,352", "100,480", "101,770", "128"], answer: 1,
+      explain: "One weight per input per unit plus one bias per unit: 784 x 128 + 128 = 100,480. The 101,770 is the whole 784-128-10 network, output layer included." },
+    { type: "scq", stem: "Which loss fits ten digit classes whose labels are the integers 0 to 9?",
+      options: ["mse", "binary_crossentropy", "sparse_categorical_crossentropy", "categorical_crossentropy"], answer: 2,
+      explain: "Sparse categorical cross-entropy takes integer labels. The non-sparse version expects one-hot vectors, binary cross-entropy is for two classes, and MSE is for numeric answers." },
+    { type: "tf", stem: "Trained for enough epochs, a single sigmoid neuron eventually reaches accuracy 1.0 on XOR.", answer: false,
+      explain: "One neuron draws one straight boundary, and no straight line splits XOR's four points, so it stays below 1.0 however long it trains. A hidden layer is needed." },
+    { type: "mcq", stem: "Which of these curve patterns point to overfitting? Select all that apply.",
+      options: ["Training loss falls while validation loss rises", "Training and validation loss fall together", "Training accuracy keeps climbing while validation accuracy drops", "Both losses stay high and flat from the first epoch"], answer: [0, 2],
+      explain: "Overfitting shows as the training curve improving while the validation curve gets worse. Both falling together is learning, and both high and flat is a model that is not learning at all." },
+    { type: "match", stem: "Match each term to what it means.",
+      pairs: [
+        { l: "precision", r: "of the images called 5, the share that really are 5s" },
+        { l: "recall", r: "of the real 5s, the share the model found" },
+        { l: "learning rate", r: "the size of each gradient-descent step" },
+        { l: "backpropagation", r: "passing the loss backward so every weight gets its slope" }
+      ],
+      explain: "Precision is TP / (TP + FP) and recall is TP / (TP + FN). The learning rate scales each step, and backprop supplies the slopes that the step is taken against." },
+    { type: "open", stem: "In two or three sentences: on the network with x = 2.0, w1 = 0.5, w2 = 1.5 and target 1.0, walk through one update at learning rate 0.02.",
+      hint: "Forward pass, loss, two slopes, two updates, new loss.",
+      model: "The hidden value is 1.0 and the prediction 1.5, so the squared error is 0.25. The slopes are 1.0 for w2 and 3.0 for w1, because w1's share passes back through w2 = 1.5 and x = 2.0. The update gives w2 = 1.48 and w1 = 0.44, the prediction falls to about 1.30 and the loss to about 0.091." }
+  ]
+};
+</script>
+
+<script src="../../assets/js/diagram.js?v=20261119"></script>
+<script src="../../assets/js/scrolly.js?v=20261119"></script>
+<script src="../../assets/js/modals.js?v=20261119"></script>
+<script src="../../assets/js/quiz.js?v=20261119"></script>
+<script src="../../assets/js/widgets.js?v=20261119"></script>
+<script src="../../assets/js/glossary.js?v=20261119"></script>
+</body>
+</html>

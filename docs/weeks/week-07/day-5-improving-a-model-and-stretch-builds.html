@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w07d5">
+<title>W7·D5 — Improving a model &amp; stretch builds | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261119">
+<script src="../../assets/js/theme.js?v=20261119"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="../../exit-criteria/index.html">Exit criteria</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>Improving a model &amp; stretch builds: one change at a time, measured</h1>
+        <div class="meta">
+          <span><b>Week 7</b> · Day 5</span>
+          <span>Fri Nov 27, 2026</span>
+          <span>TensorFlow</span>
+          <span><b>~37 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span class="verified">Sources checked 2026-11-19 · python 3.13.18 · tensorflow 2.21.0 · keras 3.13.2 · numpy 2.4.6 · pandas 2.2.3 · scikit-learn 1.6.1 · matplotlib 3.10.0</span>
+        </div>
+        <p class="summary">Today is project work on your own, and this page is its reference: Part A (steps 1 to 4) is a
+        playbook for improving a model one measured change at a time, worked once on the week's digit network. Part B
+        (steps 5 and 6) is optional and holds two short stretch builds, a denoising autoencoder and an Embedding text
+        model set beside TF-IDF, and each one stands alone. The page assumes the week's digit network, 784 pixels into
+        128 ReLU units and ten softmax outputs, fitted against validation data and read from its two curves; afterwards
+        you can explain how you chose a change, why the test set is scored once, and what each stretch model
+        learns.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="0">
+        <div class="tag">Part A · Read first</div>
+        <h2>Part A, read first: the curves and the wrong examples, before changing anything</h2>
+        <p>Use this when your model has trained once and you are deciding what to try next.</p>
+        <p>The whole day is your own project work. One way to spend it:</p>
+        <table>
+          <thead><tr><th>Minutes</th><th>What</th></tr></thead>
+          <tbody>
+            <tr><td>60</td><td>Part A, with the worked example's cells run in Colab</td></tr>
+            <tr><td>15</td><td>Break</td></tr>
+            <tr><td>85</td><td>Your project: evaluation and error analysis, then one lever chosen from Part A</td></tr>
+            <tr><td>60</td><td>Lunch</td></tr>
+            <tr><td>45</td><td>Part B, optional: the stretch build closest to your project's option</td></tr>
+            <tr><td>85</td><td>Your project: the change measured in your results table, the limitations paragraph drafted</td></tr>
+            <tr><td>10</td><td>The weekly feedback form, just above Check yourself</td></tr>
+          </tbody>
+        </table>
+        <h3>A fresh notebook for this page</h3>
+        <p>Every example is a cell for Google Colab. Make a new notebook (File, then New notebook) and run the cells in
+        the order they appear. Each one needs only the cells above it, so if the runtime resets, running from the top
+        brings everything back. The runtime is the machine Colab lends you; a CPU one is enough for every cell here.</p>
+        <p>The setup cell imports the libraries, fixes the random seeds and defines two drawing helpers.
+        <code>tf.keras.utils.set_random_seed</code> sets the Python, NumPy and TensorFlow seeds in one
+        call,<sup class="cite"><a href="#src-1">1</a></sup> as
+        <a href="../week-07/day-4-custom-training-tensorboard-and-project-workflow.html">Thursday's page</a> shows
+        with a rerun.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import tensorflow as tf
+
+RANDOM_STATE = 42
+np.random.seed(RANDOM_STATE)
+tf.keras.utils.set_random_seed(RANDOM_STATE)
+
+def plot_history(history, metric="loss", title=""):
+    """Draw the training and validation curves of one metric on one chart."""
+    plt.plot(history.history[metric], label="training")
+    plt.plot(history.history["val_" + metric], label="validation")
+    plt.xlabel("epoch")
+    plt.ylabel(metric)
+    plt.title(title)
+    plt.legend()
+    plt.show()
+
+def show_image_grid(images, titles, columns=5):
+    """Draw 28 by 28 images in rows of `columns`, each under its title."""
+    rows = int(np.ceil(len(images) / columns))
+    plt.figure(figsize=(2.2 * columns, 2.4 * rows))
+    for i, (image, title) in enumerate(zip(images, titles)):
+        plt.subplot(rows, columns, i + 1)
+        plt.imshow(np.reshape(image, (28, 28)), cmap="gray")
+        plt.title(title, fontsize=9)
+        plt.axis("off")
+    plt.show()
+
+print("Setup complete")</code></pre>
+<pre class="out">Setup complete</pre>
+        <p><code>plot_history</code> draws one metric's training curve and validation curve on one chart, and
+        <code>show_image_grid</code> turns each row of 784 pixels back into a 28 by 28 picture with a title over it. The
+        next cell loads the MNIST handwritten digits and splits them the same way as every other page this week.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>(x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+x_train = x_train.reshape(-1, 784).astype("float32") / 255.0
+x_test = x_test.reshape(-1, 784).astype("float32") / 255.0
+x_tr, y_tr = x_train[:54000], y_train[:54000]
+x_val, y_val = x_train[54000:], y_train[54000:]
+print(x_tr.shape, x_val.shape)</code></pre>
+<pre class="out">(54000, 784) (6000, 784)</pre>
+        <p>That is 54,000 training rows and 6,000 validation rows, each a digit flattened to 784 pixel values between 0
+        and 1. Validation data is the set of rows held back from fitting and used to compare models. The 10,000 test
+        digits in <code>x_test</code> wait untouched until step 4. A first run also prints a download line.</p>
+        <h3>Two curves: too little fit or too much</h3>
+        <p><code>fit</code> returns a History object. Its <code>history</code> dictionary holds the training loss and
+        the validation loss for every epoch, plus each metric with a <code>val_</code> twin.<sup class="cite"><a href="#src-2">2</a></sup>
+        Those lists are the two curves, and their shape tells you which family of changes to try.</p>
+        <table>
+          <thead><tr><th>What the curves do</th><th>Name</th><th>What it means</th></tr></thead>
+          <tbody>
+            <tr><td>Training loss still falling, validation loss rising</td><td>Overfitting</td><td>The model is learning the training rows themselves, quirks included, and doing worse on rows it has not seen</td></tr>
+            <tr><td>Both losses high and flat</td><td>Underfitting</td><td>The model is too small or trained too briefly to learn the pattern at all</td></tr>
+            <tr><td>Both falling and close together</td><td>A good fit so far</td><td>The curves give no sign; the wrong examples decide the next change</td></tr>
+          </tbody>
+        </table>
+        <p>The first two rows are the TensorFlow tutorial's definitions.<sup class="cite"><a href="#src-3">3</a></sup>
+        <a href="day-1-mlp-backprop-and-digit-classifier.html">Monday's page</a> showed the first row on this network.
+        The cell below fits the week's 784-128-10 digit network for 20 epochs, twice the usual 10, so the overfitting
+        has time to show.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>tf.keras.utils.set_random_seed(RANDOM_STATE)
+base_20 = tf.keras.Sequential([
+    tf.keras.Input(shape=(784,)),
+    tf.keras.layers.Dense(128, activation="relu"),
+    tf.keras.layers.Dense(10, activation="softmax"),
+])
+base_20.compile(optimizer="adam", loss="sparse_categorical_crossentropy", metrics=["accuracy"])
+base_history = base_20.fit(x_tr, y_tr, epochs=20, batch_size=128,
+                           validation_data=(x_val, y_val), verbose=0)
+plot_history(base_history, title="base_20: 784-128-10, 20 epochs")
+print("lowest validation loss at epoch", int(np.argmin(base_history.history["val_loss"])) + 1)</code></pre>
+        <p><code>verbose=0</code> switches off the per-epoch log, so the chart is the output. The training curve falls
+        for all 20 epochs. The validation curve falls for about ten, flattens, then turns up. Every epoch after its
+        lowest point fits the training digits better and the validation digits worse, which is overfitting.</p>
+        <p>The printed line finds that lowest point. <code>np.argmin</code> gives the position of the smallest value in
+        the list, counting from 0, so <code>+ 1</code> turns it into an epoch number counting from 1. One run of these
+        cells printed epoch 12. There the validation loss was about 0.082, and by epoch 20 it had climbed back to about
+        0.096. Colab's library versions differ a little from that run's, so expect an epoch near 12.</p>
+        <p>The fit should finish well inside three minutes on a CPU runtime. If it does not, pass
+        <code>x_tr[:20000]</code> and <code>y_tr[:20000]</code> instead, and do the same in step 4 so the two fits stay
+        comparable.</p>
+        <h3>The wrong examples speak about the data</h3>
+        <p>The curves say whether the model fits too little or too much. The digits it gets wrong show what the curves
+        cannot: whether the trouble sits in the data, the labels or the preprocessing.<sup class="cite"><a href="#src-3">3</a></sup>
+        Look at them before choosing a change.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>val_pred = base_20.predict(x_val, verbose=0).argmax(axis=1)
+wrong = np.where(val_pred != y_val)[0]
+print(len(wrong), "of", len(y_val), "validation digits are wrong")
+show_image_grid(x_val[wrong[:10]], [f"true {y_val[i]}, predicted {val_pred[i]}" for i in wrong[:10]])</code></pre>
+        <p><code>predict</code> gives ten probabilities per digit, and <code>argmax(axis=1)</code> picks the position of
+        the largest one in each row, which is the predicted digit. <code>np.where(...)[0]</code> returns the row numbers
+        where prediction and label disagree. The print counts them out of 6,000, about 120 in one run, so about 2% of
+        the validation digits. The grid draws the first ten with their true and predicted labels.</p>
+        <p>Read the grid for what the mistakes share, and ask whether that trait sits in the data, the labels or the
+        preprocessing. The answer steers the lever you pick in step 2.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Read both curves and the wrong examples before choosing what to change.</li>
+          <li>Training loss falling while validation loss rises is overfitting.</li>
+          <li>Both losses high and flat is underfitting.</li>
+          <li>The wrong examples point at the data, the labels or the preprocessing.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>First I wouldn't change anything. I'd plot training and validation loss on one chart. With a 99 against 90
+          gap I'd expect training loss still falling while validation loss turns up: overfitting.</p>
+          <p>Then I'd look at the validation examples it gets wrong, because they tell me whether the problem is the
+          model or the data. Only then would I pick one change, such as dropout, and measure it.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">Part A · Levers</div>
+        <h2>The levers: what each is for and the sign that says to pull it</h2>
+        <p>Use this when step 1's curves and wrong examples have told you what kind of problem you have, and you need
+        the one change to try.</p>
+        <p>A lever is one setting you change to try to improve a model. Look a lever up in the table; the subsections
+        give the reasons.</p>
+        <table>
+          <thead><tr><th>Lever</th><th>What it is for</th><th>The sign to try it</th><th>What to watch</th></tr></thead>
+          <tbody>
+            <tr><td>Hidden units and layers</td><td>More capacity to learn patterns</td><td>Both curves high and flat</td><td>More overfitting if validation loss already rises</td></tr>
+            <tr><td>A second architecture</td><td>A model shaped for the data, such as a CNN for images</td><td>Underfitting that more Dense units do not cure</td><td>The same as more units: a bigger capacity change</td></tr>
+            <tr><td>Dropout</td><td>Stops the network leaning on a few units</td><td>Validation loss rising while training loss falls</td><td>Judge it on validation loss; training loss sits higher</td></tr>
+            <tr><td>Early stopping</td><td>Ends training at the best epoch</td><td>The same gap, when you would rather not guess the epoch count</td><td><code>restore_best_weights=True</code> puts back the best epoch's weights</td></tr>
+            <tr><td>Batch normalization</td><td>Steadier training in a deeper stack</td><td>Training loss slow or jumpy</td><td>Measure it against the plain network like any change</td></tr>
+            <tr><td>The learning rate</td><td>The size of each weight update</td><td>Loss falling very slowly, or bouncing</td><td>Too large makes the loss bounce or grow</td></tr>
+            <tr><td>The preprocessing</td><td>What the model is given to read</td><td>The wrong examples share a trait of the input</td><td>Learn any change from the training rows only</td></tr>
+            <tr><td>The decision threshold</td><td>Where a probability becomes a yes</td><td>A yes-or-no model with too many false alarms or too many misses</td><td>Moving it trades precision against recall</td></tr>
+          </tbody>
+        </table>
+        <h3>Capacity: hidden units, layers and a second architecture</h3>
+        <p>Capacity is how much a network can learn, set mostly by its number of layers and units. Too little underfits
+        and too much overfits, so more units cure one sign and worsen the other.<sup class="cite"><a href="#src-4">4</a></sup></p>
+        <p><a href="day-1-mlp-backprop-and-digit-classifier.html">Monday's page</a> pulled this lever once, adding <code>Dense(64)</code> after the first hidden layer. A second
+        architecture is the bigger version of the same lever:<sup class="cite"><a href="#src-4">4</a></sup> Wednesday's
+        CNN is built for images where the Dense network is not.</p>
+        <h3>Dropout, early stopping and batch normalization</h3>
+        <p>Dropout and early stopping are the levers for a growing gap between training and validation
+        loss.<sup class="cite"><a href="#src-5">5</a></sup> Dropout, from
+        <a href="day-3-functional-api-layers-and-custom-training.html">Wednesday's CNN build</a>, switches off a random
+        share of its inputs while training. The new detail here is the scaling: the inputs it keeps are multiplied by
+        1 / (1 - rate).<sup class="cite"><a href="#src-6">6</a></sup></p>
+        <p>When any unit may vanish on the next batch, the network cannot rest its answers on a few units that
+        memorised the training rows. The cell runs a <code>Dropout(0.2)</code> layer on a row of 100 ones, once as
+        <code>fit</code> would and once as <code>predict</code> would.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>drop = tf.keras.layers.Dropout(0.2)
+ones = np.ones((1, 100), dtype="float32")
+print(np.unique(drop(ones, training=True).numpy()))
+print(np.unique(drop(ones, training=False).numpy()))</code></pre>
+<pre class="out">[0.   1.25]
+[1.]</pre>
+        <p><code>np.unique</code> lists the distinct values in the output. With <code>training=True</code> each value
+        is either switched off to 0 or scaled to 1.25, which is 1 / (1 - 0.2). Scaling the survivors keeps the layer's
+        total about the same on average, so nothing downstream has to adjust. With <code>training=False</code> the
+        ones pass through unchanged, which is how <code>predict</code> and <code>evaluate</code> run the
+        layer.<sup class="cite"><a href="#src-6">6</a></sup></p>
+        <p>Early stopping lets the validation loss choose the epoch count,<sup class="cite"><a href="#src-5">5</a></sup>
+        so <code>base_20</code> would have stopped a few epochs after its turn. In someone else's code it is one
+        argument to <code>fit</code>:
+        <code>callbacks=[tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=3, restore_best_weights=True)]</code>.
+        It stops training once the validation loss has not improved for <code>patience</code> epochs in a row, and
+        <code>restore_best_weights=True</code> puts back the weights from the best epoch.<sup class="cite"><a href="#src-5">5</a></sup>
+        <a href="../week-07/day-3-functional-api-layers-and-custom-training.html">Wednesday's page</a> passes it to the
+        CNN's <code>fit</code>.</p>
+        <p>Batch normalization is the lever to try when training is slow or unsteady in a deeper
+        stack.<sup class="cite"><a href="#src-7">7</a></sup>
+        <a href="../week-07/day-3-functional-api-layers-and-custom-training.html">Wednesday's page</a> explains the
+        layer and measures it against the plain digit network like any other change.</p>
+        <h3>The learning rate, the preprocessing and the threshold</h3>
+        <p>The learning rate sets how far each weight moves on every update. Adam's default is 0.001, and a different
+        rate goes in <code>compile</code> as
+        <code>optimizer=tf.keras.optimizers.Adam(learning_rate=...)</code>.<sup class="cite"><a href="#src-8">8</a></sup>
+        Too small a rate makes the loss crawl over many epochs; too large makes it bounce or
+        grow.<sup class="cite"><a href="#src-9">9</a></sup></p>
+        <p>The preprocessing is the lever when the wrong examples share a trait of the input rather than of the model.
+        Whatever you change there is still learned from
+        the training rows only, as in Wednesday's penguins build.</p>
+        <p>The decision threshold applies to a yes-or-no model. A sigmoid output is a probability, and Keras's precision
+        and recall metrics turn it into a yes at 0.5 unless told otherwise. Moving the cut trades precision against
+        recall,<sup class="cite"><a href="#src-10">10</a></sup> and week 8 tunes it properly. The digit network has no
+        threshold to move, because it picks the largest of ten probabilities.</p>
+        <div class="ix-predict" data-q="Training loss is still falling at epoch 20; validation loss bottomed at epoch 4 and has risen since. Which levers does the table point at, and which one would make it worse?" data-a="Dropout or early stopping, the levers for a growing gap. Adding hidden units raises capacity and would widen the gap."></div>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Each lever has a job and a sign in the curves or the wrong examples.</li>
+          <li>More units or layers help underfitting and make overfitting worse.</li>
+          <li>Dropout and early stopping target a growing gap between the two curves.</li>
+          <li>Dropout acts only during fit; predict and evaluate use every unit.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I pick the lever from the curves. Both losses high and flat is underfitting, so I add capacity: more units
+          or another layer. Training loss falling while validation loss rises is overfitting, so I try dropout or early
+          stopping. If the loss bounces, I check the learning rate.</p>
+          <p>Dropout switches off a random share of a layer's outputs on every training step and scales up the rest, so
+          the network can't rely on a few units. It's only active during training; at prediction time every unit is
+          used.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">Part A · Method</div>
+        <h2>One change at a time: measured on the same validation data</h2>
+        <p>Use this when you have picked a lever from step 2 and are about to train the changed model.</p>
+        <p>A change is worth keeping only when you can show that it moved the number and that nothing else did. Three
+        habits make that possible:</p>
+        <ul>
+          <li>each run changes one lever against the model before it</li>
+          <li>every run starts from the same seeds and is scored on the same validation rows</li>
+          <li>a results table keeps every run, the ones that did worse included</li>
+        </ul>
+        <h3>Fixed seeds make a rerun repeat</h3>
+        <p>Change a wider layer and dropout together, and a better number cannot say which one helped, or whether one
+        helped while the other hurt. So each run changes exactly one thing.</p>
+        <p>The seed matters as much, and
+        <a href="../week-07/day-4-custom-training-tensorboard-and-project-workflow.html">Thursday's page</a> explains
+        <code>tf.keras.utils.set_random_seed</code>.<sup class="cite"><a href="#src-1">1</a></sup> The new point here
+        is where the call goes: just before building each model being compared. The cell checks this.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>def new_digit_model():
+    return tf.keras.Sequential([
+        tf.keras.Input(shape=(784,)),
+        tf.keras.layers.Dense(128, activation="relu"),
+        tf.keras.layers.Dense(10, activation="softmax"),
+    ])
+
+tf.keras.utils.set_random_seed(RANDOM_STATE)
+first = new_digit_model()
+tf.keras.utils.set_random_seed(RANDOM_STATE)
+second = new_digit_model()
+third = new_digit_model()
+print(np.allclose(first.get_weights()[0], second.get_weights()[0]))
+print(np.allclose(first.get_weights()[0], third.get_weights()[0]))</code></pre>
+<pre class="out">True
+False</pre>
+        <p><code>get_weights()[0]</code> is the first layer's 784 by 128 table of starting weights.
+        <code>first</code> and <code>second</code> were each built right after the same seed call, so they start
+        identical and the first line prints <code>True</code>. <code>third</code> had no fresh seed call and drew new
+        random numbers, so the second line prints <code>False</code>. That is why every fit cell on this page opens
+        with <code>tf.keras.utils.set_random_seed(RANDOM_STATE)</code>.</p>
+        <h3>A results table kept as you go</h3>
+        <p>A comparison counts only when both models are scored on the same 6,000 validation digits. The cell scores
+        <code>base_20</code>, so it needs step 1's cells run first.
+        <a href="../week-07/day-4-custom-training-tensorboard-and-project-workflow.html">Thursday's page</a> builds this
+        table and reads what <code>evaluate</code> returns;<sup class="cite"><a href="#src-2">2</a></sup> here it gets
+        its first row.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>results = []
+val_loss, val_accuracy = base_20.evaluate(x_val, y_val, verbose=0)
+results.append({"model": "base 20 epochs", "val_loss": val_loss, "val_accuracy": val_accuracy})
+pd.DataFrame(results).round(4)</code></pre>
+        <p>Colab draws the cell's last line as a one-row table with the columns <code>model</code>, <code>val_loss</code> and
+        <code>val_accuracy</code>, rounded to four places, one row per dictionary in the
+        list.<sup class="cite"><a href="#src-11">11</a></sup></p>
+        <p>One run gave a validation loss of about 0.096 and an accuracy of about 0.979. That accuracy means about 5,880
+        of the 6,000 digits right and about 120 wrong, which matches the count step 1 printed for the same model. In
+        your own project, use the metric your project is
+        judged by in place of accuracy, with the same <code>val_</code> prefix.</p>
+        <h3>When a change did not help, and the test set</h3>
+        <p>Some changes will not help, and their rows stay in the table. A gain of 0.1 point on 6,000 validation rows
+        may be noise: with the seeds fixed a rerun repeats the number, but a different seed can flip a small
+        gap.<sup class="cite"><a href="#src-3">3</a></sup> Here 0.1 point of accuracy is 6 digits out of 6,000. Report a
+        gap that small plainly as "did not help".</p>
+        <p>The test set stays out of every one of these choices and is scored once, on the kept model, at the end, for
+        the reason <a href="../week-07/day-4-custom-training-tensorboard-and-project-workflow.html">Thursday's page</a>
+        gives.<sup class="cite"><a href="#src-12">12</a></sup></p>
+        <p>An honest results table has these marks:</p>
+        <ul>
+          <li>every model you trained has a row, including those that did worse</li>
+          <li>every row was scored on the same validation data</li>
+          <li>one plain sentence under the table says whether the change helped</li>
+          <li>the test number appears once, for the kept model only</li>
+        </ul>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Change one lever per run, so a moved number has one cause.</li>
+          <li>Set the seed before building each model so a rerun repeats its number.</li>
+          <li>Score every model on the same validation rows and keep every row.</li>
+          <li>Score the test set once, on the kept model, at the end.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>One change at a time, because if I widen a layer and add dropout together and the score moves, I can't say
+          which one did it. I fix the seeds so a rerun repeats, and I score every model on the same validation set,
+          one row each in a results table.</p>
+          <p>I use the test set once, on the model I keep. Checking it after every change and picking the best means
+          I've tuned on it. When a change didn't help, I say so and keep the row; a tenth of a point may be noise.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="3">
+        <div class="tag">Part A · Worked example</div>
+        <h2>Worked example: one improvement on the digit network</h2>
+        <p>Use this when you want to see the whole loop once, from a sign in the curves to a test number, before running
+        it on your own project.</p>
+        <p>This step builds on the cells of steps 1 and 3, so run those first: step 1 fitted <code>base_20</code> and
+        its curves showed overfitting, and step 3 put it in the results table. Validation loss rising while training loss falls points at dropout or early stopping. This step
+        pulls the dropout lever.</p>
+        <h3>The change: Dropout(0.2) after the hidden layer</h3>
+        <p>The one change is a <code>Dropout(0.2)</code> layer between the hidden layer and the output
+        layer.<sup class="cite"><a href="#src-6">6</a></sup> Everything else matches <code>base_20</code>:</p>
+        <ul>
+          <li>the seed, set just before the model is built</li>
+          <li>the 20 epochs</li>
+          <li>the batch size of 128</li>
+          <li>the 6,000 validation rows</li>
+        </ul>
+        <p>Dropout has no weights of its own, so both models have 784 × 128 + 128 + 128 × 10 + 10 = 101,770 numbers to
+        learn.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>tf.keras.utils.set_random_seed(RANDOM_STATE)
+dropout_20 = tf.keras.Sequential([
+    tf.keras.Input(shape=(784,)),
+    tf.keras.layers.Dense(128, activation="relu"),
+    tf.keras.layers.Dropout(0.2),
+    tf.keras.layers.Dense(10, activation="softmax"),
+])
+dropout_20.compile(optimizer="adam", loss="sparse_categorical_crossentropy", metrics=["accuracy"])
+dropout_history = dropout_20.fit(x_tr, y_tr, epochs=20, batch_size=128,
+                                 validation_data=(x_val, y_val), verbose=0)
+plot_history(dropout_history, title="dropout_20: Dropout(0.2) after the hidden layer")
+print(dropout_20.count_params(), base_20.count_params())</code></pre>
+        <p>The last line prints <code>101770 101770</code>, the count worked out above. Put the chart beside step 1's
+        and look at the gap between the curves. The training loss is computed with a fifth of the hidden units switched
+        off, so it sits higher than before; the validation loss is scored with all of them. In one run the validation
+        curve kept falling until about epoch 16 and then stayed near 0.065, where <code>base_20</code>'s turned up
+        after epoch 12.</p>
+        <h3>Before and after, then the test set once</h3>
+        <p>The second row goes into the same table, scored on the same 6,000 digits.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>val_loss, val_accuracy = dropout_20.evaluate(x_val, y_val, verbose=0)
+results.append({"model": "dropout 0.2", "val_loss": val_loss, "val_accuracy": val_accuracy})
+pd.DataFrame(results).round(4)</code></pre>
+        <p>The table now has two rows, before and after. One run gave these, rounded:</p>
+        <table>
+          <thead><tr><th>model</th><th>val_loss</th><th>val_accuracy</th></tr></thead>
+          <tbody>
+            <tr><td>base 20 epochs</td><td>about 0.096</td><td>about 0.979</td></tr>
+            <tr><td>dropout 0.2</td><td>about 0.065</td><td>about 0.984</td></tr>
+          </tbody>
+        </table>
+        <p>The accuracy gap is about 0.45 point, about 27 more digits right out of 6,000. That is well past the 6
+        digits that step 3 calls noise, so the sentence under the table reads "dropout 0.2 helped".</p>
+        <p>Part of the loss gap
+        is <code>base_20</code> being scored at epoch 20, past its lowest point, and even at that best epoch its
+        validation loss was about 0.082. If your run shows a gap of a handful of digits instead, write that the change
+        did not help.</p>
+        <p>The kept model is the row with the better validation number, chosen before the test set is touched. The
+        next cell picks it by validation loss, the number the curves were read on, and then scores the test set once.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>table = pd.DataFrame(results)
+kept_name = table.loc[table["val_loss"].idxmin(), "model"]
+kept = {"base 20 epochs": base_20, "dropout 0.2": dropout_20}[kept_name]
+test_loss, test_accuracy = kept.evaluate(x_test, y_test, verbose=0)
+print(f"kept: {kept_name}, test accuracy {test_accuracy:.4f}")</code></pre>
+        <p><code>idxmin()</code> gives the row label of the smallest validation loss, and <code>.loc</code> reads the
+        model name from that row. The print shows the kept model's name and its test accuracy, the number a write-up
+        reports as the estimate for new digits. One run kept <code>dropout 0.2</code> and printed a test accuracy of
+        about 0.980, a little under its validation figure. This is the one cell where <code>x_test</code> appears, and its number
+        goes back into no choice.</p>
+        <h3>The same lever in an old TFLearn tutorial</h3>
+        <p>Older tutorials build this network with TFLearn, a high-level library for TensorFlow 1. Its last release is
+        0.5.0 (2020-11-11) and the last commit on its master branch is 2020-11-30.<sup class="cite"><a href="#src-13">13</a></sup><sup class="cite"><a href="#src-14">14</a></sup>
+        As checked on 2026-11-18 it does not import on Colab's TensorFlow 2.21, so read its code and do not run it.</p>
+        <p class="run-label">TFLearn (history, do not run)</p>
+<pre><code>net = tflearn.input_data(shape=[None, 784])
+net = tflearn.fully_connected(net, 128, activation="relu")
+net = tflearn.dropout(net, 0.8)
+net = tflearn.fully_connected(net, 10, activation="softmax")
+net = tflearn.regression(net, optimizer="adam", learning_rate=0.001)
+model = tflearn.DNN(net)
+model.fit(X, Y, validation_set=(X_val, Y_val))</code></pre>
+        <p>Nothing here runs, so nothing prints. Each line has a Keras counterpart in the cell
+        above:<sup class="cite"><a href="#src-14">14</a></sup><sup class="cite"><a href="#src-15">15</a></sup></p>
+        <table>
+          <thead><tr><th>TFLearn</th><th>Keras</th></tr></thead>
+          <tbody>
+            <tr><td><code>tflearn.input_data</code></td><td><code>tf.keras.Input</code></td></tr>
+            <tr><td><code>tflearn.fully_connected</code></td><td><code>tf.keras.layers.Dense</code></td></tr>
+            <tr><td><code>tflearn.dropout(net, 0.8)</code></td><td><code>tf.keras.layers.Dropout(0.2)</code></td></tr>
+            <tr><td><code>tflearn.regression(learning_rate=...)</code></td><td><code>model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=...))</code></td></tr>
+            <tr><td><code>DNN.fit(validation_set=...)</code></td><td><code>model.fit(validation_data=...)</code></td></tr>
+            <tr><td>No early-stopping callback</td><td><code>tf.keras.callbacks.EarlyStopping</code></td></tr>
+          </tbody>
+        </table>
+        <p>The dropout number differs between the two. TFLearn's argument is <code>keep_prob</code>, the share kept, so its 0.8 is
+        Keras's <code>Dropout(0.2)</code>.<sup class="cite"><a href="#src-14">14</a></sup> Copy the 0.8 straight into
+        Keras and the layer switches off 80% of the units instead of 20%.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>The loop: read the sign, change one lever, rescore on the same validation rows.</li>
+          <li>Dropout adds no weights, so both models have 101,770 numbers to learn.</li>
+          <li>The kept model is the better validation row; the test set scores it once.</li>
+          <li>TFLearn's dropout 0.8 is the share kept, which is Keras's Dropout(0.2).</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I built a digit classifier on MNIST: 784 pixels in, 128 ReLU units, ten softmax outputs. I put the test
+          set aside first and held back 6,000 training rows for validation. After 20 epochs the curves showed
+          overfitting.</p>
+          <p>So I made one change, dropout of 0.2 after the hidden layer, with the same seed and validation rows. Both
+          runs went into a results table, I kept the one with the lower validation loss, and only then scored the test
+          set, once.</p>
+          <p>TFLearn was a high-level library for TensorFlow 1. It stopped at release 0.5.0 in 2020 and doesn't import on
+          current TensorFlow, so today I'd write the same network in Keras.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">Part B · Stretch build 1</div>
+        <h2>Part B, build 1: a denoising autoencoder</h2>
+        <p>This stretch build helps a project that uses an autoencoder or works with digit images, and it assumes
+        Tuesday's autoencoder plus the setup and MNIST cells from step 1. Part B is optional, and this build stands
+        alone: nothing else from Part A is needed.</p>
+        <p>Part B has no build for a project that predicts a number. The "Variant: predicting a number" step of
+        <a href="day-3-functional-api-layers-and-custom-training.html">Wednesday's page</a> covers it, and that page's
+        "Open the notebook in Colab" link opens the notebook, whose section 7 builds it.</p>
+        <h3>Same model, a different pair of arrays</h3>
+        <p>An autoencoder is trained to rebuild its own input. The image goes in, passes through a narrow middle layer
+        called the bottleneck, and the output is scored against the same image.
+        <a href="../week-07/day-2-autoencoders-rbm-and-sequential-api.html">Tuesday's autoencoder</a> flagged unusual
+        digits by how badly it rebuilt them.</p>
+        <p>A denoising autoencoder is trained with a corrupted input and the clean input as the target:
+        <code>fit(x_noisy, x_clean)</code>.<sup class="cite"><a href="#src-16">16</a></sup> To rebuild a clean digit
+        from a speckled one, the 32 numbers in the bottleneck have to hold the strokes and leave out the specks. That
+        is why the target must be the clean image.</p>
+        <p>The model is Tuesday's shape, unchanged: 784 inputs, 32 ReLU units, 784 sigmoid outputs. The sigmoid gives
+        pixel values between 0 and 1, which matches the clean target.<sup class="cite"><a href="#src-4">4</a></sup>
+        Only what <code>fit</code> is given changes.</p>
+        <h3>Noise drawn once and clipped to 0 to 1</h3>
+        <p class="run-label">Run in Colab</p>
+<pre><code>tf.keras.utils.set_random_seed(RANDOM_STATE)
+x_tr_noisy = np.clip(x_tr + 0.3 * np.random.normal(size=x_tr.shape), 0.0, 1.0).astype("float32")
+x_val_noisy = np.clip(x_val + 0.3 * np.random.normal(size=x_val.shape), 0.0, 1.0).astype("float32")
+print(x_tr_noisy.shape, x_tr_noisy.min(), x_tr_noisy.max())</code></pre>
+<pre class="out">(54000, 784) 0.0 1.0</pre>
+        <p><code>np.random.normal(size=x_tr.shape)</code> draws one random number per pixel from a bell curve centred
+        on 0, and multiplying by 0.3 keeps most of them within 0.6 of zero. Added to the pixels, they speckle every
+        image. <code>np.clip(x, 0.0, 1.0)</code> keeps the noisy pixels in the 0 to 1 range that the sigmoid output
+        layer can reproduce.<sup class="cite"><a href="#src-17">17</a></sup> The print confirms it: the smallest value
+        is 0.0 and the largest 1.0. <code>.astype("float32")</code> returns the 64-bit random sums to the 32-bit
+        floats the network reads.</p>
+        <p>The noise is drawn once, before <code>fit</code>, for both splits, and the seed call on the cell's first line
+        makes it the same whether or not Part A was run. The validation pair is
+        <code>(x_val_noisy, x_val)</code>, so every epoch is scored on the same noisy
+        rows.<sup class="cite"><a href="#src-2">2</a></sup> Fresh noise on every call would make the validation loss
+        wobble for reasons unrelated to the model.</p>
+        <p>The noise level 0.3 is itself a choice. Too little and the model learns to copy its input; too much and the
+        digit cannot be recovered at all.<sup class="cite"><a href="#src-16">16</a></sup></p>
+        <h3>Noisy, rebuilt and clean in one grid</h3>
+        <p class="run-label">Run in Colab</p>
+<pre><code>tf.keras.utils.set_random_seed(RANDOM_STATE)
+denoiser = tf.keras.Sequential([
+    tf.keras.Input(shape=(784,)),
+    tf.keras.layers.Dense(32, activation="relu"),
+    tf.keras.layers.Dense(784, activation="sigmoid"),
+])
+denoiser.compile(optimizer="adam", loss="mse")
+denoise_history = denoiser.fit(x_tr_noisy, x_tr, epochs=10, batch_size=256,
+                               validation_data=(x_val_noisy, x_val), verbose=0)
+plot_history(denoise_history, title="denoiser: noisy in, clean out")</code></pre>
+        <p>The chart shows the mean squared error between the rebuilt and the clean digits, falling on both curves. In
+        one run the validation MSE went from about 0.050 after the first epoch to about 0.016 after the tenth. That
+        number alone does not prove the specks are gone, so the next cell draws the
+        evidence.<sup class="cite"><a href="#src-16">16</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>rebuilt = denoiser.predict(x_val_noisy[:5], verbose=0)
+images = np.concatenate([x_val_noisy[:5], rebuilt, x_val[:5]])
+titles = ["noisy"] * 5 + ["rebuilt"] * 5 + ["clean"] * 5
+show_image_grid(images, titles)</code></pre>
+        <p><code>np.concatenate</code> stacks the three groups of five into one array of 15 images, which the helper
+        draws as three rows: the noisy inputs on top, the model's rebuilds in the middle and the clean originals below.
+        Expect rebuilds that are clean but blurry. The loss is MSE, and a soft grey edge costs less than a sharp edge in
+        the wrong place.<sup class="cite"><a href="#src-16">16</a></sup></p>
+        <p>The three mistakes that break this build:</p>
+        <ul>
+          <li><code>fit(x_noisy, x_noisy)</code>, which teaches the model to rebuild the specks too</li>
+          <li>no clip, which leaves pixels outside the range the sigmoid can produce</li>
+          <li>fresh validation noise on every call, which makes the validation loss wobble</li>
+        </ul>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A denoising autoencoder takes a noisy input and is scored against the clean image.</li>
+          <li>The shape stays 784-32-784; only the arrays given to fit change.</li>
+          <li>Noise is drawn once and clipped to 0 to 1 before fit.</li>
+          <li>The noisy, rebuilt and clean grid is the evidence, more than the MSE.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>An autoencoder is trained to rebuild its own input through a small bottleneck, so it has to learn a compact
+          version of the data. A denoising one gets a noisy copy as the input and the clean original as the target, so
+          it learns to keep the structure and drop the noise.</p>
+          <p>I clip the noisy image to zero to one because the sigmoid output can only produce values in that range,
+          like the clean target. And I show noisy, rebuilt and clean images side by side, because the
+          loss alone doesn't prove the noise is gone.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
+        <div class="tag">Part B · Stretch build 2</div>
+        <h2>Part B, build 2: text with TextVectorization and Embedding</h2>
+        <p>This stretch build helps a project that classifies text, and it assumes Tuesday's TF-IDF text build plus
+        the setup cell from step 1. It stands alone: it needs nothing else from Part A or from build 1.</p>
+        <p><a href="../week-07/day-2-autoencoders-rbm-and-sequential-api.html">Tuesday's text build</a> scored each forum post with TF-IDF and fed the scores to a Dense network. This build
+        swaps that front end for two Keras layers and compares the two models on the same posts. The comparison is
+        accuracy only; what the numbers inside an embedding mean, and how similar two of them are, is week 8.</p>
+        <h3>The TF-IDF baseline, rebuilt</h3>
+        <p>The baseline is rebuilt here so both models share one split. <code>fetch_20newsgroups</code> downloads the
+        posts on its first call, and <code>remove=("headers", "footers", "quotes")</code> strips the sender's details so
+        the model reads the post itself.<sup class="cite"><a href="#src-18">18</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>from sklearn.datasets import fetch_20newsgroups
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+TOPICS = ["rec.autos", "rec.motorcycles"]
+train = fetch_20newsgroups(subset="train", categories=TOPICS,
+                           remove=("headers", "footers", "quotes"), random_state=RANDOM_STATE)
+texts, labels = train.data, train.target
+texts_tr, texts_val, labels_tr, labels_val = train_test_split(
+    texts, labels, test_size=0.2, stratify=labels, random_state=RANDOM_STATE)
+print(train.target_names, len(texts_tr), len(texts_val))</code></pre>
+<pre class="out">['rec.autos', 'rec.motorcycles'] 953 239</pre>
+        <p>That is 953 training posts and 239 validation posts, a quarter as many. Label 0 is <code>rec.autos</code> and label 1 is
+        <code>rec.motorcycles</code>, the order of that list, so a motorcycle post is the positive class.
+        <code>stratify=labels</code> keeps each topic's share the same in both parts.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>vectorizer = TfidfVectorizer(max_features=5000)
+X_tr = vectorizer.fit_transform(texts_tr).toarray().astype("float32")
+X_val = vectorizer.transform(texts_val).toarray().astype("float32")
+
+tf.keras.utils.set_random_seed(RANDOM_STATE)
+text_model = tf.keras.Sequential([
+    tf.keras.Input(shape=(5000,)),
+    tf.keras.layers.Dense(32, activation="relu"),
+    tf.keras.layers.Dense(1, activation="sigmoid"),
+])
+text_model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
+text_model.fit(X_tr, labels_tr, epochs=10, batch_size=32,
+               validation_data=(X_val, labels_val), verbose=0)
+
+results = []
+val_loss, val_accuracy = text_model.evaluate(X_val, labels_val, verbose=0)
+results.append({"model": "tf-idf 5000", "val_loss": val_loss, "val_accuracy": val_accuracy})
+print(X_tr.shape[1])</code></pre>
+<pre class="out">5000</pre>
+        <p><code>TfidfVectorizer(max_features=5000)</code> keeps the 5,000 most frequent words of the training posts
+        and gives each post one score per word, so every row is 5,000 wide.<sup class="cite"><a href="#src-19">19</a></sup>
+        It is fitted on the training posts only, and <code>.toarray().astype("float32")</code> turns its output into
+        the dense table of 32-bit floats the network reads. <code>results = []</code> starts a fresh table for this comparison.
+        TF-IDF ignores word order: "the bike hit the car" and "the car hit the bike" get the same scores.</p>
+        <h3>TextVectorization: from a post to word ids</h3>
+        <p><code>TextVectorization(max_tokens=10000, output_sequence_length=200)</code> maps raw strings to integer
+        word ids, padding or cutting each post to 200 of them. <code>adapt</code> learns the vocabulary, and it is
+        called on the training posts only.<sup class="cite"><a href="#src-20">20</a></sup> An id is a word's position
+        in that vocabulary.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>vectorize = tf.keras.layers.TextVectorization(max_tokens=10000, output_sequence_length=200)
+vectorize.adapt(np.array(texts_tr))
+ids_tr = vectorize(np.array(texts_tr))
+ids_val = vectorize(np.array(texts_val))
+print(vectorize.get_vocabulary()[:2], ids_tr.shape[1], ids_val.shape[1])</code></pre>
+<pre class="out">['', '[UNK]'] 200 200</pre>
+        <p><code>adapt</code> takes a numpy array of strings, so the posts are converted once with
+        <code>np.array</code>.<sup class="cite"><a href="#src-20">20</a></sup> The first two vocabulary entries are
+        reserved. Id 0 is padding, the empty string that fills a short post up to 200. Id 1 is <code>[UNK]</code>, the
+        out-of-vocabulary token every unknown word becomes. <code>max_tokens</code> counts both, so at most 9,998 real
+        words get their own id.<sup class="cite"><a href="#src-20">20</a></sup></p>
+        <p>Both splits come out 200 wide. Leave <code>output_sequence_length</code> unset and each split is as wide as
+        its own longest post, so the two would not match each other or the model's input. Adapting on the validation
+        posts as well would leak their words into the vocabulary. The layer can also sit inside the model so a saved
+        model reads raw text, as the TensorFlow text tutorial does in its export
+        step.<sup class="cite"><a href="#src-21">21</a></sup></p>
+        <h3>An Embedding layer and average pooling</h3>
+        <p><code>Embedding(input_dim, output_dim)</code> is a trainable lookup table from an integer id to a list of
+        <code>output_dim</code> numbers, and <code>input_dim</code> must be at least the vocabulary
+        size.<sup class="cite"><a href="#src-22">22</a></sup> <code>Embedding(10000, 16)</code> gives each of the 10,000
+        ids a row of 16 numbers. They start random and <code>fit</code> learns them like any other weight, so a post of
+        200 ids becomes 200 rows of 16.</p>
+        <p><code>GlobalAveragePooling1D</code> averages those rows over the post, so a post of any length becomes one
+        list of 16 numbers for the Dense layer.<sup class="cite"><a href="#src-23">23</a></sup> Averaging loses the
+        order, so this model ignores word order just as TF-IDF does.<sup class="cite"><a href="#src-19">19</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>tf.keras.utils.set_random_seed(RANDOM_STATE)
+embed_model = tf.keras.Sequential([
+    tf.keras.Input(shape=(200,)),
+    tf.keras.layers.Embedding(10000, 16),
+    tf.keras.layers.GlobalAveragePooling1D(),
+    tf.keras.layers.Dense(1, activation="sigmoid"),
+])
+embed_model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
+print(embed_model.count_params(), text_model.count_params())</code></pre>
+<pre class="out">160017 160065</pre>
+        <p>The embedding table holds 10,000 × 16 = 160,000 trainable numbers,<sup class="cite"><a href="#src-22">22</a></sup>
+        and the output layer adds 16 weights and a bias. The TF-IDF model's first layer has 5,000 × 32 + 32 = 160,032,
+        and its output layer 33 more. The two models are nearly the same size. The difference is that TF-IDF scores come
+        from a fixed formula, while the embedding table is learned from 953 posts.</p>
+        <h3>Both models in one results table</h3>
+        <p class="run-label">Run in Colab</p>
+<pre><code>embed_model.fit(ids_tr, labels_tr, epochs=30, batch_size=32,
+                validation_data=(ids_val, labels_val), verbose=0)
+val_loss, val_accuracy = embed_model.evaluate(ids_val, labels_val, verbose=0)
+results.append({"model": "embedding 16", "val_loss": val_loss, "val_accuracy": val_accuracy})
+pd.DataFrame(results).round(4)</code></pre>
+        <p>The embedding model gets 30 epochs where TF-IDF got 10, because its table starts from random numbers and
+        learns more slowly. The output is a two-row table, both rows scored with <code>evaluate</code> on the same
+        validation posts and labels.<sup class="cite"><a href="#src-11">11</a></sup></p>
+        <p>One run gave these, rounded:</p>
+        <table>
+          <thead><tr><th>model</th><th>val_loss</th><th>val_accuracy</th></tr></thead>
+          <tbody>
+            <tr><td>tf-idf 5000</td><td>about 0.38</td><td>about 0.845</td></tr>
+            <tr><td>embedding 16</td><td>about 0.50</td><td>about 0.824</td></tr>
+          </tbody>
+        </table>
+        <p>Read it with step 3's rule for a results table. The embedding model is behind on both columns: about 2
+        points of accuracy, which is about 5 of the 239 posts. With about a thousand short posts the embedding model
+        learns its table from scratch, and it often matches TF-IDF rather than beating
+        it.<sup class="cite"><a href="#src-24">24</a></sup> So the sentence under this table reads "the embedding model
+        did not help on this data".</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>TextVectorization turns each post into 200 word ids, adapted on training posts only.</li>
+          <li>Embedding gives each id a learned row of 16 numbers; pooling averages them.</li>
+          <li>Both the TF-IDF model and the embedding model ignore word order.</li>
+          <li>On about a thousand posts the embedding model often only matches TF-IDF.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>TextVectorization turns raw text into a fixed-length list of integer word ids, using a vocabulary it
+          learns with adapt. I adapt it on the training text only, otherwise validation words leak into the
+          vocabulary.</p>
+          <p>An Embedding layer takes those ids and gives back a learned vector for each one, which I average into one
+          before the output layer. On a small dataset I'd expect TF-IDF to match or beat it, because the embedding
+          learns its whole table from scratch.</p>
+        </div>
+      </section>
+
+      <div class="callout mindset">
+        <div class="k">Weekly feedback form</div>
+        <p>Week 7 ends with this page. Before Check yourself, take ten minutes for the
+        <a href="https://forms.cloud.microsoft/pages/responsepage.aspx?id=iuJja_motUeqQJfiMSFRZMU3bOO2vNdAiSFsti9sgKVUQkhYWEhIRzJSWjNOVVM5REFOU0tWT0JXQyQlQCN0PWcu&amp;route=shorturl" target="_blank" rel="noopener">weekly feedback form</a>
+        (it opens in a new tab): what helped this week, what did not, and what you would change.</p>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="6">
+        <div class="tag">Check yourself</div>
+        <h2>Check yourself</h2>
+        <p>Nine questions, at least one per step. Answer each out loud before you open it.</p>
+        <details class="check"><summary>Training loss is still falling at epoch 20, but validation loss bottomed at epoch 4 and has risen since. What is this, and what do you look at before changing anything?</summary><p>Overfitting: the model keeps fitting the training rows while getting worse on rows it has not seen. Before choosing a lever, look at the validation examples it gets wrong, because they show whether the trouble is the model or the data, labels or preprocessing.</p></details>
+        <details class="check"><summary>What can the wrong examples tell you that the two curves cannot?</summary><p>The curves only say whether the model fits too little or too much. The wrong examples show what the mistakes share, and whether the trouble sits in the data, the labels or the preprocessing.</p></details>
+        <details class="check"><summary>Which levers fit underfitting, and which fit overfitting?</summary><p>For underfitting, both curves high and flat, add capacity: more hidden units or layers, or a second architecture such as a CNN for images. For overfitting, a growing gap between the curves, try dropout or early stopping.</p></details>
+        <details class="check"><summary>What does <code>Dropout(0.2)</code> do during <code>fit</code>, and during <code>predict</code>?</summary><p>During <code>fit</code> it sets a random 20% of its inputs to 0 on each step and scales the rest by 1.25, which is 1 / (1 - 0.2). During <code>predict</code> and <code>evaluate</code> it does nothing, and every unit is used.</p></details>
+        <details class="check"><summary>Your change gains 0.1 point of validation accuracy on 6,000 rows. Why do you call that "did not help", and why must only one thing have changed?</summary><p>0.1 point is 6 digits, and a different seed can flip a gap that small, so it may be noise. If two things changed at once, even a real gain could not be traced to either of them.</p></details>
+        <details class="check"><summary>Why is the test set scored only once, on the kept model?</summary><p>Scoring it after each change and keeping the best turns it into a second validation set used for choosing. Its number then stops being an honest estimate of how the model does on new data.</p></details>
+        <details class="check"><summary>An old TFLearn tutorial has <code>tflearn.dropout(net, 0.8)</code>. What is the Keras line?</summary><p><code>tf.keras.layers.Dropout(0.2)</code>. TFLearn's number is the share kept and Keras's is the share dropped, so copying 0.8 would switch off 80% of the units.</p></details>
+        <details class="check"><summary>What goes into <code>fit</code> for a denoising autoencoder, and why are the noisy pixels clipped?</summary><p>The noisy images as the input and the clean images as the target, as in <code>fit(x_tr_noisy, x_tr)</code>. The clip keeps every pixel between 0 and 1, the range the sigmoid output can produce and the clean target lives in.</p></details>
+        <details class="check"><summary>What do <code>TextVectorization</code> and <code>Embedding(10000, 16)</code> each output, and when would TF-IDF beat them?</summary><p><code>TextVectorization</code> outputs a fixed-length list of integer word ids, here 200 per post, with 0 for padding and 1 for unknown words. The Embedding layer outputs a learned row of 16 numbers per id, 160,000 numbers in all. On a small set, about a thousand posts, the embedding learns its table from scratch and often only matches TF-IDF.</p></details>
+      </section>
+
+      <section class="reading-sources" aria-label="Sources and deeper dive">
+        <h2>Sources &amp; deeper dive</h2>
+        <ul>
+          <li id="src-1"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/utils/set_random_seed" target="_blank" rel="noopener">tf.keras.utils.set_random_seed</a> — one call that fixes the Python, NumPy and backend seeds.</li>
+          <li id="src-2"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/Model" target="_blank" rel="noopener">tf.keras.Model</a> — <code>fit</code> with <code>validation_data</code>, the History it returns, and what <code>evaluate</code> gives back.</li>
+          <li id="src-3"><a href="https://www.tensorflow.org/tutorials/keras/overfit_and_underfit" target="_blank" rel="noopener">Overfit and underfit (TensorFlow tutorial)</a> — reading the two curves, and why a tiny gap may be noise.</li>
+          <li id="src-4"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/layers/Dense" target="_blank" rel="noopener">tf.keras.layers.Dense</a> — the layer whose units and count set a network's capacity.</li>
+          <li id="src-5"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/callbacks/EarlyStopping" target="_blank" rel="noopener">tf.keras.callbacks.EarlyStopping</a> — <code>monitor</code>, <code>patience</code> and <code>restore_best_weights</code>.</li>
+          <li id="src-6"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/layers/Dropout" target="_blank" rel="noopener">tf.keras.layers.Dropout</a> — the rate, the 1 / (1 - rate) scaling, and why it acts only in training.</li>
+          <li id="src-7"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/layers/BatchNormalization" target="_blank" rel="noopener">tf.keras.layers.BatchNormalization</a> — batch statistics in training, moving averages at prediction time.</li>
+          <li id="src-8"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/optimizers/Adam" target="_blank" rel="noopener">tf.keras.optimizers.Adam</a> — the <code>learning_rate</code> argument and its default of 0.001.</li>
+          <li id="src-9"><a href="https://developers.google.com/machine-learning/crash-course/linear-regression/hyperparameters" target="_blank" rel="noopener">Machine Learning Crash Course: hyperparameters</a> — what a learning rate that is too small or too large does to the loss.</li>
+          <li id="src-10"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/metrics/Precision" target="_blank" rel="noopener">tf.keras.metrics.Precision</a> — the 0.5 threshold that turns a probability into a yes.</li>
+          <li id="src-11"><a href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html" target="_blank" rel="noopener">pandas.DataFrame</a> — the results table built from a list of dictionaries.</li>
+          <li id="src-12"><a href="https://scikit-learn.org/stable/modules/cross_validation.html" target="_blank" rel="noopener">scikit-learn: evaluating estimator performance</a> — why a test set used for choices stops being an honest estimate.</li>
+          <li id="src-13"><a href="https://pypi.org/project/tflearn/" target="_blank" rel="noopener">tflearn on PyPI</a> — the last release, 0.5.0.</li>
+          <li id="src-14"><a href="https://github.com/tflearn/tflearn" target="_blank" rel="noopener">TFLearn repository</a> — the last commit, the layer names and <code>keep_prob</code>.</li>
+          <li id="src-15"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/layers" target="_blank" rel="noopener">Keras layers API</a> — the Keras layers each TFLearn call maps to.</li>
+          <li id="src-16"><a href="https://www.tensorflow.org/tutorials/generative/autoencoder" target="_blank" rel="noopener">Intro to Autoencoders (TensorFlow tutorial)</a> — its denoising section: noisy input, clean target, side-by-side images.</li>
+          <li id="src-17"><a href="https://numpy.org/doc/stable/reference/generated/numpy.clip.html" target="_blank" rel="noopener">numpy.clip</a> — keeping noisy pixels between 0 and 1.</li>
+          <li id="src-18"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.datasets.fetch_20newsgroups.html" target="_blank" rel="noopener">fetch_20newsgroups</a> — the download, <code>categories</code> and <code>remove</code>.</li>
+          <li id="src-19"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.TfidfVectorizer.html" target="_blank" rel="noopener">TfidfVectorizer</a> — <code>max_features</code> and the word scores the baseline reads.</li>
+          <li id="src-20"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/layers/TextVectorization" target="_blank" rel="noopener">tf.keras.layers.TextVectorization</a> — <code>max_tokens</code>, <code>output_sequence_length</code>, <code>adapt</code> and the two reserved ids.</li>
+          <li id="src-21"><a href="https://www.tensorflow.org/tutorials/keras/text_classification" target="_blank" rel="noopener">Basic text classification (TensorFlow tutorial)</a> — a text layer placed inside an exported model.</li>
+          <li id="src-22"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/layers/Embedding" target="_blank" rel="noopener">tf.keras.layers.Embedding</a> — <code>input_dim</code>, <code>output_dim</code> and the trainable table.</li>
+          <li id="src-23"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/layers/GlobalAveragePooling1D" target="_blank" rel="noopener">tf.keras.layers.GlobalAveragePooling1D</a> — averaging per-word vectors into one.</li>
+          <li id="src-24"><a href="https://www.tensorflow.org/text/guide/word_embeddings" target="_blank" rel="noopener">Word embeddings (TensorFlow text guide)</a> — an embedding learned from scratch on a small text set.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · after you have read the page</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 7 Day 5</footer>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 5 — goals</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Read the training and validation curves and the wrong examples, and name the lever each sign points at</li>
+      <li>Measure one change at a time with fixed seeds on the same validation data, keep a results table and score the test set once</li>
+      <li>Build a denoising autoencoder that takes noisy digits as input and is scored against the clean ones</li>
+      <li>Turn posts into word ids with TextVectorization, train an Embedding model and compare it with TF-IDF on the same posts</li>
+    </ul>
+    <p class="goals-foot">This is the last page of week 7. Finish the check, then fill in the weekly feedback form.</p>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Back to program →", href: "../../index.html" };
+window.DIAGRAM = {
+  title: "Day 5 · improve a model one change at a time",
+  width: 500, height: 470,
+  nodes: [
+    { id:"read", step:0, kind:"example", x:14, y:14, w:472, h:50, label:"READ FIRST\n  two curves · the wrong digits", detail:"Training loss falling while validation loss rises is overfitting; both high and flat is underfitting. The wrong examples point at the data, the labels or the preprocessing." },
+    { id:"levers", step:1, x:24, y:86, w:452, h:56, label:"Levers\n  units · learning rate · dropout · batch norm\n  early stopping · preprocessing · threshold · CNN", detail:"Each lever has a job and a sign. Capacity for underfitting; dropout and early stopping for a growing gap; the learning rate when the loss crawls or bounces." },
+    { id:"method", step:2, x:24, y:166, w:200, h:56, label:"One change, measured\n  seeds fixed · same val rows\n  results table", detail:"set_random_seed before each model, evaluate on the same 6,000 validation digits, one row per run. A 0.1-point gain is 6 digits and may be noise." },
+    { id:"test", step:2, x:276, y:166, w:200, h:56, label:"Test set\n  scored once\n  on the kept model", detail:"Scoring it after every change turns it into a second validation set, and its number stops being an honest estimate." },
+    { id:"worked", step:3, x:24, y:246, w:452, h:50, label:"WORKED: base_20 → dropout_20\n  Dropout(0.2) · two rows · one test score", detail:"Same seed, 20 epochs, batch 128 and validation rows; dropout adds no weights, so both have 101,770. TFLearn's dropout 0.8 is Keras's Dropout(0.2)." },
+    { id:"denoise", step:4, x:24, y:324, w:200, h:56, label:"Denoising autoencoder\n  fit(noisy, clean)\n  784-32-784", detail:"Noise of 0.3 times a bell-curve draw, clipped to 0 to 1, drawn once. The grid of noisy, rebuilt and clean digits is the evidence." },
+    { id:"text", step:5, x:276, y:324, w:200, h:56, label:"Text stretch\n  TextVectorization · Embedding\n  beside TF-IDF", detail:"200 word ids per post, 16 learned numbers per id, averaged into one row. 160,017 against 160,065 weights; on 953 training posts it often only matches TF-IDF, and in one run it trailed it." },
+    { id:"check", step:6, x:24, y:410, w:452, h:40, label:"CHECK YOURSELF\n  answer out loud, then open" }
+  ],
+  edges: [
+    { id:"e1", step:1, from:"read", to:"levers", label:"the sign picks" },
+    { id:"e2", step:2, from:"levers", to:"method", label:"pull one" },
+    { id:"e3", step:2, from:"method", to:"test", label:"at the end" },
+    { id:"e4", step:3, from:"method", to:"worked", label:"the whole loop" },
+    { id:"e5", step:3, from:"test", to:"worked", dir:"-" },
+    { id:"e6", step:4, from:"worked", to:"denoise", label:"stretch" },
+    { id:"e7", step:5, from:"worked", to:"text", label:"stretch" },
+    { id:"e8", step:6, from:"denoise", to:"check", dir:"-" },
+    { id:"e9", step:6, from:"text", to:"check", dir:"-" }
+  ],
+  captions: [
+    "Read before changing: the two curves say too little or too much fit, and the wrong digits say what the mistakes share. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "Each lever has a job and a sign: capacity for underfitting, dropout and early stopping for a growing gap, the learning rate for a crawling or bouncing loss.",
+    "One change per run, seeds fixed, the same validation rows, every run kept in a results table, and the test set held back.",
+    "The worked loop on the digit network: overfitting seen, Dropout(0.2) added, two rows compared, the kept model scored on the test set once.",
+    "Stretch: a denoising autoencoder keeps Tuesday's shape and changes only what fit is given, noisy in and clean out.",
+    "Stretch: TextVectorization and an Embedding layer set beside TF-IDF on the same posts, in one results table.",
+    "You can now explain how you chose a change, measured it honestly, and what the two stretch models learn."
+  ]
+};
+window.QUIZ = {
+  id: "w07-d5",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "Training loss keeps falling, and validation loss has risen every epoch since epoch 4. What does that show?",
+      options: ["Underfitting", "Overfitting", "A learning rate that is too small", "A good fit"], answer: 1,
+      explain: "Training loss still falling while validation loss rises is overfitting. Underfitting shows as both losses high and flat." },
+    { type: "tf", stem: "A Dropout(0.2) layer switches off a fifth of its inputs when you call predict.", answer: false,
+      explain: "Dropout acts only during fit. At predict and evaluate time every unit is used." },
+    { type: "mcq", stem: "Which belong in an honest before-and-after comparison? Select all that apply.",
+      options: ["The same seed set before building each model", "The same validation rows for both models", "Scoring the test set after each change to pick the best", "A row for the change that did not help"], answer: [0, 1, 3],
+      explain: "Fixed seeds, the same validation data and every row kept make the comparison fair. Scoring the test set to choose turns it into a second validation set." },
+    { type: "match", stem: "Match each lever to the sign that says to try it.",
+      pairs: [
+        { l: "more hidden units", r: "both curves high and flat" },
+        { l: "early stopping", r: "validation loss rising while training loss falls" },
+        { l: "the learning rate", r: "the loss bouncing instead of settling" },
+        { l: "the decision threshold", r: "a yes-or-no model with too many false alarms" }
+      ],
+      explain: "Capacity is for underfitting, early stopping for a growing gap, the learning rate for a loss that will not settle, and the threshold trades precision against recall." },
+    { type: "scq", stem: "Which fit call trains a denoising autoencoder?",
+      options: ["fit(x_noisy, x_noisy)", "fit(x_noisy, x_clean)", "fit(x_clean, x_noisy)", "fit(x_clean, x_clean)"], answer: 1,
+      explain: "The noisy image goes in and the clean image is the target. fit(x_noisy, x_noisy) teaches the model to rebuild the specks too." },
+    { type: "open", stem: "In two or three sentences: what does TextVectorization hand to an Embedding layer, what does the Embedding layer hand on, and why is TextVectorization adapted on the training posts only?",
+      hint: "Ids, rows of numbers, a leak.",
+      model: "TextVectorization turns each post into a fixed-length list of integer word ids, 200 here, from a vocabulary it learns with adapt. The Embedding layer looks up a learned row of 16 numbers for each id, and average pooling turns them into one row for the Dense layer. Adapting on the validation posts too would leak their words into the vocabulary." }
+  ]
+};
+</script>
+
+<script src="../../assets/js/diagram.js?v=20261119"></script>
+<script src="../../assets/js/scrolly.js?v=20261119"></script>
+<script src="../../assets/js/modals.js?v=20261119"></script>
+<script src="../../assets/js/quiz.js?v=20261119"></script>
+<script src="../../assets/js/widgets.js?v=20261119"></script>
+<script src="../../assets/js/glossary.js?v=20261119"></script>
+</body>
+</html>

@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w07d2">
+<title>W7·D2 — Autoencoders, RBM &amp; the Keras Sequential API | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261119">
+<script src="../../assets/js/theme.js?v=20261119"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="../../exit-criteria/index.html">Exit criteria</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>Autoencoders, RBM &amp; the Keras Sequential API: networks that learn from rows with no label</h1>
+        <div class="meta">
+          <span><b>Week 7</b> · Day 2</span>
+          <span>Tue Nov 24, 2026</span>
+          <span>TensorFlow</span>
+          <span><b>~44 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span class="verified">Sources checked 2026-11-19 · python 3.13.18 · tensorflow 2.21.0 · keras 3.13.2 · numpy 2.4.6 · scikit-learn 1.6.1 · pandas 2.2.3 · matplotlib 3.10.0</span>
+          <span class="notebook"><a href="https://colab.research.google.com/github/2494-Gen-AI-CN/demos/blob/main/notebooks/week-07/02_tuesday_autoencoders_rbm_and_sequential_api.ipynb" target="_blank" rel="noopener">Open the notebook in Colab</a></span>
+        </div>
+        <p class="summary">Monday's page built a Keras digit classifier from labelled MNIST images, and this page
+        assumes only that: a model stacks layers, is compiled with a loss and an optimizer, and is fitted while a
+        validation set judges it. It teaches networks that learn from rows with no label: a restricted Boltzmann machine
+        that recommends films from a ratings table, and an autoencoder that rebuilds digits and flags the ones it rebuilds
+        worst. It then maps TFLearn to Keras, nests one model inside another, builds a Sequential three ways and ends with
+        a text classifier built in a project's order. Afterwards you can explain collaborative filtering, choose an anomaly
+        threshold on validation data and walk an interviewer through a model you built.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="0">
+        <div class="tag">Recommenders</div>
+        <h2>Collaborative filtering: recommending from a ratings table</h2>
+        <p>A streaming service has millions of users and thousands of films, and each user has rated only a handful.
+        Collaborative filtering is the family of methods that fills in the rest. It recommends to a user what similar
+        users liked, and it reads only the table of who rated what, never the contents of the films: no genre, no
+        actors, no plot.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <h3>People who agreed before agree again</h3>
+        <p>The idea is that people who agreed before tend to agree again. Suppose Dev liked the same
+        two films as Ana, Ben and Cy, and all three of them also liked a third film Dev has not seen. That third film is
+        a good bet for Dev. The method never needs to be told the films are science fiction, because the pattern of
+        agreement in the table already carries that.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <p>The word "collaborative" refers to the users. One person's row says very little on its own. A table of
+        thousands of rows shows which films tend to be liked by the same people, so every user's ratings help
+        everyone else's recommendations.</p>
+        <p>You recognise collaborative filtering in code by its data before its model: a table with one row per user and
+        one column per item, mostly empty or zero, often named <code>ratings</code> or <code>interactions</code>. Nothing
+        in it describes the items.</p>
+        <h3>A ratings table with blanks</h3>
+        <p>The example on this page is a small invented table of 8 users by 6 films. A 1 means the user liked the film
+        and a 0 means they did not like it or have not seen it. The table was built with two taste groups, four
+        science-fiction fans and four romance fans, and one blank planted in each group: a 0 where the rest of the group
+        has a 1.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>import numpy as np
+import pandas as pd
+
+FILMS = ["Star Run", "Moon Base", "Robot Dawn", "Love Letters", "June Wedding", "Paris Days"]
+USERS = ["Ana", "Ben", "Cy", "Dev", "Eve", "Fay", "Gus", "Hal"]
+ratings = np.array([
+    [1, 1, 1, 0, 0, 0],
+    [1, 1, 1, 0, 0, 0],
+    [1, 1, 1, 0, 0, 0],
+    [1, 1, 0, 0, 0, 0],   # Dev has not seen Robot Dawn
+    [0, 0, 0, 1, 1, 1],
+    [0, 0, 0, 1, 1, 1],
+    [0, 0, 0, 1, 1, 1],
+    [0, 0, 0, 1, 1, 0],   # Hal has not seen Paris Days
+])
+print(pd.DataFrame(ratings, index=USERS, columns=FILMS))</code></pre>
+<pre class="out">     Star Run  Moon Base  Robot Dawn  Love Letters  June Wedding  Paris Days
+Ana         1          1           1             0             0           0
+Ben         1          1           1             0             0           0
+Cy          1          1           1             0             0           0
+Dev         1          1           0             0             0           0
+Eve         0          0           0             1             1           1
+Fay         0          0           0             1             1           1
+Gus         0          0           0             1             1           1
+Hal         0          0           0             1             1           0</pre>
+        <p><code>np.array</code> turns the nested list into an 8-by-6 grid of numbers, one inner list per user.
+        <code>pd.DataFrame</code> only wraps that grid with user names as row labels and film names as column labels, so
+        it prints readably; the model in the next step reads the plain array.</p>
+        <p>Read the output by rows. Dev agrees with Ana, Ben and Cy on <code>Star Run</code> and <code>Moon Base</code>,
+        and all three liked <code>Robot Dawn</code>, so <code>Robot Dawn</code> is the film to recommend to Dev. By the
+        same reasoning, Hal should be offered <code>Paris Days</code>. Those two answers are the check the RBM in the next
+        step has to pass.</p>
+        <div class="ix-predict" data-q="Dev has four films marked 0. Ranked by how strongly the users who agree with Dev liked them, which comes first and which come last?" data-a="Robot Dawn comes first: Ana, Ben and Cy all liked it. Love Letters, June Wedding and Paris Days tie last, because none of the users who agree with Dev liked any of them."></div>
+        <h3>Cold start: a user with no ratings</h3>
+        <p>The idea has a limit. A brand-new user has an empty row, so there is nobody they can be shown to
+        agree with, and a brand-new film has an empty column that no recommendation can reach. This is called the
+        cold-start problem, and every collaborative filter has it.<sup class="cite"><a href="#src-2">2</a></sup></p>
+        <p>In practice a team covers the gap outside the model. A new user sees popular items, or picks a few favourites at
+        sign-up so their row is no longer empty, and the collaborative filter takes over once there are ratings to match
+        on.</p>
+        <p>The table also hides a second limit. With only 1 and 0, "did not like it" and "has not seen it" are the same
+        number, so the model cannot tell a film someone rejected from one they never came across. The next step comes back
+        to this.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Collaborative filtering recommends what similar users liked, using only who rated what.</li>
+          <li>A ratings table has one row per user and one column per item.</li>
+          <li>A new user or item has no ratings to match on: the cold-start problem.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Collaborative filtering recommends items to a user based on what similar users liked. All it needs is the
+          table of who rated or bought what; it doesn't need to know anything about the items. If someone agrees with three
+          other users on the films they've all seen, the film those three liked and they haven't seen is the
+          recommendation.</p>
+          <p>Its weak spot is cold start. A brand-new user has no ratings, so there's nobody to match them with. I'd show
+          popular items or ask for a few favourites at sign-up until their row fills in.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">Recommenders</div>
+        <h2>Restricted Boltzmann machines: hidden tastes that rebuild a row</h2>
+        <p>Reading agreement by eye works for 8 users, and a model has to do it for millions. This step
+        uses a restricted Boltzmann machine, or RBM: a small two-layer network that learns a few hidden "tastes" from the
+        ratings and can rebuild each user's row from them.</p>
+        <h3>Visible units, hidden units and the restriction</h3>
+        <p>An RBM has two layers of units. The visible units hold the data, one per film. The hidden units are a few
+        learned features, here two, and in a recommender each one plays the part of a taste. Every hidden unit is linked
+        to every film, and no unit is linked to another unit in its own layer.<sup class="cite"><a href="#src-3">3</a></sup></p>
+        <table>
+          <thead><tr><th>Part</th><th>What it is</th><th>In the ratings example</th></tr></thead>
+          <tbody>
+            <tr><td>Visible units</td><td>the input row</td><td>6, one per film</td></tr>
+            <tr><td>Hidden units</td><td>learned features</td><td>2, the tastes</td></tr>
+            <tr><td>Weights</td><td>one per link between the layers</td><td>2 × 6 = 12</td></tr>
+          </tbody>
+        </table>
+        <p>The "restricted" in the name is that missing link inside a layer, and it is what makes the model cheap. Each
+        hidden unit depends only on the visible units, so all hidden units can be worked out at once from a user's row,
+        and the same is true in the other direction.<sup class="cite"><a href="#src-3">3</a></sup></p>
+        <p>scikit-learn's version is <code>BernoulliRBM</code>, named after Bernoulli variables, which take only the
+        values 0 and 1: its visible and hidden units are binary.<sup class="cite"><a href="#src-4">4</a></sup> So "not
+        seen" and "not liked" arrive as the same 0, the limit from the previous
+        step.<sup class="cite"><a href="#src-3">3</a></sup></p>
+        <h3>Fitting an RBM in scikit-learn</h3>
+        <p>The example sets four arguments.<sup class="cite"><a href="#src-4">4</a></sup></p>
+        <table>
+          <thead><tr><th>Argument</th><th>What it sets</th></tr></thead>
+          <tbody>
+            <tr><td><code>n_components</code></td><td>the number of hidden units, here the tastes</td></tr>
+            <tr><td><code>learning_rate</code></td><td>the size of each update</td></tr>
+            <tr><td><code>n_iter</code></td><td>the number of passes over the table</td></tr>
+            <tr><td><code>random_state</code></td><td>a fixed seed, so a rerun learns the same weights</td></tr>
+          </tbody>
+        </table>
+        <p>It trains by a method called persistent contrastive divergence.<sup class="cite"><a href="#src-4">4</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>from sklearn.neural_network import BernoulliRBM
+
+RANDOM_STATE = 42
+rbm = BernoulliRBM(n_components=2, learning_rate=0.1, n_iter=1000, random_state=RANDOM_STATE)
+rbm.fit(ratings)
+print(rbm.components_.shape)
+
+weights = pd.DataFrame(rbm.components_, columns=FILMS, index=["taste 1", "taste 2"])
+weights.loc["film bias"] = rbm.intercept_visible_
+print(weights.round(1).to_string())</code></pre>
+<pre class="out">(2, 6)
+           Star Run  Moon Base  Robot Dawn  Love Letters  June Wedding  Paris Days
+taste 1        -2.9       -3.0        -2.6           3.6           3.5         2.5
+taste 2        -2.3       -2.4        -2.1           3.0           3.0         2.1
+film bias       0.7        0.7         0.0          -3.6          -3.6        -3.7</pre>
+        <p><code>fit</code> learns the weights from the ratings alone; there is no label column. After fitting,
+        <code>components_</code> holds the weights with one row per hidden unit and one column per film, which is why its
+        shape is <code>(2, 6)</code>. The last row is <code>intercept_visible_</code>, one bias per
+        film.<sup class="cite"><a href="#src-4">4</a></sup></p>
+        <p>Read each row by its signs: a positive weight pulls a film's score up when the unit is on, a negative one
+        pushes it down. Both tastes are positive on the romance films and negative on the science-fiction films, so the
+        model learned the same split twice. A science-fiction fan has both units off, and the film biases carry their
+        films: about 0.7 for Star Run and Moon Base, about -3.6 for each romance film.</p>
+        <p>Nobody told the model either genre; people name the rows. Another seed or library version can
+        give other weights, such as one taste per group, so the recommendations below are the part to check.</p>
+        <h3>Recommending: rebuild the row, rank the blanks</h3>
+        <p>To recommend, the RBM rebuilds each user's row. <code>transform</code> returns each user's hidden-taste
+        probabilities, one number between 0 and 1 per taste. Multiplying those by <code>components_</code>, adding the
+        visible biases in <code>intercept_visible_</code> and passing the result through a sigmoid gives a score between 0
+        and 1 for every film.<sup class="cite"><a href="#src-4">4</a></sup> The sigmoid is the S-shaped function from week
+        6 that squeezes any number into that range.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>hidden = rbm.transform(ratings)
+rebuilt = 1 / (1 + np.exp(-(hidden @ rbm.components_ + rbm.intercept_visible_)))
+print(hidden.shape, rebuilt.shape)
+
+for user in ["Dev", "Hal"]:
+    row = USERS.index(user)
+    unseen = [film for film, r in zip(FILMS, ratings[row]) if r == 0]
+    best = max(unseen, key=lambda film: rebuilt[row, FILMS.index(film)])
+    print(f"{user} -&gt; {best} {rebuilt[row, FILMS.index(best)]:.2f}")</code></pre>
+<pre class="out">(8, 2) (8, 6)
+Dev -&gt; Robot Dawn 0.51
+Hal -&gt; Paris Days 0.67</pre>
+        <p>The line doing the work is the second one. <code>@</code> is matrix multiplication: an 8-by-2 table of tastes
+        times the 2-by-6 weights gives an 8-by-6 table of scores, the same shape as <code>ratings</code>. The loop keeps
+        only the films a user has a 0 for and picks the one with the highest rebuilt score.</p>
+        <p>Both planted blanks come out on top, at about 0.51 and 0.67. Dev's tastes match Ana's, Ben's and Cy's, so his
+        rebuilt row looks like theirs, Robot Dawn included. With <code>n_components=1</code> the two answers stay the
+        same: one unit that is on for one group and off for the other is enough to tell two groups apart, which is also
+        why the two tastes above came out alike.</p>
+        <p>You recognise an RBM recommender by <code>BernoulliRBM(...).fit(ratings)</code> followed by
+        <code>rbm.transform(ratings)</code> and a sigmoid over
+        <code>hidden @ rbm.components_ + rbm.intercept_visible_</code>.<sup class="cite"><a href="#src-4">4</a></sup></p>
+        <h3>Where recommenders went since</h3>
+        <p>Keras has no RBM layer.<sup class="cite"><a href="#src-5">5</a></sup>
+        A team building a recommender today would pick matrix factorisation or a deep recommender
+        instead.<sup class="cite"><a href="#src-6">6</a></sup> Matrix factorisation fills the same blanks by splitting the
+        big table into two small ones, a few numbers per user and a few per film, whose product rebuilds the ratings. The
+        RBM is still worth knowing because the idea carries over: learn a few hidden features, rebuild the row, rank the
+        blanks.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>An RBM has visible units for the films and hidden units for learned tastes.</li>
+          <li>Restricted means no links inside a layer, which makes the hidden units cheap to compute.</li>
+          <li>Recommending means rebuilding a user's row and ranking the films they have not rated.</li>
+          <li>Teams now use matrix factorisation or deep recommenders; Keras has no RBM layer.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A restricted Boltzmann machine has a visible layer, one unit per item, and a small hidden layer. Trained on a
+          ratings table, each hidden unit learns something like a taste. To recommend, I turn a user's row into hidden
+          tastes, rebuild the row from them, and rank the items the user hasn't rated by their rebuilt score.</p>
+          <p>"Restricted" means there are no links within a layer, which makes the hidden units cheap to compute. Today I'd
+          more likely use matrix factorisation or a deep recommender, but the idea is the same: learn a few hidden
+          features and fill in the blanks.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">Autoencoders</div>
+        <h2>Autoencoders: a network that rebuilds its own input</h2>
+        <p>The RBM learned tastes by rebuilding ratings rows. An autoencoder applies the same trick to any input with a
+        Keras network: it is trained to reproduce its own input through a narrow layer in the middle. The input is also
+        the target, so it needs no labels.<sup class="cite"><a href="#src-7">7</a></sup> This step and the next build one
+        on MNIST, the 28-by-28 handwritten digits from Monday's page, from problem statement to test set.</p>
+        <h3>Encoder, bottleneck, decoder</h3>
+        <p>A dense autoencoder has two halves joined at a narrow point.<sup class="cite"><a href="#src-7">7</a></sup></p>
+        <ul>
+          <li>The encoder compresses the input, here 784 pixels, to a short code, here 32 numbers.</li>
+          <li>The bottleneck is that narrow layer; its 32 numbers are all the decoder gets.</li>
+          <li>The decoder rebuilds all 784 pixels from the code.</li>
+        </ul>
+        <p>Training compares each rebuild with its original. The reconstruction loss is the mean squared difference
+        between the two, Monday's MSE, so no label enters the calculation.<sup class="cite"><a href="#src-8">8</a></sup>
+        One pixel worked by hand: a pixel of 1.0 rebuilt as 0.8 is off by 0.2, which squares to 0.04, and the loss
+        averages that over every pixel.</p>
+        <p>The bottleneck has to be smaller than the input. A middle layer
+        as wide as the input lets the network copy the pixels straight through and learn nothing useful. A very narrow
+        one cannot hold enough and blurs the rebuilds.<sup class="cite"><a href="#src-7">7</a></sup> In between, the
+        network is forced to keep what matters most about a digit's shape.</p>
+        <p>A linear autoencoder with a small bottleneck learns much the same thing as PCA (principal component analysis,
+        a classic method that squeezes many columns into a few), which is why interviewers ask how the two differ.</p>
+        <h3>The model and a reason for each choice</h3>
+        <p>The data cell loads MNIST and splits the training images into the first 54,000 for training and the last
+        6,000 for validation. The test set is
+        held out now and used once, at the end; every choice before then is made on the validation data. The labels are
+        loaded but never used.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>import matplotlib.pyplot as plt
+import tensorflow as tf
+
+np.random.seed(RANDOM_STATE)
+tf.keras.utils.set_random_seed(RANDOM_STATE)
+
+(x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+x_train = x_train.reshape(-1, 784).astype("float32") / 255.0
+x_test = x_test.reshape(-1, 784).astype("float32") / 255.0
+x_tr, y_tr = x_train[:54000], y_train[:54000]
+x_val, y_val = x_train[54000:], y_train[54000:]
+print(x_tr.shape, x_val.shape, x_test.shape)</code></pre>
+<pre class="out">(54000, 784) (6000, 784) (10000, 784)</pre>
+        <p><code>reshape(-1, 784)</code> turns each 28-by-28 image into one row of 784 numbers; the <code>-1</code> tells
+        numpy to work out the number of rows itself. Dividing by 255.0 puts every pixel between 0 and 1.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>tf.keras.utils.set_random_seed(RANDOM_STATE)        # the same starting weights on every rerun
+autoencoder = tf.keras.Sequential([
+    tf.keras.Input(shape=(784,)),
+    tf.keras.layers.Dense(32, activation="relu"),      # encoder: 784 pixels to a 32-number code
+    tf.keras.layers.Dense(784, activation="sigmoid"),  # decoder: the code back to 784 pixels
+])
+autoencoder.compile(optimizer="adam", loss="mse")
+print([layer.count_params() for layer in autoencoder.layers], autoencoder.count_params())</code></pre>
+<pre class="out">[25120, 25872] 50992</pre>
+        <p>A Dense layer holds one weight per input per unit plus one bias per unit.<sup class="cite"><a href="#src-9">9</a></sup>
+        The encoder has 784 × 32 + 32 = 25,120 and the decoder 32 × 784 + 784 = 25,872, so 50,992 in all, the figure
+        <code>autoencoder.summary()</code> also prints.</p>
+        <table>
+          <thead><tr><th>Choice</th><th>Value</th><th>Reason</th></tr></thead>
+          <tbody>
+            <tr><td>Bottleneck</td><td>32 units</td><td>small enough that copying is impossible, wide enough to keep a digit's shape</td></tr>
+            <tr><td>Hidden activation</td><td>ReLU</td><td>the hidden activation of Monday's digit network, so only the layer sizes change</td></tr>
+            <tr><td>Output layer</td><td>784 units, sigmoid</td><td>a sigmoid only produces values between 0 and 1, the range of the pixels<sup class="cite"><a href="#src-10">10</a></sup></td></tr>
+            <tr><td>Loss</td><td>MSE</td><td>the mean squared difference between each pixel and its rebuild<sup class="cite"><a href="#src-8">8</a></sup></td></tr>
+            <tr><td>Optimizer</td><td>Adam</td><td>the same optimizer as Monday's digit network, so nothing else changes</td></tr>
+          </tbody>
+        </table>
+        <h3>Training with both curves</h3>
+        <p>Two small helpers come first: <code>plot_history</code> draws the training and validation curves of one metric
+        on one chart, and <code>show_image_grid</code> draws a row of digits with a title under each.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>def plot_history(history, metric="loss", title=""):
+    """Draw the training and validation curves of one metric on one chart."""
+    plt.plot(history.history[metric], label="training")
+    plt.plot(history.history["val_" + metric], label="validation")
+    plt.xlabel("epoch"); plt.ylabel(metric); plt.title(title); plt.legend(); plt.show()
+
+def show_image_grid(images, titles, columns=5):
+    """Draw 784-long rows as 28 by 28 images, in rows of `columns`."""
+    rows = int(np.ceil(len(images) / columns))
+    plt.figure(figsize=(2.2 * columns, 2.4 * rows))
+    for i, (image, title) in enumerate(zip(images, titles)):
+        plt.subplot(rows, columns, i + 1)
+        plt.imshow(np.reshape(image, (28, 28)), cmap="gray")
+        plt.title(title, fontsize=9); plt.axis("off")
+    plt.show()
+
+history = autoencoder.fit(x_tr, x_tr, epochs=10, batch_size=256,
+                          validation_data=(x_val, x_val), verbose=0)
+plot_history(history, "loss", "Autoencoder reconstruction loss")
+print(f"epoch 1:  loss {history.history['loss'][0]:.4f}, val_loss {history.history['val_loss'][0]:.4f}")
+print(f"epoch 10: loss {history.history['loss'][-1]:.4f}, val_loss {history.history['val_loss'][-1]:.4f}")</code></pre>
+<pre class="out">epoch 1:  loss 0.0734, val_loss 0.0443
+epoch 10: loss 0.0122, val_loss 0.0119</pre>
+        <p>The fit line is the one to read. Its first two arguments are the inputs and the targets, and both are
+        <code>x_tr</code>. Passing <code>validation_data=(x_val, x_val)</code> gives a validation loss after every epoch,
+        which <code>plot_history</code> draws beside the training loss.<sup class="cite"><a href="#src-11">11</a></sup>
+        Writing <code>fit(x_tr, y_tr)</code> by habit is the classic slip: the targets become digit labels, and the
+        shapes no longer match a 784-wide output.</p>
+        <p>You recognise an autoencoder in someone else's code by a fit whose inputs and targets are the same array and a
+        last Dense layer as wide as the input, with a sigmoid.</p>
+        <p><code>verbose=0</code> keeps the fit quiet, and the last two lines print the first and the last epoch. Both
+        losses fall, then flatten: the training loss drops from about 0.073 to about 0.012, and the validation loss ends
+        near 0.012 too. A validation curve this close to the training curve means the model rebuilds digits it has
+        never seen about as well as the ones it trained on.</p>
+        <h3>Originals beside reconstructions</h3>
+        <p>A loss is a single number, and a picture shows what it means.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>rebuilt_digits = autoencoder.predict(x_val[:5], verbose=0)
+show_image_grid(np.concatenate([x_val[:5], rebuilt_digits]),
+                ["original"] * 5 + ["rebuilt"] * 5)</code></pre>
+        <p><code>np.concatenate</code> stacks the five originals and the five rebuilds into one array of ten rows, so the
+        grid draws originals in its first row and rebuilds in its second. Each rebuild is recognisably the same digit
+        and a little softer, because 32 numbers cannot hold every stroke detail. A variant called a denoising autoencoder
+        is trained to rebuild a clean image from a noisy copy; Friday's page builds
+        one.<sup class="cite"><a href="#src-8">8</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>An autoencoder is trained to rebuild its own input, so it needs no labels.</li>
+          <li>The bottleneck must be narrower than the input, or the network just copies.</li>
+          <li>A sigmoid output fits pixels scaled to 0 to 1, with MSE as the loss.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>An autoencoder is a network trained to reproduce its input. An encoder squeezes the input into a small code,
+          the bottleneck, and a decoder rebuilds the input from that code. The input is its own target, so it needs no
+          labels.</p>
+          <p>The bottleneck has to be smaller than the input, otherwise the network can just copy the pixels through.
+          For images scaled to 0 to 1, I use a sigmoid output, because it only produces values in that range, and mean
+          squared error between each pixel and its rebuild as the loss.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="3">
+        <div class="tag">Autoencoders</div>
+        <h2>An autoencoder as an anomaly detector</h2>
+        <p>The problem this build solves: flag the digits that do not look like the rest, for someone checking scanned
+        forms who wants the odd ones put in front of a person. The model from the previous step rebuilds typical digits
+        well. An image it rebuilds badly is unlike what it trained on, the same way a bank flags a transaction that does
+        not fit a customer's usual pattern.<sup class="cite"><a href="#src-8">8</a></sup></p>
+        <h3>Reconstruction error: one number per image</h3>
+        <p>The reconstruction error of one image is the mean squared difference between its pixels and their rebuild.
+        Two tiny four-pixel "images" show the calculation.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>x = np.array([[0.0, 1.0, 1.0, 0.0], [0.0, 1.0, 1.0, 0.0]])
+rebuilt_toy = np.array([[0.1, 0.9, 0.8, 0.0], [0.6, 0.4, 0.5, 0.7]])
+print(np.mean((x - rebuilt_toy) ** 2, axis=1))</code></pre>
+<pre class="out">[0.015 0.365]</pre>
+        <p><code>axis=1</code> averages along each row, across its pixels, so the result has one number per
+        image.<sup class="cite"><a href="#src-12">12</a></sup> The first rebuild is close: its differences 0.1, 0.1, 0.2
+        and 0 square to 0.01, 0.01, 0.04 and 0, whose mean is 0.015. The second is far off and scores 0.365, about 24
+        times worse.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>val_errors = np.mean((x_val - autoencoder.predict(x_val, verbose=0)) ** 2, axis=1)
+print(val_errors.shape)</code></pre>
+<pre class="out">(6000,)</pre>
+        <h3>Choosing a threshold on data the model did not train on</h3>
+        <p>An error is a score, and a flag needs a cut-off: everything above the threshold is unusual. The threshold here
+        is the 99th percentile of the validation errors. <code>np.percentile(errors, 99)</code> returns the value below
+        which 99 percent of the errors lie.<sup class="cite"><a href="#src-13">13</a></sup> For the errors 0.001, 0.002, up
+        to 0.100, it returns 0.09901, and exactly one error, 0.100, lies above it.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>threshold = np.percentile(val_errors, 99)
+print(f"threshold {threshold:.4f}: {(val_errors &gt; threshold).sum()} of {len(val_errors)} above it")
+
+plt.hist(val_errors, bins=50)
+plt.axvline(threshold, color="red", label="99th percentile")
+plt.xlabel("reconstruction error"); plt.legend(); plt.show()</code></pre>
+<pre class="out">threshold 0.0305: 60 of 6000 above it</pre>
+        <p>The threshold lands at about 0.03, and sixty is 1 percent of 6,000 by construction: a 99th-percentile
+        threshold always flags about one image in a hundred. The count says nothing about how many digits are really odd. The histogram shows most
+        errors bunched at the low end with a long thin tail to the right, and the red line cuts off the far end of that
+        tail.</p>
+        <p>The errors come from validation images because the model never trained on them. Errors on training images are
+        smaller than on new data, so a threshold set there is too low and flags too much; every choice is judged on data
+        the model did not learn from.<sup class="cite"><a href="#src-14">14</a></sup> The TensorFlow tutorial takes a
+        simpler route, the mean plus one standard deviation of the training loss.<sup class="cite"><a href="#src-8">8</a></sup>
+        Either way, the team makes the choice and writes it down.</p>
+        <p>A lower threshold catches more odd digits and raises more false
+        alarms, the same trade the text build at the end of this page reads as precision and recall.</p>
+        <div class="ix-predict" data-q="Swap the 99th percentile for the 95th. How many of the 6,000 validation digits are flagged now?" data-a="About 300, which is 5 percent of 6,000. A percentile threshold flags a fixed share by construction, so the count follows from the percentile, not from the digits."></div>
+        <h3>Error analysis: the digits it rebuilds worst</h3>
+        <p>The flagged images are the build's error analysis: read them and ask what they share. The labels, unused in
+        training, now go into the titles so the digits are easy to name.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>worst = np.argsort(val_errors)[::-1][:10]
+print(y_val[worst])
+show_image_grid(x_val[worst], [f"{y_val[i]}, error {val_errors[i]:.3f}" for i in worst])</code></pre>
+<pre class="out">[6 0 8 2 8 9 0 2 8 2]</pre>
+        <p><code>np.argsort</code> returns the positions of the errors from smallest to largest, <code>[::-1]</code>
+        reverses that list, and <code>[:10]</code> keeps the first ten, the ten worst rebuilds. Their labels are a mix,
+        mostly 0s, 2s and 8s, with no 1 among them, so they share a look more than a digit. In the grid, look for thick
+        strokes, unusual shapes and digits that could be read two ways.<sup class="cite"><a href="#src-7">7</a></sup></p>
+        <p>The limit shows up here too. This autoencoder trained on every kind of digit, so it has learned to rebuild many
+        shapes, and an oddity it has partly learned gets a modest error and goes unflagged.<sup class="cite"><a href="#src-8">8</a></sup></p>
+        <h3>One improvement attempt, then the test set once</h3>
+        <p>The attempt changes one thing, the bottleneck from 32 to 64, and compares mean validation error on the same
+        6,000 images. Because the loss is MSE, <code>evaluate</code> on <code>(x_val, x_val)</code> returns that same
+        mean.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>results = [{"model": "bottleneck 32", "val_loss": autoencoder.evaluate(x_val, x_val, verbose=0),
+            "val_threshold": threshold}]
+
+tf.keras.utils.set_random_seed(RANDOM_STATE)
+autoencoder_64 = tf.keras.Sequential([
+    tf.keras.Input(shape=(784,)),
+    tf.keras.layers.Dense(64, activation="relu"),
+    tf.keras.layers.Dense(784, activation="sigmoid"),
+])
+autoencoder_64.compile(optimizer="adam", loss="mse")
+autoencoder_64.fit(x_tr, x_tr, epochs=10, batch_size=256, validation_data=(x_val, x_val), verbose=0)
+val_errors_64 = np.mean((x_val - autoencoder_64.predict(x_val, verbose=0)) ** 2, axis=1)
+results.append({"model": "bottleneck 64", "val_loss": autoencoder_64.evaluate(x_val, x_val, verbose=0),
+                "val_threshold": np.percentile(val_errors_64, 99)})
+print(pd.DataFrame(results).round(4))</code></pre>
+<pre class="out">           model  val_loss  val_threshold
+0  bottleneck 32    0.0119         0.0305
+1  bottleneck 64    0.0056         0.0155</pre>
+        <p>Each row keeps its model's own 99th-percentile threshold, because a threshold belongs to one model. It helped
+        on the number measured: the mean validation error fell from about 0.012 to about 0.006. A better
+        rebuild also rebuilds the oddities better, though, so the gap between normal and unusual errors can shrink, and
+        a lower error is not automatically a better detector.<sup class="cite"><a href="#src-7">7</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>kept_ae = autoencoder_64 if results[1]["val_loss"] &lt; results[0]["val_loss"] else autoencoder
+kept_threshold = results[1]["val_threshold"] if kept_ae is autoencoder_64 else results[0]["val_threshold"]
+
+test_errors = np.mean((x_test - kept_ae.predict(x_test, verbose=0)) ** 2, axis=1)
+print((test_errors &gt; kept_threshold).mean())
+
+inverted = 1.0 - x_test[:5]   # white digits on black become black on white
+print(np.mean((inverted - kept_ae.predict(inverted, verbose=0)) ** 2, axis=1) &gt; kept_threshold)</code></pre>
+<pre class="out">0.0068
+[ True  True  True  True  True]</pre>
+        <p>The first two lines keep the model with the lower validation error and take its own threshold. The first
+        print is the share of test digits above it, about 0.007 here, close to the 1 percent of the validation digits;
+        a share far above 0.01 would mean the test digits differ from the validation digits. The five inverted digits
+        are unlike anything in training, and all five are flagged.</p>
+        <p>Teams use this pattern for unusual transactions, sensor faults and compression. Its limits: it flags what is
+        unusual compared with the training data, not what is wrong, and a percentile threshold flags a fixed share whether
+        or not anything odd is present.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>The reconstruction error per image is the mean squared difference over its pixels.</li>
+          <li>Choose the threshold on validation errors, never on training errors.</li>
+          <li>A 99th-percentile threshold flags about 1 percent of images by construction.</li>
+          <li>A lower reconstruction error can make a worse detector, because oddities rebuild well too.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I train an autoencoder on normal data, then score each new example by its reconstruction error, the mean
+          squared difference between the input and its rebuild. Anything above a threshold gets flagged as unusual.</p>
+          <p>I pick the threshold on validation data the model didn't train on, for example the 99th percentile of the
+          validation errors, because training errors are optimistic. And a lower error isn't always better: a model that
+          rebuilds everything well rebuilds the anomalies well too, and then it flags nothing useful.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">TFLearn</div>
+        <h2>TFLearn and its Keras equivalents</h2>
+        <p>Old tutorials, blog posts and course material build networks with a library called TFLearn. It is worth
+        reading, because the code turns up in searches, and never worth running. Every TFLearn call has a Keras line that
+        does the same job.</p>
+        <h3>What TFLearn was</h3>
+        <p>TFLearn was a high-level library that made TensorFlow 1 easier to use. Its last release on PyPI is 0.5.0, from
+        11 November 2020, and it is unmaintained.<sup class="cite"><a href="#src-15">15</a></sup> It was built on
+        TensorFlow 1's graph mode, the older style in which code first describes a computation and a session runs it
+        later, the TensorFlow 1 history from week 6.</p>
+        <p>Its source imports a helper, <code>is_sequence</code>, from <code>tensorflow.python.util.nest</code>, a name
+        TensorFlow 2.21 no longer defines, so the import is expected to fail on Colab's TensorFlow 2.21. Its start-up
+        file also switches TensorFlow 2 behaviour off with
+        <code>tf.disable_v2_behavior()</code>.<sup class="cite"><a href="#src-15">15</a></sup> If <code>import tflearn</code>
+        fails, the cause is the library itself, which was written for a TensorFlow that no longer ships.</p>
+        <p class="run-label">TFLearn (history, do not run)</p>
+<pre><code>import tflearn
+
+net = tflearn.input_data(shape=[None, 784])
+net = tflearn.fully_connected(net, 128, activation='relu')
+net = tflearn.fully_connected(net, 10, activation='softmax')
+net = tflearn.regression(net)
+model = tflearn.DNN(net)
+model.fit(X, Y)</code></pre>
+        <p>Read it from the top. Each line takes <code>net</code>, adds one layer and hands the result to the next line.
+        <code>shape=[None, 784]</code> means any number of rows of 784 pixels. <code>regression</code> attaches the
+        training settings, <code>DNN</code> wraps the whole graph in a model object, and <code>fit</code> trains it.</p>
+        <p>The TensorFlow documentation gives TensorFlow 1 code a migration path to TensorFlow 2 and Keras, and Keras is
+        TensorFlow's own high-level API.<sup class="cite"><a href="#src-16">16</a></sup> So the replacement for TFLearn
+        is Keras, reached as <code>tf.keras</code>, with nothing extra to install.</p>
+        <h3>The same network in Keras</h3>
+        <p>Here is the history block's network, 784 inputs, 128 ReLU units and 10 softmax outputs, the same shape as
+        Monday's digit classifier. It is built and compiled but not fitted, because the point is the translation.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>digit_model = tf.keras.Sequential([
+    tf.keras.Input(shape=(784,)),
+    tf.keras.layers.Dense(128, activation="relu"),
+    tf.keras.layers.Dense(10, activation="softmax"),
+])
+digit_model.compile(optimizer="adam", loss="sparse_categorical_crossentropy", metrics=["accuracy"])
+print(digit_model.count_params())</code></pre>
+<pre class="out">101770</pre>
+        <p>The count checks by hand: 784 × 128 + 128 = 100,480 for the hidden layer and 128 × 10 + 10 = 1,290 for the
+        output, 101,770 in all. Line for line, <code>Input</code> replaces <code>input_data</code> and each
+        <code>Dense</code> replaces a <code>fully_connected</code>. <code>compile</code> replaces
+        <code>regression</code>.</p>
+        <div class="ix-spot" data-snippet="net = tflearn.input_data(shape=[None, 30])&#10;net = tflearn.fully_connected(net, 16, activation='relu')&#10;net = tflearn.fully_connected(net, 1, activation='sigmoid')&#10;net = tflearn.regression(net)&#10;model = tflearn.DNN(net)" data-q="You find this in a tutorial. Which Keras line replaces each TFLearn call?" data-a="tf.keras.Input(shape=(30,)) for input_data, Dense(16, activation='relu') and Dense(1, activation='sigmoid') inside a tf.keras.Sequential for the two fully_connected layers, model.compile for regression, and model.fit for DNN's fit."></div>
+        <h3>The mapping from TFLearn to Keras</h3>
+        <p>Keep this table. The last four rows are Keras features the rest of the week
+        uses.<sup class="cite"><a href="#src-5">5</a></sup><sup class="cite"><a href="#src-17">17</a></sup></p>
+        <table>
+          <thead><tr><th>TFLearn</th><th>Keras in TensorFlow 2</th></tr></thead>
+          <tbody>
+            <tr><td><code>tflearn.input_data</code></td><td><code>tf.keras.Input</code></td></tr>
+            <tr><td><code>tflearn.fully_connected</code></td><td><code>tf.keras.layers.Dense</code></td></tr>
+            <tr><td><code>tflearn.regression</code></td><td><code>model.compile</code></td></tr>
+            <tr><td><code>tflearn.DNN(...)</code> and its <code>fit</code></td><td><code>model.fit</code></td></tr>
+            <tr><td>stacking layers by passing <code>net</code></td><td><code>tf.keras.Sequential</code></td></tr>
+            <tr><td><code>tflearn.merge</code></td><td><code>tf.keras.layers.Concatenate</code> in the Functional API</td></tr>
+            <tr><td><code>tflearn.batch_normalization</code></td><td><code>tf.keras.layers.BatchNormalization</code></td></tr>
+            <tr><td><code>DNN.save</code> and <code>DNN.load</code></td><td><code>model.save("....keras")</code> and <code>tf.keras.models.load_model</code></td></tr>
+            <tr><td><code>DNN(tensorboard_dir=...)</code></td><td><code>tf.keras.callbacks.TensorBoard(log_dir=...)</code></td></tr>
+          </tbody>
+        </table>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>TFLearn made TensorFlow 1 easier and stopped at release 0.5.0 in 2020.</li>
+          <li>Its source needs a helper TensorFlow 2.21 no longer defines, so its code is read, never run.</li>
+          <li>Every TFLearn call has a Keras equivalent, such as Dense for fully_connected.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>TFLearn was a high-level library that made TensorFlow 1 easier to use. It stopped at release 0.5.0 in 2020
+          and its source needs a helper current TensorFlow no longer defines, so I wouldn't expect it to import. Today
+          I'd use Keras, which is TensorFlow's own high-level API and does
+          the same job.</p>
+          <p>Translating is mostly one-to-one: input_data becomes Input, fully_connected becomes Dense, regression becomes
+          compile, and the DNN wrapper's fit becomes model.fit.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
+        <div class="tag">Composing</div>
+        <h2>Composing models: a model is a layer</h2>
+        <p>In Keras a model is itself a layer, so a whole model can sit inside another model as one of its
+        layers.<sup class="cite"><a href="#src-18">18</a></sup> The autoencoder makes a good example, because its two halves
+        are useful on their own.</p>
+        <h3>An encoder and a decoder as two models</h3>
+        <p>The autoencoder built earlier on this page was one stack of two layers. Here the same network is built as two named models,
+        then joined.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>tf.keras.utils.set_random_seed(RANDOM_STATE)
+encoder = tf.keras.Sequential([tf.keras.Input(shape=(784,)),
+                               tf.keras.layers.Dense(32, activation="relu")], name="encoder")
+decoder = tf.keras.Sequential([tf.keras.Input(shape=(32,)),
+                               tf.keras.layers.Dense(784, activation="sigmoid")], name="decoder")
+composed = tf.keras.Sequential([encoder, decoder])
+composed.compile(optimizer="adam", loss="mse")
+composed.fit(x_tr, x_tr, epochs=5, batch_size=256, validation_data=(x_val, x_val), verbose=0)
+
+print([layer.name for layer in composed.layers], composed.count_params())
+print(composed.get_layer("encoder") is encoder)</code></pre>
+<pre class="out">['encoder', 'decoder'] 50992
+True</pre>
+        <p>The joining line is <code>tf.keras.Sequential([encoder, decoder])</code>: a stack whose two "layers" are
+        whole models. The decoder's <code>Input(shape=(32,))</code> matches the encoder's 32 outputs, which is what lets
+        them join. <code>composed.summary()</code> shows the two models as two rows, each with its own parameter count,
+        and <code>get_layer("encoder")</code> fetches a part by the name given in its
+        constructor.<sup class="cite"><a href="#src-19">19</a></sup></p>
+        <p>The total, 50,992, matches the first autoencoder's, because it is the same network. The <code>True</code> says the
+        part inside <code>composed</code> is the very same object as <code>encoder</code>. The weights are shared, so
+        training <code>composed</code> trained <code>encoder</code> and <code>decoder</code>
+        too.<sup class="cite"><a href="#src-18">18</a></sup></p>
+        <h3>Using one part alone</h3>
+        <p>Because each half is a model, each can be called alone after training.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>codes = encoder.predict(x_val[:5], verbose=0)
+images = decoder.predict(codes, verbose=0)
+print(codes.shape, images.shape)
+show_image_grid(images, [f"from code {i}" for i in range(5)])</code></pre>
+<pre class="out">(5, 32) (5, 784)</pre>
+        <p>The encoder turns five digits into five codes of 32 numbers each, about 24 times fewer numbers than the 784
+        pixels. The decoder turns those codes back into five images, which the grid shows as the five rebuilt digits. In
+        practice the encoder alone is a compressor and a feature maker: its codes can be stored, compared or fed to
+        another model.</p>
+        <p>You recognise composition in code by a <code>Sequential</code> whose list holds model names, not layer calls,
+        such as <code>tf.keras.Sequential([encoder, decoder])</code>. TFLearn joined branches with
+        <code>tflearn.merge</code>; in Keras that becomes <code>Concatenate</code> in the Functional API, which Wednesday's
+        page teaches.<sup class="cite"><a href="#src-20">20</a></sup></p>
+        <h3>Freezing a part and reusing it</h3>
+        <p>This part is optional on a first read. A trained encoder can be reused under a new output layer, the idea
+        called transfer learning. Setting <code>trainable = False</code> freezes a layer's weights, and the change takes
+        effect when the model is compiled afterwards.<sup class="cite"><a href="#src-21">21</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>encoder.trainable = False
+tf.keras.utils.set_random_seed(RANDOM_STATE)
+classifier = tf.keras.Sequential([encoder, tf.keras.layers.Dense(10, activation="softmax")])
+classifier.compile(optimizer="adam", loss="sparse_categorical_crossentropy", metrics=["accuracy"])
+
+trainable = sum(int(np.prod(w.shape)) for w in classifier.trainable_weights)
+frozen = sum(int(np.prod(w.shape)) for w in classifier.non_trainable_weights)
+print(trainable, frozen)
+
+history_codes = classifier.fit(x_tr, y_tr, epochs=3, batch_size=128,
+                               validation_data=(x_val, y_val), verbose=0)
+print(round(history_codes.history["val_accuracy"][-1], 3))</code></pre>
+<pre class="out">330 25120
+0.862</pre>
+        <p><code>np.prod</code> multiplies a weight table's shape, so (32, 10) gives 320, and each sum counts every number
+        in its tables. Only the new output layer learns: 32 × 10 + 10 = 330 weights, while the encoder's 25,120 are
+        frozen. After 3 epochs the validation accuracy is about 0.86, where
+        <a href="day-1-mlp-backprop-and-digit-classifier.html">Monday's network</a>, which learned from the pixels up,
+        reached about 0.97.
+        The frozen encoder keeps features learned for rebuilding digits, which may not be the ones that separate the
+        classes best.<sup class="cite"><a href="#src-21">21</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A Keras model is a layer, so one model can sit inside another.</li>
+          <li>The parts share weights with the composed model, and each can be called alone.</li>
+          <li>Setting trainable to False before compiling freezes a part for reuse.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Yes, in Keras a model is a layer. I can build an encoder and a decoder as two Sequential models and put both
+          inside a third one. Training the outer model trains both parts, because the weights are shared.</p>
+          <p>To use only the encoder of a trained autoencoder, I call the encoder model on its own and get the codes. If I
+          reuse it under a new classifier, I set trainable to False before compiling, so only the new layer learns.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="6">
+        <div class="tag">Sequential</div>
+        <h2>Sequential composition: three ways to build one stack</h2>
+        <p>Every Keras model on this page so far has been a <code>Sequential</code>: a plain stack of layers in which each
+        layer has exactly one input and one output and feeds the next.<sup class="cite"><a href="#src-19">19</a></sup> This
+        step looks at the stack itself: the ways to build it, what changes when the order changes, and where it stops
+        being the right tool.</p>
+        <h3>A list, .add() and model.layers</h3>
+        <p>A <code>Sequential</code> can be built from a list passed to the constructor, or empty and then filled with
+        <code>model.add(layer)</code> one layer at a time. Either way, <code>model.layers</code> reads the layers back in
+        order.<sup class="cite"><a href="#src-19">19</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>listed = tf.keras.Sequential([
+    tf.keras.Input(shape=(784,)),
+    tf.keras.layers.Dense(128, activation="relu"),
+    tf.keras.layers.Dense(10, activation="softmax"),
+])
+
+added = tf.keras.Sequential()
+added.add(tf.keras.Input(shape=(784,)))
+added.add(tf.keras.layers.Dense(128, activation="relu"))
+added.add(tf.keras.layers.Dense(10, activation="softmax"))
+
+print(listed.count_params(), added.count_params())
+print([layer.units for layer in added.layers])
+added.pop()
+print(added.count_params())</code></pre>
+<pre class="out">101770 101770
+[128, 10]
+100480</pre>
+        <p>The two builds hold the same architecture, so they have the same 101,770 parameters and print the same
+        <code>summary()</code>.<sup class="cite"><a href="#src-19">19</a></sup> <code>added.layers</code> lists the two
+        Dense layers, and <code>.units</code> reads each one's width back. <code>pop()</code> removes the last layer,
+        which leaves only the 100,480 weights of the 128-unit layer.<sup class="cite"><a href="#src-19">19</a></sup></p>
+        <p>The list form is the one to write by default, because the whole architecture reads top to bottom in one place.
+        <code>.add()</code> shows up where layers are added in a loop or under a condition. You recognise both on sight:
+        a list inside <code>tf.keras.Sequential([...])</code>, or <code>model = tf.keras.Sequential()</code> followed by
+        lines of <code>model.add(...)</code>.</p>
+        <h3>Order matters, and an unbuilt model</h3>
+        <p>A Keras <code>Dense</code> layer declares only its number of units, never its input size. It builds its weights
+        from whatever width arrives.<sup class="cite"><a href="#src-9">9</a></sup> That has a surprising result when
+        the layers are put in a different order.</p>
+        <div class="ix-predict" data-q="Swap the two Dense layers: Input(784), then Dense(10), then Dense(128). Does Keras raise an error? If not, how many parameters does the model have?" data-a="No error. The first layer has 784 × 10 + 10 = 7,850 weights and the second 10 × 128 + 128 = 1,408, so 9,258 in all, and the output is 128 wide instead of 10."></div>
+        <p class="run-label">Run in Colab</p>
+<pre><code>swapped = tf.keras.Sequential([
+    tf.keras.Input(shape=(784,)),
+    tf.keras.layers.Dense(10, activation="softmax"),
+    tf.keras.layers.Dense(128, activation="relu"),
+])
+print(swapped.count_params(), swapped.predict(x_val[:1], verbose=0).shape)
+
+unbuilt = tf.keras.Sequential([tf.keras.layers.Dense(128, activation="relu"),
+                               tf.keras.layers.Dense(10, activation="softmax")])
+print(unbuilt.built, len(unbuilt.weights))
+unbuilt(x_val[:1])
+print(unbuilt.built, len(unbuilt.weights))</code></pre>
+<pre class="out">9258 (1, 128)
+False 0
+True 4</pre>
+        <p>The swapped stack builds without complaint. It is a different model, with 9,258 parameters and an output 128
+        wide, and only <code>summary()</code> shows the difference. Reordering Dense layers never raises a
+        shape error; the reorder that fails is an <code>Input</code> placed after a layer, and it fails when data first
+        goes through the model.<sup class="cite"><a href="#src-9">9</a></sup></p>
+        <p>The second model has no <code>Input</code>, so it has no weights until it sees data: <code>built</code> is
+        <code>False</code> and the weight list is empty. Calling it on one row builds it, and the four weights appear: a
+        kernel and a bias for each layer.<sup class="cite"><a href="#src-19">19</a></sup> Keras calls a Dense layer's
+        weight table its kernel, which is not the sliding kernel of week 6's convolutions. Starting every stack with
+        <code>tf.keras.Input</code> avoids an unbuilt model whose <code>summary()</code> cannot report its shapes.</p>
+        <h3>Where Sequential stops</h3>
+        <p>A stack with one input and one output covers a large share of models, including everything on this page. It is
+        the wrong tool when a model needs any of the following:<sup class="cite"><a href="#src-19">19</a></sup></p>
+        <ul>
+          <li>several inputs, such as an image and a table of numbers about it</li>
+          <li>several outputs, such as a class and a confidence</li>
+          <li>one layer shared by two paths</li>
+          <li>a branch, a merge or a skip around a layer</li>
+        </ul>
+        <p>Each of those needs layers wired by hand rather than stacked. Wednesday's page does that with the Functional
+        API.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A Sequential is a straight stack: one input, one output, each layer feeding the next.</li>
+          <li>A list and repeated add() calls build the same model; model.layers reads it back.</li>
+          <li>Reordering Dense layers gives a different model, not an error, so read summary().</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A Sequential model is a plain stack of layers where each layer has one input and one output and feeds the
+          next. I can build it from a list, or start empty and call add for each layer, and read it back through
+          model.layers.</p>
+          <p>I can't use it when the model has several inputs or outputs, shares a layer, or branches and merges. Then I
+          need the Functional API. And if the first layer has no declared input shape, the model has no weights until it
+          sees data.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="7">
+        <div class="tag">Text build</div>
+        <h2>A text classifier built in a project's order</h2>
+        <p>The last build routes a forum post to the cars board or the motorcycles board, the sorting a moderator does
+        by hand.</p>
+        <h3>Problem, dataset and split</h3>
+        <p>20 Newsgroups is a collection of old forum posts in 20 topics. scikit-learn's <code>fetch_20newsgroups</code>
+        downloads it on first use and caches it, and <code>categories</code> picks the topics to
+        load.<sup class="cite"><a href="#src-22">22</a></sup> <code>remove=("headers", "footers", "quotes")</code> strips
+        the text that would let a model identify a post without reading it, such as the sender's
+        signature.<sup class="cite"><a href="#src-22">22</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>from sklearn.datasets import fetch_20newsgroups
+from sklearn.model_selection import train_test_split
+
+TOPICS = ["rec.autos", "rec.motorcycles"]
+clean = ("headers", "footers", "quotes")
+train = fetch_20newsgroups(subset="train", categories=TOPICS, remove=clean, random_state=RANDOM_STATE)
+test = fetch_20newsgroups(subset="test", categories=TOPICS, remove=clean, random_state=RANDOM_STATE)
+labels_test = test.target
+
+texts_tr, texts_val, labels_tr, labels_val = train_test_split(
+    train.data, train.target, test_size=0.2, stratify=train.target, random_state=RANDOM_STATE)
+print(train.target_names, len(texts_tr), len(texts_val))</code></pre>
+<pre class="out">['rec.autos', 'rec.motorcycles'] 953 239</pre>
+        <p>The split leaves 953 training posts and 239 validation posts, 1,192 in all. Label 1 is
+        <code>rec.motorcycles</code>, the positive class. The test subset is put aside here and touched once, at the end.
+        <code>stratify</code> keeps the mix of the two topics the same in both parts.</p>
+        <h3>Preprocessing with TF-IDF</h3>
+        <p>Week 6's TF-IDF turns each post into a row of word scores. A plain word
+        count treats every word alike, while the IDF part down-weights words found in almost every post, such as "the"
+        and "it", so the words that separate the topics carry the most weight.
+        <code>max_features=5000</code> keeps only the 5,000 terms with the highest term frequency across the training
+        posts.<sup class="cite"><a href="#src-23">23</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>from sklearn.feature_extraction.text import TfidfVectorizer
+
+vectorizer = TfidfVectorizer(max_features=5000)
+X_tr = vectorizer.fit_transform(texts_tr).toarray().astype("float32")
+X_val = vectorizer.transform(texts_val).toarray().astype("float32")
+X_test = vectorizer.transform(test.data).toarray().astype("float32")
+print(X_tr.shape[1], X_val.shape[1], X_tr.dtype)</code></pre>
+<pre class="out">5000 5000 float32</pre>
+        <p>The vectorizer learns its vocabulary with <code>fit_transform</code> on the training posts only, then
+        <code>transform</code> scores the other posts against that same vocabulary, so all three tables share 5,000
+        columns. Fitting on validation or test posts would let the posts that judge the model shape its
+        features.<sup class="cite"><a href="#src-14">14</a></sup></p>
+        <p><code>transform</code> returns a sparse matrix, which stores only the non-zero scores, and
+        <code>.toarray().astype("float32")</code> makes it a plain dense table of 32-bit
+        floats:<sup class="cite"><a href="#src-23">23</a></sup> 953 rows × 5,000 columns × 4 bytes, about 19 MB.</p>
+        <div class="ix-spot" data-snippet="X_tr = vectorizer.fit_transform(texts_tr).toarray()&#10;X_val = vectorizer.fit_transform(texts_val).toarray()" data-q="Both lines run without an error. What is wrong?" data-a="The second line fits the vectorizer again on the validation posts, so it learns a new vocabulary: column 17 means one word in X_tr and a different word in X_val. Use transform on the validation posts."></div>
+        <h3>The model and training</h3>
+        <p class="run-label">Run in Colab</p>
+<pre><code>tf.keras.utils.set_random_seed(RANDOM_STATE)
+text_model = tf.keras.Sequential([
+    tf.keras.Input(shape=(5000,)),
+    tf.keras.layers.Dense(32, activation="relu"),
+    tf.keras.layers.Dense(1, activation="sigmoid"),
+])
+text_model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
+print(text_model.count_params())
+history_text = text_model.fit(X_tr, labels_tr, epochs=10, batch_size=32,
+                              validation_data=(X_val, labels_val), verbose=0)
+plot_history(history_text, "loss", "Text model loss")
+best = int(np.argmin(history_text.history["val_loss"])) + 1
+print(f"lowest val_loss at epoch {best}; epoch 10: loss {history_text.history['loss'][-1]:.3f}, "
+      f"val_loss {history_text.history['val_loss'][-1]:.3f}")</code></pre>
+<pre class="out">160065
+lowest val_loss at epoch 10; epoch 10: loss 0.151, val_loss 0.378</pre>
+        <p>The input width, 5,000, must equal the number of columns. One sigmoid unit with binary cross-entropy is the
+        output for two classes: it gives the probability of label 1, and a 0.5 threshold turns that into a
+        label.<sup class="cite"><a href="#src-24">24</a></sup></p>
+        <p>The first layer holds 5,000 × 32 + 32 = 160,032 weights and the output 33, so 160,065, a lot for 953 posts.
+        <code>np.argmin</code> finds the epoch with the lowest validation loss. It is the last, so the curve shows no
+        overfitting yet, but a validation loss of about 0.38 against 0.15 in training means the model fits its own
+        posts far better than new ones.</p>
+        <h3>Evaluation: precision, recall, F1 and the confusion matrix</h3>
+        <p>Precision, recall and F1 are defined on
+        <a href="day-1-mlp-backprop-and-digit-classifier.html">Monday's page</a>.<sup class="cite"><a href="#src-25">25</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>from sklearn.metrics import (accuracy_score, precision_score, recall_score, f1_score,
+                             confusion_matrix, ConfusionMatrixDisplay)
+
+val_prob = text_model.predict(X_val, verbose=0)[:, 0]
+val_pred = (val_prob &gt;= 0.5).astype(int)
+print(f"accuracy {accuracy_score(labels_val, val_pred):.3f}, precision {precision_score(labels_val, val_pred):.3f}, "
+      f"recall {recall_score(labels_val, val_pred):.3f}, F1 {f1_score(labels_val, val_pred):.3f}")
+matrix = confusion_matrix(labels_val, val_pred)
+tn, fp, fn, tp = matrix.ravel()
+print(tn, fp, fn, tp)
+ConfusionMatrixDisplay(matrix, display_labels=TOPICS).plot()
+plt.show()</code></pre>
+<pre class="out">accuracy 0.845, precision 0.874, recall 0.808, F1 0.840
+105 14 23 97</pre>
+        <p><code>predict</code> returns one column per output unit, so <code>[:, 0]</code> takes the single column of
+        probabilities, <code>&gt;= 0.5</code> turns each into True or False, and <code>.astype(int)</code> makes those 1
+        and 0. Accuracy is about 0.85, and for motorcycles F1 is about 0.84, with precision a little above recall.</p>
+        <p>In the confusion matrix the right answers sit on the diagonal. <code>ravel()</code> reads the table row by row, which gives the order of the four
+        names.<sup class="cite"><a href="#src-26">26</a></sup></p>
+        <table>
+          <thead><tr><th></th><th>predicted rec.autos</th><th>predicted rec.motorcycles</th></tr></thead>
+          <tbody>
+            <tr><td>true rec.autos</td><td>true negatives (105)</td><td>false positives (14)</td></tr>
+            <tr><td>true rec.motorcycles</td><td>false negatives (23)</td><td>true positives (97)</td></tr>
+          </tbody>
+        </table>
+        <p>The model misses more motorcycle posts than it wrongly sends to motorcycles. Lowering the threshold from 0.5
+        to 0.3 calls more posts positive, which raises recall and lowers
+        precision.<sup class="cite"><a href="#src-25">25</a></sup></p>
+        <h3>Error analysis, one improvement, the test set once</h3>
+        <p class="run-label">Run in Colab</p>
+<pre><code>false_pos = np.where((val_pred == 1) &amp; (labels_val == 0))[0]
+false_neg = np.where((val_pred == 0) &amp; (labels_val == 1))[0]
+print(len(false_pos), "false positives,", len(false_neg), "false negatives")
+for kind, rows in [("FALSE POSITIVE", false_pos[:3]), ("FALSE NEGATIVE", false_neg[:3])]:
+    for i in rows:
+        text = " ".join(texts_val[i].split()) or "(empty: nothing left after remove)"
+        print(f"{kind} p={val_prob[i]:.2f} | {text[:50]}")</code></pre>
+<pre class="out">14 false positives, 23 false negatives
+FALSE POSITIVE p=0.66 | Well, if you want to stick the nose of your car up
+FALSE POSITIVE p=0.54 | Are there any Honda groups out there? Especially o
+FALSE POSITIVE p=0.54 | How do you take off the driver side door panel fro
+FALSE NEGATIVE p=0.44 | Personally, I think Jeffy-Poo was still smarting m
+FALSE NEGATIVE p=0.29 | Yes. Unfortunately, there is also the concept that
+FALSE NEGATIVE p=0.50 | (empty: nothing left after remove)</pre>
+        <p>The <code>&amp;</code> keeps, element by element, the positions where both comparisons are True, and
+        <code>np.where(...)[0]</code> gives those positions as indexes. Each line shows <code>p</code>, the probability of
+        motorcycles, and the post's first 50 characters. Ask what the wrong posts share before changing the model. One false negative is empty: <code>remove</code>
+        left nothing, so the model sees a row of zeros and answers about 0.5.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>results = [{"model": "max_features=5000",
+            "val_loss": text_model.evaluate(X_val, labels_val, verbose=0)[0],
+            "val_f1": f1_score(labels_val, val_pred)}]
+vectorizer_20k = TfidfVectorizer(max_features=20000)
+X_tr_20k = vectorizer_20k.fit_transform(texts_tr).toarray().astype("float32")
+X_val_20k = vectorizer_20k.transform(texts_val).toarray().astype("float32")
+print("vocabulary size", X_tr_20k.shape[1])
+
+tf.keras.utils.set_random_seed(RANDOM_STATE)
+model_20k = tf.keras.Sequential([tf.keras.Input(shape=(X_tr_20k.shape[1],)),
+                                 tf.keras.layers.Dense(32, activation="relu"),
+                                 tf.keras.layers.Dense(1, activation="sigmoid")])
+model_20k.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
+model_20k.fit(X_tr_20k, labels_tr, epochs=10, batch_size=32, validation_data=(X_val_20k, labels_val), verbose=0)
+pred_20k = (model_20k.predict(X_val_20k, verbose=0)[:, 0] &gt;= 0.5).astype(int)
+results.append({"model": "max_features=20000",
+                "val_loss": model_20k.evaluate(X_val_20k, labels_val, verbose=0)[0],
+                "val_f1": f1_score(labels_val, pred_20k)})
+print(pd.DataFrame(results).round(4))</code></pre>
+<pre class="out">vocabulary size 11416
+                model  val_loss  val_f1
+0   max_features=5000    0.3782  0.8398
+1  max_features=20000    0.3593  0.8584</pre>
+        <p>The one change is the vocabulary cap; the input width follows the column count, since a copied
+        <code>Input(shape=(5000,))</code> raises a shape error. The training posts hold only 11,416 different
+        words, so the cap kept all of them.<sup class="cite"><a href="#src-23">23</a></sup> <code>evaluate</code>
+        returns the loss first, then accuracy, hence the <code>[0]</code>. It helped a little: validation F1 rose from
+        about 0.84 to about 0.86, a few posts out of 239.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>if results[1]["val_f1"] &gt; results[0]["val_f1"]:
+    kept_text, kept_vectorizer = model_20k, vectorizer_20k
+else:
+    kept_text, kept_vectorizer = text_model, vectorizer
+X_test_kept = kept_vectorizer.transform(test.data).toarray().astype("float32")
+test_pred = (kept_text.predict(X_test_kept, verbose=0)[:, 0] &gt;= 0.5).astype(int)
+print(f"accuracy {accuracy_score(labels_test, test_pred):.3f}, F1 {f1_score(labels_test, test_pred):.3f}")</code></pre>
+<pre class="out">accuracy 0.866, F1 0.863</pre>
+        <p>The test posts go through the kept model's own vectorizer. Test accuracy is about 0.87 and F1 about 0.86,
+        close to the validation F1: the figures to report, since no choice was made by looking at them.</p>
+        <p>Limitations: the model separates two topics only, and TF-IDF ignores word order, so "the car hit the bike" and
+        "the bike hit the car" get the same scores. Friday's page tries an <code>Embedding</code> layer on the same
+        question.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Fit the TF-IDF vectorizer on training posts only, then transform the others.</li>
+          <li>One sigmoid output with binary cross-entropy classifies two topics.</li>
+          <li>Precision, recall and F1 show which topic the mistakes fall on.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I built a classifier that routes forum posts to a cars or a motorcycles board. I held out the test set first,
+          split the rest into training and validation, turned each post into TF-IDF scores fitted on the training posts
+          only, and trained a small Dense network with one sigmoid output.</p>
+          <p>I plotted both loss curves, reported precision, recall and F1 with a confusion matrix, and read the misrouted
+          posts. I tried one bigger vocabulary against the same validation data, and only then scored the test set
+          once.</p>
+          <p>If accuracy is 90% but one topic's recall is 60%, I look at the confusion matrix and that topic's false
+          negatives, check how many examples it has, and consider a lower threshold to trade some precision for
+          recall.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="8">
+        <div class="tag">Check yourself</div>
+        <h2>Check yourself</h2>
+        <p>Eight questions, one per section, asked the way an interviewer would. Answer each out loud before you open
+        it.</p>
+        <details class="check"><summary>What does collaborative filtering need as data, and what can it do for a brand-new user?</summary><p>Only the table of who rated or liked what; it needs no facts about the items. A brand-new user has an empty row, so there is nobody to match them with. That is the cold-start problem, covered with popular items or a few favourites asked at sign-up.</p></details>
+        <details class="check"><summary>In an RBM recommender, what do the visible and hidden units stand for, and how does it score a film the user has not rated?</summary><p>The visible units are the films and the hidden units are learned tastes. The RBM turns the user's row into taste probabilities with <code>transform</code>, rebuilds the row from them through a sigmoid, and the unrated film with the highest rebuilt score is the recommendation.</p></details>
+        <details class="check"><summary>Why must an autoencoder's bottleneck be smaller than its input, and why does an MNIST autoencoder end in a sigmoid layer?</summary><p>A middle layer as wide as the input lets the network copy the pixels through and learn nothing; a narrow one forces it to keep what matters. The pixels are scaled to 0 to 1, and a sigmoid only produces values in that range.</p></details>
+        <details class="check"><summary>A 99th-percentile threshold on 6,000 validation errors flags 60 digits. Does that mean 1 percent of the digits are odd, and why use validation errors at all?</summary><p>No. A 99th-percentile threshold flags about 1 percent by construction, whatever the digits look like. Validation errors are used because training errors are smaller than errors on new data, so a threshold set on them would be too low.</p></details>
+        <details class="check"><summary>What is TFLearn, what would you use today, and what are the Keras equivalents of <code>fully_connected</code> and <code>regression</code>?</summary><p>A high-level library that made TensorFlow 1 easier to use; it stopped at release 0.5.0 in 2020, and its source imports <code>is_sequence</code>, which TensorFlow 2.21 no longer defines, so the import is expected to fail there. Today Keras does the same job. <code>fully_connected</code> becomes <code>tf.keras.layers.Dense</code> and <code>regression</code> becomes <code>model.compile</code>.</p></details>
+        <details class="check"><summary>How do you use only the encoder of a trained autoencoder, and what does <code>trainable = False</code> do?</summary><p>Build the encoder as its own model and nest it in the autoencoder; after training, call <code>encoder.predict</code> to get the codes. <code>trainable = False</code>, set before compiling, freezes its weights so only the new layers on top learn.</p></details>
+        <details class="check"><summary>When can you not use a Sequential model, and what happens if <code>Dense(10)</code> comes before <code>Dense(128)</code>?</summary><p>When the model has several inputs or outputs, shares a layer, or branches, merges or skips. Swapping the Dense layers raises no error: it builds a different model with 9,258 parameters and an output 128 wide, which only <code>summary()</code> reveals.</p></details>
+        <details class="check"><summary>Why fit the <code>TfidfVectorizer</code> on the training posts only, and what does a 0.3 threshold do to precision and recall?</summary><p>Fitting on validation or test posts lets the data that judges the model shape its vocabulary, and refitting changes what each column means. Lowering the threshold to 0.3 calls more posts positive, so recall rises and precision falls.</p></details>
+      </section>
+
+      <section class="reading-sources" aria-label="Sources and deeper dive">
+        <h2>Sources &amp; deeper dive</h2>
+        <ul>
+          <li id="src-1"><a href="https://developers.google.com/machine-learning/recommendation/collaborative/basics" target="_blank" rel="noopener">Collaborative filtering (Google ML recommendation course)</a> — what collaborative filtering uses and what it never needs to know about the items.</li>
+          <li id="src-2"><a href="https://developers.google.com/machine-learning/recommendation/collaborative/summary" target="_blank" rel="noopener">Collaborative filtering advantages and disadvantages (Google ML recommendation course)</a> — the cold-start problem for new users and new items.</li>
+          <li id="src-3"><a href="https://scikit-learn.org/stable/modules/neural_networks_unsupervised.html#restricted-boltzmann-machines" target="_blank" rel="noopener">Neural network models (unsupervised): restricted Boltzmann machines (scikit-learn user guide)</a> — visible and hidden units, the restriction and binary units.</li>
+          <li id="src-4"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.neural_network.BernoulliRBM.html" target="_blank" rel="noopener">BernoulliRBM (scikit-learn)</a> — the parameters, <code>transform</code>, <code>components_</code> and <code>intercept_visible_</code>.</li>
+          <li id="src-5"><a href="https://keras.io/api/layers/" target="_blank" rel="noopener">Keras layers API</a> — every layer Keras offers, with no RBM among them, and the targets of the TFLearn mapping.</li>
+          <li id="src-6"><a href="https://developers.google.com/machine-learning/recommendation/overview/types" target="_blank" rel="noopener">Recommendation systems overview (Google for Developers)</a> — what teams use for recommenders today.</li>
+          <li id="src-7"><a href="https://keras.io/examples/vision/autoencoder/" target="_blank" rel="noopener">Build an autoencoder (Keras example)</a> — encoder, bottleneck and decoder, and what the bottleneck size trades.</li>
+          <li id="src-8"><a href="https://www.tensorflow.org/tutorials/generative/autoencoder" target="_blank" rel="noopener">Intro to Autoencoders (TensorFlow tutorial)</a> — reconstruction loss, anomaly detection and denoising.</li>
+          <li id="src-9"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/layers/Dense" target="_blank" rel="noopener">Dense layer API</a> — a Dense layer's weights and how it builds from the width that arrives.</li>
+          <li id="src-10"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/activations/sigmoid" target="_blank" rel="noopener">tf.keras.activations.sigmoid</a> — why a sigmoid output fits pixels between 0 and 1.</li>
+          <li id="src-11"><a href="https://www.tensorflow.org/guide/keras/training_with_built_in_methods" target="_blank" rel="noopener">Training and evaluation with the built-in methods</a> — <code>fit</code> with validation data and the history it returns.</li>
+          <li id="src-12"><a href="https://numpy.org/doc/stable/reference/generated/numpy.mean.html" target="_blank" rel="noopener">numpy.mean</a> — averaging along one axis for one error per image.</li>
+          <li id="src-13"><a href="https://numpy.org/doc/stable/reference/generated/numpy.percentile.html" target="_blank" rel="noopener">numpy.percentile</a> — the value below which a given share of the errors lies.</li>
+          <li id="src-14"><a href="https://scikit-learn.org/stable/common_pitfalls.html" target="_blank" rel="noopener">Common pitfalls and recommended practices (scikit-learn user guide)</a> — judging choices on data the model did not learn from, and data leakage.</li>
+          <li id="src-15"><a href="https://pypi.org/project/tflearn/" target="_blank" rel="noopener">tflearn on PyPI</a> — the last release, 0.5.0, and the project's status.</li>
+          <li id="src-16"><a href="https://www.tensorflow.org/guide/migrate" target="_blank" rel="noopener">Migrate to TensorFlow 2</a> — the path from TensorFlow 1 code to TensorFlow 2 and Keras.</li>
+          <li id="src-17"><a href="https://www.tensorflow.org/guide/keras/serialization_and_saving" target="_blank" rel="noopener">Save, serialize, and export models</a> — the Keras replacements for TFLearn's save and load.</li>
+          <li id="src-18"><a href="https://www.tensorflow.org/guide/keras/making_new_layers_and_models_via_subclassing" target="_blank" rel="noopener">Making new layers and models via subclassing</a> — a model is a layer, and nested parts share their weights.</li>
+          <li id="src-19"><a href="https://www.tensorflow.org/guide/keras/sequential_model" target="_blank" rel="noopener">The Sequential model</a> — building a stack three ways, <code>pop</code>, unbuilt models and when not to use one.</li>
+          <li id="src-20"><a href="https://www.tensorflow.org/guide/keras/functional_api" target="_blank" rel="noopener">The Functional API</a> — where <code>Concatenate</code> and models beyond a straight stack live.</li>
+          <li id="src-21"><a href="https://www.tensorflow.org/guide/keras/transfer_learning" target="_blank" rel="noopener">Transfer learning and fine-tuning</a> — freezing with <code>trainable = False</code> and reusing a trained part.</li>
+          <li id="src-22"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.datasets.fetch_20newsgroups.html" target="_blank" rel="noopener">fetch_20newsgroups (scikit-learn)</a> — downloading, caching, picking topics and removing headers, footers and quotes.</li>
+          <li id="src-23"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.TfidfVectorizer.html" target="_blank" rel="noopener">TfidfVectorizer (scikit-learn)</a> — <code>max_features</code>, fit and transform, and the sparse result.</li>
+          <li id="src-24"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/losses/BinaryCrossentropy" target="_blank" rel="noopener">tf.keras.losses.BinaryCrossentropy</a> — the loss for one sigmoid output and two classes.</li>
+          <li id="src-25"><a href="https://scikit-learn.org/stable/modules/model_evaluation.html" target="_blank" rel="noopener">Metrics and scoring (scikit-learn user guide)</a> — precision, recall, F1 and how a threshold moves them.</li>
+          <li id="src-26"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.metrics.confusion_matrix.html" target="_blank" rel="noopener">confusion_matrix (scikit-learn)</a> — rows, columns and the order <code>ravel()</code> returns.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · after you have read the page</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 7 Day 2</footer>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 2 — goals</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Explain collaborative filtering and the cold-start problem, and recommend films from a ratings table with a restricted Boltzmann machine</li>
+      <li>Build a Dense autoencoder, show originals beside their rebuilds, and flag unusual digits with a threshold chosen on validation data</li>
+      <li>Read TFLearn code and translate each call into its Keras equivalent</li>
+      <li>Nest one Keras model inside another, build a Sequential three ways, and say where Sequential stops</li>
+      <li>Build a TF-IDF text classifier in a project's order and read its precision, recall, F1 and wrong posts</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Day 3 — Functional API, layers, batch norm, saving & two full builds →", href: "day-3-functional-api-layers-and-custom-training.html" };
+window.DIAGRAM = {
+  title: "Day 2 · rebuilding rows, stacking models, reading text",
+  width: 500, height: 420,
+  nodes: [
+    { id:"ratings", step:0, kind:"example", x:14, y:14, w:220, h:54, label:"Ratings table\n  8 users × 6 films\n  one blank per group", detail:"1 means liked, 0 means not liked or not seen. Dev should get Robot Dawn and Hal should get Paris Days." },
+    { id:"rbm", step:1, x:266, y:14, w:220, h:54, label:"RBM\n  visible: films · hidden: tastes\n  rebuild row, rank blanks", detail:"BernoulliRBM(n_components=2): transform gives tastes, components_ and intercept_visible_ through a sigmoid rebuild the row." },
+    { id:"ae", step:2, x:14, y:100, w:220, h:54, label:"Autoencoder\n  784 → 32 → 784\n  fit(x_tr, x_tr)", detail:"Encoder, bottleneck, decoder. Sigmoid output for pixels in 0 to 1, MSE loss, 50,992 parameters, no labels." },
+    { id:"flag", step:3, x:266, y:100, w:220, h:54, label:"Anomaly flag\n  error per image\n  > 99th pct of val errors", detail:"np.mean(..., axis=1) gives one error per image; the threshold flags 60 of 6,000 validation digits by construction." },
+    { id:"tflearn", step:4, x:14, y:186, w:220, h:54, label:"TFLearn → Keras\n  0.5.0 (2020), history\n  fully_connected → Dense", detail:"input_data → Input, fully_connected → Dense, regression → compile, DNN.fit → model.fit." },
+    { id:"compose", step:5, x:266, y:186, w:220, h:54, label:"Composed model\n  Sequential([encoder, decoder])\n  a model is a layer", detail:"The parts share weights with the outer model, can be called alone, and can be frozen with trainable = False." },
+    { id:"seq", step:6, x:14, y:272, w:220, h:54, label:"Sequential\n  list · add() · layers\n  one input, one output", detail:"Reordering Dense layers builds a different model (9,258 parameters), not an error. Several inputs, outputs or a skip need the Functional API." },
+    { id:"text", step:7, x:266, y:272, w:220, h:54, label:"Text build\n  TF-IDF → 32 → 1 sigmoid\n  precision · recall · F1", detail:"Vectorizer fitted on training posts only; false positives and false negatives read as text; one improvement; test set once." },
+    { id:"check", step:8, x:14, y:356, w:472, h:44, label:"CHECK YOURSELF\n  answer out loud, then open" }
+  ],
+  edges: [
+    { id:"e1", step:1, from:"ratings", to:"rbm", label:"learn tastes" },
+    { id:"e2", step:2, from:"rbm", to:"ae", label:"rebuild an image" },
+    { id:"e3", step:3, from:"ae", to:"flag", label:"error per image" },
+    { id:"e4", step:5, from:"ae", to:"compose", label:"split in two", dir:"-" },
+    { id:"e5", step:6, from:"tflearn", to:"seq", label:"maps to" },
+    { id:"e6", step:6, from:"compose", to:"seq", label:"nested stack", dir:"-" },
+    { id:"e7", step:7, from:"seq", to:"text", label:"one more stack" },
+    { id:"e8", step:8, from:"text", to:"check", dir:"-" }
+  ],
+  captions: [
+    "Collaborative filtering reads only who liked what: users who agreed before should agree again. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "An RBM learns a few hidden tastes, rebuilds each user's row from them and ranks the films the user has not rated.",
+    "An autoencoder squeezes 784 pixels into 32 numbers and rebuilds them, trained with the input as its own target.",
+    "The reconstruction error scores each image, and a threshold chosen on validation errors turns the score into a flag.",
+    "TFLearn is history: every call it made has a Keras line, such as Dense for fully_connected and compile for regression.",
+    "A Keras model is a layer, so an encoder and a decoder can be two models inside a third and used alone afterwards.",
+    "A Sequential is a straight stack built from a list or with add(); several inputs, outputs or a skip need more.",
+    "The text build follows a project's order: TF-IDF fitted on training posts, a small Dense network, precision, recall, F1 and the errors read as text.",
+    "You can now explain collaborative filtering, autoencoders as detectors, the TFLearn-to-Keras mapping, composed and Sequential models, and a text classifier's build."
+  ]
+};
+window.QUIZ = {
+  id: "w07-d2",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "Which call trains a Dense autoencoder on MNIST rows x_tr with validation rows x_val?",
+      options: ["autoencoder.fit(x_tr, y_tr, validation_data=(x_val, y_val))", "autoencoder.fit(x_tr, x_tr, validation_data=(x_val, x_val))", "autoencoder.fit(y_tr, x_tr, validation_data=(y_val, x_val))", "autoencoder.fit(x_tr, validation_data=x_val)"], answer: 1,
+      explain: "An autoencoder's target is its own input, so x_tr appears twice, and the validation pair is (x_val, x_val). The digit labels are never used." },
+    { type: "tf", stem: "A threshold at the 99th percentile of the validation errors flags 60 of 6,000 digits, which shows that 1 percent of the digits are unusual.", answer: false,
+      explain: "A 99th-percentile threshold flags about 1 percent of the images by construction. The count follows from the percentile and says nothing about how many digits are really odd." },
+    { type: "mcq", stem: "Which of these models need something other than a Keras Sequential? Select all that apply.",
+      options: ["A model with an image input and a table input", "A model with a skip that adds a layer's input to its output", "Three Dense layers, each feeding the next", "A model in which two paths share one layer"], answer: [0, 1, 3],
+      explain: "A Sequential has one input and one output and each layer feeds the next. Several inputs, a skip and a shared layer all need layers wired by hand, which the Functional API does." },
+    { type: "match", stem: "Match each TFLearn call to its Keras equivalent.",
+      pairs: [
+        { l: "tflearn.input_data", r: "tf.keras.Input" },
+        { l: "tflearn.fully_connected", r: "tf.keras.layers.Dense" },
+        { l: "tflearn.regression", r: "model.compile" },
+        { l: "DNN.save", r: "model.save(\"....keras\")" }
+      ],
+      explain: "input_data declares the input, fully_connected is a Dense layer, regression attaches the training settings like compile, and DNN.save becomes model.save with a .keras path." },
+    { type: "scq", stem: "What does \"restricted\" mean in a restricted Boltzmann machine?",
+      options: ["It may only have two hidden units", "There are no links between units in the same layer", "It only accepts ratings from 1 to 5", "It cannot be trained on more than one row at a time"], answer: 1,
+      explain: "Links run only between the visible and the hidden layer, never inside one, which is what makes the hidden units cheap to compute." },
+    { type: "open", stem: "In two or three sentences: why is the TfidfVectorizer fitted on the training posts only, and what goes wrong if you call fit_transform on the validation posts?",
+      hint: "Vocabulary, columns, judging the model.",
+      model: "The vectorizer learns its vocabulary and word weights from the posts it is fitted on, and the validation posts are there to judge the model, so they must not shape its features. Calling fit_transform on them learns a new vocabulary, so the columns no longer mean the same words as in the training table and the scores are meaningless. Fit on the training posts, then call transform on the others." }
+  ]
+};
+</script>
+
+<script src="../../assets/js/diagram.js?v=20261119"></script>
+<script src="../../assets/js/scrolly.js?v=20261119"></script>
+<script src="../../assets/js/modals.js?v=20261119"></script>
+<script src="../../assets/js/quiz.js?v=20261119"></script>
+<script src="../../assets/js/widgets.js?v=20261119"></script>
+<script src="../../assets/js/glossary.js?v=20261119"></script>
+</body>
+</html>
