@@ -449,6 +449,7 @@ wrong: 67 of 6000</pre>
         regularisation technique, a change made to reduce overfitting.<sup class="cite"><a href="#src-14">14</a></sup></p>
         <p class="run-label">Run in Colab</p>
 <pre><code>cnn_model = make_cnn(dropout=0.3, name="cnn_model")
+early_stop = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=2, restore_best_weights=True)   # a new one for this fit
 history_dropout = cnn_model.fit(x_tr_img, y_tr, epochs=20, batch_size=128,
                                 validation_data=(x_val_img, y_val), callbacks=[early_stop], verbose=0)
 print(len(history_dropout.epoch), "epochs ran")

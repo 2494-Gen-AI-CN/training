@@ -133,10 +133,13 @@ print(posts.data[0][:300])</code></pre>
         the two topic names. <code>posts.data</code> is a list of strings, one per post, and
         <code>posts.target</code> holds a label for each: 0 for the first name, 1 for the second. The second line shows
         the first 300 characters of one post, so you see the raw text before any model does.</p>
-        <p>TensorFlow Datasets is TensorFlow's catalogue of ready-made datasets, and it comes preinstalled on Colab, so it
-        needs no <code>!pip install</code>.<sup class="cite"><a href="#src-19">19</a></sup></p>
+        <p>TensorFlow Datasets is TensorFlow's catalogue of ready-made datasets, and it comes preinstalled on Colab.<sup class="cite"><a href="#src-19">19</a></sup>
+        On the Colab runtime checked on 23 November 2026 its loader also asked for one small package that was missing,
+        <code>importlib_resources</code>, so the cell installs that first. The line that starts with <code>!</code> runs
+        a terminal command from the notebook.</p>
         <p class="run-label">Run in Colab</p>
-<pre><code>import tensorflow_datasets as tfds
+<pre><code>!pip install -q importlib_resources
+import tensorflow_datasets as tfds
 
 images, labels = tfds.as_numpy(tfds.load("mnist", split="train", batch_size=-1, as_supervised=True))
 print(images.shape, labels.shape)</code></pre>
@@ -394,7 +397,7 @@ pd.DataFrame(results).round(4)</code></pre>
         the two names before the <code>=</code> receive them in that order.<sup class="cite"><a href="#src-3">3</a></sup>
         Each <code>append</code> adds one dictionary, one row. The last line draws a two-row table with the columns
         <code>model</code>, <code>val_loss</code> and <code>val_accuracy</code>, rounded to four decimals.</p>
-        <p>In one run the table read about 0.090 for <code>plain</code> and about 0.083 for <code>batchnorm</code>, with a validation accuracy
+        <p>In one run the table read about 0.090 for <code>plain</code> and about 0.088 for <code>batchnorm</code>, with a validation accuracy
         near 0.973 for both. Under the table, write one plain sentence: did batch normalization lower the validation loss
         or not.</p>
         <p class="run-label">Run in Colab</p>
@@ -409,7 +412,7 @@ print("kept:", kept_name)</code></pre>
         <p class="run-label">Run in Colab</p>
 <pre><code>test_loss, test_accuracy = kept.evaluate(x_test, y_test, verbose=0)
 print(f"test accuracy of {kept_name}: {test_accuracy:.4f}")</code></pre>
-        <p>It prints one line, the kept model's accuracy on the 10,000 test images, to four decimals: about 0.972 in the
+        <p>It prints one line, the kept model's accuracy on the 10,000 test images, to four decimals: about 0.970 in the
         run above. That is the
         number a README reports as the final result, beside the validation numbers in the results table.</p>
         <p>Run this cell once. If you run it, dislike the number, change the model and run it again, the test set has
