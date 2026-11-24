@@ -18,9 +18,19 @@ FORMAT check only (the notebook is not run here; Colab is its runtime, not the c
   - no "!pip install" / "%pip install" of tensorflow, keras or scikit-learn (Colab ships them)
   - every code cell except the setup cell is at most CODE_LINES_MAX lines
 
+The study layer (D-0105; what lets a learner work through the notebook alone). A notebook declares it by carrying
+the line "**Studying on your own**" in its title cell; `--study` fails a notebook that does not declare it. Once
+declared, the rules are:
+  - the title cell's study block links the day's notes page (a markdown link)
+  - every numbered "## N. " section carries at least one "**Predict first:**" question
+  - every numbered "## N. " section ends with a "**Before you move on**" checkpoint
+  - every <details> block is closed and has a <summary> (same counts per markdown cell)
+  - the Quick check is followed by a <details> block with at least one numbered answer per question
+
 Usage:
     python harness/notebook_check.py demo-repo/notebooks/week-06/02_tuesday_trees_and_clustering.ipynb
     python harness/notebook_check.py demo-repo/notebooks/week-06          # every .ipynb in the folder
+    python harness/notebook_check.py demo-repo/notebooks/week-07 --study  # and each must carry the study layer
 Exit 1 with one problem per line when anything fails; exit 0 and "OK" otherwise.
 """
 from __future__ import annotations
@@ -41,6 +51,11 @@ CODE_LINES_MAX = 40
 SECTIONS_MIN = 3
 AGENDA_MIN = 3
 QUICK_CHECK_MIN = 4
+STUDY_MARKER = "**Studying on your own**"
+PREDICT_MARK = "**Predict first:**"
+CHECKPOINT_MARK = "**Before you move on**"
+NUMBERED_SECTION_RE = re.compile(r"^## \d+\. ")
+MD_LINK_RE = re.compile(r"\]\(https?://")
 
 
 # ---------------------------------------------------------------- the path rule
@@ -105,8 +120,71 @@ def _src(cell: dict) -> str:
     return "".join(s) if isinstance(s, list) else str(s)
 
 
-def check(path: Path) -> list[str]:
-    """Every format problem of one notebook. Empty list = OK."""
+def _tail_text(cells: list[dict]) -> str:
+    """The trailing markdown cell(s), joined."""
+    tail = []
+    for c in reversed(cells):
+        if c.get("cell_type") != "markdown":
+            break
+        tail.insert(0, _src(c))
+    return "\n".join(tail)
+
+
+def has_study_layer(cells: list[dict]) -> bool:
+    """True when the title cell declares the study layer (D-0105)."""
+    return bool(cells) and cells[0].get("cell_type") == "markdown" and STUDY_MARKER in _src(cells[0])
+
+
+def study_problems(name: str, cells: list[dict]) -> list[str]:
+    """The study-layer rules (D-0105) for a notebook that declares the layer."""
+    p: list[str] = []
+    if not MD_LINK_RE.search(_src(cells[0])):
+        p.append(f"{name}: the title cell's study block must link the day's notes page")
+    sections: list[dict] = []          # one per numbered '## N. ' section, in order
+    current = None
+    for i, c in enumerate(cells):
+        if c.get("cell_type") != "markdown":
+            continue
+        text = _src(c)
+        opened, closed, summaries = text.count("<details"), text.count("</details>"), text.count("<summary")
+        if not (opened == closed == summaries):
+            p.append(f"{name}: cell {i} has unbalanced <details> blocks ({opened} opened, {closed} closed, {summaries} <summary>)")
+        fenced = False
+        for ln in text.splitlines():
+            if ln.lstrip().startswith("```"):
+                fenced = not fenced
+                continue
+            if fenced:
+                continue
+            if ln.startswith("## "):
+                current = {"head": ln.strip(), "predict": False, "checkpoint": False} if NUMBERED_SECTION_RE.match(ln) else None
+                if current:
+                    sections.append(current)
+                continue
+            if current:
+                current["predict"] = current["predict"] or PREDICT_MARK in ln
+                current["checkpoint"] = current["checkpoint"] or CHECKPOINT_MARK in ln
+    for sec in sections:
+        if not sec["predict"]:
+            p.append(f"{name}: section '{sec['head']}' has no '{PREDICT_MARK}' question")
+        if not sec["checkpoint"]:
+            p.append(f"{name}: section '{sec['head']}' has no '{CHECKPOINT_MARK}' checkpoint")
+    tail_text = _tail_text(cells)
+    qc = re.search(r"Quick check", tail_text)
+    if qc:
+        questions, sep, answers = tail_text[qc.end():].partition("<details")
+        n_q = sum(1 for ln in questions.splitlines() if NUMBERED_RE.match(ln))
+        n_a = sum(1 for ln in answers.splitlines() if NUMBERED_RE.match(ln))
+        if not sep:
+            p.append(f"{name}: the Quick check needs its answers in a <details> block after the questions")
+        elif n_a < n_q:
+            p.append(f"{name}: the Quick check has {n_q} questions and {n_a} numbered answers; one answer per question")
+    return p
+
+
+def check(path: Path, study: bool = False) -> list[str]:
+    """Every format problem of one notebook. Empty list = OK. `study` also fails a notebook with no study layer;
+    a notebook that declares the layer is always held to its rules."""
     name = path.name
     p: list[str] = []
     m = NAME_RE.match(name)
@@ -140,19 +218,14 @@ def check(path: Path) -> list[str]:
     sections = [h for h in heads if h != "## Recap"]
     if len(sections) < SECTIONS_MIN:
         p.append(f"{name}: needs >= {SECTIONS_MIN} '## ' sections besides '## Recap', found {len(sections)}")
-    tail = []
-    for c in reversed(cells):
-        if c.get("cell_type") != "markdown":
-            break
-        tail.insert(0, _src(c))
-    tail_text = "\n".join(tail)
+    tail_text = _tail_text(cells)
     if not re.search(r"^## Recap\s*$", tail_text, re.M):
         p.append(f"{name}: the last markdown cell(s) need a '## Recap' heading")
     qc = re.search(r"Quick check", tail_text)
     if not qc:
         p.append(f"{name}: the last markdown cell(s) need a 'Quick check' block")
     else:
-        qs = sum(1 for ln in tail_text[qc.end():].splitlines() if NUMBERED_RE.match(ln))
+        qs = sum(1 for ln in tail_text[qc.end():].partition("<details")[0].splitlines() if NUMBERED_RE.match(ln))
         if qs < QUICK_CHECK_MIN:
             p.append(f"{name}: the Quick check needs >= {QUICK_CHECK_MIN} numbered questions, found {qs}")
     for i, c in enumerate(cells):
@@ -168,6 +241,10 @@ def check(path: Path) -> list[str]:
                 p.append(f"{name}: cell {i} pip-installs a package Colab ships ({ln.strip()})")
         if i != 1 and len(lines) > CODE_LINES_MAX:
             p.append(f"{name}: cell {i} has {len(lines)} lines; split it (at most {CODE_LINES_MAX} outside the setup cell)")
+    if has_study_layer(cells):
+        p += study_problems(name, cells)
+    elif study:
+        p.append(f"{name}: no study layer (the title cell needs the '{STUDY_MARKER}' block; D-0105)")
     return p
 
 
@@ -177,6 +254,8 @@ def main(argv: list[str]) -> int:
             stream.reconfigure(encoding="utf-8")
         except Exception:
             pass
+    study = "--study" in argv
+    argv = [a for a in argv if a != "--study"]
     if len(argv) != 1:
         print(__doc__, file=sys.stderr)
         return 2
@@ -185,7 +264,7 @@ def main(argv: list[str]) -> int:
     if not files or not all(f.is_file() for f in files):
         print(f"{target}: no notebook found", file=sys.stderr)
         return 2
-    problems = [x for f in files for x in check(f)]
+    problems = [x for f in files for x in check(f, study=study)]
     for pr in problems:
         print(pr)
     print("OK" if not problems else f"{len(problems)} problem(s)")

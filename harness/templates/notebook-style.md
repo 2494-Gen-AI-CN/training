@@ -53,7 +53,51 @@ wins. `python harness/notebook_check.py <file or folder>` checks the format; it 
   a metric that disagrees with what we know.
 - Prompt the room where a parameter is worth changing: "Try changing it: single linkage tends to chain points" /
   "Try `eps=0.1` and `eps=0.5` in the cell above". The runbook adds a "Try changing" prompt for every section the
-  notebook leaves without one.
+  notebook leaves without one; a notebook with the study layer (below) carries them all itself.
+
+## Study layer (D-0105)
+
+A notebook is also the learner's study copy: someone who was not on the call, or who is revising a week later, works
+through it alone with no recording. The layer below adds that without slowing the live pass (answers are collapsed,
+nothing adds a heading or a cell). It is checked by `notebook_check.py`; `--study` fails a notebook without it. The
+pilot is `demo-repo/notebooks/week-07/01_monday_mlp_backprop_and_digit_classifier.ipynb`.
+
+1. **Study block in the title cell**, after the going-deeper line and before "Run the next cell first": the line
+   `**Studying on your own**`, a table of sections against minutes (the plan's pass timings) with the natural stopping
+   points, how to work a subsection (predict, run, compare, try changing, put it back), what to do after a runtime
+   disconnect (Runtime > Run before) and a link to the day's notes page. Bullets, never a numbered list (the numbered
+   list in the title cell is the agenda).
+2. **`**Predict first:**`** one question at the end of the markdown above a code cell, answerable from that markdown
+   alone and settled by the cell's output and the bullets under it. At least one per numbered `##` section, and one
+   per core subsection where a prediction is possible. Going-deeper subsections carry none. When nothing below
+   settles it (a markdown-only subsection, a sum the cell does not print), the answer follows in a collapsed block.
+3. **Try changing, complete**: every prompt names the edit, what the reader should then see (a number from the run,
+   or the direction of the change when it depends on a fit) and ends "Put it back". The runbook no longer holds
+   prompts the notebook lacks.
+4. **`**Common mistake:**`** one bullet in the result markdown where the runbook has a `Trap`, reworded for the
+   reader: the mistake, then why it is one.
+5. **Work it by hand**: an activity the trainer runs on the call (a paper exercise, a grid in the chat) is written
+   into the notebook as `**Work it by hand first.**` with the task, then the answer key and the usual wrong answers
+   in a collapsed block.
+6. **`**Before you move on**`** at the end of every numbered `##` section: two to four things the reader can now do,
+   each one checkable ("count the parameters of a small Dense network"), never "understand X".
+7. **Quick check answers**: the numbered questions stay as they are; one collapsed block follows them with one
+   numbered answer per question, in the words a learner would say aloud.
+
+Collapsed blocks are written exactly like this, blank lines included, so Colab renders the markdown inside them:
+
+```
+<details>
+<summary>Check your answer</summary>
+
+The answer, in a sentence or two.
+
+</details>
+```
+
+Wording: the reader is alone. No "the room", "on the call", "your trainer" or "the chat" in the study layer. Every
+number in it comes from the notebook's own run, the brief or arithmetic the reader can redo; a result that depends on
+a fit is quoted as "about" or described by its direction.
 
 ## Before committing
 

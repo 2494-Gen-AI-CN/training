@@ -41,6 +41,22 @@ def minimal() -> dict:
     ]}
 
 
+def minimal_study() -> dict:
+    """minimal() with the study layer (D-0105) on every numbered section."""
+    nb = minimal()
+    c = nb["cells"]
+    c[0] = _md("# Week 6 · Monday: Regression\n\nToday:\n\n1. **Lines**\n2. **Curves**\n3. **Classes**\n\n"
+               "**Studying on your own**\n\n- The [notes page](https://example.org/notes.html) covers the same ideas.\n\n"
+               "Run the next cell first.")
+    for i, word in ((2, "Lines"), (4, "Curves"), (6, "Classes")):
+        c[i] = _md(f"## {i // 2}. {word}\n\nText.\n\n**Predict first:** what prints?\n\n"
+                   "<details>\n<summary>Check your answer</summary>\n\nIt prints.\n\n</details>\n\n"
+                   "**Before you move on**, check that you can:\n\n- say it\n")
+    c[-1] = _md("## Recap\n\n| Idea | Good at |\n|---|---|\n| line | trends |\n\n**Quick check**\n1. a?\n2. b?\n3. c?\n4. d?\n\n"
+                "<details>\n<summary>Answers</summary>\n\n1. a\n2. b\n3. c\n4. d\n\n</details>\n")
+    return nb
+
+
 class NotebookRuleTests(unittest.TestCase):
     def _check(self, nb: dict, name: str = "01_monday_regression.ipynb", folder: str = "notebooks/week-06") -> list[str]:
         with tempfile.TemporaryDirectory() as t:
@@ -81,6 +97,43 @@ class NotebookRuleTests(unittest.TestCase):
                 self.assertTrue([p for p in problems if needle in p], problems)
         self.assertEqual([], self._check(broken(lambda nb: nb["cells"][1].update(source=["x = 1\n"] * 80))), "the setup cell may be long")
 
+    def test_study_layer_rules(self):
+        self.assertEqual([], self._check(minimal_study()))
+        with tempfile.TemporaryDirectory() as t:
+            d = Path(t) / "notebooks" / "week-06"
+            d.mkdir(parents=True)
+            f = d / "01_monday_regression.ipynb"
+            f.write_text(json.dumps(minimal()), encoding="utf-8")
+            self.assertEqual([], notebook_check.check(f), "a notebook that does not declare the layer is not held to it")
+            self.assertTrue([p for p in notebook_check.check(f, study=True) if "no study layer" in p])
+            res = subprocess.run([sys.executable, str(HARNESS / "notebook_check.py"), str(f), "--study"],
+                                 capture_output=True, text=True, encoding="utf-8")
+            self.assertEqual(1, res.returncode, res.stdout + res.stderr)
+
+        def broken(fn) -> dict:
+            nb = copy.deepcopy(minimal_study())
+            fn(nb)
+            return nb
+
+        def swap(i, old, new):
+            def fn(nb):
+                src = "".join(nb["cells"][i]["source"])
+                assert old in src, old
+                nb["cells"][i] = _md(src.replace(old, new))
+            return fn
+        cases = [
+            ("must link the day's notes page", broken(swap(0, "[notes page](https://example.org/notes.html)", "notes page"))),
+            ("'## 2. Curves' has no '**Predict first:**'", broken(swap(4, "**Predict first:**", "Guess:"))),
+            ("'## 3. Classes' has no '**Before you move on**'", broken(swap(6, "**Before you move on**", "Next"))),
+            ("unbalanced <details>", broken(swap(2, "</details>", ""))),
+            ("answers in a <details> block", broken(lambda nb: nb["cells"].__setitem__(-1, minimal()["cells"][-1]))),
+            ("4 questions and 3 numbered answers", broken(swap(-1, "3. c\n4. d\n\n</details>", "3. c\n\n</details>"))),
+        ]
+        for needle, nb in cases:
+            with self.subTest(rule=needle):
+                problems = self._check(nb)
+                self.assertTrue([p for p in problems if needle in p], problems)
+
     def test_path_rule_helpers(self):
         self.assertEqual("03_wednesday", notebook_check.day_prefix(3))
         self.assertEqual("01_monday_ml_intro_and_supervised_learning.ipynb",
@@ -112,7 +165,8 @@ class ReferenceNotebookTests(unittest.TestCase):
 class TemplateTests(unittest.TestCase):
     def test_style_guide_and_config_name_the_rule(self):
         guide = (HARNESS / "templates" / "notebook-style.md").read_text(encoding="utf-8")
-        for needle in ("02_tuesday_trees_and_clustering.ipynb", "## Recap", "Quick check", "RANDOM_STATE = 42", "Colab", "notebook_check.py"):
+        for needle in ("02_tuesday_trees_and_clustering.ipynb", "## Recap", "Quick check", "RANDOM_STATE = 42", "Colab", "notebook_check.py",
+                       notebook_check.STUDY_MARKER, notebook_check.PREDICT_MARK, notebook_check.CHECKPOINT_MARK, "--study", "D-0105"):
             self.assertIn(needle, guide)
         cfg = json.loads((HARNESS / "config.json").read_text(encoding="utf-8"))
         self.assertIn("D-0085", cfg["demoRepo"]["layout"]["notebooks"])
