@@ -931,7 +931,7 @@
           "id": "w08d1",
           "kind": "lesson",
           "gate": "full",
-          "demoFormat": "walkthrough",
+          "demoFormat": "notebook",
           "status": "planned",
           "title": "Feature engineering & model evaluation",
           "subtitle": "encoding · missing values & outliers · feature selection · F1 · confusion matrix · regularization & cross-validation",
@@ -945,7 +945,7 @@
             "Confusion matrix interpretation",
             "Avoiding overfitting (regularization, cross-validation)"
           ],
-          "notes": "DAY SHAPE (D-0102): the curriculum's feature-engineering day and its model-evaluation day merged into one, because week 7 already taught their fundamentals inside the Project 1 builds (D-0087, D-0101): missing values, one-hot encoding and scaling in W7D3's tabular build; the confusion matrix, precision, recall and F1 in W7D1; overfitting, dropout and early stopping in W7D1 and W7D3. This day goes deeper from there, not over it again: outliers, feature selection, other encodings and when one-hot is wrong, choosing a metric with the people who own the decision, the decision threshold, regularization in code and cross-validation. It ends with a Project 1 clinic: learners bring their own notebooks four days before the showcase. Format to settle in the week-8 plan: the day needs scikit-learn and Keras, which run in Colab and not on the course Python 3.15, so a notebook day (D-0085) fits better than a walkthrough."
+          "notes": "DAY SHAPE (D-0102): the curriculum's feature-engineering day and its model-evaluation day merged into one, because week 7 already taught their fundamentals inside the Project 1 builds (D-0087, D-0101): missing values, one-hot encoding and scaling in W7D3's tabular build; the confusion matrix, precision, recall and F1 in W7D1; overfitting, dropout and early stopping in W7D1 and W7D3. This day goes deeper from there, not over it again: outliers, feature selection, other encodings and when one-hot is wrong, choosing a metric with the people who own the decision, the decision threshold, regularization in code and cross-validation. It ends with a Project 1 clinic: learners bring their own notebooks four days before the showcase. A notebook day (D-0106): scikit-learn and Keras run in Colab, not on the course Python 3.15."
         },
         {
           "day": 2,
@@ -953,9 +953,10 @@
           "id": "w08d2",
           "kind": "lesson",
           "gate": "full",
-          "demoFormat": "walkthrough",
+          "demoFormat": "notebook",
           "status": "planned",
           "title": "Vector databases: Chroma & Pinecone",
+          "notes": "DAY SHAPE (D-0106): a notebook day, run in Colab like weeks 6 and 7. Chroma and Pinecone are BOTH hands-on: every learner runs the Chroma cells (installed with pip in the notebook, no account) and the Pinecone cells against their own free Pinecone account, made before the day (STATUS O-32). The API key is read from Colab's Secrets panel and is never typed into a cell or printed: the demo repository is public and learners save their copies to their own public repositories. The notebook says once what the free tier allows, from the vendor's page as fetched for the brief, and every Pinecone cell stays inside it. A learner whose account is not ready follows the Pinecone part on the shared screen and runs it later; the Chroma part never depends on it.",
           "subtitle": "vectors · use cases · SQLite storage · similarity search · Chroma setup · Pinecone setup · CRUD",
           "subtopics": [
             "VectorDB introduction",
@@ -976,7 +977,7 @@
           "id": "w08d3",
           "kind": "lesson",
           "gate": "full",
-          "demoFormat": "walkthrough",
+          "demoFormat": "notebook",
           "status": "planned",
           "title": "Vector index & collection management",
           "subtitle": "index management · collections · partitioning · upsert · metadata · distance metrics",
@@ -995,7 +996,7 @@
           "id": "w08d4",
           "kind": "lesson",
           "gate": "full",
-          "demoFormat": "walkthrough",
+          "demoFormat": "notebook",
           "status": "planned",
           "title": "Semantic search & embedding pipelines",
           "subtitle": "preprocessing · upsert prep · semantic query · NER · embedding models · batching · metadata",
