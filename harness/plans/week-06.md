@@ -227,4 +227,131 @@ On a data science or machine-learning team, a notebook is where a question is ex
 
 ## Exit criteria map
 
-No rows this week: qc4 (AI/ML fundamentals, TensorFlow & vector databases) is not published yet, so the map is backfilled when Revature publishes it (D-0085).
+Backfilled 2026-11-24 from the qc4 file (D-0103, D-0107): links only, no page was re-authored for it. Rows taught in week 7 or week 8 point there.
+
+| ID | Tier | Criterion | Day | Where | Notes step |
+|---|---|---|---|---|---|
+| qc4.ai-ml-fundamentals.R01 | Required | Can explain what machine learning is, how a rule learned from examples differs from a rule written by hand, and define sample, feature, label and model. | w06d1 | notebook | 1 |
+| qc4.ai-ml-fundamentals.R02 | Required | Can differentiate between the supervised and unsupervised learning paradigms, and between regression and classification, and give an example problem for each. | w06d1 | notebook | 2 |
+| qc4.ai-ml-fundamentals.R03 | Required | Can build a Linear Regression model to predict a continuous target variable, explain how the line is fitted (slope, intercept, residuals, least squares) and interpret mean squared error and R². | w06d1 | notebook | 4 |
+| qc4.ai-ml-fundamentals.R04 | Required | Can implement a train, validation and test split and explain the role of each part, including why a model is scored on data it was not trained on and why the test set is used once. | w06d1 | notebook | 5 |
+| qc4.ai-ml-fundamentals.R05 | Required | Can describe scikit-learn's fit and predict pattern and use train_test_split, including what random_state and stratify do. | w06d1 | notebook | 5 |
+| qc4.ai-ml-fundamentals.R06 | Required | Can identify signs of the bias-variance tradeoff, underfitting and overfitting from training and validation scores. | w06d1 | notebook | 6 |
+| qc4.ai-ml-fundamentals.R07 | Required | Can build a Logistic Regression model for a binary classification task and explain the probability it outputs, how predict turns that probability into a class at 0.5, and the decision boundary. | w06d1 | notebook | 7 |
+| qc4.ai-ml-fundamentals.R08 | Required | Can distinguish a model's parameters from its hyperparameters and give an example of each. | w06d1 | notebook | 1 |
+| qc4.ai-ml-fundamentals.R09 | Required | Can explain what clustering is, name uses of it, and explain how a clustering is judged when there are no labels. | w06d2 | notebook | 2 |
+| qc4.ai-ml-fundamentals.R10 | Required | Can describe the k-means algorithm step by step (assign, update, repeat) and explain why the starting centroids matter. | w06d2 | notebook | 5 |
+| qc4.ai-ml-fundamentals.R11 | Required | Can choose a value of K using the elbow method and the silhouette score, and explain what inertia measures. | w06d2 | notebook | 6 |
+| qc4.ai-ml-fundamentals.R12 | Required | Can explain why features are scaled before a distance-based algorithm and what StandardScaler does. | w06d2 | notebook | 7 |
+| qc4.ai-ml-fundamentals.R13 | Required | Can explain what deep learning is, how learned features differ from hand-made features, and when deep learning is and is not a good fit. | w06d3 | notebook | 1 |
+| qc4.ai-ml-fundamentals.R14 | Required | Can name the main neural network families (feedforward, convolutional, recurrent, transformer, autoencoder) and match each to the kind of data it suits. | w06d3 | notebook | 2 |
+| qc4.ai-ml-fundamentals.R15 | Required | Can describe a neuron (weighted sum, bias, activation), a layer and a forward pass, and count the parameters of a Dense layer. | w06d3 | notebook | 3 |
+| qc4.ai-ml-fundamentals.R16 | Required | Can explain how a CNN reads an image (kernels, convolution, ReLU, max pooling) and why it suits images better than a flat Dense network. | w06d3 | notebook | 4 |
+| qc4.ai-ml-fundamentals.R17 | Required | Can explain how text becomes numbers: tokens, a vocabulary, bag of words and TF-IDF. | w06d3 | notebook | 6 |
+| qc4.ai-ml-fundamentals.R18 | Required | Can explain what an activation function does, describe sigmoid, tanh, ReLU and softmax, and explain why the activation must be non-linear. | w06d5 | notebook | 1 |
+| qc4.ai-ml-fundamentals.R19 | Required | Can describe the mathematical formulation of a Perceptron (weighted sum, bias, step) and its learning rule, and explain linear separability and what a single perceptron cannot learn. | w06d5 | notebook | 3 |
+| qc4.ai-ml-fundamentals.R20 | Required | Can explain what a loss function is and describe the difference between MSE and cross-entropy and the practical application of each. | week 07 | — | — |
+| qc4.ai-ml-fundamentals.R21 | Required | Can explain gradient descent and the effect of a learning rate that is too small or too large. | week 07 | — | — |
+| qc4.ai-ml-fundamentals.R22 | Required | Can build a Multi-Layer Perceptron (MLP) and explain why a hidden layer with a non-linear activation solves problems a single perceptron cannot. | week 07 | — | — |
+| qc4.ai-ml-fundamentals.R23 | Required | Can explain the concepts of backpropagation and gradient descent in weight updating: one training step (forward pass, loss, backward pass, update), what backpropagation computes and what the optimizer does with it. | week 07 | — | — |
+| qc4.ai-ml-fundamentals.R24 | Required | Can identify overfitting and underfitting from learning curves (training and validation loss over epochs). | week 07 | — | — |
+| qc4.ai-ml-fundamentals.R25 | Required | Can implement Dropout layers in a neural network and an early stopping callback, and explain how each reduces overfitting. | week 07 | — | — |
+| qc4.ai-ml-fundamentals.R26 | Required | Can describe the order of a model-building project: problem statement, data, split, preprocessing, model with a reason for each choice, training, evaluation, the test set once, limitations. | week 07 | — | — |
+| qc4.ai-ml-fundamentals.R27 | Required | Can read a Confusion Matrix and calculate and interpret Precision, Recall and F1 scores for one class. | week 07 | — | — |
+| qc4.ai-ml-fundamentals.R28 | Required | Can explain why accuracy misleads for imbalanced classification and choose between precision and recall by what a wrong answer costs. | week 07 | — | — |
+| qc4.ai-ml-fundamentals.R29 | Required | Can carry out error analysis: look at the examples a model gets wrong and say what they have in common. | week 07 | — | — |
+| qc4.ai-ml-fundamentals.R30 | Required | Can make one improvement attempt: change one thing, compare before and after on the same validation data, and say plainly whether it helped. | week 07 | — | — |
+| qc4.ai-ml-fundamentals.R31 | Required | Can explain what an autoencoder is (encoder, bottleneck, decoder) and what it is trained to do. | week 07 | — | — |
+| qc4.ai-ml-fundamentals.R32 | Required | Can explain how reconstruction error and a threshold turn an autoencoder into an anomaly detector. | week 07 | — | — |
+| qc4.ai-ml-fundamentals.R33 | Required | Can explain what feature engineering is, create a new feature from existing columns and judge whether it helped. | week 08 | — | — |
+| qc4.ai-ml-fundamentals.R34 | Required | Can encode categorical data (one-hot, ordinal, frequency) and say when one-hot encoding is the wrong choice. | week 08 | — | — |
+| qc4.ai-ml-fundamentals.R35 | Required | Can handle missing values and outliers in a dataset and give a reason for the method chosen. | week 08 | — | — |
+| qc4.ai-ml-fundamentals.R36 | Required | Can choose an evaluation metric from what each kind of wrong answer costs, and choose a decision threshold on validation data. | week 08 | — | — |
+| qc4.ai-ml-fundamentals.R37 | Required | Implement L1 (Lasso) and L2 (Ridge) regularization to penalize complex models | week 08 | — | — |
+| qc4.ai-ml-fundamentals.P01 | Preferred | Can explain multiple and polynomial regression and read a fitted model's coefficients. | w06d1 | notebook | 6 |
+| qc4.ai-ml-fundamentals.P02 | Preferred | Can explain how a decision tree makes a prediction and how its depth relates to overfitting. | w06d2 | notebook | 1 |
+| qc4.ai-ml-fundamentals.P03 | Preferred | Can give examples of regression and classification problems in industry and say what a wrong answer costs in each. | w06d1 | notebook | 8 |
+| qc4.ai-ml-fundamentals.P04 | Preferred | Can compute Euclidean and Manhattan distance between two points. | w06d2 | notebook | 3 |
+| qc4.ai-ml-fundamentals.P05 | Preferred | Can explain hierarchical clustering, name common linkage methods, and describe how a dendrogram is read and cut. | w06d2 | notebook | 4 |
+| qc4.ai-ml-fundamentals.P06 | Preferred | Can describe where k-means fails and how DBSCAN differs (dense regions, noise points, eps and min_samples). | w06d2 | notebook | 8 |
+| qc4.ai-ml-fundamentals.P07 | Preferred | Can compute the output size of a convolution and of a pooling layer. | w06d3 | notebook | 4 |
+| qc4.ai-ml-fundamentals.P08 | Preferred | Can explain n-grams and what bag of words loses. | w06d3 | notebook | 6 |
+| qc4.ai-ml-fundamentals.P09 | Preferred | Can describe the steps of a text classification pipeline and why new text goes through transform, not fit. | w06d3 | notebook | 7 |
+| qc4.ai-ml-fundamentals.P10 | Preferred | Can explain at a high level why self-attention handles distant positions better than recurrence, and the role of positional encoding in the Transformer architecture. | w06d3 | notebook | 2 |
+| qc4.ai-ml-fundamentals.P11 | Preferred | Can work one backpropagation update by hand on a network with two weights. | week 07 | — | — |
+| qc4.ai-ml-fundamentals.P12 | Preferred | Can explain what batch normalization does and how to measure whether it helped. | week 07 | — | — |
+| qc4.ai-ml-fundamentals.P13 | Preferred | Can demonstrate code reproducibility using random seeds, and explain why a notebook is checked with Run all on a fresh runtime. | week 07 | — | — |
+| qc4.ai-ml-fundamentals.P14 | Preferred | Can fit preprocessing on the training rows only and explain what leaks otherwise. | week 07 | — | — |
+| qc4.ai-ml-fundamentals.P15 | Preferred | Can name the levers for improving a model (capacity, dropout, early stopping, batch normalization, learning rate, preprocessing, the decision threshold) and the sign that says to pull each. | week 07 | — | — |
+| qc4.ai-ml-fundamentals.P16 | Preferred | Can keep a results table across runs and explain what to do when a change did not help. | week 07 | — | — |
+| qc4.ai-ml-fundamentals.P17 | Preferred | Can explain collaborative filtering and the cold-start problem. | week 07 | — | — |
+| qc4.ai-ml-fundamentals.P18 | Preferred | Can explain what a restricted Boltzmann machine is and how it produces a recommendation. | week 07 | — | — |
+| qc4.ai-ml-fundamentals.P19 | Preferred | Can explain feature selection techniques (filter methods, model-based ranking, permutation importance) and measure whether removing features helps. | week 08 | — | — |
+| qc4.ai-ml-fundamentals.P20 | Preferred | Can build preprocessing and a model into one scikit-learn Pipeline and explain what that prevents. | week 08 | — | — |
+| qc4.ai-ml-fundamentals.P21 | Preferred | Can explain the macro and weighted averages of precision, recall and F1. | week 08 | — | — |
+| qc4.ai-ml-fundamentals.P22 | Preferred | Generate and analyze an AUC-ROC curve and Confusion Matrix | week 08 | — | — |
+| qc4.ai-ml-fundamentals.P23 | Preferred | Implement stratified k-fold cross-validation in evaluating model performance | week 08 | — | — |
+| qc4.ai-ml-fundamentals.S01 | Stretch | Can explain why a straight-line model is unreliable outside the range of its training data. | w06d1 | notebook | 3 |
+| qc4.ai-ml-fundamentals.S02 | Stretch | Can run two iterations of k-means by hand on a small set of points. | w06d2 | notebook | 5 |
+| qc4.ai-ml-fundamentals.S03 | Stretch | Can explain why the operation deep learning libraries call convolution is cross-correlation. | w06d3 | notebook | 4 |
+| qc4.ai-ml-fundamentals.S04 | Stretch | Can explain what a denoising autoencoder is and how its training pairs differ from a plain autoencoder's. | week 07 | — | — |
+| qc4.ai-ml-fundamentals.S05 | Stretch | Can explain why some columns may not be used as features even when they improve a score. | week 08 | — | — |
+| qc4.tensorflow-and-keras.R01 | Required | Can explain what TensorFlow and Keras are and how they relate. | w06d4 | notebook | 1 |
+| qc4.tensorflow-and-keras.R02 | Required | Can describe a tensor by its rank, shape and dtype and explain elementwise arithmetic, broadcasting and matrix multiplication. | w06d4 | notebook | 3 |
+| qc4.tensorflow-and-keras.R03 | Required | Can explain the difference between tf.constant and tf.Variable and what trainable means. | w06d5 | notebook | 5 |
+| qc4.tensorflow-and-keras.R04 | Required | Can build, compile, fit, evaluate and predict with a Keras Sequential model, and explain the optimizer, loss and metrics passed to compile. | w06d5 | notebook | 6 |
+| qc4.tensorflow-and-keras.R05 | Required | Can read model.summary(): the layers, their output shapes and their parameter counts. | w06d5 | notebook | 7 |
+| qc4.tensorflow-and-keras.R06 | Required | Can choose the output layer's units and activation and the matching loss for binary classification, multi-class classification and regression. | week 07 | — | — |
+| qc4.tensorflow-and-keras.R07 | Required | Can save a Keras model to a .keras file, load it and confirm it gives the same predictions. | week 07 | — | — |
+| qc4.tensorflow-and-keras.R08 | Required | Can describe how a text classifier is built from TF-IDF features and a Dense network. | week 07 | — | — |
+| qc4.tensorflow-and-keras.R09 | Required | Can build a Convolutional Neural Network (CNN) for basic image classification and give a reason for each choice in the model. | week 07 | — | — |
+| qc4.tensorflow-and-keras.R10 | Required | Can describe how a neural network is built for tabular data, including missing values, encoding categories and scaling. | week 07 | — | — |
+| qc4.tensorflow-and-keras.P01 | Preferred | Can explain eager execution, what tf.function does, and what tracing and retracing mean. | w06d4 | notebook | 4 |
+| qc4.tensorflow-and-keras.P02 | Preferred | Can reduce a tensor along an axis (reduce_sum, reduce_mean, argmax) and explain keepdims. | w06d4 | notebook | 6 |
+| qc4.tensorflow-and-keras.P03 | Preferred | Can build a model with the Functional API and name a model shape Sequential cannot express. | week 07 | — | — |
+| qc4.tensorflow-and-keras.P04 | Preferred | Can name the common Keras layers (Dense, Conv2D, MaxPooling2D, Flatten, Dropout, BatchNormalization) and say what each takes in and returns. | week 07 | — | — |
+| qc4.tensorflow-and-keras.P05 | Preferred | Can compose a model from smaller models, and freeze a part to reuse it. | week 07 | — | — |
+| qc4.tensorflow-and-keras.P06 | Preferred | Can use TensorBoard to compare the training curves of two runs. | week 07 | — | — |
+| qc4.tensorflow-and-keras.P07 | Preferred | Can define batch, batch size and epoch and say what fit does on each batch. | week 07 | — | — |
+| qc4.tensorflow-and-keras.P08 | Preferred | Can explain what an Embedding layer learns and how it differs from TF-IDF features. | week 07 | — | — |
+| qc4.tensorflow-and-keras.S01 | Stretch | Can explain how TensorFlow 1 sessions and placeholders differ from TensorFlow 2, enough to read old code. | w06d5 | notebook | 5 |
+| qc4.tensorflow-and-keras.S02 | Stretch | Can map a model written with the old TFLearn library to its Keras equivalent. | week 07 | — | — |
+| qc4.tensorflow-and-keras.S03 | Stretch | Can write a training loop by hand with tf.GradientTape and say when a team writes its own loop. | week 07 | — | — |
+| qc4.tensorflow-and-keras.S04 | Stretch | Can diagnose a common Keras error (a shape mismatch, labels in the wrong form for the loss) from its message. | week 07 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.R01 | Required | Understands process of vectorizing data | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.R02 | Required | Understands CRUD operations with vector dbs | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.R03 | Required | Demonstrates understanding of vector embeddings and how they represent data in a machine-readable format. | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.R04 | Required | Demonstrates knowledge of embedding models and their role in generating vector representations for text and other data. | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.R05 | Required | Explain the purpose of a vector index and describe how indexing improves the efficiency of vector similarity search. | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.R06 | Required | Describe what a vector database is and explain how it stores and retrieves vector representations for search and retrieval tasks. | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.R07 | Required | Explain the role of vector databases in AI/ML and describe where Chroma DB fits. | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.R08 | Required | Install and configure Chroma DB in a Python environment (a Colab notebook). | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.R09 | Required | Create and manage collections in Chroma DB. | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.R10 | Required | Insert, update, and delete embeddings/documents in collections. | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.R11 | Required | Execute basic similarity search queries using Chroma DB (e.g., nearest neighbor, cosine similarity). | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.R12 | Required | Integrate Chroma DB into a simple Python application for retrieval tasks. | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.R13 | Required | Demonstrates the ability to explain the purpose and core features of Pinecone, including its role in RAG workflows and its benefits over traditional databases. | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.R14 | Required | Can create, manage, and query indices and namespaces using Pinecone's console and SDK. | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.R15 | Required | Describes the concept of namespaces in Pinecone and their use in multi-tenant or segmented data architectures | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.R16 | Required | Demonstrates basic API usage including setting API keys, managing API tokens, and understanding permissions | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.R17 | Required | Successfully implements a semantic search using Pinecone with uploaded vector embeddings and retrieves ranked results | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.R18 | Required | Demonstrates knowledge of data preprocessing, upserting vectors, and querying the database for semantic search, including metadata filtering | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.R19 | Required | Can explain how semantic search differs from keyword search and when each finds the better result. | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.R20 | Required | Can explain what named entity recognition (NER) finds and use it to build metadata for a search index. | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.P01 | Preferred | Ability to describe the concept of vector similarity search | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.P02 | Preferred | Ability to describe and execute vector query with semantic search | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.P03 | Preferred | Applies sentence transformers for creating sentence-level embeddings in vector databases. | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.P04 | Preferred | Connect Chroma DB with an external embedding model (e.g., a Hugging Face sentence-transformers model). | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.P05 | Preferred | Apply metadata filtering in similarity searches. | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.P06 | Preferred | Configure persistence and storage options in Chroma DB (an in-memory client and a persistent client that stores on disk). | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.P07 | Preferred | Explains and selects appropriate distance metrics and vector similarity algorithms for specific use cases. | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.P08 | Preferred | Can describe strategies for performance optimization, including pod types, serverless configurations, and backup/collection best practices. | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.P09 | Preferred | Compares pod-based and serverless Pinecone deployments, evaluating them for cost, latency, and scale | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.P10 | Preferred | Demonstrates ability to clean and normalize raw text data, including handling noisy inputs, duplicates, and formatting issues | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.P11 | Preferred | Can embed a large set of texts in batches and explain why batches are used. | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.S01 | Stretch | Ability to integrate Vector DB with other tools | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.S02 | Stretch | Able to design a warehouse for documents to be vectorized and searched through | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.S03 | Stretch | Explain how Chroma DB is deployed as a server using Docker or a cloud environment, and how a client connects to it. | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.S04 | Stretch | Build a mini semantic search app using Chroma DB. | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.S05 | Stretch | Demonstrates the ability to design and implement advanced metadata structures for efficient filtering and querying in Pinecone, enhancing semantic search results. | week 08 | — | — |
+| qc4.vector-databases-chroma-and-pinecone.S06 | Stretch | Describes a backup plan using Pinecone collections and explains versioning or rollback strategy | week 08 | — | — |

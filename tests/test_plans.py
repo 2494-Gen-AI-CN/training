@@ -492,7 +492,7 @@ Notebooks are how data teams explore before they ship code.
 
 
 class NotebookWeekTests(unittest.TestCase):
-    """D-0085: a week of demoFormat notebook days plans with no thread, no ladder and (qc4 unpublished) no exit map."""
+    """D-0085: a week of demoFormat notebook days plans with no thread, no ladder and (while qc4 was unpublished) no exit map."""
 
     def setUp(self):
         self.wk = _notebook_week()
@@ -508,8 +508,11 @@ class NotebookWeekTests(unittest.TestCase):
 
     def test_notebook_only_week_plans_cleanly(self):
         self.assertTrue(plan_check.no_thread_week([d for d in self.wk["days"] if d.get("kind") != "holiday"]))
-        self.assertEqual([], self._problems(_notebook_plan(self.wk)))
-        self.assertEqual([], self._problems(_notebook_plan(self.wk, demo="facilitation")))
+        # the fixture carries no exit rows; once the week's group is published (qc4, D-0103) the missing rows are
+        # reported, and that rule is covered by the exit-map tests, not here
+        def shape(text): return [x for x in self._problems(text) if "exit map" not in x]
+        self.assertEqual([], shape(_notebook_plan(self.wk)))
+        self.assertEqual([], shape(_notebook_plan(self.wk, demo="facilitation")))
         bad = self._problems(_notebook_plan(self.wk, demo="01-nope"))
         self.assertTrue(bad and all("'notebook'" in x for x in bad if "coverage row" in x), bad)
 
