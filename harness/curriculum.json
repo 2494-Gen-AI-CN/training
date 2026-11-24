@@ -842,7 +842,8 @@
             "Understand backprop - neural network",
             "MLP digit classifier using TensorFlow",
             "TensorBoard"
-          ]
+          ],
+          "taught": "2026-11-23"
         },
         {
           "day": 2,
