@@ -346,9 +346,9 @@ con.execute("VACUUM")                                # give the disk space back<
         <p><code>time.perf_counter()</code> reads a clock, so the difference between two readings is the elapsed
         seconds. The timed part reads each blob, scores it and keeps the maximum. Each row comes back as a one-item
         tuple, so <code>(blob,)</code> unpacks the single column.</p>
-        <p>Measured once, the search took about 0.35 seconds at 50,000 rows and about 0.66 seconds at 100,000.
-        Colab's CPU prints its own numbers, but doubling the rows roughly doubles the
-        time.<sup class="cite"><a href="#src-11">11</a></sup> The table makes the file about 103 MB, so the last lines
+        <p>Our Colab run searched 50,000 rows in about 0.36 seconds. On a laptop, 50,000 rows took about 0.35 seconds
+        and 100,000 about 0.66, so doubling the rows roughly doubles the
+        time.<sup class="cite"><a href="#src-11">11</a></sup> Times vary by machine. The table makes the file about 103 MB, so the last lines
         drop it. A dropped table's space stays inside the file until <code>VACUUM</code> rebuilds it and gives the
         space back to the disk.</p>
         <p>A fraction of a second is acceptable until every search pays it on millions of rows. Avoiding that full
@@ -474,7 +474,10 @@ import chromadb
 print(chromadb.__version__)</code></pre>
 <pre class="out">1.5.9</pre>
         <p>The install pulls in about fifteen packages Colab lacks. Checked against Colab's own package list, it adds
-        new packages and changes none of Colab's, so it should not ask for a runtime restart.<sup class="cite"><a href="#src-22">22</a></sup></p>
+        new packages, upgrades three of Colab's own, and needed no runtime restart.<sup class="cite"><a href="#src-22">22</a></sup>
+        Colab may still print red <code>ERROR: pip's dependency resolver</code> text naming google-adk and tweepy, and
+        a model load may warn about unauthenticated requests to the HF Hub. Both are harmless: the install works, and
+        this page uses neither package.</p>
         <h3>Clients: in memory or on disk</h3>
         <p>A client is the object your code talks to. Chroma's constructor decides where the data
         lives.<sup class="cite"><a href="#src-23">23</a></sup></p>

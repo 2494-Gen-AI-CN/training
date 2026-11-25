@@ -108,7 +108,9 @@ for n in [10_000, 100_000, 400_000]:
         <h3>Chroma's index settings, and recall</h3>
         <p>Chroma takes the index settings in <code>configuration</code> when a collection is created. The block installs
         the pinned Chroma, opens a folder-backed client on an empty folder, and prints the settings of a new
-        collection.</p>
+        collection. On Colab the install may print red text that starts <code>ERROR: pip's dependency resolver</code>
+        and names packages such as google-adk and tweepy. It still succeeds, and nothing on this page uses those
+        packages.</p>
         <p class="run-label">Run in Colab</p>
 <pre><code>%pip install -q chromadb==1.5.9
 import shutil
@@ -299,7 +301,8 @@ pc.configure_index("kb-wednesday", deletion_protection="disabled")</code></pre>
         <p>The examples need the week's embedding function and some articles. The block repeats Tuesday's
         <code>embed</code>, a small model that turns each text into 384 numbers of length 1, and stores eight of the 30
         invented help-centre articles, copied unchanged, in a collection called <code>kb_articles</code>.<sup class="cite"><a href="#src-17">17</a></sup>
-        <code>meta</code> picks the fields stored beside each vector.</p>
+        <code>meta</code> picks the fields stored beside each vector. On Colab the first model load may print a warning
+        about unauthenticated requests to the HF Hub, which is harmless.</p>
         <p class="run-label">Run in Colab</p>
 <pre><code>from sentence_transformers import SentenceTransformer
 
