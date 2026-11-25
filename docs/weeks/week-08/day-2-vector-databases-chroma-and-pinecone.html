@@ -41,8 +41,7 @@
           <span class="notebook"><a href="https://colab.research.google.com/github/2494-Gen-AI-CN/demos/blob/main/notebooks/week-08/02_tuesday_vector_databases_chroma_and_pinecone.ipynb" target="_blank" rel="noopener">Open the notebook in Colab</a></span>
           <span class="exit"><a href="../../exit-criteria/qc-4-ai-ml-tensorflow-vector-dbs.html#w08d2">Exit criteria</a></span>
         </div>
-        <p class="summary">Monday's page turned each row of a table into numeric columns a model can read, and this
-        page assumes only that. It turns whole texts into vectors of 384 numbers, compares them with cosine similarity,
+        <p class="summary">This page assumes Monday's numeric features and week 3's SQL. It turns whole texts into vectors of 384 numbers, compares them with cosine similarity,
         stores them in SQLite to show why a table stops scaling, and then uses two vector databases: Chroma inside a
         notebook and Pinecone in the cloud. Afterwards you can explain what a vector database is, set up both, keep an
         API key out of your code, and run create, read, update and delete on each.</p>
@@ -172,9 +171,15 @@ print(round(float(np.linalg.norm(v[0])), 3))</code></pre>
         similarity.<sup class="cite"><a href="#src-3">3</a></sup> <code>astype("float32")</code> stores each number in
         4 bytes, which matters when the vectors go into a file.</p>
         <h3>Search by comparing with every row</h3>
-        <p>The data is a list of invented help-centre articles, one dictionary per article holding an id, a title, a
-        short text, a category, a product and the year it was last updated. The full set has 30 articles; this page keeps ten of them so every example fits on
-        screen.</p>
+        <p>The data is a list of invented help-centre articles, one dictionary per article with six keys:</p>
+        <ul>
+          <li><code>id</code> and <code>title</code>;</li>
+          <li><code>text</code>, one or two sentences: the part that is embedded;</li>
+          <li><code>category</code>: account, billing, shipping or technical;</li>
+          <li><code>product</code>: web or mobile;</li>
+          <li><code>updated</code>: the year the article last changed.</li>
+        </ul>
+        <p>The full set has 30 articles; this page keeps ten of them so every example fits on screen.</p>
         <p class="run-label">Run in Colab</p>
 <pre><code>KB = [
     {"id": "kb-001", "title": "Resetting a forgotten password", "text": "Choose Forgot password on the sign-in screen, type the email address you registered with, and open the link we send to pick a new password. The link expires after 30 minutes.", "category": "account", "product": "web", "updated": 2025},
@@ -200,8 +205,8 @@ for i in np.argsort(-scores)[:3]:
     print(KB[i]["id"], f"{scores[i]:.2f}", KB[i]["title"])</code></pre>
 <pre class="out">(10, 384) (384,)
 kb-001 0.46 Resetting a forgotten password
-kb-004 0.34 Deleting your account
-kb-005 0.33 Signing out on every device</pre>
+kb-004 0.33 Deleting your account
+kb-005 0.32 Signing out on every device</pre>
         <p><code>embed([query])[0]</code> embeds a list of one text and takes its only row, a
         vector of shape <code>(384,)</code>. <code>@</code> is matrix multiplication: each of the ten article rows is
         dotted with the query, giving ten scores. <code>np.argsort</code> returns positions from the smallest value to
@@ -222,8 +227,8 @@ kb-005 0.33 Signing out on every device</pre>
         vectors from the same model.</p>
         <h3>Reading the scores</h3>
         <p>The scores for related short texts sat between about 0.3 and 0.65, nowhere near 1.0. So the useful reading is
-        the order and the gap: kb-001 at 0.46 stands well clear of the next article at
-        0.34.<sup class="cite"><a href="#src-4">4</a></sup> A fixed rule such as "only trust scores above 0.8" would
+        the order and the gap: kb-001 at about 0.46 stands well clear of the next article at about
+        0.33.<sup class="cite"><a href="#src-4">4</a></sup> A fixed rule such as "only trust scores above 0.8" would
         throw away every good match here.</p>
         <p>Similarity search also has no threshold built in. It returns the top results even when none of them is
         relevant, so a question about cooking still gets three help-centre articles back, and only the scores show it.<sup class="cite"><a href="#src-7">7</a></sup></p>
@@ -330,17 +335,24 @@ start = time.perf_counter()
 best_score = max(float(np.frombuffer(blob, dtype=np.float32) @ query_vector)
                  for (blob,) in con.execute("SELECT vector FROM scale_test"))
 print(f"{time.perf_counter() - start:.1f} s to read and compare 50,000 rows")
-con.execute("DROP TABLE scale_test")</code></pre>
-        <p>The first block makes 50,000 random unit vectors; <code>axis=1</code> takes one length per row.
-        <code>keepdims=True</code> keeps the lengths as a 50,000-by-1 column, so each row is divided by its own length.
-        The timed part reads each blob, scores it and keeps the maximum. Each row comes back as a one-item tuple, so
-        <code>(blob,)</code> unpacks the single column.</p>
-        <p>On one laptop a loop like this
-        took about 0.6 seconds at 50,000 rows and about 1.6 seconds at 100,000. Colab's CPU prints its own numbers, but
-        doubling the rows roughly doubles the time.<sup class="cite"><a href="#src-11">11</a></sup> The table takes
-        about 100 MB of disk, so the last line drops it.</p>
-        <p>A second is acceptable until every search pays it on millions of rows. Avoiding that full comparison is why
-        vector databases exist.</p>
+con.execute("DROP TABLE scale_test")
+con.commit()
+con.execute("VACUUM")                                # give the disk space back</code></pre>
+        <p><code>np.random.default_rng(42)</code> makes a random-number generator with a fixed seed, so every run draws
+        the same numbers. <code>normal(size=(50_000, 384))</code> draws a 50,000-by-384 array of random values; the
+        underscore in <code>50_000</code> only separates the digits. <code>axis=1</code> takes one length per row, and
+        <code>keepdims=True</code> keeps the lengths as a 50,000-by-1 column, so each row is divided by its own
+        length.</p>
+        <p><code>time.perf_counter()</code> reads a clock, so the difference between two readings is the elapsed
+        seconds. The timed part reads each blob, scores it and keeps the maximum. Each row comes back as a one-item
+        tuple, so <code>(blob,)</code> unpacks the single column.</p>
+        <p>Measured once, the search took about 0.35 seconds at 50,000 rows and about 0.66 seconds at 100,000.
+        Colab's CPU prints its own numbers, but doubling the rows roughly doubles the
+        time.<sup class="cite"><a href="#src-11">11</a></sup> The table makes the file about 103 MB, so the last lines
+        drop it. A dropped table's space stays inside the file until <code>VACUUM</code> rebuilds it and gives the
+        space back to the disk.</p>
+        <p>A fraction of a second is acceptable until every search pays it on millions of rows. Avoiding that full
+        comparison is why vector databases exist.</p>
         <p>You recognise vectors in a relational table by a <code>vector BLOB</code> column, a
         <code>tobytes()</code> in the insert, and <code>np.frombuffer(blob, dtype=np.float32)</code> on the way
         out.</p>
@@ -421,7 +433,7 @@ con.execute("DROP TABLE scale_test")</code></pre>
         <p>Week 7's recommender filled the blanks of a ratings table. A similarity recommender works differently: it
         finds items whose vectors sit near the ones a user already liked. A duplicate ticket is a new ticket whose
         vector sits very close to an open one.</p>
-        <p>The last row is called retrieval-augmented generation: the application embeds a question, retrieves similar
+        <p>The last row is called retrieval-augmented generation (RAG): the application embeds a question, retrieves similar
         stored text and gives it to a language model with the question.<sup class="cite"><a href="#src-19">19</a></sup>
         Week 9 builds it; this week builds the part that finds the right text.</p>
         <p>Metadata is a record's key-value fields beside its id and vector, and a query can filter on
@@ -558,10 +570,11 @@ collection.add(
 )
 print(collection.count())</code></pre>
 <pre class="out">10</pre>
-        <p>The four lists line up by position: the first id goes with the first document, vector and metadata. Metadata
-        values may be strings, integers, floats, booleans or non-empty lists of one
-        type.<sup class="cite"><a href="#src-30">30</a></sup> Two behaviours to watch for:</p>
+        <p>The four lists line up by position: the first id goes with the first document, vector and metadata. Three
+        rules to watch for:</p>
         <ul>
+          <li>Allowed metadata values: a string, an integer, a float, a boolean, or a non-empty list of one of
+          those.<sup class="cite"><a href="#src-30">30</a></sup></li>
           <li><code>add</code> with an id that already exists is ignored, with no error, and the old record stays.</li>
           <li>A vector of the wrong length raises <code>InvalidArgumentError: Collection expecting embedding with
           dimension of 384, got 10</code>.</li>
@@ -584,8 +597,8 @@ result = collection.query(query_embeddings=[query_vector], n_results=3)
 print(chroma_hits(result))</code></pre>
 <pre class="out">       id  distance                           title category product
 0  kb-001      0.54  Resetting a forgotten password  account     web
-1  kb-004      0.66           Deleting your account  account     web
-2  kb-005      0.67     Signing out on every device  account  mobile</pre>
+1  kb-004      0.67           Deleting your account  account     web
+2  kb-005      0.68     Signing out on every device  account  mobile</pre>
         <p><code>query</code> ranks by nearest neighbour and returns 10 results unless <code>n_results</code> says
         otherwise. Its answer is a dictionary with one inner list per query, which is why the helper reads
         <code>[0]</code>, the first and only query.<sup class="cite"><a href="#src-7">7</a></sup></p>
@@ -779,7 +792,7 @@ print(pc.has_index("kb-tuesday"))</code></pre>
           <tbody>
             <tr><td><code>SecretNotFoundError</code></td><td>no secret has that name</td><td>add it, spelled exactly <code>PINECONE_API_KEY</code></td></tr>
             <tr><td><code>NotebookAccessError</code></td><td>the secret exists, access is off</td><td>switch on Notebook access</td></tr>
-            <tr><td><code>UnauthorizedError</code> (401)</td><td>Pinecone rejected the key</td><td>copy the key again, or make a new one</td></tr>
+            <tr><td><code>UnauthorizedError</code> (401)</td><td>Pinecone rejected the key: <code>[401 UNAUTHENTICATED] Invalid API key</code></td><td>copy the key again, or make a new one</td></tr>
           </tbody>
         </table>
         <h3>Creating an index</h3>
@@ -857,9 +870,12 @@ wait_for_count(index, 10)</code></pre>
         the <code>KB</code> dictionaries, plain Python numbers, for the same reason.</p>
         <p>Pinecone is eventually consistent: a count or a read can lag a write by a few seconds. Reading the stats
         straight after the upsert can show 0, which is why the helper polls instead of sleeping for a guessed
-        time.<sup class="cite"><a href="#src-50">50</a></sup> With <code>namespace=None</code> it reads the whole
-        index's <code>total_vector_count</code>; given a namespace's name it reads that namespace's
-        <code>vector_count</code>, which Wednesday's page uses.</p>
+        time.<sup class="cite"><a href="#src-50">50</a></sup> On a test run the count was already complete straight
+        away, but nothing guarantees that.</p>
+        <p>With <code>namespace=None</code> the helper reads the whole index's <code>total_vector_count</code>; given a
+        namespace's name it reads that namespace's <code>vector_count</code>, which Wednesday's page uses. Records
+        written without a namespace go to the default one, which the stats list under the key
+        <code>__default__</code>.</p>
         <h3>Read: query and fetch</h3>
         <p class="run-label">Run in Colab</p>
 <pre><code>def pinecone_hits(result):
@@ -871,8 +887,13 @@ wait_for_count(index, 10)</code></pre>
 result = index.query(vector=query_vector.tolist(), top_k=3, include_metadata=True)
 print(pinecone_hits(result))
 print(index.fetch(ids=["kb-003"]).vectors["kb-003"].metadata["updated"])</code></pre>
-        <p>The query should return kb-001, kb-004 and kb-005, the NumPy and Chroma top three, because all three stores
-        hold the same vectors. Here the number is a score, the cosine similarity itself, so higher is closer: the
+<pre class="out">       id  score                           title category product
+0  kb-001   0.46  Resetting a forgotten password  account     web
+1  kb-004   0.33           Deleting your account  account     web
+2  kb-005   0.32     Signing out on every device  account  mobile
+2023</pre>
+        <p>The query returns kb-001, kb-004 and kb-005 at about 0.46, 0.33 and 0.32, the NumPy and Chroma top three,
+        because all three stores hold the same vectors. Here the number is a score, the cosine similarity itself, so higher is closer: the
         opposite of Chroma's distance. Without <code>include_metadata=True</code> each match's metadata comes back as
         <code>None</code> and the helper fails.<sup class="cite"><a href="#src-51">51</a></sup></p>
         <p><code>fetch</code> reads records by id with no ranking and leaves out ids the index does not hold. The last
@@ -882,14 +903,22 @@ print(index.fetch(ids=["kb-003"]).vectors["kb-003"].metadata["updated"])</code><
 <pre><code>index.update(id="kb-003", set_metadata={"updated": 2026})
 index.delete(ids=["kb-030"])
 wait_for_count(index, 9)
-print(index.fetch(ids=["kb-003"]).vectors["kb-003"].metadata["updated"])
+for attempt in range(10):                            # a fetch can lag the count
+    updated = index.fetch(ids=["kb-003"]).vectors["kb-003"].metadata["updated"]
+    if updated == 2026:
+        break
+    time.sleep(1)
+print(updated)
 
 if pc.has_index("kb-tuesday"):
     pc.delete_index("kb-tuesday")</code></pre>
+<pre class="out">9 vectors in the index
+2026</pre>
         <p><code>set_metadata</code> merges: it sets <code>updated</code> to 2026 and leaves the title, category and
         product alone.<sup class="cite"><a href="#src-51">51</a></sup> Because Pinecone is eventually consistent, a
-        fetch straight afterwards can still print 2023 for a moment.<sup class="cite"><a href="#src-50">50</a></sup>
-        <code>delete</code> cannot be undone, and the count falls to
+        fetch can still print 2023 for a moment, even after the count has changed, so the loop fetches once a second
+        until the new year shows.<sup class="cite"><a href="#src-50">50</a></sup></p>
+        <p><code>delete</code> cannot be undone, and the count falls to
         9.<sup class="cite"><a href="#src-51">51</a></sup> The last two lines delete the index, which keeps the free
         project empty between runs and lets the page rerun from a clean start.</p>
         <h3>CRUD in SQLite, Chroma and Pinecone side by side</h3>

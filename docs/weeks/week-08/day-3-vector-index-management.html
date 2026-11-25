@@ -36,7 +36,7 @@
           <span><b>Week 8</b> · Day 3</span>
           <span>Wed Dec 2, 2026</span>
           <span>Feature engineering &amp; vector databases</span>
-          <span><b>~42 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span><b>~43 min</b> · reference notes @150 wpm · diagram · check</span>
           <span class="verified">Sources checked 2026-11-24 · colab-python 3.13.18 · numpy 2.4.6 · sentence-transformers 5.7.0 · chromadb 1.5.9 · pinecone 9.1.0</span>
           <span class="notebook"><a href="https://colab.research.google.com/github/2494-Gen-AI-CN/demos/blob/main/notebooks/week-08/03_wednesday_vector_index_management.ipynb" target="_blank" rel="noopener">Open the notebook in Colab</a></span>
           <span class="exit"><a href="../../exit-criteria/qc-4-ai-ml-tensorflow-vector-dbs.html#w08d3">Exit criteria</a></span>
@@ -133,9 +133,10 @@ print(random_2k.configuration["hnsw"])</code></pre>
             <tr><td><code>ef_construction</code></td><td>100</td><td>No</td></tr>
             <tr><td><code>max_neighbors</code></td><td>16</td><td>No</td></tr>
             <tr><td><code>ef_search</code></td><td>100</td><td>Yes, with <code>modify(configuration=...)</code></td></tr>
+            <tr><td><code>num_threads</code>, <code>batch_size</code>, <code>sync_threshold</code>, <code>resize_factor</code></td><td>CPU count, 100, 1000, 1.2</td><td>Yes, the same way</td></tr>
           </tbody>
         </table>
-        <p>The fixed and changeable settings come from Chroma's configuration guide, which also says the older
+        <p>The fixed and changeable settings come from Chroma's configuration guide (checked 2026-11-24), which also says the older
         <code>metadata={"hnsw:space": "cosine"}</code> form still works but is deprecated, so expect it in older
         code.<sup class="cite"><a href="#src-5">5</a></sup></p>
         <p>Recall measures the price of approximation: the share of the exact top 10 that the index returns. The block
@@ -155,10 +156,13 @@ for q, got in zip(queries, found["ids"]):
     exact = {str(i) for i in np.argsort(-(data @ q))[:10]}
     hits += len(exact &amp; set(got))
 print("recall:", hits / 200)</code></pre>
-        <p>There are 20 × 10 = 200 true neighbours, so 184 found prints 0.92. Four runs printed 0.92, 0.96, 0.92 and
-        0.93: the share moves a little because the graph is built slightly differently each time, and the index misses
-        a few true neighbours in a hundred here. <code>exact &amp; set(got)</code> is the set of ids both lists share. A team runs this check on its own vectors and raises
-        <code>ef_search</code> until recall is high enough.</p>
+        <p>There are 20 × 10 = 200 true neighbours, so 184 found prints 0.92. Runs of this check on the pinned Chroma
+        printed between about 0.90 and 0.96. The share moves a little because the graph is built slightly differently
+        each time, and the index misses up to about one true neighbour in ten here.</p>
+        <p><code>include=[]</code> asks for no documents, metadata or distances; the ids always come back, and they are
+        all the check needs.<sup class="cite"><a href="#src-22">22</a></sup> <code>exact &amp; set(got)</code> is the set
+        of ids both lists share. A team runs this check on its own vectors and raises <code>ef_search</code> until
+        recall is high enough.</p>
         <div class="recap"><div class="k">Takeaways</div><ul>
           <li>Exact search compares the query with every vector, so its time grows with the rows.</li>
           <li>HNSW walks a layered graph from the top: fast, and it can miss a true neighbour.</li>
@@ -204,16 +208,21 @@ try:
 except Exception as err:
     print("refused:", err)
 pc.configure_index("kb-wednesday", deletion_protection="disabled")</code></pre>
-        <p>The first line should show 384, cosine, the status (its ready flag is true once the index takes requests) and
-        disabled. The second lists the project's index names. Then comes "refused:" with a 403 FORBIDDEN error, 403
-        being the HTTP status a server sends when it understands a request and refuses it. Its message says "Deletion
-        protection is enabled for this index. Disable deletion protection before retrying."<sup class="cite"><a href="#src-6">6</a></sup></p>
+        <p>The first line shows 384, cosine, the status and disabled. The status reads
+        <code>IndexStatus(ready=True, state='Ready')</code> once the index takes requests. The second line lists the
+        project's index names, including any made for something else.</p>
+        <p>Then comes "refused:" and the error text, <code>[403 FORBIDDEN] Deletion protection is enabled for this index.
+        Disable deletion protection before retrying.</code><sup class="cite"><a href="#src-6">6</a></sup> The pinned
+        client raises it as a <code>ForbiddenError</code>.<sup class="cite"><a href="#src-35">35</a></sup> 403 is the
+        HTTP status a server sends when it understands a request and refuses it.</p>
         <ul>
           <li><code>dimension</code> and <code>metric</code> should match the embedding model: 384 and cosine for the
           week's model.<sup class="cite"><a href="#src-7">7</a></sup></li>
           <li><code>describe_index</code> returns the dimension, the metric, the host the data calls go to, the status
-          and the deletion protection setting. These are the Python SDK's fields in the pinned client; the newest REST
-          API version names its raw response differently.<sup class="cite"><a href="#src-6">6</a></sup></li>
+          and the deletion protection setting. These are the Python SDK's fields in the pinned client. On API version
+          2026-07 the raw REST response groups them into <code>deployment</code>, <code>read_capacity</code> and
+          <code>schema</code> instead, while the SDKs still return the top-level fields as
+          well.<sup class="cite"><a href="#src-6">6</a></sup></li>
           <li>The free Starter plan supports only AWS <code>us-east-1</code>, which is why the spec names that
           region.<sup class="cite"><a href="#src-8">8</a></sup></li>
           <li><code>configure_index</code> changes deletion protection, tags, replicas, pod type and read capacity; it has
@@ -241,15 +250,17 @@ pc.configure_index("kb-wednesday", deletion_protection="disabled")</code></pre>
         <h3>Backups, Pinecone collections and rollback</h3>
         <p>A backup is a static copy of a serverless index that cannot be queried and costs only storage. Restoring one
         creates a new serverless index in the same project and cloud.<sup class="cite"><a href="#src-13">13</a></sup>
-        Backups can run daily, weekly or monthly, a schedule needs an expiration policy, and a backup holds only vectors
-        that were in the index at least 15 minutes before it ran.<sup class="cite"><a href="#src-13">13</a></sup></p>
+        Backups can run on a daily, weekly or monthly schedule with a retention policy, which deletes old
+        backups; scheduling needs API version 2026-04 or later, which the pinned client does not send. A backup
+        holds only vectors that were in the index at least 15 minutes before it ran.<sup class="cite"><a href="#src-13">13</a></sup></p>
         <p>A Pinecone collection, unrelated to a Chroma collection, is the older read-only snapshot of a pod-based index.
-        Existing ones can still be listed, described and deleted, but a new one has no pod index to copy, and an index
-        built from one is rejected.<sup class="cite"><a href="#src-12">12</a></sup> Neither can be tried on a learner's
-        account: backups are not offered on the Starter plan.<sup class="cite"><a href="#src-13">13</a></sup><sup class="cite"><a href="#src-14">14</a></sup></p>
+        Existing ones can still be listed, described and deleted, but a new one has no pod index to copy, and on API
+        2026-07 an index built from one is rejected with a 400.<sup class="cite"><a href="#src-12">12</a></sup> A backup
+        plan built on collections now uses backups instead. Neither can be tried on a
+        learner's account: backups are not offered on the Starter plan.<sup class="cite"><a href="#src-13">13</a></sup><sup class="cite"><a href="#src-14">14</a></sup></p>
         <p>A backup and rollback plan has three parts:</p>
         <ol>
-          <li>Scheduled backups with an expiration policy cover disaster recovery: a restore makes a new
+          <li>Scheduled backups with a retention policy cover disaster recovery: a restore makes a new
           index.<sup class="cite"><a href="#src-13">13</a></sup></li>
           <li>Each new version of the data goes into a new namespace while a namespace alias, a stable name for a
           namespace, still serves the old one; once the load checks out, the alias is repointed in one atomic
@@ -259,7 +270,8 @@ pc.configure_index("kb-wednesday", deletion_protection="disabled")</code></pre>
         <p>Creating aliases needs API version 2026-07, while reading through one works on any
         version.<sup class="cite"><a href="#src-8">8</a></sup> This page pins the pinecone 9.1.0 client on purpose, so
         the calls stay the same all week. That client sends API version 2025-10, so it can read through an alias but
-        cannot create one, and the plan here is described, not run.<sup class="cite"><a href="#src-16">16</a></sup></p>
+        cannot create one, and the plan here is described, not run.<sup class="cite"><a href="#src-16">16</a></sup> The
+        newest client, 10.3.0 (2026-11-03), sends 2026-07 and is not used.<sup class="cite"><a href="#src-34">34</a></sup></p>
         <div class="recap"><div class="k">Takeaways</div><ul>
           <li>A Pinecone index is created, described, protected and deleted by name.</li>
           <li>Deletion protection refuses every delete until it is switched off.</li>
@@ -272,7 +284,7 @@ pc.configure_index("kb-wednesday", deletion_protection="disabled")</code></pre>
           serverless spec, then read describe_index for the host and status. I switch deletion protection on with
           configure_index for anything that matters, so a stray delete gets a 403.</p>
           <p>For a Pinecone deployment I'd start serverless, and move a heavy read workload to dedicated read nodes. For
-          backups I'd schedule them with an expiration policy, load each new data version into a new namespace behind
+          backups I'd schedule them with a retention policy, load each new data version into a new namespace behind
           an alias, and roll back by pointing the alias at the old namespace.</p>
         </div>
       </section>
@@ -287,8 +299,7 @@ pc.configure_index("kb-wednesday", deletion_protection="disabled")</code></pre>
         <p>The examples need the week's embedding function and some articles. The block repeats Tuesday's
         <code>embed</code>, a small model that turns each text into 384 numbers of length 1, and stores eight of the 30
         invented help-centre articles, copied unchanged, in a collection called <code>kb_articles</code>.<sup class="cite"><a href="#src-17">17</a></sup>
-        To keep the page short, the upsert step likewise uses two of the ten updates. <code>meta</code> picks the fields
-        stored beside each vector.</p>
+        <code>meta</code> picks the fields stored beside each vector.</p>
         <p class="run-label">Run in Colab</p>
 <pre><code>from sentence_transformers import SentenceTransformer
 
@@ -359,13 +370,20 @@ InternalError Collection [kb_scratch] already exists
           removed it.<sup class="cite"><a href="#src-18">18</a></sup></li>
         </ul>
         <p><code>sorted(c.name for c in ...)</code> builds the names one collection at a time and sorts them, so the lists
-        read the same on every run. Without a sort, <code>list_collections</code> returns up to 100 collections, oldest
-        first.<sup class="cite"><a href="#src-19">19</a></sup></p>
+        read the same on every run. <code>list_collections</code> returns up to 100 collections, and the docs say
+        oldest first,<sup class="cite"><a href="#src-19">19</a></sup> but on the pinned 1.5.9 the order changed from
+        one run to the next, so read the names, never the positions.</p>
         <p>Deleting a collection is destructive and cannot be undone.<sup class="cite"><a href="#src-19">19</a></sup>
-        That is why the risky calls ran on a scratch copy. Names have rules too: 3 to 512 characters, starting and ending
-        with a lowercase letter or digit, with dots, dashes and underscores allowed between, no two dots in a row, and
-        not shaped like an IP address.<sup class="cite"><a href="#src-19">19</a></sup> <code>kb_scratch_old</code>
-        passes; <code>KB</code> fails twice, being too short and upper case.</p>
+        That is why the risky calls ran on a scratch copy. Names have rules too:<sup class="cite"><a href="#src-19">19</a></sup></p>
+        <ul>
+          <li>3 to 512 characters</li>
+          <li>starts and ends with a lowercase letter or digit</li>
+          <li>dots, dashes and underscores allowed in between</li>
+          <li>no two dots in a row</li>
+          <li>not shaped like an IP address</li>
+        </ul>
+        <p><code>kb_scratch_old</code> passes; <code>KB</code> fails, being under 3 characters. The pinned 1.5.9 also
+        accepts upper-case letters, although the docs ask for lowercase, so lowercase names are the safe habit.</p>
         <p>In other people's code, <code>get_or_create_collection</code> near the top of a script is the common way to
         open a collection that may or may not exist yet. Because it ignores new settings for a collection that exists,
         changing the space in that line later changes nothing.</p>
@@ -580,7 +598,7 @@ mobile 4 ['kb-022', 'kb-005'] [0.5, 0.75]
         <p>A namespace is a named partition inside a Pinecone index. Every upsert, query and other read or write targets
         exactly one namespace, and a namespace is created automatically by the first upsert into
         it.<sup class="cite"><a href="#src-26">26</a></sup> The records written in the upsert step went to the default
-        namespace, since no name was given. The block writes the same nine articles again, split by product into
+        namespace, since no name was given, which the stats list as <code>"__default__"</code>.<sup class="cite"><a href="#src-27">27</a></sup> The block writes the same nine articles again, split by product into
         <code>web</code> and <code>mobile</code>, and queries one.</p>
         <p class="run-label">Run in Colab</p>
 <pre><code>for product in ["web", "mobile"]:
@@ -609,8 +627,6 @@ for match in found.matches:
           permanently.<sup class="cite"><a href="#src-27">27</a></sup></li>
           <li><code>query_namespaces(...)</code> searches several namespaces and merges the results.<sup class="cite"><a href="#src-25">25</a></sup></li>
         </ul>
-        <p>The free Starter plan allows 100 namespaces per index, so the two here are well inside
-        it.<sup class="cite"><a href="#src-14">14</a></sup></p>
         <h3>When to partition: multitenancy</h3>
         <p>Multitenancy means one index serving many customers, called tenants, and it is the main reason namespaces
         exist. Pinecone's guide gives each tenant its own namespace, which brings three properties:<sup class="cite"><a href="#src-28">28</a></sup></p>
@@ -626,7 +642,7 @@ for match in found.matches:
         <p>Partitions have costs too. A question that spans partitions needs one query per partition, or
         <code>query_namespaces</code>, and an index on dedicated read nodes supports only one
         namespace.<sup class="cite"><a href="#src-10">10</a></sup> Namespaces per serverless index run from 100 on
-        Starter to 1,000,000 on Enterprise.<sup class="cite"><a href="#src-28">28</a></sup></p>
+        Starter to 1,000,000 on Enterprise.<sup class="cite"><a href="#src-28">28</a></sup><sup class="cite"><a href="#src-14">14</a></sup></p>
         <div class="recap"><div class="k">Takeaways</div><ul>
           <li>A partition is a part of the data a query searches alone; other parts are invisible to it.</li>
           <li>Chroma partitions with collections, Pinecone with namespaces inside one index.</li>
@@ -766,13 +782,9 @@ ValueError Expected operand value to be an int or a float for operator $gte, got
         <p>A distance metric is the rule that turns two vectors into one number saying how close they are. Every
         collection and index on this page was created with one, and this step compares the three common ones.</p>
         <h3>Three measures worked by hand</h3>
-        <p>Take <code>a = [3, 4]</code> and <code>b = [6, 8]</code>. The three measures, each worked once:</p>
-        <ul>
-          <li>Dot product: multiply matching numbers and add them. 3 × 6 + 4 × 8 = 50.</li>
-          <li>Cosine similarity: the dot product divided by both lengths. The length of a is √(3² + 4²) = 5 and of b is
-          10, so 50 / (5 × 10) = 1.0, the highest a cosine can be.</li>
-          <li>Euclidean distance: the straight-line gap, √((3 − 6)² + (4 − 8)²) = √25 = 5.0.</li>
-        </ul>
+        <p><a href="day-2-vector-databases-chroma-and-pinecone.html">Tuesday's page</a> worked the dot product (50) and
+        the cosine (1.0) of <code>a = [3, 4]</code> and <code>b = [6, 8]</code>. The third measure, Euclidean distance,
+        is the straight-line gap: √((3 − 6)² + (4 − 8)²) = √25 = 5.0.</p>
         <div class="ix-predict" data-q="Add c = [4, 3]. Which pair of a, b and c does cosine call closest, and which pair does Euclidean distance call closest?" data-a="Cosine calls a, b closest (1.0, the same direction). Euclidean calls a, c closest (about 1.41 apart, against 5.0 for a, b), because b is twice as long as a."></div>
         <p class="run-label">Run in Colab</p>
 <pre><code>a, b, c = np.array([3, 4]), np.array([6, 8]), np.array([4, 3])
@@ -785,10 +797,11 @@ for name, u, v in [("a,b", a, b), ("a,c", a, c), ("b,c", b, c)]:
 <pre class="out">a,b 1.0 50 5.0
 a,c 0.96 24 1.41
 b,c 0.96 48 5.39</pre>
-        <p>Each line shows a pair, its cosine, its dot product and its distance. The measures
+        <p>Each line shows a pair, its cosine (the same <code>cosine</code> as Tuesday's page), its dot product and its
+        distance. The measures
         disagree.<sup class="cite"><a href="#src-3">3</a></sup> Cosine and dot product call a, b the closest pair,
-        and Euclidean calls a, c closest. The reason is length. b points exactly the way a does, which is why the cosine
-        is 1.0, but it is twice as long, so its tip sits 5 away. Cosine looks only at direction; the dot product and
+        and Euclidean calls a, c closest. The reason is length. b points the way a does, so the cosine is 1.0, but
+        it is twice as long, so its tip sits 5 away. Cosine looks only at direction; the dot product and
         the distance also feel length.</p>
         <p>Make b ten times longer, <code>b = [30, 40]</code>, and the gap grows. Cosine for a, b stays 1.0 while the
         distance grows to 45.0 and the dot product to 250.<sup class="cite"><a href="#src-3">3</a></sup> Euclidean
@@ -826,7 +839,9 @@ b,c 0.96 0.96 0.08</pre>
 <pre class="out">cosine ['kb-012', 'kb-019', 'kb-001'] [0.564, 0.723, 0.745]
 ip ['kb-012', 'kb-019', 'kb-001'] [0.564, 0.723, 0.745]
 l2 ['kb-012', 'kb-019', 'kb-001'] [1.127, 1.446, 1.49]</pre>
-        <p>All three return the same top 3, as the unit-vector rule predicts. <code>kb_cosine</code> and
+        <p><code>include=["distances"]</code> asks for the distances only; the ids come back
+        anyway.<sup class="cite"><a href="#src-22">22</a></sup> All three return the same top 3, as the unit-vector rule
+        predicts. <code>kb_cosine</code> and
         <code>kb_ip</code> print the same numbers, because for unit vectors 1 − dot equals 1 − cosine. The
         <code>l2</code> numbers are double: 2 − 2 × cosine is twice 1 − cosine, so 0.564 becomes about 1.127 once
         rounding is allowed for.</p>
@@ -840,8 +855,8 @@ l2 ['kb-012', 'kb-019', 'kb-001'] [1.127, 1.446, 1.49]</pre>
           </tbody>
         </table>
         <p><code>kb_cosine</code> put the refund article at distance 0.564, a cosine similarity of 1 − 0.564 = 0.436.
-        So the cosine index should score it about 0.44, highest first, and an index created with
-        <code>metric="euclidean"</code> about 2 − 2 × 0.436 = 1.13, lowest first.</p>
+        A run of the same question in Pinecone scored it about 0.436 on the cosine index, highest first, and about 1.13
+        on an index created with <code>metric="euclidean"</code>, lowest first: 2 − 2 × 0.436 = 1.128.</p>
         <p>The metric cannot be changed later in either database. Chroma's <code>space</code> is fixed at creation, and
         Pinecone's <code>configure_index</code> has no metric field, so a wrong choice means a new collection or index,
         filled again.<sup class="cite"><a href="#src-5">5</a></sup><sup class="cite"><a href="#src-9">9</a></sup>
@@ -887,7 +902,7 @@ print(pc.list_indexes().names())</code></pre>
         <details class="check"><summary>What is a vector index for, and why is an HNSW index approximate?</summary><p>Without an index a search compares the query with every stored vector, so its time grows in proportion to the rows. HNSW links each vector to a few near neighbours in layers and walks from the top layer down, so the cost grows about logarithmically. The walk is greedy and can stop at a local minimum, which is why it sometimes misses a true neighbour.</p></details>
         <details class="check"><summary>An HNSW collection returns 182 of the exact top 10 over 20 queries. What is its recall, and what would you change to raise it?</summary><p>20 queries × 10 = 200 true neighbours, so recall is 182 / 200 = 0.91. Raise <code>ef_search</code> with <code>modify(configuration={"hnsw": {"ef_search": 200}})</code>, which buys recall with slower queries; <code>space</code>, <code>ef_construction</code> and <code>max_neighbors</code> cannot change after creation.</p></details>
         <details class="check"><summary>Walk through a Pinecone index's lifecycle with the SDK. What happens if someone deletes it while deletion protection is on?</summary><p>Check <code>has_index</code>, then <code>create_index</code> with the model's dimension and metric and a serverless spec; read <code>describe_index</code> for the dimension, metric, host, status and protection, and <code>list_indexes</code> for the names. With protection switched on by <code>configure_index</code>, <code>delete_index</code> fails with 403 FORBIDDEN until protection is disabled again. The console at app.pinecone.io can do the same by hand, deleting an index included.</p></details>
-        <details class="check"><summary>How would you make a Pinecone deployment faster, and how would you back it up and roll it back?</summary><p>Serverless reads share capacity up to 2,000 read units per second per index and namespace; dedicated read nodes give one index its own read hardware, with one namespace only. For backups, schedule them with an expiration policy and restore into a new index; for rollback, load each data version into a new namespace behind an alias and repoint the alias to the old one. Backups are not on the free Starter plan, and new pod-based collections cannot be created.</p></details>
+        <details class="check"><summary>How would you make a Pinecone deployment faster, and how would you back it up and roll it back?</summary><p>Serverless reads share capacity up to 2,000 read units per second per index and namespace; dedicated read nodes give one index its own read hardware, with one namespace only. For backups, schedule them with a retention policy and restore into a new index; for rollback, load each data version into a new namespace behind an alias and repoint the alias to the old one. Backups are not on the free Starter plan, and new pod-based collections cannot be created.</p></details>
         <details class="check"><summary>What is the difference between <code>create_collection</code> and <code>get_or_create_collection</code>, and what happens when you add a 768-number vector to a 384-number collection?</summary><p><code>create_collection</code> raises if the name exists; <code>get_or_create_collection</code> returns the existing collection and ignores the other arguments. The 768-number add raises an error naming both sizes, and the count does not change; even two models of the same size cannot share a collection, because their numbers mean different things.</p></details>
         <details class="check"><summary>A nightly job writes the help-centre articles to Chroma with <code>add</code>, using each article's row number as its id. What goes wrong, and what is the fix?</summary><p><code>add</code> ignores ids that already exist, so changed texts are silently kept old. Row-number ids name a different article as soon as the list changes, so the same article gets written under a new id and searches return duplicates. Use the article's own id and <code>upsert</code>, which makes the job safe to run twice.</p></details>
         <details class="check"><summary>How would you keep two customers' data apart in one Pinecone index, and remove a customer who leaves?</summary><p>Give each customer a namespace: every upsert and query names it, so one customer's query never reads the other's records, and a large customer does not slow a small one. Removing a customer is <code>delete_namespace</code>, which deletes that namespace's records permanently.</p></details>
@@ -902,15 +917,15 @@ print(pc.list_indexes().names())</code></pre>
           <li id="src-2"><a href="https://numpy.org/doc/stable/reference/random/generated/numpy.random.Generator.standard_normal.html" target="_blank" rel="noopener">numpy.random.Generator.standard_normal</a> — drawing float32 directly, half the memory of float64.</li>
           <li id="src-3"><a href="https://docs.trychroma.com/docs/collections/configure" target="_blank" rel="noopener">Configure Collections (Chroma)</a> — the HNSW settings, their defaults and the three distance spaces.</li>
           <li id="src-4"><a href="https://www.pinecone.io/learn/series/faiss/hnsw/" target="_blank" rel="noopener">HNSW: Hierarchical Navigable Small Worlds (Pinecone)</a> — the greedy walk, local minima, and what M and efSearch trade.</li>
-          <li id="src-5"><a href="https://cookbook.chromadb.dev/core/configuration/" target="_blank" rel="noopener">Configuration (Chroma Cookbook)</a> — which settings can change after creation, and the deprecated metadata form.</li>
-          <li id="src-6"><a href="https://docs.pinecone.io/guides/manage-data/manage-indexes" target="_blank" rel="noopener">Manage indexes (Pinecone)</a> — describe_index fields, deletion protection and the 403 refusal.</li>
+          <li id="src-5"><a href="https://cookbook.chromadb.dev/core/configuration/" target="_blank" rel="noopener">Configuration (Chroma Cookbook, fetched 2026-11-24)</a> — which settings can change after creation, and the deprecated metadata form.</li>
+          <li id="src-6"><a href="https://docs.pinecone.io/guides/manage-data/manage-indexes" target="_blank" rel="noopener">Manage indexes (Pinecone, fetched 2026-11-24)</a> — describe_index fields by API version, deletion protection and the 403 refusal.</li>
           <li id="src-7"><a href="https://docs.pinecone.io/guides/legacy/vectors-api/create-a-vector-index" target="_blank" rel="noopener">Create a legacy vector index (Pinecone)</a> — dimension and metric to match the model, and the Documents API note.</li>
           <li id="src-8"><a href="https://docs.pinecone.io/release-notes/2026" target="_blank" rel="noopener">Pinecone 2026 changelog</a> — the Starter plan's single region and the API version that adds aliases.</li>
           <li id="src-9"><a href="https://docs.pinecone.io/reference/api/2026-04/control-plane/configure_index" target="_blank" rel="noopener">Configure an index (Pinecone API 2026-04, the version cited; the no-metric-field rule holds on 2026-07)</a> — what configure_index can change, and that the metric is not among it.</li>
           <li id="src-10"><a href="https://docs.pinecone.io/guides/index-data/dedicated-read-nodes/overview" target="_blank" rel="noopener">Dedicated read nodes overview (Pinecone)</a> — on-demand read limits against dedicated read hardware.</li>
           <li id="src-11"><a href="https://docs.pinecone.io/guides/indexes/pods/understanding-pod-based-indexes" target="_blank" rel="noopener">Understanding pod-based indexes (Pinecone)</a> — the legacy s1, p1 and p2 pods, sizes and replicas.</li>
-          <li id="src-12"><a href="https://sdk.pinecone.io/python/how-to/collections.html" target="_blank" rel="noopener">Working with collections (Pinecone Python SDK)</a> — Pinecone collections as pod snapshots, and what the current API refuses.</li>
-          <li id="src-13"><a href="https://docs.pinecone.io/guides/manage-data/backups-overview" target="_blank" rel="noopener">Backups overview (Pinecone)</a> — what a backup holds, restoring it, schedules and plan limits.</li>
+          <li id="src-12"><a href="https://sdk.pinecone.io/python/how-to/collections.html" target="_blank" rel="noopener">Working with collections (Pinecone Python SDK, fetched 2026-11-24)</a> — Pinecone collections as pod snapshots, and the 400 that API 2026-07 returns.</li>
+          <li id="src-13"><a href="https://docs.pinecone.io/guides/manage-data/backups-overview" target="_blank" rel="noopener">Backups overview (Pinecone, fetched 2026-11-24)</a> — what a backup holds, restoring it, schedules with a retention policy on API 2026-04 or later, and plan limits.</li>
           <li id="src-14"><a href="https://www.pinecone.io/pricing/" target="_blank" rel="noopener">Pinecone pricing (fetched 2026-11-24)</a> — the free Starter plan's indexes, namespaces and missing backups.</li>
           <li id="src-15"><a href="https://docs.pinecone.io/guides/manage-data/namespace-aliases/swap-a-namespace" target="_blank" rel="noopener">Swap a namespace without downtime (Pinecone)</a> — namespace aliases and the atomic cutover.</li>
           <li id="src-16"><a href="https://pypi.org/pypi/pinecone/9.1.0/json" target="_blank" rel="noopener">pinecone 9.1.0 on PyPI (fetched 2026-11-24)</a> — the client version pinned for the week, released 2026-06-03.</li>
@@ -931,6 +946,8 @@ print(pc.list_indexes().names())</code></pre>
           <li id="src-31"><a href="https://docs.pinecone.io/guides/search/filter-by-metadata" target="_blank" rel="noopener">Filter by metadata (Pinecone)</a> — Pinecone's filter operators and list fields.</li>
           <li id="src-32"><a href="https://www.pinecone.io/learn/vector-similarity/" target="_blank" rel="noopener">Vector Similarity Explained (Pinecone)</a> — when each metric fits, and matching the model's training metric.</li>
           <li id="src-33"><a href="https://docs.pinecone.io/guides/indexes/index-configuration" target="_blank" rel="noopener">Index configuration (Pinecone)</a> — how to read cosine, dotproduct and euclidean scores.</li>
+          <li id="src-34"><a href="https://pypi.org/pypi/pinecone/json" target="_blank" rel="noopener">pinecone on PyPI, JSON (fetched 2026-11-24)</a> — the newest client, 10.3.0 of 2026-11-03, which this page does not use.</li>
+          <li id="src-35"><a href="https://raw.githubusercontent.com/pinecone-io/pinecone-python-client/v9.1.0/pinecone/errors/exceptions.py" target="_blank" rel="noopener">pinecone/errors/exceptions.py at v9.1.0</a> — the pinned client's ForbiddenError for a 403.</li>
         </ul>
       </section>
 
@@ -994,7 +1011,7 @@ window.DIAGRAM = {
   width: 500, height: 430,
   nodes: [
     { id:"exact", step:0, x:24, y:14, w:200, h:56, label:"Exact search\n  every row compared\n  time grows with rows", detail:"vectors @ query over 10,000, 100,000 and 400,000 rows: about 15 MB, 154 MB and 614 MB, and roughly ten times the work per tenfold jump." },
-    { id:"hnsw", step:0, x:276, y:14, w:200, h:56, label:"HNSW index\n  layered graph walk\n  recall 0.92 to 0.96 here", detail:"Greedy walk from the top layer down, about logarithmic cost. Chroma defaults: ef_search 100, ef_construction 100, max_neighbors 16; only ef_search can change later." },
+    { id:"hnsw", step:0, x:276, y:14, w:200, h:56, label:"HNSW index\n  layered graph walk\n  recall about 0.9 here", detail:"Greedy walk from the top layer down, about logarithmic cost. Chroma defaults: ef_search 100, ef_construction 100, max_neighbors 16; space, ef_construction and max_neighbors are fixed, while ef_search can change later." },
     { id:"pinecone", step:1, x:276, y:100, w:200, h:56, label:"Pinecone index\n  create · describe\n  protect · back up", detail:"has_index, create_index(dimension=384, metric=\"cosine\"), describe_index, configure_index(deletion_protection=\"enabled\") and a 403 on delete. Backups restore into a new index; an alias swap gives rollback." },
     { id:"collection", step:2, x:24, y:100, w:200, h:56, label:"Chroma collection\n  one model · one size\n  create → delete", detail:"create_collection raises on an existing name, get_or_create_collection returns it; count, peek, list_collections, modify(name=...), delete_collection. A 768-number add is refused." },
     { id:"upsert", step:3, x:24, y:186, w:200, h:56, label:"Upsert\n  new id: insert\n  existing id: replace", detail:"add skipped kb-019's new text (count 9, still 30 days); upsert replaced it. Row-number ids took the count to 11 with a duplicate." },

@@ -61,8 +61,7 @@
         means.<sup class="cite"><a href="#src-1">1</a></sup></p>
         <h3>Keywords against meaning</h3>
         <p>The example uses eight short invented sentences and one query, "my car will not start when it is freezing".
-        Only one sentence is about that problem, and it shares no content word with the query. The code runs both
-        searches side by side. The first block also installs the two database clients Colab lacks, at the week's pinned
+        Only one sentence is about that problem, and it shares no content word with the query. The first block also installs the two database clients Colab lacks, at the week's pinned
         versions, and defines <code>encoder</code> and <code>embed</code>, which every later example reuses. Run the
         page's cells in order in one Colab notebook.</p>
         <div class="ix-predict" data-q="Before you run it: which of the eight sentences will the TF-IDF keyword search rank first for &quot;my car will not start when it is freezing&quot;?" data-a="&quot;When it is sunny, the park fills with families.&quot; It shares &quot;when it is&quot; with the query. The engine sentence, the only one about the problem, shares no word and scores 0."></div>
@@ -107,7 +106,7 @@ engine sentence, keyword score: 0.0</pre>
         "freezing" appear in no sentence. What is left is "when it is" and "will not", so the sunny-park sentence wins at
         about 0.37 and the parking-ticket sentence comes second at about 0.35. The engine sentence scores exactly 0.</p>
         <p>The meaning side turns every sentence and the query into 384 numbers with the MiniLM model and multiplies them
-        with <code>@</code>, a dot product: multiply the two lists position by position and add up. Because
+        with <code>@</code>, the dot product from Tuesday's page. Because
         <code>embed</code> scales every vector to length 1, that sum is the cosine similarity, where 1 means the same
         direction and 0 means unrelated.<sup class="cite"><a href="#src-1">1</a></sup></p>
         <p>The engine sentence comes first at about 0.36, well ahead of the next at about 0.22. The model was trained on
@@ -115,7 +114,7 @@ engine sentence, keyword score: 0.0</pre>
         struggles to turn over", land close.<sup class="cite"><a href="#src-3">3</a></sup></p>
         <p>A score of 0.36 looks low, and it is not a percentage. What matters is the order and the gap: 0.36 against
         0.22 is a clear first place. A short query against longer passages is what the Sentence Transformers docs call
-        asymmetric search, and scores in that setting rarely come near 1.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        asymmetric search.<sup class="cite"><a href="#src-1">1</a></sup></p>
         <h3>Where keywords win</h3>
         <p>Meaning is a weakness when the query is an exact string. Lexical search suits specific terms like product
         codes, error strings and names, and semantic search suits an answer phrased in different
@@ -141,8 +140,7 @@ meaning: Replacement filter part 7713-B fits the 2021 model.</pre>
         digits look nearly the same. One lone error code in a set is a weaker test, because with nothing similar around
         it the model finds it too.</p>
         <p>Teams that need both run hybrid search: it combines two or more retrieval signals, a lexical one and a dense
-        one, because each method misses what the others catch.<sup class="cite"><a href="#src-4">4</a></sup> This page
-        names hybrid search and does not build it. In code, keyword search looks like <code>TfidfVectorizer</code>, or
+        one, because each method misses what the others catch.<sup class="cite"><a href="#src-4">4</a></sup> In code, keyword search looks like <code>TfidfVectorizer</code>, or
         BM25 (another word-scoring formula, used by full-text search engines), followed by
         <code>cosine_similarity</code>; semantic search looks like <code>encoder.encode(...)</code>
         followed by a dot product or a vector database query.</p>
@@ -202,8 +200,7 @@ print(v.shape, v.dtype, round(float(np.linalg.norm(v[0])), 3))</code></pre>
           <li>Output size: <code>get_embedding_dimension()</code> returns 384, so a Pinecone index for this model needs
           <code>dimension=384</code>.<sup class="cite"><a href="#src-5">5</a></sup> On Colab's sentence-transformers the old
           name <code>get_sentence_embedding_dimension()</code> still works but prints a <code>FutureWarning</code> saying
-          it was renamed.<sup class="cite"><a href="#src-6">6</a></sup> The online API docs list only the new
-          name.<sup class="cite"><a href="#src-5">5</a></sup></li>
+          it was renamed.<sup class="cite"><a href="#src-6">6</a></sup></li>
           <li>Length limit: <code>max_seq_length</code> is 256 word pieces, the sub-word units the model reads. Longer
           inputs are truncated, with no error.<sup class="cite"><a href="#src-5">5</a></sup></li>
           <li>How to compare: <code>normalize_embeddings=True</code> scales each vector to length 1, which the
@@ -227,21 +224,25 @@ print(v.shape, v.dtype, round(float(np.linalg.norm(v[0])), 3))</code></pre>
             <tr><td>Word pieces read</td><td>256</td><td>384</td></tr>
             <tr><td>Bytes per vector (× 4)</td><td>1,536</td><td>3,072</td></tr>
             <tr><td>Per million vectors</td><td>about 1.5 GB</td><td>about 3.1 GB</td></tr>
-            <tr><td>100 posts, laptop CPU</td><td>about 3.4 s</td><td>about 34 s</td></tr>
+            <tr><td>100 texts of about 400 characters, laptop CPU</td><td>about 1.1 s</td><td>about 8 to 9 s</td></tr>
           </tbody>
         </table>
         <p>The storage row is plain arithmetic: 384 numbers × 4 bytes = 1,536 bytes, times a million is about 1.5 GB,
-        before the index adds its own overhead. The timings come from a laptop run, where mpnet was about ten times
-        slower; both models put the engine sentence first for the cold-morning query. For this data the bigger model
+        before the index adds its own overhead. The timings come from a laptop run, where mpnet was about seven to
+        eight times slower; both models put the engine sentence first for the cold-morning query. For this data the bigger model
         doubles the storage and costs far more time without changing the top answer.</p>
         <h3>Choosing a model, and keeping it</h3>
-        <p>A team weighs four things: quality on tasks like its own, size, speed and the languages the model covers. The
-        model card on Hugging Face states the output size, the length limit and the training data.</p>
-        <p>For quality, the Sentence Transformers docs point to the MTEB leaderboard, which scores embedding models on
-        retrieval, clustering, classification, reranking and similarity
-        tasks.<sup class="cite"><a href="#src-8">8</a></sup><sup class="cite"><a href="#src-9">9</a></sup><sup class="cite"><a href="#src-10">10</a></sup>
-        Hosted embedding services are the other route: an API computes the vectors and no model runs on your
-        machine.</p>
+        <p>A team weighs four things:</p>
+        <ul>
+          <li>Quality on tasks like yours: the Sentence Transformers docs point to the MTEB leaderboard, which scores
+          embedding models on retrieval, clustering, classification, reranking and similarity
+          tasks.<sup class="cite"><a href="#src-8">8</a></sup><sup class="cite"><a href="#src-9">9</a></sup><sup class="cite"><a href="#src-10">10</a></sup></li>
+          <li>Size: the index dimension and the bytes per vector.</li>
+          <li>Speed: the timing row of the table above.</li>
+          <li>The languages the model covers.</li>
+        </ul>
+        <p>The model card on Hugging Face states the output size, the length limit and the training data. Hosted
+        embedding services are the other route: an API computes the vectors and no model runs on your machine.</p>
         <p>Whatever model you choose, the query vector must come from the same model used at
         upsert.<sup class="cite"><a href="#src-11">11</a></sup> A model with a different output size fails loudly, but a
         different model with the same size returns confident nonsense with no error, because its 384 numbers mean
@@ -262,8 +263,9 @@ print(v.shape, v.dtype, round(float(np.linalg.norm(v[0])), 3))</code></pre>
           <div class="k">Say it in an interview</div>
           <p>An embedding model turns text into a fixed-length vector, trained so texts that mean the same land close
           together. In a vector database it's the piece that gives the vectors their meaning: I embed every document at
-          upsert and the query at search time, and the database finds the nearest vectors. I check three things on the
-          model card: the output size, which becomes the index dimension, the length limit, and the metric.</p>
+          upsert and the query at search time, and the database finds the nearest vectors.</p>
+          <p>I check three things on the model card: the output size, which becomes the index dimension, the length
+          limit, and the metric.</p>
           <p>If we switch to a better model next month, every stored text has to be re-embedded. A query from the new
           model compared with vectors from the old one gives confident wrong answers.</p>
         </div>
@@ -279,8 +281,7 @@ print(v.shape, v.dtype, round(float(np.linalg.norm(v[0])), 3))</code></pre>
         use.</p>
         <h3>Loading the posts</h3>
         <p>Four groups are enough to see whether a search separates topics: space, medicine, cars and computer
-        graphics. The loader's arguments used here are the same in the current
-        docs.<sup class="cite"><a href="#src-14">14</a></sup></p>
+        graphics.</p>
         <p class="run-label">Run in Colab</p>
 <pre><code>import pandas as pd
 from sklearn.datasets import fetch_20newsgroups
@@ -323,8 +324,7 @@ sci.space 593</pre>
         cleaning code, print two posts whole and read them: runs of blank lines, posts left almost empty by
         <code>remove</code>, and signatures the filter missed are what the next step fixes.</p>
         <h3>Choosing what to keep</h3>
-        <p>Two choices are made here, before any vector exists.</p>
-        <p>The first is a stable id for each document. <code>post_id</code> is the row's position at load, which is
+        <p>The first choice, made before any vector exists, is a stable id for each document. <code>post_id</code> is the row's position at load, which is
         unique and stays the same on every run because the shuffle is fixed. A stable id matters later: writing the same
         id twice overwrites a record, while a new random id each run would pile up duplicates.</p>
         <p>The second is the sample size: 250 posts per topic after cleaning, 1,000 in all. Tagging entities and
@@ -460,8 +460,8 @@ Houston GPE Countries, cities, states
 Florida GPE Countries, cities, states</pre>
         <p>A named entity is a real-world object that is assigned a name, and <code>doc.ents</code> holds every one the
         model found as a span of the text. <code>label_</code> is its kind as a short code, and
-        <code>spacy.explain</code> turns the code into a description.<sup class="cite"><a href="#src-16">16</a></sup> The
-        model has 18 labels in all; the four this page keeps are:</p>
+        <code>spacy.explain</code> turns the code into a description.<sup class="cite"><a href="#src-16">16</a></sup> Its
+        NER component has 18 entity labels; the four this page keeps are:</p>
         <ul>
           <li><code>ORG</code>: companies, agencies, institutions.</li>
           <li><code>PERSON</code>: people, including fictional ones.</li>
@@ -476,10 +476,10 @@ Florida GPE Countries, cities, states</pre>
         on.<sup class="cite"><a href="#src-16">16</a></sup> Even on test text like its training data, its published
         precision and recall are both about 84 in 100, so roughly one entity in six is missed or
         mislabelled.<sup class="cite"><a href="#src-15">15</a></sup> Forum posts are further from that data.
-        On these posts it made mistakes such as:</p>
+        On forum-style text it made mistakes such as:</p>
         <ul>
           <li>"Ford Taurus", a car model, tagged <code>ORG</code>.</li>
-          <li>"BP" (blood pressure, in a medical post) and "MSG" tagged <code>ORG</code>.</li>
+          <li>"BP" (blood pressure) and "MSG" tagged <code>ORG</code>.</li>
           <li>An e-mail address from a signature, <code>geb@cadre.dsl.pitt.edu</code>, tagged <code>ORG</code>.</li>
         </ul>
         <div class="ix-predict" data-q="The sentence below names a car, a city, a person and a motoring club. Which of them will the model find?" data-a="Honda as ORG, Civic as PRODUCT and Ottawa as GPE. Bob and CAA are missed entirely: the small model has no guarantee of finding every name."></div>
@@ -501,9 +501,8 @@ Ottawa GPE</pre>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>Named entity recognition finds the names of real things in text, organisations, people and places, and
-          labels each one. In spaCy I load en_core_web_sm, run it on a text, and read doc.ents. For a search index I turn
-          those entities into metadata, say a list of organisations per document, so a user can filter to posts that
-          mention NASA.</p>
+          labels each one. In spaCy I run en_core_web_sm on a text and read doc.ents. For a search index those entities
+          become metadata, so a user can filter to posts that mention NASA.</p>
           <p>I wouldn't trust it blindly. It's a statistical model trained on news-like text, so on forum posts it tags
           e-mail addresses and abbreviations as organisations and misses names. I'd look at the most common entities
           before using them as a filter.</p>
@@ -552,7 +551,6 @@ for ents in extract_entities([
           <li>A name is added once, in the order first seen, so a post that says "NASA" twelve times lists it once.</li>
           <li>Each list stops at 10, so one long post cannot carry a huge field.</li>
         </ul>
-        <p>An empty string is safe too: it gives an empty <code>doc.ents</code> and three empty lists, with no error.</p>
         <h3>Entities across 1,000 posts</h3>
         <p class="run-label">Run in Colab</p>
 <pre><code>import time
@@ -564,9 +562,12 @@ print(f"{len(ents)} posts, {time.time() - start:.0f} s")
 for topic in sorted(TOPICS):
     orgs = Counter(o for e, t in zip(ents, posts["topic"]) if t == topic for o in e["orgs"])
     print(topic, orgs.most_common(4))</code></pre>
-        <p>It prints the post count, the seconds taken (about 9 on a laptop CPU in the measured run) and the four most
-        common organisations per topic. <code>Counter</code> counts how often each name appears, and
-        <code>most_common(4)</code> returns the top four with their counts. The measured top names:</p>
+        <p>It prints the post count, the seconds taken (about 12 on a laptop CPU in the measured run) and the four most
+        common organisations per topic. Read the <code>Counter(...)</code> line as two loops: for each post's entities
+        <code>e</code> and topic <code>t</code>, keep the post if it is in this topic, then take every name
+        <code>o</code> in its <code>orgs</code> list.</p>
+        <p><code>Counter</code> counts how often each name appears, and <code>most_common(4)</code> returns the top four
+        with their counts. The measured top names:</p>
         <table>
           <thead><tr><th>Topic</th><th>Most common ORG entities (posts)</th><th>Reading</th></tr></thead>
           <tbody>
@@ -584,8 +585,9 @@ for topic in sorted(TOPICS):
         <p><em>Going deeper.</em> NER needs only some of the pipeline's components, and the rest can be skipped. Passing
         <code>disable=["parser", "lemmatizer"]</code> to <code>nlp.pipe</code> skips the sentence parser and the word-root
         finder; a disabled component stays loaded but does not run, while an excluded one is never
-        loaded.<sup class="cite"><a href="#src-17">17</a></sup> On the measured run that took the 1,000 posts from about 9 s
-        to about 6 s. <code>n_process</code> spreads the work over several processes, but its start-up cost is
+        loaded.<sup class="cite"><a href="#src-17">17</a></sup></p>
+        <p>On the measured runs this cut the 1,000 posts from about 12 s to about 7 to 9 s, and 995 of them kept exactly
+        the same organisations, so compare the output before switching. <code>n_process</code> spreads the work over several processes, but its start-up cost is
         high.<sup class="cite"><a href="#src-17">17</a></sup></p>
         <div class="recap"><div class="k">Takeaways</div><ul>
           <li>nlp.pipe streams texts in batches and returns Docs in input order.</li>
@@ -596,9 +598,8 @@ for topic in sorted(TOPICS):
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>For a thousand texts I'd use spaCy's nlp.pipe with a batch size, which streams the texts through the model in
-          batches and gives the docs back in the same order, so each result lines up with its row. I'd switch off
-          components NER doesn't need, like the parser and lemmatizer, which cut the time from about nine seconds to six on
-          my run.</p>
+          batches and gives the docs back in the same order. I'd switch off components NER doesn't need, like the parser
+          and lemmatizer, which cut about a third of the time.</p>
           <p>The helper always returns the same keys, orgs, people and places, deduplicated and capped at ten, so the
           metadata step never has to guess.</p>
         </div>
@@ -621,31 +622,46 @@ for topic in sorted(TOPICS):
         <p>Everything else stays out. The full text, for example, lives with the originals and is found by id. Both
         databases cap a record: Pinecone allows at most 40 KB of metadata per
         record.<sup class="cite"><a href="#src-19">19</a></sup><sup class="cite"><a href="#src-20">20</a></sup> On the 1,000
-        posts the largest dict is about 870 bytes as JSON and the median about 407, far inside that.</p>
+        posts the largest dict is about 870 bytes as JSON and the median about 388, far inside that.</p>
         <h3>Values a database refuses</h3>
-        <p>Types are the other limit. Chroma accepts strings, integers, floats, booleans, or a list of one of these, but
-        all elements of a list must be the same type and empty lists are not
-        allowed.<sup class="cite"><a href="#src-21">21</a></sup> Pinecone accepts strings, numbers, booleans or lists of
-        strings, and null values are not supported.<sup class="cite"><a href="#src-19">19</a></sup> Python's
-        <code>None</code> is that null. Asking Chroma to store an empty list or a <code>None</code> shows the refusal:</p>
+        <p>Types are the other limit, and the two databases draw it in different places:</p>
+        <table>
+          <thead><tr><th>Database</th><th>Accepts</th><th>Refuses</th></tr></thead>
+          <tbody>
+            <tr><td>Chroma</td><td>strings, integers, floats, booleans, and a list of one of these, all the same
+            type<sup class="cite"><a href="#src-21">21</a></sup></td><td><code>None</code>, an empty list, a list mixing
+            types</td></tr>
+            <tr><td>Pinecone</td><td>strings, numbers, booleans, and a list of
+            strings<sup class="cite"><a href="#src-19">19</a></sup></td><td>null</td></tr>
+          </tbody>
+        </table>
+        <p>Python's <code>None</code> is that null. Asking Chroma to store each kind shows where its line falls:</p>
         <p class="run-label">Run in Colab</p>
 <pre><code>import chromadb
 
 scratch = chromadb.EphemeralClient().get_or_create_collection("scratch", embedding_function=None)
-for bad in [{"orgs": []}, {"topic": None}]:
+for n, meta in enumerate([{"topic": "sci.space", "people": ["Sally Ride"]},
+                          {"topic": "sci.space", "people": []},
+                          {"topic": None}]):
     try:
-        scratch.add(ids=["x"], embeddings=embed(["test"]), metadatas=[bad])
+        scratch.add(ids=[f"try-{n}"], embeddings=embed(["test"]), metadatas=[meta])
+        print(f"accepted {meta}")
+        scratch.delete(ids=[f"try-{n}"])
     except (ValueError, TypeError) as err:
-        print(type(err).__name__, err)</code></pre>
-<pre class="out">ValueError Expected metadata list value for key 'orgs' to be non-empty in add.
-TypeError argument 'metadatas': Cannot convert Python object to MetadataValue</pre>
-        <p><code>EphemeralClient</code> is the Chroma client that keeps nothing on disk, which Tuesday's page set beside
-        <code>PersistentClient</code>; it suits a throwaway test. <code>try</code> runs the call, and <code>except</code> catches the error so the loop prints both messages
-        instead of stopping at the first. A list mixing a string and a number, such as <code>["NASA", 3]</code>, is
-        refused the same way.<sup class="cite"><a href="#src-21">21</a></sup></p>
-        <p>That matters here because empty lists are common: of the 1,000 posts, 359 name no organisation, 489 no person
-        and 688 no place. So <code>make_metadata</code> leaves out any key whose list is empty, and never writes a
-        <code>None</code>.</p>
+        print(f"refused  {meta}: {type(err).__name__}: {err}")</code></pre>
+<pre class="out">accepted {'topic': 'sci.space', 'people': ['Sally Ride']}
+refused  {'topic': 'sci.space', 'people': []}: ValueError: Expected metadata list value for key 'people' to be non-empty in add.
+refused  {'topic': None}: TypeError: argument 'metadatas': Cannot convert Python object to MetadataValue</pre>
+        <p><code>EphemeralClient</code>, from Tuesday's page, keeps nothing on disk. <code>try</code> runs the call, and
+        <code>except</code> catches the error so the loop prints every case instead of stopping at the first. The
+        non-empty list is stored as it is.</p>
+        <p>Two tested details go beyond the docs. Chroma's <code>upsert</code>,
+        unlike <code>add</code>, accepted <code>{"topic": None}</code> and stored the record without its
+        <code>topic</code> key, so a <code>None</code> can vanish instead of failing. Pinecone 9.1.0 accepted
+        <code>"people": []</code> and refused <code>"people": None</code> with an HTTP 400 error.</p>
+        <p>Empty lists are common here: of the 1,000 posts, 359 name no organisation, 489 no person and 688 no place.
+        Because Chroma refuses an empty list, <code>make_metadata</code> leaves out any key whose list is empty, and never
+        writes a <code>None</code>.</p>
         <p class="run-label">Run in Colab</p>
 <pre><code>def make_metadata(row, ents):
     """Filter fields and display fields for one post; empty lists are left out."""
@@ -679,9 +695,8 @@ print(sum("orgs" not in m for m in metas), sum("people" not in m for m in metas)
             any value in it satisfies the filter<sup class="cite"><a href="#src-23">23</a></sup></td></tr>
           </tbody>
         </table>
-        <p>The operators do not carry over. In Chroma, <code>$in</code> against a list field matched nothing, and
-        <code>$contains</code> on a plain string field is not a substring test: <code>"NAS"</code> against
-        <code>"NASA; ESA"</code> matched nothing. In Pinecone, a bare <code>{"orgs": "NASA"}</code> also works, but an
+        <p>The operators do not carry over. In Chroma, <code>$in</code> against a list field matched nothing and raised
+        no error. In Pinecone, a bare <code>{"orgs": "NASA"}</code> also works, but an
         array as a bare filter value is an HTTP 400 error, the server refusing a badly formed
         request.<sup class="cite"><a href="#src-23">23</a></sup> A post with no <code>orgs</code> key simply does not
         match an <code>orgs</code> filter.</p>
@@ -691,7 +706,7 @@ print(sum("orgs" not in m for m in metas), sum("people" not in m for m in metas)
         in Pinecone.</p>
         <div class="recap"><div class="k">Takeaways</div><ul>
           <li>Metadata holds the fields you filter on and the fields you show, nothing more.</li>
-          <li>Neither database stores None; Chroma also refuses empty and mixed-type lists.</li>
+          <li>Chroma refuses empty and mixed lists; a None is refused, or dropped silently by upsert.</li>
           <li>Leave out a key whose list is empty instead of writing an empty value.</li>
           <li>Chroma filters a list with $contains, Pinecone with $in or a bare value.</li>
         </ul></div>
@@ -700,8 +715,9 @@ print(sum("orgs" not in m for m in metas), sum("people" not in m for m in metas)
           <p>I split metadata into fields I filter on, like topic and a list of organisations from NER, and fields I
           show, like a 300-character preview. The full text stays with the originals. Both databases cap metadata per
           record, Pinecone at 40 KB, so I keep it small.</p>
-          <p>A None or an empty list can fail an upsert: Chroma rejects both, and Pinecone doesn't store nulls. About a
-          third of the posts had no organisation, so my helper leaves the key out when the list is empty.</p>
+          <p>Chroma refuses an empty list, Pinecone refuses a None, and Chroma's upsert quietly drops a None, which is
+          worse. About a third of the posts had no organisation, so my helper leaves the key out when the list is
+          empty.</p>
         </div>
       </section>
 
@@ -713,7 +729,8 @@ print(sum("orgs" not in m for m in metas), sum("people" not in m for m in metas)
         <h3>Why batches</h3>
         <p>Three reasons, and they grow with the data:</p>
         <ul>
-          <li>Memory: the model holds one batch at a time, so a million texts need no more memory than 64 do.</li>
+          <li>Memory: the model works on one batch at a time, so its working memory stays the same however many texts
+          there are; only the finished vectors grow, 1,536 bytes each.</li>
           <li>Progress: a long run shows how far it has got.</li>
           <li>Failure: if something breaks, one batch is lost, not the whole run.</li>
         </ul>
@@ -730,9 +747,9 @@ print(vectors.shape, vectors.dtype, f"{time.time() - start:.0f} s")</code></pre>
         32.<sup class="cite"><a href="#src-5">5</a></sup> <code>show_progress_bar</code> defaults to showing a bar only
         when logging is set to a detailed level, which is why the call passes
         <code>True</code>.<sup class="cite"><a href="#src-5">5</a></sup> Every row has length 1, ready for cosine.</p>
-        <p>On a laptop CPU the measured run took about 43 s at a batch size of 64 and about 48 s at 8. A smaller batch
-        is a little slower because the model does more, smaller passes.
-        <code>batch_size</code> changes speed and memory, and the vectors stay the same (next subsection).</p>
+        <p>On a laptop CPU the measured runs took about half a minute at a batch size of 64, and at 8 the time hardly
+        moved: about 33 s, inside the 30 to 37 s that 64 took over three runs. <code>batch_size</code> can change speed and memory, and the vectors stay the same (next
+        subsection).</p>
         <p>The result is one sentence-level embedding per post, handed to the database as numbers. Chroma's bridge,
         <code>SentenceTransformerEmbeddingFunction</code>, would compute them inside the client
         instead.<sup class="cite"><a href="#src-12">12</a></sup></p>
@@ -763,8 +780,8 @@ print(by_hand.shape, np.allclose(by_hand, vectors), np.allclose(by_hand, vectors
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>I'd call the sentence-transformers model's encode with a batch size, say 64, normalised embeddings and a
-          progress bar. Batches keep memory flat however many texts there are, show progress, and if something fails I
-          lose one batch, not the run.</p>
+          progress bar. Batches keep the model's working memory flat, show progress, and if something fails I lose one
+          batch, not the run.</p>
           <p>Batch size changes speed and memory, not the vectors. Two batching schemes can differ in the fifth decimal
           place, because encode sorts texts by length and pads each batch, so I compare them with a tolerance.</p>
         </div>
@@ -802,7 +819,8 @@ check_records(records)</code></pre>
         <ul>
           <li>A repeated id would make one post overwrite another.</li>
           <li>A vector of the wrong size means a different model, or a broken row.</li>
-          <li>A <code>None</code> would be refused halfway through the write.</li>
+          <li>A <code>None</code> would be refused by Pinecone halfway through the write, and dropped without a word by
+          Chroma's <code>upsert</code>.</li>
         </ul>
         <p>In an application the vector database is one tool among several. The originals stay in files or a SQL table
         keyed by the same id. The store holds the id, the vector and the metadata needed to filter and show. A search
@@ -846,8 +864,16 @@ def search(query, top_k=5, topic=None, org=None):
                              where=where, include=["distances", "metadatas"])
     return chroma_hits(result)
 
-print(search("orbit of a satellite around the moon", topic="sci.space", org="NASA"))</code></pre>
-        <p>It prints up to five space posts that mention NASA, nearest first. <code>query</code> embeds nothing itself:
+print(search("orbit of a satellite around the moon", topic="sci.space", org="NASA")[["id", "distance", "topic"]])</code></pre>
+<pre class="out">         id  distance      topic
+0  post-490     0.661  sci.space
+1  post-418     0.698  sci.space
+2  post-511     0.725  sci.space
+3   post-24     0.773  sci.space
+4  post-609     0.814  sci.space</pre>
+        <p>Five space posts whose <code>orgs</code> list holds NASA, nearest first, at distances of about 0.66 to 0.81.
+        The <code>[["id", "distance", "topic"]]</code> at the end keeps three of the table's columns.
+        <code>query</code> embeds nothing itself:
         the query vector comes from the same <code>embed</code> as the stored ones. The result holds one list per field
         (ids, distances, metadatas), and each field holds one inner list per query sent, hence each <code>[0]</code>.<sup class="cite"><a href="#src-28">28</a></sup></p>
         <p>The <code>filters</code> line adds two parts: each is a one-item list when its argument was given and an
@@ -911,18 +937,21 @@ for flt in [{"topic": {"$eq": "sci.space"}}, {"orgs": {"$in": ["NASA"]}}]:
 
 if pc.has_index("posts-thursday"):
     pc.delete_index("posts-thursday")</code></pre>
-        <p>Each print shows five (id, score, topic) tuples. Pinecone takes at most 1,000 records and 2 MB per upsert
+<pre class="out">[('post-578', 0.59, 'sci.space'), ('post-1076', 0.412, 'sci.space'), ('post-256', 0.389, 'sci.space'), ('post-173', 0.387, 'sci.space'), ('post-294', 0.376, 'sci.space')]
+[('post-490', 0.339, 'sci.space'), ('post-418', 0.302, 'sci.space'), ('post-511', 0.275, 'sci.space'), ('post-24', 0.227, 'sci.space'), ('post-609', 0.186, 'sci.space')]</pre>
+        <p>The first line is the topic filter: the same five space posts, in the same order, as Chroma's topic-only search
+        for this query, whose nearest distance is about 0.41. The second line, the <code>orgs</code> filter alone, returns
+        the same five posts as the Chroma search above. The filter asks only about <code>orgs</code>, so a NASA post
+        from another topic could appear.</p>
+        <p>Pinecone takes at most 1,000 records and 2 MB per upsert
         request, so batches of 100 stay well inside.<sup class="cite"><a href="#src-20">20</a></sup> It is eventually
         consistent, so a count read straight after an upsert may lag; hence the polling
         loop.<sup class="cite"><a href="#src-30">30</a></sup> Without <code>include_metadata=True</code>,
         <code>match.metadata</code> is <code>None</code>.<sup class="cite"><a href="#src-24">24</a></sup></p>
         <p>Pinecone reports a score, cosine similarity, so higher is closer; with the same vectors, score = 1 − Chroma's
-        distance. The last two lines delete the index so the free project is empty again.</p>
-        <p>The week pins <code>pinecone==9.1.0</code>, which speaks Pinecone's API version
-        2025-10.<sup class="cite"><a href="#src-31">31</a></sup> On that version, <code>create_index</code> with a
-        <code>dimension</code> makes a classic vector index. Pinecone's current docs call this the legacy path, and
-        existing indexes keep working.<sup class="cite"><a href="#src-19">19</a></sup> That is why the week stays on
-        9.1.0; Tuesday's page gives the reason in full.</p>
+        distance. Worked by hand: post-490's Chroma distance of 0.661 gives 1 − 0.661 = 0.339, the score on the second
+        line. The last two lines delete the index so the free project is empty again. The client stays on 9.x for the
+        reason Tuesday's page gives.</p>
         <div class="recap"><div class="k">Takeaways</div><ul>
           <li>A record is an id, a list of numbers and a metadata dict; check them before writing.</li>
           <li>Write in batches with stable ids, so a rerun overwrites instead of duplicating.</li>
@@ -932,13 +961,13 @@ if pc.has_index("posts-thursday"):
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>Each record is an id, the vector as a plain list and a metadata dict. Before writing, I check that the ids
-          are unique, every vector has 384 numbers and nothing is None, then I upsert in batches of 100. The originals
-          stay in a SQL table or files under the same id, so a search hit leads back to the full document.</p>
+          are unique, every vector has 384 numbers and nothing is None, then I upsert in batches of 100.</p>
           <p>My search function embeds the query with the same model and queries Chroma with a where filter on topic or
           organisation. In Pinecone it's the same records, index.query with top_k, a filter like orgs $in NASA and
           include_metadata; there the score is a cosine similarity, so higher is better.</p>
-          <p>To know it's any good I run check queries with known answers, and I add a distance cut-off, because a
-          nonsense query still returns five rows.</p>
+          <p>The originals stay in a SQL table or files under the same id, so a search hit leads back to the full
+          document. To know it's any good I run check queries with known answers, and I add a distance cut-off, because
+          a nonsense query still returns five rows.</p>
         </div>
       </section>
 
@@ -952,9 +981,9 @@ if pc.has_index("posts-thursday"):
         <details class="check"><summary>Why does the code look up each topic with <code>raw.target_names[i]</code> instead of using the order of <code>TOPICS</code>?</summary><p><code>target_names</code> comes back sorted alphabetically, so 0 means <code>comp.graphics</code>, not <code>sci.space</code>. Reading the name by number keeps every label right whatever order <code>TOPICS</code> was written in.</p></details>
         <details class="check"><summary>A post is 5,000 characters long. What does MiniLM embed of it, and what does the pipeline do about it?</summary><p>Only the first 256 word pieces; the rest is dropped without an error. The pipeline cuts every post to 1,000 characters at a word boundary so it knows what was stored, and even then 63 of 1,000 posts are trimmed further. Splitting into chunks is the fuller fix.</p></details>
         <details class="check"><summary>What does NER find, and what is one mistake it makes on forum posts?</summary><p>It finds named spans such as organisations, people and places and labels each one, for example NASA as ORG and Houston as GPE. On forum text it tagged an e-mail address from a signature as ORG, 27 times in the medical posts.</p></details>
-        <details class="check"><summary>Why does <code>make_metadata</code> leave out a key whose list is empty?</summary><p>Chroma refuses an empty list with a <code>ValueError</code>, and neither database stores <code>None</code>. With 359 of 1,000 posts naming no organisation, writing <code>"orgs": []</code> would fail the upsert; a missing key simply does not match an <code>orgs</code> filter.</p></details>
+        <details class="check"><summary>Why does <code>make_metadata</code> leave out a key whose list is empty?</summary><p>Chroma refuses an empty list with a <code>ValueError</code>. A <code>None</code> is refused by Pinecone and by Chroma's <code>add</code>, and Chroma's <code>upsert</code> drops it silently. With 359 of 1,000 posts naming no organisation, writing <code>"orgs": []</code> would fail the Chroma upsert; a missing key simply does not match an <code>orgs</code> filter.</p></details>
         <details class="check"><summary>Why embed 1,000 posts in batches, and does changing the batch size from 64 to 8 change the vectors?</summary><p>Batches bound memory, show progress and limit a failure to one batch. Batch size changes speed and memory only; the vectors agree to within 0.00001, because <code>encode</code> sorts texts by length and pads each batch.</p></details>
-        <details class="check"><summary>For one post, Chroma reports a distance of 0.36 and Pinecone, holding the same vector, a score. What score, and which list end is the best match in each?</summary><p>About 0.64, since score = 1 − distance for cosine. Chroma's best match has the lowest distance and Pinecone's the highest score. A nonsense query still returns rows, so a cut-off near 0.65 distance flags "no good match" on this data.</p></details>
+        <details class="check"><summary>For one post, Chroma reports a distance of 0.36 and Pinecone, holding the same vector, a score. What score, and which list end is the best match in each?</summary><p>About 0.64, since score = 1 − distance for cosine. Chroma's best match has the lowest distance and Pinecone's the highest score.</p></details>
       </section>
 
       <section class="reading-sources" aria-label="Sources and deeper dive">
@@ -974,7 +1003,7 @@ if pc.has_index("posts-thursday"):
           <li id="src-12"><a href="https://docs.trychroma.com/integrations/embedding-models/sentence-transformer" target="_blank" rel="noopener">Chroma — Sentence Transformer integration</a> — <code>SentenceTransformerEmbeddingFunction</code> and its arguments.</li>
           <li id="src-13"><a href="https://docs.trychroma.com/docs/embeddings/embedding-functions" target="_blank" rel="noopener">Chroma — Embedding Functions</a> — Chroma's default embedding model.</li>
           <li id="src-14"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.datasets.fetch_20newsgroups.html" target="_blank" rel="noopener">scikit-learn — fetch_20newsgroups</a> — the loader, its defaults and why the <code>remove</code> filters are not always correct.</li>
-          <li id="src-15"><a href="https://github.com/explosion/spacy-models/releases/tag/en_core_web_sm-3.8.0" target="_blank" rel="noopener">spaCy models — en_core_web_sm 3.8.0</a> — size, training corpus, the 18 labels and the NER scores.</li>
+          <li id="src-15"><a href="https://github.com/explosion/spacy-models/releases/tag/en_core_web_sm-3.8.0" target="_blank" rel="noopener">spaCy models — en_core_web_sm 3.8.0</a> — size, training corpus, the 18 NER labels and the NER scores.</li>
           <li id="src-16"><a href="https://spacy.io/usage/linguistic-features#named-entities" target="_blank" rel="noopener">spaCy — Named Entities</a> — <code>doc.ents</code>, <code>label_</code>, <code>spacy.explain</code> and why the model errs.</li>
           <li id="src-17"><a href="https://spacy.io/usage/processing-pipelines" target="_blank" rel="noopener">spaCy — Processing Pipelines</a> — <code>nlp.pipe</code>, disabling components and <code>n_process</code>.</li>
           <li id="src-18"><a href="https://spacy.io/api/language#pipe" target="_blank" rel="noopener">spaCy API — Language.pipe</a> — <code>batch_size</code> and the order of the returned docs.</li>
@@ -989,9 +1018,7 @@ if pc.has_index("posts-thursday"):
           <li id="src-27"><a href="https://docs.trychroma.com/docs/collections/configure" target="_blank" rel="noopener">Chroma — Configure</a> — the cosine space and what its distance means.</li>
           <li id="src-28"><a href="https://docs.trychroma.com/docs/querying-collections/query-and-get" target="_blank" rel="noopener">Chroma — Query and Get</a> — the shape of a query result.</li>
           <li id="src-29"><a href="https://sbert.net/docs/package_reference/sentence_transformer/evaluation.html" target="_blank" rel="noopener">Sentence Transformers — Evaluation</a> — relevance sets scored with recall@k and MRR.</li>
-          <li id="src-30"><a href="https://docs.pinecone.io/guides/index-data/check-data-freshness" target="_blank" rel="noopener">Pinecone — Check data freshness</a> — eventual consistency and why counts lag an upsert.</li>
-          <li id="src-31"><a href="https://raw.githubusercontent.com/pinecone-io/pinecone-python-client/v9.1.0/pinecone/_internal/constants.py" target="_blank" rel="noopener">pinecone-python-client v9.1.0 source — constants.py</a> — the API version 2025-10 the pinned client sends.</li>
-        </ul>
+          <li id="src-30"><a href="https://docs.pinecone.io/guides/index-data/check-data-freshness" target="_blank" rel="noopener">Pinecone — Check data freshness</a> — eventual consistency and why counts lag an upsert.</li>        </ul>
       </section>
 
     </article>
@@ -1104,9 +1131,9 @@ window.QUIZ = {
       explain: "Keyword search matches the exact string. MiniLM ranked the look-alike 7713-B above 7731-B, because codes made of the same digits look nearly the same to the model." },
     { type: "tf", stem: "Changing encode's batch_size from 64 to 8 changes which posts a search returns.", answer: false,
       explain: "Batch size changes speed and memory. The vectors agree to within 0.00001, so the search results do not change." },
-    { type: "mcq", stem: "Which metadata values does Chroma refuse? Select all that apply.",
+    { type: "mcq", stem: "Which metadata values does Chroma's add refuse? Select all that apply.",
       options: ["{\"orgs\": []}", "{\"topic\": None}", "{\"orgs\": [\"NASA\", 3]}", "{\"orgs\": [\"NASA\", \"JPL\"]}"], answer: [0, 1, 2],
-      explain: "Chroma refuses an empty list, None and a list mixing types. A non-empty list of strings is accepted and can be filtered with $contains." },
+      explain: "add refuses an empty list, None and a list mixing types; upsert instead drops a None key without a word. A non-empty list of strings is accepted and can be filtered with $contains." },
     { type: "match", stem: "Match each piece of the pipeline to what it does.",
       pairs: [
         { l: "nlp.pipe", r: "runs NER over many texts in batches, in input order" },

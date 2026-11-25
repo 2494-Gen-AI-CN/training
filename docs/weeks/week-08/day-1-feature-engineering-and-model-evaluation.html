@@ -36,7 +36,7 @@
           <span><b>Week 8</b> · Day 1</span>
           <span>Mon Nov 30, 2026</span>
           <span>Feature engineering &amp; vector databases</span>
-          <span><b>~45 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span><b>~47 min</b> · reference notes @150 wpm · diagram · check</span>
           <span class="verified">Sources checked 2026-11-24 · colab-python 3.13.18 · scikit-learn 1.6.1 · tensorflow 2.21.0 · keras 3.13.2 · numpy 2.4.6 · pandas 2.2.3 · matplotlib 3.10.0</span>
           <span class="notebook"><a href="https://colab.research.google.com/github/2494-Gen-AI-CN/demos/blob/main/notebooks/week-08/01_monday_feature_engineering_and_model_evaluation.ipynb" target="_blank" rel="noopener">Open the notebook in Colab</a></span>
           <span class="exit"><a href="../../exit-criteria/qc-4-ai-ml-tensorflow-vector-dbs.html#w08d1">Exit criteria</a></span>
@@ -132,7 +132,9 @@ print(X_tr["duration_band"].value_counts(sort=False).to_dict())</code></pre>
 {'&lt;=12': 222, '13-24': 239, '25-36': 83, '&gt;36': 56}</pre>
         <p>The first row borrowed 4,811 over 30 months, so it pays about 160.4 a month and lands in the 25 to 36 band.
         The numbers on the left are the rows' positions in the original table. <code>assign</code> returns a new
-        DataFrame with the extra columns.</p>
+        DataFrame with the extra columns. The line that starts <code>X_tr, X_val, X_test, X_trval =</code> runs
+        <code>add_features</code> on each of the four tables, and the four results are assigned in order to the four
+        names.</p>
         <p><code>pd.cut</code> makes right-closed bins by default, (0, 12], (12, 24] and so on, so a 12-month loan lands
         in the first band. A value outside every bin becomes NA, so the last edge is <code>np.inf</code>,
         infinity.<sup class="cite"><a href="#src-7">7</a></sup> The four counts add up to the 600 training rows.</p>
@@ -218,7 +220,7 @@ print(len(shares), shares[["new car", "retraining"]].round(3).to_dict())
 X_val_purpose = X_val["purpose"].map(shares).astype(float)
 unseen = pd.Series(["new car", "drone"]).map(shares).astype(float).fillna(0.0)</code></pre>
         <p>The first line prints 10 purposes and two shares: <code>value_counts(normalize=True)</code> gives shares
-        instead of counts, so new car is about 0.27 of the training applicants and retraining about
+        instead of counts, so new car is about 0.265 of the training applicants and retraining about
         0.007.<sup class="cite"><a href="#src-11">11</a></sup> <code>map(shares)</code> swaps each validation value for
         its share. "Drone" is not in the table, so <code>map</code> gives a blank, filled here with 0.</p>
         <p>Two more encodings come up in interviews:</p>
@@ -280,8 +282,8 @@ validation F1 for 'bad' 0.425</pre>
         </ul></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
-          <p>I one-hot encode a category with a few unordered values, and use ordinal encoding when the values have a real
-          order, which I write out myself because the data may store them alphabetically. One-hot is wrong when a column
+          <p>I one-hot encode a category with a few unordered values, and use ordinal encoding, in an order I write out
+          myself, when the values have a real order. One-hot is wrong when a column
           has hundreds of values: you get hundreds of mostly empty columns and constant unseen values, so I'd use
           frequency or target encoding instead.</p>
           <p>I put the encoders, the scaler and the model in one scikit-learn Pipeline. Fitting it on the training rows
@@ -341,9 +343,12 @@ for mostly in (False, True):
         p = make_pipe(numeric=NUMERIC[:-1], num_step=fill).fit(tr, y_tr)
         row.append(f1_score(y_val, p.predict(val)))
     print(f"mostly defaulters {mostly}: median F1 {row[0]:.2f}, median + indicator F1 {row[1]:.2f}")</code></pre>
+<pre class="out">mostly defaulters False: median F1 0.44, median + indicator F1 0.42
+mostly defaulters True: median F1 0.41, median + indicator F1 0.59</pre>
         <p>The <code>share</code> line gives each row its chance of a blank: 20% for everyone in the random copy, or 50%
         for a defaulter and 5% for anyone else. The loop prints one line per copy, the validation F1 of the median fill
-        and of the fill plus indicator.</p>
+        and of the fill plus indicator. On the random copy the indicator lowers F1 a little, from about 0.44 to 0.42. On
+        the copy blanked mostly for defaulters it lifts F1 from about 0.41 to 0.59.</p>
         <p>The indicator wins only on the second copy. A random blank says nothing about the applicant, so the extra
         column adds nothing. When blanks cluster on defaulters, the indicator column itself predicts default, and the
         model uses it.<sup class="cite"><a href="#src-16">16</a></sup></p>
@@ -374,30 +379,39 @@ print((X_tr["credit_amount"] &gt; upper).sum(), (X_tr["credit_amount"] &lt; lowe
         </table>
         <p><code>RobustScaler</code> subtracts the median and divides by the IQR, because outliers pull the mean and the
         variance a plain scaler uses.<sup class="cite"><a href="#src-19">19</a></sup> A log is monotonic: a larger amount
-        always gives a larger log, so the rank of the values is kept.<sup class="cite"><a href="#src-21">21</a></sup> Skew
-        measures how lopsided a column is: 0 is symmetric, and a positive number means a long right tail.
-        <code>credit_amount</code> has a skew of about 1.95 on the full table, the tail a log pulls
-        in.<sup class="cite"><a href="#src-21">21</a></sup></p>
+        always gives a larger log, so the rank of the values is kept.<sup class="cite"><a href="#src-21">21</a></sup></p>
+        <p>Skew measures how lopsided a column is: 0 is symmetric, and a positive number means a long right tail.
+        <code>credit_amount</code> has a skew of about 1.95 on the full table and about 1.7 on the 600 training rows,
+        the tail a log pulls in.<sup class="cite"><a href="#src-21">21</a></sup></p>
         <p class="run-label">Run in Colab</p>
-<pre><code>from sklearn.preprocessing import FunctionTransformer
+<pre><code>from sklearn.preprocessing import FunctionTransformer, RobustScaler
 
 log_amount = Pipeline([
     ("log", ColumnTransformer([("amount", FunctionTransformer(np.log1p), ["credit_amount"])],
                               remainder="passthrough")),
     ("scale", StandardScaler())])
 clip = lambda df: df.assign(credit_amount=df["credit_amount"].clip(upper=upper))
-runs = {"keep": (make_pipe(), X_tr, X_val),
+runs = {"keep": (make_pipe(num_step=RobustScaler()), X_tr, X_val),
         "clip": (make_pipe(), clip(X_tr), clip(X_val)),
         "log": (make_pipe(num_step=log_amount), X_tr, X_val)}
 for name, (p, tr, val) in runs.items():
     print(f"{name}: validation F1 {f1_score(y_val, p.fit(tr, y_tr).predict(val)):.3f}")</code></pre>
+<pre class="out">keep: validation F1 0.425
+clip: validation F1 0.439
+log: validation F1 0.439</pre>
         <p>Each choice is its own pipeline scored on the same validation rows, so the three printed lines compare
-        directly. The clip uses the fence from <code>X_tr</code> on both sets. <code>np.log1p</code> is the log of 1
-        plus the value, and the inner <code>ColumnTransformer</code> logs only <code>credit_amount</code>.</p>
+        directly. <code>clip</code> is a lambda, a one-line function with no name, that returns a copy with every amount
+        capped at the fence from <code>X_tr</code>; it runs on both sets. <code>np.log1p</code> is the log of 1 plus the
+        value, and the inner <code>ColumnTransformer</code> logs only <code>credit_amount</code>.</p>
+        <p>Keep scores like the baseline, about 0.425, and clip and log both reach about 0.439. That is one more defaulter
+        caught out of 60, too small a gap on 200 rows to pick a winner by.</p>
         <p>The choice matters for linear models and networks, whose weighted sums feel a value's size. A decision tree
         splits one column at a threshold, and a log keeps the rank, so the tree's possible splits stay the
         same.<sup class="cite"><a href="#src-22">22</a></sup> <code>IsolationForest</code> goes further and flags whole
         unusual rows.<sup class="cite"><a href="#src-23">23</a></sup></p>
+        <p>In someone else's code, blank handling is a <code>SimpleImputer(strategy="median", add_indicator=True)</code>
+        step, and an outlier check is a <code>quantile([0.25, 0.75])</code> followed by a fence such as
+        <code>q3 + 1.5 * (q3 - q1)</code>.</p>
         <div class="recap"><div class="k">Takeaways</div><ul>
           <li>Fill blanks with a median learned from the training rows; dropping rows loses data.</li>
           <li>An indicator column helps when the blanks themselves carry information.</li>
@@ -449,10 +463,10 @@ for name, (p, tr, val) in runs.items():
 mi = mutual_info_classif(prep.transform(X_tr), y_tr, random_state=RANDOM_STATE)
 ranking = pd.Series(mi, index=prep.get_feature_names_out()).sort_values(ascending=False)
 print(ranking.index[:6].tolist())</code></pre>
-<pre class="out">['oh__checking_status_&lt;0', 'oh__checking_status_no checking', 'oh__credit_history_critical/other existing credit', 'oh__housing_own', 'num__credit_amount', 'num__duration']</pre>
+<pre class="out">['oh__checking_status_no checking', 'num__credit_amount', 'num__duration', 'oh__other_payment_plans_none', 'oh__checking_status_&lt;0', 'num__installment_commitment']</pre>
         <p>The filter scores the 51 encoded training columns one at a time.<sup class="cite"><a href="#src-24">24</a></sup>
-        Two <code>checking_status</code> values, under 0 and no checking account, say the most on their own, followed by
-        a critical credit history and owning a home, then the amount and the duration. The scores are rough: with its
+        Having no checking account says the most on its own, followed by the amount and the duration, then having no
+        other payment plans, a negative balance and <code>installment_commitment</code>. The scores are rough: with its
         default <code>discrete_features="auto"</code> the function treats a dense array as continuous, though the one-hot
         columns are really 0 or 1.<sup class="cite"><a href="#src-24">24</a></sup></p>
         <h3>A model-based ranking: permutation importance</h3>
@@ -469,7 +483,7 @@ by_column = pd.Series(imp.importances_mean, index=X_val.columns).sort_values(asc
 print(by_column.index[:5].tolist())
 print(by_column[by_column &lt; 0].index.tolist())</code></pre>
 <pre class="out">['savings_status', 'duration', 'property_magnitude', 'employment', 'checking_status']
-['monthly_payment', 'other_payment_plans', 'existing_credits']</pre>
+['housing', 'credit_history', 'num_dependents', 'monthly_payment', 'other_payment_plans', 'existing_credits']</pre>
         <p>The first line lists the five columns whose shuffle costs the most validation F1. The second lists those
         with a negative importance: the score went up when the column was scrambled, so what the model learned from it
         does not hold on new rows.<sup class="cite"><a href="#src-25">25</a></sup> <code>monthly_payment</code> is one of those, at about
@@ -483,9 +497,15 @@ fewer = make_pipe(numeric=[c for c in NUMERIC if c in top10],
 no_payment = make_pipe(numeric=NUMERIC[:-1]).fit(X_tr, y_tr)
 for name, p in [("all columns", pipe), ("top 10", fewer), ("no monthly_payment", no_payment)]:
     print(f"{name}: validation F1 {f1_score(y_val, p.predict(X_val)):.3f}")</code></pre>
-        <p>The loop prints one validation F1 per pipeline, all on the same 200 rows. The top-10 line is flattered,
-        because the ranking that chose those ten came from these same rows. Removing <code>monthly_payment</code> does not lower the score, so the feature
-        from step 1 did not earn its place.</p>
+<pre class="out">all columns: validation F1 0.425
+top 10: validation F1 0.438
+no monthly_payment: validation F1 0.425</pre>
+        <p>The loop prints one validation F1 per pipeline, all on the same 200 rows. The top-10 line, about 0.438, is
+        flattered, because the ranking that chose those ten came from these same rows. Removing
+        <code>monthly_payment</code> leaves the score at about 0.425, so the feature from step 1 did not earn its
+        place.</p>
+        <p>In someone else's code, selection is a <code>mutual_info_classif(...)</code> on the encoded training rows, or a
+        <code>permutation_importance(pipe, X_val, y_val, ...)</code> call, followed by a shorter column list.</p>
         <div class="recap"><div class="k">Takeaways</div><ul>
           <li>A filter such as mutual information ranks each column against the target, with no model.</li>
           <li>Permutation importance on validation rows ranks columns by what the fitted model needs.</li>
@@ -509,7 +529,9 @@ for name, p in [("all columns", pipe), ("top 10", fewer), ("no monthly_payment",
         that choice alone.</p>
         <h3>Accuracy on a 70/30 table</h3>
         <p>Accuracy is the share of answers that are right. On a table that is 70% good applicants, a model that answers
-        "good" every time scores 70% without reading a single column.</p>
+        "good" every time scores 70% without reading a single column. It is the same trap as
+        <a href="../week-07/day-1-mlp-backprop-and-digit-classifier.html">week 7's</a> always "not 5", now on a 70/30
+        table.</p>
         <p class="run-label">Run in Colab</p>
 <pre><code>from sklearn.metrics import accuracy_score, recall_score, balanced_accuracy_score
 
@@ -572,7 +594,8 @@ pipeline: accuracy 0.68, recall 0.40, balanced accuracy 0.60</pre>
       <section class="step" data-diagram="0" data-step="5">
         <div class="tag">Precision, recall, F1</div>
         <h2>Accuracy, precision, recall and F1 for the defaulters</h2>
-        <p>Week 7 defined precision, recall and F1 for one digit against the rest. This step reads them for the
+        <p><a href="../week-07/day-1-mlp-backprop-and-digit-classifier.html">Week 7</a> defined precision, recall and F1
+        for one digit against the rest. This step reads them for the
         defaulters in a full report, then looks at the two averages the report adds underneath.</p>
         <h3>Reading a classification report</h3>
         <p class="run-label">Run in Colab</p>
@@ -732,20 +755,20 @@ threshold 0.50: defaulters approved 36, good refused 29, cost 209
 <pre><code>import matplotlib.pyplot as plt
 from sklearn.metrics import roc_auc_score, precision_recall_curve, RocCurveDisplay
 
-print(round(roc_auc_score(y_val, proba), 3))
+print(round(roc_auc_score(y_val, proba), 2))
 precision, recall, thresholds = precision_recall_curve(y_val, proba)
-print(len(precision), len(thresholds), precision[-1], recall[-1])
+print(precision[-1], recall[-1])
 RocCurveDisplay.from_predictions(y_val, proba)
 plt.show()</code></pre>
-<pre class="out">0.719
-201 200 1.0 0.0</pre>
+<pre class="out">0.72
+1.0 0.0</pre>
         <p>An AUC of about 0.72 is well above 0.5 and far from 1.0,
         and its rescaled form, the Gini coefficient 2 × AUC − 1, is about
         0.44.<sup class="cite"><a href="#src-33">33</a></sup> <code>roc_auc_score</code> takes the probabilities,
         <code>predict_proba(X)[:, 1]</code>, not the 0-or-1 predictions.</p>
         <p><code>precision_recall_curve</code> returns the precision and recall at every threshold. The two arrays are
-        one longer than the thresholds and end at precision 1 and recall 0, which the second line
-        shows.<sup class="cite"><a href="#src-34">34</a></sup> Drawn against each other, they tell you more than ROC when
+        one element longer than the thresholds, and they end at precision 1 and recall 0, the pair the second line
+        prints.<sup class="cite"><a href="#src-34">34</a></sup> Drawn against each other, they tell you more than ROC when
         positives are few, because precision counts the false alarms directly.</p>
         <div class="recap"><div class="k">Takeaways</div><ul>
           <li>Multiply each cell by its cost: 36 approved defaulters at 5 dominate the 209.</li>
@@ -865,6 +888,9 @@ mean 0.50, standard deviation 0.11</pre>
         <code>best_score_</code>.<sup class="cite"><a href="#src-41">41</a></sup> That score is optimistic, because the
         folds were used to choose. The kept pipeline, with a threshold tuned on its own validation probabilities, then
         meets the test set once.</p>
+        <p>In someone else's code, regularisation is a <code>C</code> argument or
+        <code>LogisticRegression(penalty="l1", solver="liblinear")</code> in scikit-learn, and a
+        <code>kernel_regularizer=tf.keras.regularizers.l2(...)</code> on a Keras layer.</p>
         <div class="recap"><div class="k">Takeaways</div><ul>
           <li>In scikit-learn a smaller C is a stronger penalty; too strong predicts no defaulter at all.</li>
           <li>L1 zeroes weights and so selects features; L2 shrinks them all.</li>
@@ -874,9 +900,9 @@ mean 0.50, standard deviation 0.11</pre>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
           <p>Regularisation adds a penalty on the weights to the loss. L2 penalises squared weights and shrinks them all;
-          L1 penalises absolute weights and sets many to exactly zero, so it also selects features. In scikit-learn I set
-          C on LogisticRegression, where smaller means stronger, and L1 needs the liblinear or saga solver. In
-          Keras I pass an L2 regulariser as the kernel regulariser of each Dense layer.</p>
+          L1 penalises absolute weights and sets many to exactly zero, so it also selects features.</p>
+          <p>In scikit-learn I set C on LogisticRegression, where smaller means stronger, and L1 needs the liblinear or
+          saga solver. In Keras I pass an L2 regulariser as the kernel regulariser of each Dense layer.</p>
           <p>Stratified k-fold splits the training data into k folds that each keep the class balance, trains k times
           with a different fold held out, and gives k scores. I report the mean and the spread, because on small data one
           split can be lucky or unlucky.</p>
@@ -888,7 +914,7 @@ mean 0.50, standard deviation 0.11</pre>
         <h2>Check yourself</h2>
         <p>Ten questions, at least one per step. Answer each out loud before you open it.</p>
         <details class="check"><summary>A colleague adds <code>age</code> back to the credit model because it raises validation F1 by 0.02. What do you say?</summary><p>Age is a protected ground under the Canadian Human Rights Act, and Regulation B allows it only in a narrow use that needs legal review. A better score does not make a column allowed: protected columns and their stand-ins are ruled out before any score is read.</p></details>
-        <details class="check"><summary>Why add a monthly payment column when the model already has the amount and the duration, and how do you know whether it helped?</summary><p>Logistic regression only adds up weighted columns, so it cannot divide the amount by the duration itself. Fit with and without the column and compare on the validation rows; here removing it left F1 at 0.425, so it did not earn its place.</p></details>
+        <details class="check"><summary>Why add a monthly payment column when the model already has the amount and the duration, and how do you know whether it helped?</summary><p>Logistic regression only adds up weighted columns, so it cannot divide the amount by the duration itself. Fit with and without the column and compare on the validation rows; here removing it did not lower validation F1, so it did not earn its place.</p></details>
         <details class="check"><summary>A column has 800 distinct values, such as a product code. Why is one-hot the wrong choice, and what would you use instead?</summary><p>One-hot would add 800 mostly-zero columns and keep meeting codes the training rows never held. Frequency encoding gives one column of each value's share of the training rows, and target encoding gives one column of the average label, cross-fitted so the label does not leak.</p></details>
         <details class="check"><summary>Blanks in a column fall mostly on applicants who later default. Median fill, or median fill plus an indicator, and why?</summary><p>Median fill plus an indicator. The fact that the value is missing carries information, and the indicator column lets the model use it; on the copy blanked mostly for defaulters, the indicator raised validation F1. With random blanks the indicator adds nothing.</p></details>
         <details class="check"><summary>The training amounts have Q1 = 1,345 and Q3 = 4,042. Where is the upper 1.5 IQR fence, and what do you do with a loan above it?</summary><p>The IQR is 2,697, so the fence is 4,042 + 1.5 × 2,697, about 8,088. Ask first whether it is an error or a real big loan; a real one is kept, then clipped, logged or scaled with RobustScaler, each choice compared on validation rows.</p></details>

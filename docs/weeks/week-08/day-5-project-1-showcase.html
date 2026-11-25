@@ -80,7 +80,8 @@
         reads.<sup class="cite"><a href="#src-4">4</a></sup></p>
         <p>The same-model rule matters because its failure is quiet. A different model that also gives 384 numbers puts
         the query in a different space from the stored vectors. The call succeeds, results come back, and the nearest
-        neighbours are near only by accident.</p>
+        neighbours are near only by accident. A model with a different count fails loudly: on Wednesday, a 768-number
+        vector sent to a 384-dimension collection was refused with an error.</p>
         <h3>add, update and upsert</h3>
         <p>Chroma's <code>add</code> needs a unique string id per record and documents, embeddings or both. Adding a
         record whose id already exists is ignored without an error.<sup class="cite"><a href="#src-5">5</a></sup>
@@ -129,10 +130,10 @@ print(col.count(), col.get(ids=["a"])["documents"])</code></pre>
 res = col.query(query_embeddings=[[1.0, 0.0]], n_results=2)
 print(res["ids"][0], [round(d, 2) for d in res["distances"][0]])</code></pre>
 <pre class="out">['b', 'a'] [0.4, 1.0]</pre>
-        <p>Work it by hand. Both vectors have length 1, so their cosine similarity is the dot product: 1 × 0.6 + 0 × 0.8
+        <p>Chroma returns one list of results per query vector, so <code>[0]</code> picks the results for our single
+        query. Work it by hand. Both vectors have length 1, so their cosine similarity is the dot product: 1 × 0.6 + 0 × 0.8
         = 0.6. Chroma's cosine distance is 1 minus the similarity, so "b" sits at 0.4.<sup class="cite"><a href="#src-7">7</a></sup>
-        Record "a" now points straight up, at right angles to the query: similarity 0, distance 1. The closest record
-        comes first, with the smallest number.</p>
+        Record "a" now points straight up, at right angles to the query: similarity 0, distance 1.</p>
         <p>Pinecone reports the similarity itself. Cosine similarity runs from -1 to 1, where 1 means the two vectors
         point the same way, so the same two records would score 0.6 and 0.<sup class="cite"><a href="#src-9">9</a></sup>
         Down a Chroma results table the distance column rises; down a Pinecone table the score column falls. The rule of
@@ -140,14 +141,8 @@ print(res["ids"][0], [round(d, 2) for d in res["distances"][0]])</code></pre>
         with.<sup class="cite"><a href="#src-9">9</a></sup></p>
         <p>In someone else's code the two queries look like this, with <code>q</code> a question and <code>embed</code>
         the week's embedding function:</p>
-<pre><code># Chroma: distances, lower is closer
-collection.query(query_embeddings=embed([q]), n_results=5,
-                 where={"category": "billing"})
-
-# Pinecone: scores, higher is closer
-index.query(vector=embed([q])[0].tolist(), top_k=5, namespace="web",
-            filter={"category": {"$eq": "billing"}}, include_metadata=True)</code></pre>
-        <p>These two lines are for recognising. They need a built collection and index, so they do not run on their own. Chroma takes a
+        <div class="ix-spot" data-snippet="collection.query(query_embeddings=embed([q]), n_results=5,&#10;                 where={&quot;category&quot;: &quot;billing&quot;})&#10;&#10;index.query(vector=embed([q])[0].tolist(), top_k=5, namespace=&quot;web&quot;,&#10;            filter={&quot;category&quot;: {&quot;$eq&quot;: &quot;billing&quot;}}, include_metadata=True)" data-q="Which call reports a distance and which a score, and which way is closer for each?" data-a="The first is Chroma (query_embeddings, n_results, where): it reports distances, and lower is closer. The second is Pinecone (vector, top_k, namespace): it reports scores, and higher is closer. On Tuesday's account question both put kb-001 first, at distance 0.54 in Chroma and score 0.46 in Pinecone."></div>
+        <p>Chroma takes a
         list of query vectors and a <code>where</code> filter; Pinecone takes one vector as a plain list, a
         <code>namespace</code> and a <code>filter</code> whose comparisons are spelled with operators such as
         <code>$eq</code>.</p>
@@ -265,7 +260,7 @@ index.query(vector=embed([q])[0].tolist(), top_k=5, namespace="web",
         </ul></div>
         <div class="callout interview">
           <div class="k">Say it in an interview</div>
-          <p>For a manager I'd start with the problem and the answer, not the method. Something like: the model flags
+          <p>For a manager I'd start with the problem and the answer, and keep the method short. Something like: the model flags
           applicants likely to default, and it finds about seven in ten of them, where the simplest rule finds none.</p>
           <p>Then one limitation with its consequence, that it should support a credit officer rather than replace one,
           and I'd keep the full metrics table in the notebook for whoever asks.</p>
@@ -501,15 +496,8 @@ print(np.random.rand(3).round(4))</code></pre>
         <h3>The test set used once</h3>
         <p>Two patterns give leakage away on sight. One is <code>model.evaluate(X_test, y_test)</code> appearing in
         several cells, each after a change. The other is a preprocessing step fitted before the split:</p>
-<pre><code># leaks: the scaler learned the mean and spread of the test rows too
-X_scaled = StandardScaler().fit_transform(X)
-X_trval, X_test, y_trval, y_test = train_test_split(X_scaled, y, test_size=0.2)
-
-# guarded: split first, then fit every step on the training rows only
-X_trval, X_test, y_trval, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
-X_tr, X_val, y_tr, y_val = train_test_split(X_trval, y_trval, test_size=0.25, stratify=y_trval, random_state=42)
-pipe.fit(X_tr, y_tr)</code></pre>
-        <p>These lines are for recognising, so they print nothing. In the first version the scaler has seen the test
+        <div class="ix-spot" data-snippet="# version 1&#10;X_scaled = StandardScaler().fit_transform(X)&#10;X_trval, X_test, y_trval, y_test = train_test_split(X_scaled, y, test_size=0.2)&#10;&#10;# version 2&#10;X_trval, X_test, y_trval, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)&#10;X_tr, X_val, y_tr, y_val = train_test_split(X_trval, y_trval, test_size=0.25, stratify=y_trval, random_state=42)&#10;pipe.fit(X_tr, y_tr)" data-q="Which version lets the test rows influence the model, and why?" data-a="Version 1. The scaler is fitted on all of X before the split, so the mean and spread it learned include the test rows. Version 2 splits first and fits the whole pipeline on X_tr alone."></div>
+        <p>In the first version the scaler has seen the test
         rows before the model is scored on them, which breaks the rule to split before any
         preprocessing.<sup class="cite"><a href="#src-22">22</a></sup> In the second, the test rows are split off
         first, a second split carves the validation rows out of the rest (the same names as step 4's baseline cell),
