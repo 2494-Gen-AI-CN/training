@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w08d1">
+<title>W8·D1 — Feature engineering &amp; model evaluation | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261124">
+<script src="../../assets/js/theme.js?v=20261124"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="../../exit-criteria/index.html">Exit criteria</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>Feature engineering &amp; model evaluation: better columns, the right metric and an honest score</h1>
+        <div class="meta">
+          <span><b>Week 8</b> · Day 1</span>
+          <span>Mon Nov 30, 2026</span>
+          <span>Feature engineering &amp; vector databases</span>
+          <span><b>~45 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span class="verified">Sources checked 2026-11-24 · colab-python 3.13.18 · scikit-learn 1.6.1 · tensorflow 2.21.0 · keras 3.13.2 · numpy 2.4.6 · pandas 2.2.3 · matplotlib 3.10.0</span>
+          <span class="notebook"><a href="https://colab.research.google.com/github/2494-Gen-AI-CN/demos/blob/main/notebooks/week-08/01_monday_feature_engineering_and_model_evaluation.ipynb" target="_blank" rel="noopener">Open the notebook in Colab</a></span>
+          <span class="exit"><a href="../../exit-criteria/qc-4-ai-ml-tensorflow-vector-dbs.html#w08d1">Exit criteria</a></span>
+        </div>
+        <p class="summary">Last week's builds filled blanks, one-hot encoded and scaled a table, and read a confusion
+        matrix with precision, recall and F1; this page assumes those steps and goes deeper on one table of 1,000 loan
+        applicants. It builds and judges features, encodes categories inside one Pipeline, handles blanks and outliers, and
+        ranks features. It then picks a metric and a threshold from what each mistake costs, and regularises models with L1
+        and L2, checked by cross-validation. Afterwards you can say why a column is left out, which encoding fits a column, what
+        threshold the costs imply and how far one validation score can be trusted.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="0">
+        <div class="tag">Feature engineering</div>
+        <h2>Feature engineering: new columns from old, and columns you may not use</h2>
+        <p>Last week's penguin build filled blanks, one-hot encoded and scaled in a single pass. This page goes over those
+        steps more slowly, on one table of loan applicants, and asks of every change whether it helped.</p>
+        <h3>The credit table, the columns left out and the split</h3>
+        <p>The table is credit-g, the Statlog German credit data: 1,000 loan applicants, 20 attributes, no missing values,
+        each classed as a good or a bad credit risk.<sup class="cite"><a href="#src-1">1</a></sup> OpenML, a public
+        library of datasets, serves it, and <code>fetch_openml</code> downloads it. The function wants an exact
+        <code>version</code>, because active versions of one name may differ, and <code>as_frame=True</code> returns one
+        pandas DataFrame.<sup class="cite"><a href="#src-2">2</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>import numpy as np
+import pandas as pd
+from sklearn.datasets import fetch_openml
+from sklearn.model_selection import train_test_split
+
+RANDOM_STATE = 42
+credit = fetch_openml("credit-g", version=1, as_frame=True).frame
+print(credit.shape, credit.isna().sum().sum())
+print(credit["class"].value_counts().to_dict())
+
+credit = credit.drop(columns=["personal_status", "foreign_worker", "age"])
+X = credit.drop(columns="class")
+y = (credit["class"] == "bad").astype(int)
+X_trval, X_test, y_trval, y_test = train_test_split(
+    X, y, test_size=0.2, stratify=y, random_state=RANDOM_STATE)
+X_tr, X_val, y_tr, y_val = train_test_split(
+    X_trval, y_trval, test_size=0.25, stratify=y_trval, random_state=RANDOM_STATE)
+print(len(X_tr), len(X_val), len(X_test), y_val.sum())</code></pre>
+<pre class="out">(1000, 21) 0
+{'good': 700, 'bad': 300}
+600 200 200 60</pre>
+        <p>The output shows 1,000 rows, 0 blank cells and 700 good against 300 bad. <code>y</code> is 1 for an applicant
+        who defaults, so "bad" is the positive class: every precision, recall and F1 on this page is about the
+        defaulters.</p>
+        <p>The test set takes 20%, and a quarter of the rest becomes validation, leaving 600 rows to train on.
+        <code>stratify</code> keeps the 30% share of defaulters in every part, so the 200 validation rows hold 60.
+        <code>X_trval</code> holds the 800 training and validation rows for step 8's cross-validation.</p>
+        <p>Three columns were dropped before the split. <code>personal_status</code> mixes sex and marital status, and
+        <code>foreign_worker</code> records national origin.<sup class="cite"><a href="#src-1">1</a></sup> The Canadian
+        Human Rights Act lists national or ethnic origin, age, sex and marital status among its prohibited grounds of
+        discrimination, and it covers services customarily available to the
+        public.<sup class="cite"><a href="#src-3">3</a></sup></p>
+        <p>In the United States, Regulation B under the Equal Credit Opportunity Act counts national origin, sex, marital
+        status and age as a prohibited basis.<sup class="cite"><a href="#src-4">4</a></sup> It allows age only in a
+        statistically sound scoring system that gives an elderly applicant no negative value, so using age needs legal
+        review.<sup class="cite"><a href="#src-5">5</a></sup></p>
+        <p>These columns go even if they would raise the score. A model that learns from a protected column decides on
+        that ground, and so does a feature built from one or from a close stand-in, so they are ruled out before any score
+        is read.</p>
+        <h3>New features from old: a monthly payment and duration bands</h3>
+        <p>Feature engineering is building new input columns from the ones you have, and keeping each one only if it
+        helps on validation rows. Two candidates come straight from the loan's terms:</p>
+        <ul>
+          <li><code>monthly_payment</code>, the amount divided by the number of months, a ratio no single column
+          holds;</li>
+          <li><code>duration_band</code>, the loan's length cut into four ranges: up to 12 months, 13 to 24, 25 to 36,
+          and over 36.</li>
+        </ul>
+        <p>Why add a ratio when the model already has both columns? A linear model such as logistic regression only
+        adds up its inputs, each multiplied by a weight, so it cannot divide one column by
+        another.<sup class="cite"><a href="#src-6">6</a></sup> A ratio that matters has to be handed over as its own
+        column.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>def add_features(df):
+    """Add two columns built from each row's own values."""
+    return df.assign(
+        monthly_payment=df["credit_amount"] / df["duration"],
+        duration_band=pd.cut(df["duration"], bins=[0, 12, 24, 36, np.inf],
+                             labels=["&lt;=12", "13-24", "25-36", "&gt;36"]))
+
+X_tr, X_val, X_test, X_trval = (add_features(d) for d in (X_tr, X_val, X_test, X_trval))
+print(X_tr[["credit_amount", "duration", "monthly_payment", "duration_band"]].head(3).round(1))
+print(X_tr["duration_band"].value_counts(sort=False).to_dict())</code></pre>
+<pre class="out">     credit_amount  duration  monthly_payment duration_band
+306           4811        30            160.4         25-36
+754           1555        12            129.6          &lt;=12
+209           1413        12            117.8          &lt;=12
+{'&lt;=12': 222, '13-24': 239, '25-36': 83, '&gt;36': 56}</pre>
+        <p>The first row borrowed 4,811 over 30 months, so it pays about 160.4 a month and lands in the 25 to 36 band.
+        The numbers on the left are the rows' positions in the original table. <code>assign</code> returns a new
+        DataFrame with the extra columns.</p>
+        <p><code>pd.cut</code> makes right-closed bins by default, (0, 12], (12, 24] and so on, so a 12-month loan lands
+        in the first band. A value outside every bin becomes NA, so the last edge is <code>np.inf</code>,
+        infinity.<sup class="cite"><a href="#src-7">7</a></sup> The four counts add up to the 600 training rows.</p>
+        <p><code>add_features</code> reads only each row's own values, so running it on every part of the split leaks
+        nothing. A step that learns from many rows, such as a median or a fence, is fitted on <code>X_tr</code>
+        alone.<sup class="cite"><a href="#src-8">8</a></sup></p>
+        <div class="ix-predict" data-q="An applicant borrows 6,000 over 24 months. What is the monthly payment, and which duration band does the loan fall in?" data-a="6,000 / 24 = 250 a month. The bins are right-closed, so 24 months falls in (12, 24], the 13-24 band, not the 25-36 one."></div>
+        <h3>Judging a feature, and a feature from the future</h3>
+        <p>A new feature is a change like any other: fit with it and without it, and compare on the validation rows. Step
+        4 does that for <code>monthly_payment</code>, which scores a small negative importance there, about −0.01 of
+        F1.<sup class="cite"><a href="#src-9">9</a></sup></p>
+        <p>The next question is whether the feature exists when the decision is made. A column filled in after the loan
+        was granted, such as a later missed payment, would score very well and be useless: it carries the answer. That is
+        leakage from the future.</p>
+        <p>In someone else's code, feature engineering is a line such as
+        <code>X["monthly_payment"] = X["credit_amount"] / X["duration"]</code>, or a <code>pd.cut</code>. Row-wise lines
+        are safe; question a mean or a count taken over the whole table before the split.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Columns for sex, marital status, national origin and age are left out before any score is read.</li>
+          <li>A ratio such as monthly payment adds something a linear model cannot build from the two columns.</li>
+          <li>Keep a new feature only if it helps on validation rows and exists at decision time.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Feature engineering is building new inputs from the columns you have. On a loan table I'd add the monthly
+          payment, amount over duration, because a linear model only adds up weighted columns and can't divide one by
+          another. I'd compare the model with and without it on the validation rows and keep it only if it helped.</p>
+          <p>Some columns stay out even if they raise the score. Sex, marital status, national origin and age are
+          protected grounds for a lender, so I drop them, and anything standing in for them, before I look at any
+          number.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">Encoding</div>
+        <h2>Encoding categorical data: one-hot, ordinal and frequency</h2>
+        <p>A model reads numbers, so a category column such as <code>purpose</code> has to become numbers first. The
+        right encoding depends on what the values mean and how many there are:</p>
+        <table>
+          <thead><tr><th>Encoding</th><th>Each value becomes</th><th>Fits when</th></tr></thead>
+          <tbody>
+            <tr><td>one-hot</td><td>its own 0-or-1 column</td><td>a handful of values with no order</td></tr>
+            <tr><td>ordinal</td><td>one integer, 0, 1, 2 and so on, in a chosen order</td><td>the values have a real order</td></tr>
+            <tr><td>frequency</td><td>its share of the training rows</td><td>many values, where one-hot would be too wide</td></tr>
+          </tbody>
+        </table>
+        <h3>Ordered categories need their order written out</h3>
+        <p><code>employment</code> records how long the applicant has held their present job: unemployed, under a year,
+        1 to 4 years, 4 to 7, or 7 or more.<sup class="cite"><a href="#src-1">1</a></sup> Those values have a real order,
+        so one integer column can carry them. The catch is that the table stores its categories in alphabetical
+        order.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>from sklearn.preprocessing import OrdinalEncoder
+
+print(list(X_tr["employment"].cat.categories))
+ORDERED = {"employment": ["unemployed", "&lt;1", "1&lt;=X&lt;4", "4&lt;=X&lt;7", "&gt;=7"]}
+encoder = OrdinalEncoder(categories=[ORDERED["employment"]]).fit(X_tr[["employment"]])
+print(encoder.transform(pd.DataFrame({"employment": ["unemployed", "1&lt;=X&lt;4", "&gt;=7"]})).ravel())</code></pre>
+<pre class="out">['1&lt;=X&lt;4', '4&lt;=X&lt;7', '&lt;1', '&gt;=7', 'unemployed']
+[0. 2. 4.]</pre>
+        <p>The first line is the stored order: "unemployed" comes last, so an encoder that trusted it would rank having no
+        job above seven years in one. <code>OrdinalEncoder</code> with its default <code>categories="auto"</code> takes the
+        order from the data, so the real order is passed in as a list of lists, one inner list per
+        column.<sup class="cite"><a href="#src-10">10</a></sup> The second line confirms it: unemployed is 0, 1 to 4 years
+        is 2, and 7 or more is 4.</p>
+        <p>Integer codes are read by a model as ordered, which is often not what you want for a column without an
+        order.<sup class="cite"><a href="#src-11">11</a></sup> <code>checking_status</code> looks ordered (under 0, 0 to
+        200, 200 or more) until its fourth value, "no checking account", which is not a balance at
+        all.<sup class="cite"><a href="#src-1">1</a></sup> No single order fits, so it stays one-hot, and
+        <code>savings_status</code> with "no known savings" has the same shape.</p>
+        <h3>When one-hot is the wrong choice</h3>
+        <p>One-hot works for <code>purpose</code>, which has 10 values. Picture a column with hundreds, such as a city or a
+        product code. One-hot gives it hundreds of columns that are almost all zeros, which inflates the feature
+        space,<sup class="cite"><a href="#src-11">11</a></sup> and production will keep sending values the training rows
+        never held. <code>OneHotEncoder</code> has a middle path: <code>min_frequency</code> and
+        <code>max_categories</code> group rare values into one "infrequent" column.<sup class="cite"><a href="#src-12">12</a></sup></p>
+        <p>Frequency encoding replaces each value with its share of the training rows, which is one column however many
+        values there are. credit-g has no column with hundreds of values, so <code>purpose</code> stands in for one
+        here.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>shares = X_tr["purpose"].value_counts(normalize=True)
+print(len(shares), shares[["new car", "retraining"]].round(3).to_dict())
+X_val_purpose = X_val["purpose"].map(shares).astype(float)
+unseen = pd.Series(["new car", "drone"]).map(shares).astype(float).fillna(0.0)</code></pre>
+        <p>The first line prints 10 purposes and two shares: <code>value_counts(normalize=True)</code> gives shares
+        instead of counts, so new car is about 0.27 of the training applicants and retraining about
+        0.007.<sup class="cite"><a href="#src-11">11</a></sup> <code>map(shares)</code> swaps each validation value for
+        its share. "Drone" is not in the table, so <code>map</code> gives a blank, filled here with 0.</p>
+        <p>Two more encodings come up in interviews:</p>
+        <ul>
+          <li>Target encoding replaces each value with the average label of its rows. It suits many-valued columns, but
+          it puts the label into the feature, so <code>TargetEncoder</code> (scikit-learn 1.3 and later) cross-fits inside
+          <code>fit_transform</code> to keep the target from leaking.<sup class="cite"><a href="#src-13">13</a></sup></li>
+          <li>Learned embeddings let a network learn a short list of numbers for each value. Tomorrow's page starts on
+          vectors like these.</li>
+        </ul>
+        <h3>One Pipeline for every step</h3>
+        <p><code>ColumnTransformer</code> sends each list of columns to its own transformer and joins the outputs side by
+        side. Columns in no list are dropped by default, <code>remainder="drop"</code>.<sup class="cite"><a href="#src-14">14</a></sup>
+        <code>Pipeline</code> chains that preparation and a final model into one object, so they are fitted, used and
+        cross-validated together.<sup class="cite"><a href="#src-15">15</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import f1_score
+
+ONE_HOT = ["purpose", "checking_status", "savings_status", "credit_history", "housing",
+           "other_parties", "property_magnitude", "other_payment_plans", "job", "own_telephone"]
+NUMERIC = ["duration", "credit_amount", "installment_commitment", "residence_since",
+           "existing_credits", "num_dependents", "monthly_payment"]
+
+def make_pipe(numeric=NUMERIC, one_hot=ONE_HOT, num_step=None, model=None):
+    """Prepare the columns and fit a model, as one object."""
+    prep = ColumnTransformer([
+        ("num", num_step or StandardScaler(), numeric),
+        ("ord", OrdinalEncoder(categories=[ORDERED["employment"]]), ["employment"]),
+        ("oh", OneHotEncoder(handle_unknown="ignore", sparse_output=False), one_hot)])
+    return Pipeline([("prep", prep), ("model", model or LogisticRegression(max_iter=5000))])
+
+pipe = make_pipe().fit(X_tr, y_tr)
+prep = pipe.named_steps["prep"]
+print(prep.transform(X_val).shape, prep.get_feature_names_out()[[0, 7, 8]])
+pred = pipe.predict(X_val)
+print(f"validation F1 for 'bad' {f1_score(y_val, pred):.3f}")</code></pre>
+<pre class="out">(200, 51) ['num__duration' 'ord__employment' 'oh__purpose_business']
+validation F1 for 'bad' 0.425</pre>
+        <p>The 51 columns are 7 scaled numbers, 1 ordinal column and 43 one-hot columns. <code>duration_band</code> is in
+        no list, so it was dropped; adding it to <code>ONE_HOT</code> would add 4 columns. Each name carries its
+        transformer's prefix, which is how you read the encoded width back.<sup class="cite"><a href="#src-14">14</a></sup>
+        <code>num_step or StandardScaler()</code> means "the step passed in, or a scaler if none was".</p>
+        <p>Two arguments on the one-hot step matter. <code>handle_unknown="ignore"</code> encodes a category the training
+        rows never held as all zeros instead of raising an error. <code>sparse_output=False</code> returns an ordinary
+        array, because the default is a sparse matrix that stores only the non-zero
+        cells.<sup class="cite"><a href="#src-12">12</a></sup> The F1 of 0.425 is the baseline every later change is
+        compared against.</p>
+        <p>What does the Pipeline prevent? <code>fit</code> on <code>X_tr</code> learns every mean, scale and category
+        list from those 600 rows only, and <code>cross_val_score</code> refits the whole pipeline inside each fold, so no
+        held-out row ever shapes the preparation.<sup class="cite"><a href="#src-8">8</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>One-hot suits a few unordered values; ordinal suits a real order, written out by hand.</li>
+          <li>Many values make one-hot too wide; frequency or target encoding keeps one column.</li>
+          <li>A Pipeline learns every preparation step from the training rows only, also inside each fold.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I one-hot encode a category with a few unordered values, and use ordinal encoding when the values have a real
+          order, which I write out myself because the data may store them alphabetically. One-hot is wrong when a column
+          has hundreds of values: you get hundreds of mostly empty columns and constant unseen values, so I'd use
+          frequency or target encoding instead.</p>
+          <p>I put the encoders, the scaler and the model in one scikit-learn Pipeline. Fitting it on the training rows
+          means nothing is learned from validation or test data, and cross-validation refits the whole thing per fold, so
+          it prevents leakage.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">Missing values &amp; outliers</div>
+        <h2>Handling missing values and outliers</h2>
+        <p>Blanks and extreme values call for choices, measured like a new feature. credit-g has no
+        blanks,<sup class="cite"><a href="#src-1">1</a></sup> so this step adds some to a copy on purpose.</p>
+        <h3>Blanks: fill, flag or drop</h3>
+        <p>There are three ways to deal with a blank:</p>
+        <ul>
+          <li>Drop the row. It is simple, but it throws away the rest of that row, data you may still
+          need.<sup class="cite"><a href="#src-16">16</a></sup></li>
+          <li>Fill it, which is called imputation. <code>SimpleImputer</code> fills with the mean, the median (numbers
+          only), the most frequent value or a constant, learned in <code>fit</code> from the training
+          rows.<sup class="cite"><a href="#src-17">17</a></sup></li>
+          <li>Fill it and flag it. <code>add_indicator=True</code> adds a 0-or-1 column saying which cells were blank, so
+          the model can use the fact that a value was missing.<sup class="cite"><a href="#src-16">16</a></sup></li>
+        </ul>
+        <p class="run-label">Run in Colab</p>
+<pre><code>from sklearn.impute import SimpleImputer
+
+toy = pd.DataFrame({"credit_amount": [1000.0, np.nan, 3000.0, 5000.0]})
+print(SimpleImputer(strategy="median").fit_transform(toy).astype(int).tolist())
+print(SimpleImputer(strategy="median", add_indicator=True).fit_transform(toy).astype(int).tolist())</code></pre>
+<pre class="out">[[1000], [3000], [3000], [5000]]
+[[1000, 0], [3000, 1], [3000, 0], [5000, 0]]</pre>
+        <p>The median of the three known amounts, 1,000, 3,000 and 5,000, is 3,000, and it fills the blank in the second
+        row. The second imputer adds a column whose 1 marks that row as filled. An indicator column appears only for a
+        column that had blanks at fit time,<sup class="cite"><a href="#src-17">17</a></sup> so the training rows must
+        contain them.</p>
+        <h3>A blank that means something</h3>
+        <p>Blanks that fall at random carry no information. Blanks that fall mostly on one kind of row do, which is called
+        missing not at random. The code below blanks <code>credit_amount</code> in two copies: one at random, one mostly for
+        defaulters. It leaves out <code>monthly_payment</code>, which still holds the real amount.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>def blank_amounts(df, labels, mostly_defaulters, seed):
+    """Copy df with some credit_amount cells blanked."""
+    rng = np.random.default_rng(seed)
+    labels = labels.to_numpy()
+    share = np.where(labels == 1, 0.5, 0.05) if mostly_defaulters else np.full(len(df), 0.2)
+    out = df.copy()
+    out.loc[rng.random(len(out)) &lt; share, "credit_amount"] = np.nan
+    return out
+
+for mostly in (False, True):
+    tr, val = blank_amounts(X_tr, y_tr, mostly, 1), blank_amounts(X_val, y_val, mostly, 2)
+    row = []
+    for flag in (False, True):
+        fill = Pipeline([("fill", SimpleImputer(strategy="median", add_indicator=flag)),
+                         ("scale", StandardScaler())])
+        p = make_pipe(numeric=NUMERIC[:-1], num_step=fill).fit(tr, y_tr)
+        row.append(f1_score(y_val, p.predict(val)))
+    print(f"mostly defaulters {mostly}: median F1 {row[0]:.2f}, median + indicator F1 {row[1]:.2f}")</code></pre>
+        <p>The <code>share</code> line gives each row its chance of a blank: 20% for everyone in the random copy, or 50%
+        for a defaulter and 5% for anyone else. The loop prints one line per copy, the validation F1 of the median fill
+        and of the fill plus indicator.</p>
+        <p>The indicator wins only on the second copy. A random blank says nothing about the applicant, so the extra
+        column adds nothing. When blanks cluster on defaulters, the indicator column itself predicts default, and the
+        model uses it.<sup class="cite"><a href="#src-16">16</a></sup></p>
+        <h3>Finding outliers with the 1.5 IQR rule</h3>
+        <p>An outlier is a value far from most of a column's values. The interquartile range, IQR, is the width of the
+        middle half: the third quartile Q3 minus the first, Q1. Q1 is the value a quarter of the way up the sorted column
+        and Q3 the value three quarters of the way up, which is what <code>quantile([0.25, 0.75])</code> below computes.</p>
+        <p>A point below Q1 − 1.5 IQR or above Q3 + 1.5 IQR, the inner
+        fences, is a mild outlier; beyond 3 IQR it is an extreme one.<sup class="cite"><a href="#src-18">18</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>q1, q3 = X_tr["credit_amount"].quantile([0.25, 0.75])
+lower, upper = q1 - 1.5 * (q3 - q1), q3 + 1.5 * (q3 - q1)
+print(f"Q1 {q1:.0f}, Q3 {q3:.0f}, fences {lower:.0f} and {upper:.0f}")
+print((X_tr["credit_amount"] &gt; upper).sum(), (X_tr["credit_amount"] &lt; lower).sum())</code></pre>
+<pre class="out">Q1 1345, Q3 4042, fences -2701 and 8088
+41 0</pre>
+        <p>The IQR is 4,042 − 1,345 = 2,697, and 1.5 times that is about 4,046, so the upper fence is about 8,088. 41 of
+        the 600 training loans sit above it and none below, since no amount is negative. Then ask of each flagged value: is it an error, or a real big loan? An impossible value is
+        an error to fix; a large possible one is data.</p>
+        <h3>Keep, clip or log</h3>
+        <table>
+          <thead><tr><th>Choice</th><th>What it does</th><th>In a pipeline</th></tr></thead>
+          <tbody>
+            <tr><td>keep</td><td>leaves the value; a scaler that ignores extremes keeps it from setting the scale</td><td><code>RobustScaler()</code><sup class="cite"><a href="#src-19">19</a></sup></td></tr>
+            <tr><td>clip</td><td>caps every value at the fence</td><td><code>.clip(upper=upper)</code> before the fit</td></tr>
+            <tr><td>log</td><td>pulls a long right tail in while keeping the order of values</td><td><code>FunctionTransformer(np.log1p)</code><sup class="cite"><a href="#src-20">20</a></sup></td></tr>
+          </tbody>
+        </table>
+        <p><code>RobustScaler</code> subtracts the median and divides by the IQR, because outliers pull the mean and the
+        variance a plain scaler uses.<sup class="cite"><a href="#src-19">19</a></sup> A log is monotonic: a larger amount
+        always gives a larger log, so the rank of the values is kept.<sup class="cite"><a href="#src-21">21</a></sup> Skew
+        measures how lopsided a column is: 0 is symmetric, and a positive number means a long right tail.
+        <code>credit_amount</code> has a skew of about 1.95 on the full table, the tail a log pulls
+        in.<sup class="cite"><a href="#src-21">21</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>from sklearn.preprocessing import FunctionTransformer
+
+log_amount = Pipeline([
+    ("log", ColumnTransformer([("amount", FunctionTransformer(np.log1p), ["credit_amount"])],
+                              remainder="passthrough")),
+    ("scale", StandardScaler())])
+clip = lambda df: df.assign(credit_amount=df["credit_amount"].clip(upper=upper))
+runs = {"keep": (make_pipe(), X_tr, X_val),
+        "clip": (make_pipe(), clip(X_tr), clip(X_val)),
+        "log": (make_pipe(num_step=log_amount), X_tr, X_val)}
+for name, (p, tr, val) in runs.items():
+    print(f"{name}: validation F1 {f1_score(y_val, p.fit(tr, y_tr).predict(val)):.3f}")</code></pre>
+        <p>Each choice is its own pipeline scored on the same validation rows, so the three printed lines compare
+        directly. The clip uses the fence from <code>X_tr</code> on both sets. <code>np.log1p</code> is the log of 1
+        plus the value, and the inner <code>ColumnTransformer</code> logs only <code>credit_amount</code>.</p>
+        <p>The choice matters for linear models and networks, whose weighted sums feel a value's size. A decision tree
+        splits one column at a threshold, and a log keeps the rank, so the tree's possible splits stay the
+        same.<sup class="cite"><a href="#src-22">22</a></sup> <code>IsolationForest</code> goes further and flags whole
+        unusual rows.<sup class="cite"><a href="#src-23">23</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Fill blanks with a median learned from the training rows; dropping rows loses data.</li>
+          <li>An indicator column helps when the blanks themselves carry information.</li>
+          <li>The 1.5 IQR fences flag outliers; then decide whether each is an error or real.</li>
+          <li>Clipping or a log matters for linear models and networks, hardly for trees.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>For missing numbers I usually fill with the median learned from the training rows, because it isn't pulled
+          by extremes. If the blanks might mean something, say they fall mostly on customers who default, I also add an
+          indicator column and check on validation data whether it helps. Dropping rows is the last resort, since it
+          throws data away.</p>
+          <p>For outliers I flag values beyond 1.5 interquartile ranges and ask whether each is an error or a real value.
+          Real ones I keep, then clip, log or scale by the median and IQR for a linear model, and compare each on validation
+          rows.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="3">
+        <div class="tag">Feature selection</div>
+        <h2>Feature selection techniques</h2>
+        <p>Feature selection keeps the columns that help and drops the rest, then measures whether dropping helped.</p>
+        <h3>Why fewer features</h3>
+        <ul>
+          <li>Noise: a column with no signal gives the model something to fit by chance.</li>
+          <li>Cost: every column has to be collected, checked and kept up to date in production.</li>
+          <li>Explanation: a model on ten columns is easier to explain to the people it decides about.</li>
+          <li>Columns a lender may not use: <code>personal_status</code>, <code>foreign_worker</code> and <code>age</code>
+          were dropped in step 1 and are never offered to a ranking.<sup class="cite"><a href="#src-3">3</a></sup><sup class="cite"><a href="#src-4">4</a></sup></li>
+        </ul>
+        <p>Selection learns from data, so it follows the split-first rule. scikit-learn's guide shows the cost of
+        breaking it: selecting features on all the rows before splitting made pure noise score about 0.76, where 0.5 was
+        expected.<sup class="cite"><a href="#src-8">8</a></sup> There are three families of method:</p>
+        <table>
+          <thead><tr><th>Family</th><th>How it ranks</th><th>Example</th></tr></thead>
+          <tbody>
+            <tr><td>filter</td><td>each column against the target, with no model</td><td>mutual information</td></tr>
+            <tr><td>model-based</td><td>how much a fitted model's score depends on each column</td><td>permutation importance</td></tr>
+            <tr><td>built into training</td><td>the penalty sets some weights to exactly zero</td><td>L1 regularisation, step 8</td></tr>
+          </tbody>
+        </table>
+        <h3>A filter: mutual information</h3>
+        <p>Mutual information measures how much knowing a column tells you about the target. <code>mutual_info_classif</code>
+        returns one non-negative score per column, zero only when the column and the target are independent. The estimate
+        has some randomness in it, which <code>random_state</code> fixes.<sup class="cite"><a href="#src-24">24</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>from sklearn.feature_selection import mutual_info_classif
+
+mi = mutual_info_classif(prep.transform(X_tr), y_tr, random_state=RANDOM_STATE)
+ranking = pd.Series(mi, index=prep.get_feature_names_out()).sort_values(ascending=False)
+print(ranking.index[:6].tolist())</code></pre>
+<pre class="out">['oh__checking_status_&lt;0', 'oh__checking_status_no checking', 'oh__credit_history_critical/other existing credit', 'oh__housing_own', 'num__credit_amount', 'num__duration']</pre>
+        <p>The filter scores the 51 encoded training columns one at a time.<sup class="cite"><a href="#src-24">24</a></sup>
+        Two <code>checking_status</code> values, under 0 and no checking account, say the most on their own, followed by
+        a critical credit history and owning a home, then the amount and the duration. The scores are rough: with its
+        default <code>discrete_features="auto"</code> the function treats a dense array as continuous, though the one-hot
+        columns are really 0 or 1.<sup class="cite"><a href="#src-24">24</a></sup></p>
+        <h3>A model-based ranking: permutation importance</h3>
+        <p>Permutation importance shuffles one column, which breaks its link to the target, and records how much the
+        score drops. Computed on held-out rows, it shows which columns the model needs on data it has not
+        seen.<sup class="cite"><a href="#src-9">9</a></sup> On the training rows, a column the model had memorised
+        would look important too. A fitted pipeline takes the raw columns, so the ranking is per original column, and
+        <code>n_repeats</code> sets how many shuffles are averaged.<sup class="cite"><a href="#src-25">25</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>from sklearn.inspection import permutation_importance
+
+imp = permutation_importance(pipe, X_val, y_val, scoring="f1", n_repeats=10, random_state=RANDOM_STATE)
+by_column = pd.Series(imp.importances_mean, index=X_val.columns).sort_values(ascending=False)
+print(by_column.index[:5].tolist())
+print(by_column[by_column &lt; 0].index.tolist())</code></pre>
+<pre class="out">['savings_status', 'duration', 'property_magnitude', 'employment', 'checking_status']
+['monthly_payment', 'other_payment_plans', 'existing_credits']</pre>
+        <p>The first line lists the five columns whose shuffle costs the most validation F1. The second lists those
+        with a negative importance: the score went up when the column was scrambled, so what the model learned from it
+        does not hold on new rows.<sup class="cite"><a href="#src-25">25</a></sup> <code>monthly_payment</code> is one of those, at about
+        −0.01 F1. Two correlated columns, such as the amount and the payment, share their importance and can both look
+        weak.<sup class="cite"><a href="#src-9">9</a></sup></p>
+        <h3>Does dropping help?</h3>
+        <p class="run-label">Run in Colab</p>
+<pre><code>top10 = [c for c in by_column.index if c != "duration_band"][:10]
+fewer = make_pipe(numeric=[c for c in NUMERIC if c in top10],
+                  one_hot=[c for c in ONE_HOT if c in top10]).fit(X_tr, y_tr)
+no_payment = make_pipe(numeric=NUMERIC[:-1]).fit(X_tr, y_tr)
+for name, p in [("all columns", pipe), ("top 10", fewer), ("no monthly_payment", no_payment)]:
+    print(f"{name}: validation F1 {f1_score(y_val, p.predict(X_val)):.3f}")</code></pre>
+        <p>The loop prints one validation F1 per pipeline, all on the same 200 rows. The top-10 line is flattered,
+        because the ranking that chose those ten came from these same rows. Removing <code>monthly_payment</code> does not lower the score, so the feature
+        from step 1 did not earn its place.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A filter such as mutual information ranks each column against the target, with no model.</li>
+          <li>Permutation importance on validation rows ranks columns by what the fitted model needs.</li>
+          <li>Removing columns is a change like any other: measure it on validation rows.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A filter method scores each column against the target without a model, for example mutual information. A
+          model-based method asks the fitted model, for example permutation importance: shuffle one column on validation
+          rows and see how much the score drops. L1 regularisation is a third way, because it sets weights to zero.</p>
+          <p>To know whether removing features helped, I refit without them and compare on the same validation rows, or
+          better with cross-validation. I compute permutation importance on validation rows, because on training rows a
+          column the model memorised looks important.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">Choosing a metric</div>
+        <h2>Model evaluation: choosing a metric with the people who own the decision</h2>
+        <p>Before any model is tuned, someone has to say what a good model is, and the data scientist does not make
+        that choice alone.</p>
+        <h3>Accuracy on a 70/30 table</h3>
+        <p>Accuracy is the share of answers that are right. On a table that is 70% good applicants, a model that answers
+        "good" every time scores 70% without reading a single column.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>from sklearn.metrics import accuracy_score, recall_score, balanced_accuracy_score
+
+always_good = np.zeros(len(y_val), dtype=int)
+for name, guess in [("always good", always_good), ("pipeline", pred)]:
+    print(f"{name}: accuracy {accuracy_score(y_val, guess):.2f}, recall {recall_score(y_val, guess):.2f}, "
+          f"balanced accuracy {balanced_accuracy_score(y_val, guess):.2f}")</code></pre>
+<pre class="out">always good: accuracy 0.70, recall 0.00, balanced accuracy 0.50
+pipeline: accuracy 0.68, recall 0.40, balanced accuracy 0.60</pre>
+        <p><code>always_good</code> is 200 zeros, "good" for everyone. It beats the pipeline on accuracy, 0.70 against
+        0.68, while catching none of the 60 defaulters; the pipeline's recall of 0.40 means it catches 24 of them.</p>
+        <p>Balanced accuracy averages the recall of each class, so "always good" scores (1.0 + 0.0) / 2 = 0.50. A
+        classifier that only looks good because the classes are unbalanced drops to 1 / number of classes, here
+        0.5.<sup class="cite"><a href="#src-26">26</a></sup> The pipeline's 0.60 is above that, but only a little.</p>
+        <h3>Who owns the decision, and which mistake costs more</h3>
+        <p>A classifier makes two kinds of mistake, and they rarely cost the same. Which one is worse is a business or a
+        medical question, so it is answered by the people who own the decision: the lender's credit team, the clinic, the
+        product owner. Your job is to ask, then turn the answer into a metric.</p>
+        <ul>
+          <li>Loan approval: credit-g's own costs say approving a defaulter is five times worse than refusing a good
+          applicant.<sup class="cite"><a href="#src-1">1</a></sup></li>
+          <li>Tumour screening: a missed cancer costs far more than an extra follow-up test, so the threshold is lowered
+          to favour recall.<sup class="cite"><a href="#src-27">27</a></sup></li>
+        </ul>
+        <p>A binary classifier's <code>predict</code> turns a probability into a yes at 0.5, which scikit-learn's guide calls "most certainly not ideal for most use
+        cases".<sup class="cite"><a href="#src-27">27</a></sup> The cut-off belongs to the cost of each mistake, and
+        step 7 sets it.</p>
+        <h3>The cost matrix</h3>
+        <p>An interviewer who hears "approving a defaulter is worse" asks how much worse. A cost matrix answers with
+        numbers: one cost for each pairing of true answer and predicted answer. credit-g ships with
+        one:<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <table>
+          <thead><tr><th>True class</th><th>Predicted good (approve)</th><th>Predicted bad (refuse)</th></tr></thead>
+          <tbody>
+            <tr><td>good</td><td>0</td><td>1, a good applicant refused</td></tr>
+            <tr><td>bad</td><td>5, a defaulter approved</td><td>0</td></tr>
+          </tbody>
+        </table>
+        <p>The total cost of a model is 5 times the defaulters it approved plus 1 times the good applicants it refused.
+        "Always good" approves all 60 defaulters on the validation rows, so it costs 5 × 60 = 300. scikit-learn's own
+        cost-sensitive example uses this dataset with these costs and "bad" as the positive
+        class.<sup class="cite"><a href="#src-28">28</a></sup> In code, a matrix such as <code>[[0, -1], [-5, 0]]</code>
+        next to a <code>confusion_matrix</code> call is this idea written as gains.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>On a 70/30 table, "always good" scores 70% accuracy and catches no defaulter.</li>
+          <li>The people who own the decision say which mistake costs more.</li>
+          <li>A cost matrix turns that answer into numbers: here 5 for a defaulter approved, 1 for a good refusal.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I start by asking the people who own the decision what each kind of mistake costs. For a lender, approving
+          someone who defaults costs much more than refusing a good customer, so I'd report recall on the defaulters and
+          the total cost, not accuracy.</p>
+          <p>A model with 70% accuracy can be worthless: if 70% of applicants are good, answering "good" every time gets
+          that score and catches nobody. That's why I check recall or balanced accuracy, and why the threshold should come
+          from the costs instead of the default 0.5.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
+        <div class="tag">Precision, recall, F1</div>
+        <h2>Accuracy, precision, recall and F1 for the defaulters</h2>
+        <p>Week 7 defined precision, recall and F1 for one digit against the rest. This step reads them for the
+        defaulters in a full report, then looks at the two averages the report adds underneath.</p>
+        <h3>Reading a classification report</h3>
+        <p class="run-label">Run in Colab</p>
+<pre><code>from sklearn.metrics import classification_report
+
+print(classification_report(y_val, pred, target_names=["good", "bad"]))</code></pre>
+<pre class="out">              precision    recall  f1-score   support
+
+        good       0.76      0.79      0.77       140
+         bad       0.45      0.40      0.42        60
+
+    accuracy                           0.68       200
+   macro avg       0.60      0.60      0.60       200
+weighted avg       0.66      0.68      0.67       200</pre>
+        <p>The report prints precision, recall, F1 and support for each class, then accuracy and two
+        averages.<sup class="cite"><a href="#src-29">29</a></sup> <code>target_names</code> labels class 0 "good" and
+        class 1 "bad". Support is the number of true rows in each class: 140 good and 60 bad. Read the "bad" row, since
+        the defaulters are what the lender cares about:</p>
+        <ul>
+          <li>precision 0.45: of the 53 applicants the model calls bad, 24 really default;</li>
+          <li>recall 0.40: of the 60 real defaulters, it catches 24;</li>
+          <li>F1 0.42: one number that is high only when both are.</li>
+        </ul>
+        <p>The counts check by hand: 24 / 53 is about 0.45, and 24 / 60 is 0.40. Every number is at the default
+        threshold of 0.5.</p>
+        <h3>Macro and weighted averages</h3>
+        <p>The two average rows combine the per-class scores in different ways. The macro average is the plain mean of
+        the classes. The weighted average weights each class by its support.<sup class="cite"><a href="#src-29">29</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>per_class = f1_score(y_val, pred, average=None)
+print(per_class.round(3))
+print(round(f1_score(y_val, pred, average="macro"), 3), round(f1_score(y_val, pred, average="weighted"), 3))</code></pre>
+<pre class="out">[0.774 0.425]
+0.599 0.669</pre>
+        <p><code>average=None</code> returns one F1 per class, good first. The macro F1 is (0.774 + 0.425) / 2, about
+        0.60. The weighted F1 is (140 × 0.774 + 60 × 0.425) / 200, about 0.67, pulled up by the larger good class.</p>
+        <table>
+          <thead><tr><th>Average</th><th>How</th><th>Here</th><th>Watch out for</th></tr></thead>
+          <tbody>
+            <tr><td>per class</td><td>one score for one class</td><td>0.42 for bad</td><td>the number to report for the defaulters</td></tr>
+            <tr><td>macro</td><td>plain mean over classes</td><td>0.60</td><td>a rare class with a low score drags it down</td></tr>
+            <tr><td>weighted</td><td>mean weighted by support</td><td>0.67</td><td>a large class can hide a rare one's poor score</td></tr>
+          </tbody>
+        </table>
+        <p>Macro averaging treats every class as equally important, so it over-emphasizes the typically low score of an
+        infrequent class.<sup class="cite"><a href="#src-26">26</a></sup> Weighted averaging can hide that score: reading
+        0.67 as "the defaulter F1" is a common mistake when the defaulter F1 is 0.42. Macro F1 is the mean of the
+        per-class F1s, not an F1 worked out from mean precision and mean
+        recall.<sup class="cite"><a href="#src-26">26</a></sup> There is no micro row, because for a single-label problem
+        with every class included micro averaging equals accuracy.<sup class="cite"><a href="#src-29">29</a></sup></p>
+        <h3>Why F1 is a harmonic mean</h3>
+        <p>F1 is the harmonic mean of precision and recall, which works out to 2 tp / (2 tp + fp + fn), where tp, fp and
+        fn count true positives, false positives and false negatives.<sup class="cite"><a href="#src-26">26</a></sup> For
+        the defaulters that is 48 / (48 + 29 + 36) = 48 / 113, about 0.42.</p>
+        <p>A harmonic mean is pulled towards the smaller of its two numbers. Take precision 1.0 and recall 0.1: the plain
+        average is 0.55, but F1 is 2 × 1.0 × 0.1 / 1.1, about 0.18, close to the weak recall.</p>
+        <p>One edge case comes up in interviews. A model that never predicts "bad" has no predicted positives, so
+        its precision is 0 / 0, undefined. <code>classification_report</code> then reports 0 and prints a warning, which
+        is its default <code>zero_division="warn"</code>.<sup class="cite"><a href="#src-29">29</a></sup> Step 8's most
+        heavily penalised model is one of these.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Read the defaulter row: precision 0.45, recall 0.40, F1 0.42 at threshold 0.5.</li>
+          <li>Macro is the plain mean over classes; weighted weights each class by its support.</li>
+          <li>The weighted 0.67 can hide the defaulters' 0.42.</li>
+          <li>F1 is a harmonic mean, so a low precision or recall pulls it down.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>The macro average is the plain mean of the per-class scores, so every class counts the same and a rare class
+          with a low score drags it down. The weighted average weights each class by how many true rows it has, so a big
+          class can hide a small one. On the credit data the defaulters' F1 is 0.42, macro is 0.60 and weighted is
+          0.67.</p>
+          <p>F1 is the harmonic mean of precision and recall, so it's only high when both are high. When the positive
+          class is the defaulter, I report precision, recall and F1 for that class, not the weighted average.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="6">
+        <div class="tag">Confusion matrix</div>
+        <h2>Reading a confusion matrix as costs, and choosing the threshold</h2>
+        <p>Week 7 read a confusion matrix for which digits were confused. Here it is read as money, which sets the
+        threshold.</p>
+        <h3>Each cell has a price</h3>
+        <p>In <code>confusion_matrix</code> the rows are the true labels and the columns the predicted ones, and for two
+        classes <code>.ravel()</code> flattens it into <code>tn, fp, fn, tp</code>.<sup class="cite"><a href="#src-30">30</a></sup>
+        With "bad" as 1, a false negative is a defaulter approved and a false positive a good applicant refused.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>from sklearn.metrics import confusion_matrix
+
+print(confusion_matrix(y_val, pred))
+tn, fp, fn, tp = confusion_matrix(y_val, pred).ravel()
+print(f"cost {5 * fn + 1 * fp}")</code></pre>
+<pre class="out">[[111  29]
+ [ 36  24]]
+cost 209</pre>
+        <ul>
+          <li>Top left, 111: good applicants approved, cost 0.</li>
+          <li>Top right, 29: good applicants refused, 1 each.</li>
+          <li>Bottom left, 36: defaulters approved, 5 each, so 180.</li>
+          <li>Bottom right, 24: defaulters refused, cost 0.</li>
+        </ul>
+        <p>180 + 29 = 209, against 300 for "always good". Most of the cost sits in one cell: the approved
+        defaulters.</p>
+        <h3>The decision threshold</h3>
+        <p><code>predict_proba(X_val)[:, 1]</code> gives each applicant's probability of default, and
+        <code>(proba &gt;= t).astype(int)</code> turns it into a decision at threshold <code>t</code>. Which
+        <code>t</code>? Refusing an applicant whose chance of default is p costs (1 − p) × 1 on average, and approving
+        costs p × 5. Refuse when p × 5 is larger, which is when p is above 1 / (1 + 5), about 0.17.</p>
+        <p>That is Elkan's rule: with no cost for a correct answer, predict the positive class when its probability is at
+        least the false-positive cost divided by the sum of the two costs.<sup class="cite"><a href="#src-31">31</a></sup>
+        Check it at p = 0.2: approving costs 0.2 × 5 = 1.0 and refusing 0.8 × 1 = 0.8, so refuse. At a cost of 10
+        instead of 5, the rule falls to 1 / 11, about 0.09.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>def best_cost_threshold(y_true, proba):
+    """Return the (threshold, cost) pair with the lowest total cost."""
+    costs = []
+    for t in np.arange(0.05, 0.96, 0.05):
+        tn, fp, fn, tp = confusion_matrix(y_true, (proba &gt;= t).astype(int)).ravel()
+        costs.append((round(float(t), 2), int(5 * fn + 1 * fp)))
+    return min(costs, key=lambda pair: pair[1])
+
+proba = pipe.predict_proba(X_val)[:, 1]
+for t in (0.10, 0.15, 0.20, 0.50):
+    tn, fp, fn, tp = confusion_matrix(y_val, (proba &gt;= t).astype(int)).ravel()
+    print(f"threshold {t:.2f}: defaulters approved {fn}, good refused {fp}, cost {5 * fn + fp}")
+print(best_cost_threshold(y_val, proba))</code></pre>
+<pre class="out">threshold 0.10: defaulters approved 2, good refused 88, cost 98
+threshold 0.15: defaulters approved 5, good refused 74, cost 99
+threshold 0.20: defaulters approved 10, good refused 61, cost 111
+threshold 0.50: defaulters approved 36, good refused 29, cost 209
+(0.1, 98)</pre>
+        <p>Lowering the threshold refuses more people: at 0.10 only 2 defaulters slip through, at the price of 88 good
+        applicants refused. The cost falls from 209 to 98. <code>min(..., key=...)</code> picks the pair with the lowest
+        cost, its second item. The grid steps by 0.05, so it holds no 0.17; its neighbours are 0.15 and 0.20, and the
+        lowest-cost point reads as near the rule.<sup class="cite"><a href="#src-31">31</a></sup> The rule also assumes
+        the probabilities are calibrated, meaning that 0.2 really is a 20% chance.<sup class="cite"><a href="#src-28">28</a></sup></p>
+        <h3>A threshold belongs to one model</h3>
+        <p>Tune the threshold on validation rows and never on the rows the model was trained
+        on.<sup class="cite"><a href="#src-27">27</a></sup> Two warnings follow from the output above:</p>
+        <ul>
+          <li>200 rows give a noisy answer: 98 at 0.10 and 99 at 0.15 are almost equal, so the bottom of the curve is
+          flat.</li>
+          <li>A threshold tuned for one model is wrong for another, so a new model gets its own sweep on its own validation
+          probabilities.<sup class="cite"><a href="#src-27">27</a></sup></li>
+        </ul>
+        <p>scikit-learn also offers <code>TunedThresholdClassifierCV</code> and <code>FixedThresholdClassifier</code> for
+        this job;<sup class="cite"><a href="#src-27">27</a></sup> the loop above keeps the arithmetic in view.</p>
+        <h3>ROC, AUC and precision-recall curves</h3>
+        <p>One confusion matrix describes one threshold. An ROC curve describes all of them: it plots the true positive
+        rate (recall) against the false positive rate as the threshold moves, and
+        <code>RocCurveDisplay.from_predictions</code> draws it.<sup class="cite"><a href="#src-32">32</a></sup> The false
+        positive rate is the share of good applicants wrongly refused, fp / (fp + tn): 29 / 140, about 0.21, at 0.5.</p>
+        <p>The area
+        under it, AUC, needs no threshold: it measures how well the model ranks defaulters above good applicants, and a
+        random ranking scores 0.5.<sup class="cite"><a href="#src-33">33</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>import matplotlib.pyplot as plt
+from sklearn.metrics import roc_auc_score, precision_recall_curve, RocCurveDisplay
+
+print(round(roc_auc_score(y_val, proba), 3))
+precision, recall, thresholds = precision_recall_curve(y_val, proba)
+print(len(precision), len(thresholds), precision[-1], recall[-1])
+RocCurveDisplay.from_predictions(y_val, proba)
+plt.show()</code></pre>
+<pre class="out">0.719
+201 200 1.0 0.0</pre>
+        <p>An AUC of about 0.72 is well above 0.5 and far from 1.0,
+        and its rescaled form, the Gini coefficient 2 × AUC − 1, is about
+        0.44.<sup class="cite"><a href="#src-33">33</a></sup> <code>roc_auc_score</code> takes the probabilities,
+        <code>predict_proba(X)[:, 1]</code>, not the 0-or-1 predictions.</p>
+        <p><code>precision_recall_curve</code> returns the precision and recall at every threshold. The two arrays are
+        one longer than the thresholds and end at precision 1 and recall 0, which the second line
+        shows.<sup class="cite"><a href="#src-34">34</a></sup> Drawn against each other, they tell you more than ROC when
+        positives are few, because precision counts the false alarms directly.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Multiply each cell by its cost: 36 approved defaulters at 5 dominate the 209.</li>
+          <li>The cost rule puts the threshold near 1 / (1 + 5), about 0.17, not 0.5.</li>
+          <li>Tune the threshold on validation rows, again for every model you keep.</li>
+          <li>AUC measures ranking over all thresholds; 0.5 is random.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I read the confusion matrix as money. On the credit data a defaulter approved costs 5 and a good customer
+          refused costs 1, so 36 approved defaulters and 29 refusals cost 209. With those costs you should refuse once
+          the chance of default passes one in six, so the threshold belongs near 0.17, not 0.5.</p>
+          <p>I sweep the threshold on validation rows for the model I'm keeping and pick the lowest cost. The ROC curve
+          and its AUC tell me how well the model ranks cases across every threshold, which one confusion matrix can't.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="7">
+        <div class="tag">Overfitting</div>
+        <h2>Avoiding overfitting: regularisation and cross-validation</h2>
+        <p>Week 7 fought overfitting with dropout and early stopping. Regularisation is a third way: a penalty on large
+        weights is added to the training loss, so the model stays simpler. Cross-validation then replaces one validation
+        number with several.</p>
+        <h3>L2 in scikit-learn: a smaller C is a stronger penalty</h3>
+        <p><code>LogisticRegression</code> uses an L2 penalty by default, and <code>C</code>, default 1.0, is the inverse
+        of its strength: smaller values specify stronger regularisation.<sup class="cite"><a href="#src-35">35</a></sup>
+        L2 shrinks every coefficient towards zero, which is week 6's ridge.<sup class="cite"><a href="#src-6">6</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>for C in [0.001, 0.01, 0.1, 1, 10, 100]:
+    m = make_pipe(model=LogisticRegression(C=C, max_iter=5000)).fit(X_tr, y_tr)
+    print(f"C={C}: training F1 {f1_score(y_tr, m.predict(X_tr)):.3f}, "
+          f"validation F1 {f1_score(y_val, m.predict(X_val)):.3f}")</code></pre>
+<pre class="out">C=0.001: training F1 0.000, validation F1 0.000
+C=0.01: training F1 0.224, validation F1 0.061
+C=0.1: training F1 0.579, validation F1 0.408
+C=1: training F1 0.621, validation F1 0.425
+C=10: training F1 0.627, validation F1 0.435
+C=100: training F1 0.627, validation F1 0.435</pre>
+        <p>At <code>C=0.001</code> the penalty squeezes the weights so hard that the model never predicts a defaulter,
+        and F1 is 0: underfitting. scikit-learn can warn there, because precision with no predicted defaulter is
+        undefined. From <code>C=1</code> up, training F1 sits near 0.62 and validation near 0.43. That gap of about 0.2
+        is the overfitting, and on 600 rows a weaker penalty does not close it.</p>
+        <h3>L1 sets weights to exactly zero</h3>
+        <p>L1 adds a cost proportional to the absolute size of each weight and pushes many of them to exactly zero; L2
+        adds a cost proportional to the squared weights and shrinks them without zeroing
+        them.<sup class="cite"><a href="#src-36">36</a></sup> L1 is week 6's lasso, which prefers fewer non-zero
+        coefficients and can be used for feature selection.<sup class="cite"><a href="#src-6">6</a></sup> The default
+        <code>lbfgs</code> solver (a solver is the algorithm that searches for the weights) supports only L2 or none, so L1 needs <code>liblinear</code> or
+        <code>saga</code>.<sup class="cite"><a href="#src-35">35</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>l1 = make_pipe(model=LogisticRegression(penalty="l1", solver="liblinear", C=0.1)).fit(X_tr, y_tr)
+l2 = make_pipe(model=LogisticRegression(C=0.1, max_iter=5000)).fit(X_tr, y_tr)
+for name, m in [("L1", l1), ("L2", l2)]:
+    w = m.named_steps["model"].coef_.ravel()
+    print(f"{name}: {(w == 0).sum()} of {w.size} weights are zero, "
+          f"validation F1 {f1_score(y_val, m.predict(X_val)):.2f}")</code></pre>
+<pre class="out">L1: 39 of 51 weights are zero, validation F1 0.28
+L2: 0 of 51 weights are zero, validation F1 0.41</pre>
+        <p><code>coef_</code> holds the model's 51 weights, one per encoded column. At the same <code>C</code>, L1 keeps
+        12 columns and drops the rest, selection done by the penalty, while L2 keeps all 51. Here L1 went too far and F1
+        fell to 0.28, so a larger <code>C</code> is the next thing to try. From scikit-learn 1.8, <code>penalty</code> is
+        deprecated in favour of <code>l1_ratio</code>, with <code>l1_ratio=1</code> for L1, so newer code looks
+        different.<sup class="cite"><a href="#src-37">37</a></sup></p>
+        <h3>L2 in a Keras layer</h3>
+        <p>In Keras the penalty goes on each layer. <code>tf.keras.regularizers.l2(0.01)</code> adds 0.01 times the sum of
+        the squared weights to the loss, and it is passed to a layer as
+        <code>kernel_regularizer</code>.<sup class="cite"><a href="#src-38">38</a></sup> A Dense layer's kernel is its
+        weight matrix.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>import tensorflow as tf
+
+X_tr_enc, X_val_enc = prep.transform(X_tr), prep.transform(X_val)
+
+def make_credit_net(l2=None):
+    """One hidden layer of 32 ReLU units and a sigmoid output, optionally L2-penalised."""
+    reg = tf.keras.regularizers.l2(l2) if l2 else None
+    net = tf.keras.Sequential([
+        tf.keras.Input(shape=(X_tr_enc.shape[1],)),
+        tf.keras.layers.Dense(32, activation="relu", kernel_regularizer=reg),
+        tf.keras.layers.Dense(1, activation="sigmoid", kernel_regularizer=reg)])
+    net.compile(optimizer="adam", loss="binary_crossentropy")
+    return net
+
+tf.keras.utils.set_random_seed(RANDOM_STATE)
+credit_net, credit_net_l2 = make_credit_net(), make_credit_net(l2=0.01)
+for net in (credit_net, credit_net_l2):
+    net.fit(X_tr_enc, y_tr, epochs=100, batch_size=32, validation_data=(X_val_enc, y_val), verbose=0)
+print(credit_net.count_params(), credit_net_l2.count_params())</code></pre>
+<pre class="out">1697 1697</pre>
+        <p>Both networks read the 51 encoded columns and hold 51 × 32 + 32 + 32 + 1 = 1,697 weights: the penalty adds no
+        weight, only a term in the loss. Keras adds that term to the loss it reports, so
+        <code>credit_net_l2</code>'s loss curve sits higher by construction.<sup class="cite"><a href="#src-36">36</a></sup>
+        Compare the two on validation F1, recall and cost, because their loss curves are not on the same footing.</p>
+        <h3>Stratified k-fold cross-validation</h3>
+        <p>k-fold cross-validation splits the rows into k folds, trains on k − 1 of them and scores the one left out, k
+        times. <code>cross_val_score</code> returns one score per fold, and the guide reports their mean and standard
+        deviation.<sup class="cite"><a href="#src-39">39</a></sup> <code>StratifiedKFold</code> keeps each class's share in
+        every fold, and its <code>random_state</code> has effect only with
+        <code>shuffle=True</code>.<sup class="cite"><a href="#src-40">40</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>from sklearn.model_selection import StratifiedKFold, cross_val_score
+
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=RANDOM_STATE)
+scores = cross_val_score(make_pipe(), X_trval, y_trval, cv=cv, scoring="f1")
+print(scores.round(2))
+print(f"mean {scores.mean():.2f}, standard deviation {scores.std():.2f}")</code></pre>
+<pre class="out">[0.56 0.62 0.47 0.3  0.57]
+mean 0.50, standard deviation 0.11</pre>
+        <p>Each fold holds 160 of the 800 rows, 48 of them defaulters. The same pipeline scores from 0.30 to 0.62
+        depending on which rows are held out, so the single validation F1 of 0.425 was one draw. Report the mean and the
+        spread: about 0.50, give or take 0.11. With 10 folds the mean is about 0.49 and the folds range from 0.24 to 0.65,
+        because smaller folds give noisier scores.</p>
+        <h3>Choosing C inside the folds</h3>
+        <p><code>GridSearchCV(pipe, {"model__C": [...]}, scoring="f1", cv=cv)</code> tries each <code>C</code> with
+        cross-validation. <code>model__C</code> means the <code>C</code> of the step named <code>model</code>. It refits
+        the best setting on all the rows it was given and reports <code>best_params_</code> and
+        <code>best_score_</code>.<sup class="cite"><a href="#src-41">41</a></sup> That score is optimistic, because the
+        folds were used to choose. The kept pipeline, with a threshold tuned on its own validation probabilities, then
+        meets the test set once.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>In scikit-learn a smaller C is a stronger penalty; too strong predicts no defaulter at all.</li>
+          <li>L1 zeroes weights and so selects features; L2 shrinks them all.</li>
+          <li>Compare a Keras L2 network on validation metrics, since its loss includes the penalty.</li>
+          <li>Stratified k-fold gives a mean and a spread instead of one number.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Regularisation adds a penalty on the weights to the loss. L2 penalises squared weights and shrinks them all;
+          L1 penalises absolute weights and sets many to exactly zero, so it also selects features. In scikit-learn I set
+          C on LogisticRegression, where smaller means stronger, and L1 needs the liblinear or saga solver. In
+          Keras I pass an L2 regulariser as the kernel regulariser of each Dense layer.</p>
+          <p>Stratified k-fold splits the training data into k folds that each keep the class balance, trains k times
+          with a different fold held out, and gives k scores. I report the mean and the spread, because on small data one
+          split can be lucky or unlucky.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="8">
+        <div class="tag">Check yourself</div>
+        <h2>Check yourself</h2>
+        <p>Ten questions, at least one per step. Answer each out loud before you open it.</p>
+        <details class="check"><summary>A colleague adds <code>age</code> back to the credit model because it raises validation F1 by 0.02. What do you say?</summary><p>Age is a protected ground under the Canadian Human Rights Act, and Regulation B allows it only in a narrow use that needs legal review. A better score does not make a column allowed: protected columns and their stand-ins are ruled out before any score is read.</p></details>
+        <details class="check"><summary>Why add a monthly payment column when the model already has the amount and the duration, and how do you know whether it helped?</summary><p>Logistic regression only adds up weighted columns, so it cannot divide the amount by the duration itself. Fit with and without the column and compare on the validation rows; here removing it left F1 at 0.425, so it did not earn its place.</p></details>
+        <details class="check"><summary>A column has 800 distinct values, such as a product code. Why is one-hot the wrong choice, and what would you use instead?</summary><p>One-hot would add 800 mostly-zero columns and keep meeting codes the training rows never held. Frequency encoding gives one column of each value's share of the training rows, and target encoding gives one column of the average label, cross-fitted so the label does not leak.</p></details>
+        <details class="check"><summary>Blanks in a column fall mostly on applicants who later default. Median fill, or median fill plus an indicator, and why?</summary><p>Median fill plus an indicator. The fact that the value is missing carries information, and the indicator column lets the model use it; on the copy blanked mostly for defaulters, the indicator raised validation F1. With random blanks the indicator adds nothing.</p></details>
+        <details class="check"><summary>The training amounts have Q1 = 1,345 and Q3 = 4,042. Where is the upper 1.5 IQR fence, and what do you do with a loan above it?</summary><p>The IQR is 2,697, so the fence is 4,042 + 1.5 × 2,697, about 8,088. Ask first whether it is an error or a real big loan; a real one is kept, then clipped, logged or scaled with RobustScaler, each choice compared on validation rows.</p></details>
+        <details class="check"><summary>Name a filter method and a model-based method for ranking features. Why is permutation importance computed on validation rows?</summary><p>Mutual information is a filter: it scores each column against the target with no model. Permutation importance is model-based: shuffle one column and measure how much the fitted model's score drops. On training rows a column the model memorised would look important, so validation rows show what it needs on new data.</p></details>
+        <details class="check"><summary>How can a model with 70% accuracy be worthless on credit-g?</summary><p>70% of the applicants are good, so answering "good" every time scores 0.70 and catches no defaulter: recall 0, balanced accuracy 0.5, cost 300.</p></details>
+        <details class="check"><summary>A report shows defaulter F1 0.42, macro F1 0.60 and weighted F1 0.67. Which do you report for the defaulters, and why do the averages differ?</summary><p>The defaulter row, 0.42. Macro is the plain mean of the good and bad F1s, and weighted weights them by support, 140 against 60, so the large good class pulls it up and hides the defaulters' lower score.</p></details>
+        <details class="check"><summary>A defaulter approved costs 5 and a good applicant refused costs 1. Where should the threshold be, and on which rows do you choose it?</summary><p>Near 1 / (1 + 5), about 0.17: refuse once the chance of default passes one in six. Sweep it on the validation rows for the model you keep, never on the training rows; here the lowest cost was 98 at 0.10, against 209 at the default 0.5.</p></details>
+        <details class="check"><summary>Does a larger C mean more or less regularisation, and what do you report from five fold scores of 0.56, 0.62, 0.47, 0.30 and 0.57?</summary><p>Less: C is the inverse of the penalty's strength, so a smaller C is stronger. From the folds you report the mean and the spread, about 0.50 give or take 0.11, because one split of 800 rows can be lucky or unlucky.</p></details>
+      </section>
+
+      <section class="reading-sources" aria-label="Sources and deeper dive">
+        <h2>Sources &amp; deeper dive</h2>
+        <ul>
+          <li id="src-1"><a href="https://archive.ics.uci.edu/dataset/144/statlog+german+credit+data" target="_blank" rel="noopener">Statlog (German Credit Data), UCI Machine Learning Repository</a> — the 1,000 applicants, their attributes and the 5-and-1 cost matrix.</li>
+          <li id="src-2"><a href="https://scikit-learn.org/1.6/modules/generated/sklearn.datasets.fetch_openml.html" target="_blank" rel="noopener">fetch_openml (scikit-learn 1.6)</a> — why to pin a version, and the DataFrame it returns.</li>
+          <li id="src-3"><a href="https://laws-lois.justice.gc.ca/eng/acts/h-6/page-1.html" target="_blank" rel="noopener">Canadian Human Rights Act</a> — the prohibited grounds of discrimination and the services they cover.</li>
+          <li id="src-4"><a href="https://www.consumerfinance.gov/rules-policy/regulations/1002/2/" target="_blank" rel="noopener">12 CFR 1002.2 Definitions (Regulation B)</a> — what counts as a prohibited basis for a credit decision.</li>
+          <li id="src-5"><a href="https://www.consumerfinance.gov/rules-policy/regulations/1002/6/" target="_blank" rel="noopener">12 CFR 1002.6 Rules concerning evaluation of applications (Regulation B)</a> — the narrow conditions for using age.</li>
+          <li id="src-6"><a href="https://scikit-learn.org/1.6/modules/linear_model.html" target="_blank" rel="noopener">Linear Models (scikit-learn 1.6)</a> — weighted sums, ridge shrinking and lasso's zero coefficients.</li>
+          <li id="src-7"><a href="https://pandas.pydata.org/pandas-docs/version/2.2/reference/api/pandas.cut.html" target="_blank" rel="noopener">pandas.cut (pandas 2.2)</a> — right-closed bins and values outside every bin.</li>
+          <li id="src-8"><a href="https://scikit-learn.org/1.6/common_pitfalls.html" target="_blank" rel="noopener">Common pitfalls and recommended practices (scikit-learn 1.6)</a> — split first, fit on training rows, and the cost of selecting before the split.</li>
+          <li id="src-9"><a href="https://scikit-learn.org/1.6/modules/permutation_importance.html" target="_blank" rel="noopener">Permutation feature importance (scikit-learn 1.6 user guide)</a> — shuffling a column on held-out rows, and correlated columns.</li>
+          <li id="src-10"><a href="https://scikit-learn.org/1.6/modules/generated/sklearn.preprocessing.OrdinalEncoder.html" target="_blank" rel="noopener">OrdinalEncoder (scikit-learn 1.6)</a> — <code>categories="auto"</code> and passing the order by hand.</li>
+          <li id="src-11"><a href="https://scikit-learn.org/1.6/modules/preprocessing.html" target="_blank" rel="noopener">Preprocessing data (scikit-learn 1.6)</a> — why integer codes imply an order, and why one-hot inflates many-valued columns.</li>
+          <li id="src-12"><a href="https://scikit-learn.org/1.6/modules/generated/sklearn.preprocessing.OneHotEncoder.html" target="_blank" rel="noopener">OneHotEncoder (scikit-learn 1.6)</a> — <code>handle_unknown</code>, <code>sparse_output</code> and grouping rare values.</li>
+          <li id="src-13"><a href="https://scikit-learn.org/1.6/modules/generated/sklearn.preprocessing.TargetEncoder.html" target="_blank" rel="noopener">TargetEncoder (scikit-learn 1.6)</a> — target encoding and the cross-fitting that stops the leak.</li>
+          <li id="src-14"><a href="https://scikit-learn.org/1.6/modules/generated/sklearn.compose.ColumnTransformer.html" target="_blank" rel="noopener">ColumnTransformer (scikit-learn 1.6)</a> — column lists, <code>remainder="drop"</code> and prefixed output names.</li>
+          <li id="src-15"><a href="https://scikit-learn.org/1.6/modules/generated/sklearn.pipeline.Pipeline.html" target="_blank" rel="noopener">Pipeline (scikit-learn 1.6)</a> — preparation and model fitted and cross-validated as one object.</li>
+          <li id="src-16"><a href="https://scikit-learn.org/1.6/modules/impute.html" target="_blank" rel="noopener">Imputation of missing values (scikit-learn 1.6)</a> — the cost of dropping rows, and missing-value indicators.</li>
+          <li id="src-17"><a href="https://scikit-learn.org/1.6/modules/generated/sklearn.impute.SimpleImputer.html" target="_blank" rel="noopener">SimpleImputer (scikit-learn 1.6)</a> — fill strategies and when an indicator column appears.</li>
+          <li id="src-18"><a href="https://www.itl.nist.gov/div898/handbook/prc/section1/prc16.htm" target="_blank" rel="noopener">What are outliers in the data? (NIST/SEMATECH e-Handbook)</a> — the inner and outer fences.</li>
+          <li id="src-19"><a href="https://scikit-learn.org/1.6/modules/generated/sklearn.preprocessing.RobustScaler.html" target="_blank" rel="noopener">RobustScaler (scikit-learn 1.6)</a> — scaling by the median and the IQR.</li>
+          <li id="src-20"><a href="https://scikit-learn.org/1.6/modules/generated/sklearn.preprocessing.FunctionTransformer.html" target="_blank" rel="noopener">FunctionTransformer (scikit-learn 1.6)</a> — a log as a step inside a pipeline.</li>
+          <li id="src-21"><a href="https://scikit-learn.org/1.6/modules/preprocessing.html#non-linear-transformation" target="_blank" rel="noopener">Preprocessing data: non-linear transformation (scikit-learn 1.6)</a> — monotonic transforms keep the rank of values.</li>
+          <li id="src-22"><a href="https://scikit-learn.org/1.6/modules/tree.html" target="_blank" rel="noopener">Decision Trees (scikit-learn 1.6 user guide)</a> — threshold splits and little data preparation.</li>
+          <li id="src-23"><a href="https://scikit-learn.org/1.6/modules/generated/sklearn.ensemble.IsolationForest.html" target="_blank" rel="noopener">IsolationForest (scikit-learn 1.6)</a> — flagging unusual whole rows.</li>
+          <li id="src-24"><a href="https://scikit-learn.org/1.6/modules/generated/sklearn.feature_selection.mutual_info_classif.html" target="_blank" rel="noopener">mutual_info_classif (scikit-learn 1.6)</a> — the mutual-information filter and its nearest-neighbour estimate.</li>
+          <li id="src-25"><a href="https://scikit-learn.org/1.6/modules/generated/sklearn.inspection.permutation_importance.html" target="_blank" rel="noopener">permutation_importance (scikit-learn 1.6)</a> — the function, its scoring and <code>n_repeats</code>.</li>
+          <li id="src-26"><a href="https://scikit-learn.org/1.6/modules/model_evaluation.html" target="_blank" rel="noopener">Metrics and scoring (scikit-learn 1.6)</a> — F1, macro and weighted averages, and balanced accuracy.</li>
+          <li id="src-27"><a href="https://scikit-learn.org/1.6/modules/classification_threshold.html" target="_blank" rel="noopener">Tuning the decision threshold for class prediction (scikit-learn 1.6)</a> — why 0.5 is rarely right, and which rows to tune on.</li>
+          <li id="src-28"><a href="https://scikit-learn.org/1.6/auto_examples/model_selection/plot_cost_sensitive_learning.html" target="_blank" rel="noopener">Post-tuning the decision threshold for cost-sensitive learning (scikit-learn 1.6 example)</a> — the same dataset and costs, tuned in scikit-learn.</li>
+          <li id="src-29"><a href="https://scikit-learn.org/1.6/modules/generated/sklearn.metrics.classification_report.html" target="_blank" rel="noopener">classification_report (scikit-learn 1.6)</a> — the report's rows, its averages and <code>zero_division</code>.</li>
+          <li id="src-30"><a href="https://scikit-learn.org/1.6/modules/generated/sklearn.metrics.confusion_matrix.html" target="_blank" rel="noopener">confusion_matrix (scikit-learn 1.6)</a> — rows true, columns predicted, and the binary <code>ravel</code>.</li>
+          <li id="src-31"><a href="https://cseweb.ucsd.edu/~elkan/rescale.pdf" target="_blank" rel="noopener">The Foundations of Cost-Sensitive Learning (Elkan, IJCAI 2001)</a> — the cost-minimising threshold.</li>
+          <li id="src-32"><a href="https://scikit-learn.org/1.6/modules/generated/sklearn.metrics.RocCurveDisplay.html" target="_blank" rel="noopener">RocCurveDisplay (scikit-learn 1.6)</a> — drawing the ROC curve.</li>
+          <li id="src-33"><a href="https://scikit-learn.org/1.6/modules/generated/sklearn.metrics.roc_auc_score.html" target="_blank" rel="noopener">roc_auc_score (scikit-learn 1.6)</a> — AUC from probabilities, 0.5 for random, and Gini.</li>
+          <li id="src-34"><a href="https://scikit-learn.org/1.6/modules/generated/sklearn.metrics.precision_recall_curve.html" target="_blank" rel="noopener">precision_recall_curve (scikit-learn 1.6)</a> — precision and recall at every threshold.</li>
+          <li id="src-35"><a href="https://scikit-learn.org/1.6/modules/generated/sklearn.linear_model.LogisticRegression.html" target="_blank" rel="noopener">LogisticRegression (scikit-learn 1.6)</a> — <code>C</code>, the default L2 penalty and which solvers support L1.</li>
+          <li id="src-36"><a href="https://www.tensorflow.org/tutorials/keras/overfit_and_underfit" target="_blank" rel="noopener">Overfit and underfit (TensorFlow tutorial)</a> — L1 and L2 penalties and how Keras adds them to the loss.</li>
+          <li id="src-37"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html" target="_blank" rel="noopener">LogisticRegression (scikit-learn stable)</a> — the <code>penalty</code> deprecation and <code>l1_ratio</code>.</li>
+          <li id="src-38"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/regularizers/L2" target="_blank" rel="noopener">tf.keras.regularizers.L2</a> — the L2 penalty and <code>kernel_regularizer</code>.</li>
+          <li id="src-39"><a href="https://scikit-learn.org/1.6/modules/cross_validation.html" target="_blank" rel="noopener">Cross-validation: evaluating estimator performance (scikit-learn 1.6)</a> — k folds, one score each, mean and spread.</li>
+          <li id="src-40"><a href="https://scikit-learn.org/1.6/modules/generated/sklearn.model_selection.StratifiedKFold.html" target="_blank" rel="noopener">StratifiedKFold (scikit-learn 1.6)</a> — class shares per fold, and <code>shuffle</code> with <code>random_state</code>.</li>
+          <li id="src-41"><a href="https://scikit-learn.org/1.6/modules/generated/sklearn.model_selection.GridSearchCV.html" target="_blank" rel="noopener">GridSearchCV (scikit-learn 1.6)</a> — <code>model__C</code>, the refit and <code>best_score_</code>.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · after you have read the page</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 8 Day 1</footer>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 1 — goals</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Explain what feature engineering is, build a new feature from existing columns and judge on validation rows whether it helped</li>
+      <li>Encode categorical data as one-hot, ordinal or frequency columns, and say when one-hot encoding is the wrong choice</li>
+      <li>Handle missing values and outliers with a median fill, an indicator, the 1.5 IQR rule, clipping or a log, and give the reason for the method</li>
+      <li>Choose an evaluation metric from what each kind of wrong answer costs, and choose a decision threshold on validation data</li>
+      <li>Implement L1 (lasso) and L2 (ridge) regularisation in scikit-learn and Keras to penalise complex models</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Day 2 — Vector databases: Chroma & Pinecone →", href: "day-2-vector-databases-chroma-and-pinecone.html" };
+window.DIAGRAM = {
+  title: "Day 1 · from better columns to an honest score",
+  width: 500, height: 450,
+  nodes: [
+    { id:"fe", step:0, x:24, y:14, w:200, h:56, label:"Features\n  3 protected columns out\n  monthly payment · bands", detail:"Split 600 / 200 / 200 first. A row-wise ratio leaks nothing; it is kept only if validation rows say so." },
+    { id:"enc", step:1, x:276, y:14, w:200, h:56, label:"Encoding\n  one-hot · ordinal · frequency\n  in one Pipeline", detail:"employment's order written out by hand; 51 encoded columns; baseline validation F1 0.425." },
+    { id:"miss", step:2, x:24, y:94, w:200, h:56, label:"Blanks & outliers\n  median + indicator\n  1.5 IQR fence 8,088", detail:"With blanks mostly on defaulters, the indicator column raises validation F1; with random blanks it does not. 41 loans above the fence." },
+    { id:"sel", step:3, x:276, y:94, w:200, h:56, label:"Selection\n  mutual information\n  permutation importance", detail:"savings_status leads on validation rows; monthly_payment scores below zero and removing it changes nothing." },
+    { id:"metric", step:4, x:24, y:174, w:452, h:48, label:"CHOOSING A METRIC\n  always good: 70% accuracy, recall 0, cost 300", detail:"The people who own the decision say which mistake costs more: 5 for a defaulter approved, 1 for a good refusal." },
+    { id:"f1", step:5, x:24, y:246, w:200, h:56, label:"Precision · recall · F1\n  bad F1 0.42\n  macro 0.60 · weighted 0.67", detail:"Report the defaulter row; the weighted average is pulled up by the 140 good applicants." },
+    { id:"cm", step:6, x:276, y:246, w:200, h:56, label:"Matrix as costs\n  209 at 0.5 · 98 at 0.10\n  rule 1 / (1 + 5)", detail:"36 approved defaulters cost 180 of the 209. AUC about 0.72 measures ranking over every threshold." },
+    { id:"reg", step:7, x:24, y:326, w:452, h:56, label:"REGULARISATION & CROSS-VALIDATION\n  smaller C = stronger · L1 zeroes 39 of 51\n  5 stratified folds: 0.50 ± 0.11", detail:"Keras takes the L2 penalty per layer; compare on validation metrics, since its loss includes the penalty." },
+    { id:"check", step:8, x:24, y:400, w:452, h:40, label:"CHECK YOURSELF\n  answer out loud, then open" }
+  ],
+  edges: [
+    { id:"e1", step:1, from:"fe", to:"enc", label:"encode" },
+    { id:"e2", step:2, from:"enc", to:"miss", label:"fill · clip" },
+    { id:"e3", step:3, from:"miss", to:"sel", label:"rank" },
+    { id:"e4", step:4, from:"sel", to:"metric", label:"judged by" },
+    { id:"e5", step:5, from:"metric", to:"f1", label:"per class" },
+    { id:"e6", step:6, from:"f1", to:"cm", label:"as costs" },
+    { id:"e7", step:7, from:"cm", to:"reg", dir:"-" },
+    { id:"e8", step:8, from:"reg", to:"check", dir:"-" }
+  ],
+  captions: [
+    "New columns are built from each row's own values and kept only if validation rows say they help; protected columns never enter. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "Each category gets the encoding its values call for, and one Pipeline learns every step from the training rows.",
+    "Blanks are filled, flagged or dropped, and outliers kept, clipped or logged, each choice measured on validation rows.",
+    "A filter and a model-based ranking say which columns matter; dropping them is measured like any change.",
+    "The metric comes from what each mistake costs, which the people who own the decision decide.",
+    "Precision, recall and F1 are read for the defaulters; macro and weighted averages combine the classes differently.",
+    "The confusion matrix times its costs gives a total, and the cost rule moves the threshold near 0.17.",
+    "L1 and L2 penalise the weights in scikit-learn and Keras, and stratified folds give a mean and a spread.",
+    "You can now say why a column is left out, which encoding fits, which threshold the costs imply and how far a score can be trusted."
+  ]
+};
+window.QUIZ = {
+  id: "w08-d1",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "A defaulter approved costs 5 and a good applicant refused costs 1. Above which probability of default should the lender refuse?",
+      options: ["0.5", "About 0.17", "About 0.83", "0.2"], answer: 1,
+      explain: "With no cost for a correct answer, refuse when the probability is at least 1 / (1 + 5), about 0.17. At 0.2, approving costs 0.2 x 5 = 1.0 on average and refusing 0.8 x 1 = 0.8, so 0.2 is already past the cut-off." },
+    { type: "tf", stem: "In scikit-learn's LogisticRegression, a larger C means a stronger penalty on the weights.", answer: false,
+      explain: "C is the inverse of the regularisation strength, so a smaller C is a stronger penalty. At C=0.001 the credit model never predicts a defaulter at all." },
+    { type: "mcq", stem: "Which of these must be learned from the training rows only? Select all that apply.",
+      options: ["The median used to fill blank amounts", "The 1.5 IQR fences for credit_amount", "Each row's monthly payment", "The share of each purpose value for frequency encoding"], answer: [0, 1, 3],
+      explain: "A median, a fence and a share are learned from many rows, so they come from X_tr. The monthly payment divides one row's own amount by its own duration, so computing it on every part leaks nothing." },
+    { type: "match", stem: "Match each encoding to the column it fits.",
+      pairs: [
+        { l: "one-hot", r: "a handful of values with no order, such as housing" },
+        { l: "ordinal", r: "values with a real order, written out by hand, such as employment" },
+        { l: "frequency", r: "hundreds of values, replaced by each value's share of the training rows" },
+        { l: "target", r: "hundreds of values, replaced by the average label, cross-fitted to avoid a leak" }
+      ],
+      explain: "One-hot adds a column per value, so it suits few values. Ordinal keeps an order the data may store alphabetically. Frequency and target encoding keep a many-valued column to one column." },
+    { type: "scq", stem: "The report shows defaulter F1 0.42, macro F1 0.60 and weighted F1 0.67. Why is the weighted average the highest?",
+      options: ["It weights each class by its support, and the 140 good rows score 0.77", "It is the F1 of the mean precision and mean recall", "It ignores the defaulter class", "It equals accuracy for a two-class problem"], answer: 0,
+      explain: "Weighted F1 is (140 x 0.774 + 60 x 0.425) / 200, about 0.67, so the large good class pulls it up. Macro is the plain mean, about 0.60, and neither is the defaulter number, which is 0.42." },
+    { type: "open", stem: "In two or three sentences: why must the decision threshold be tuned again for the model you finally keep, and on which rows?",
+      hint: "Probabilities differ between models; validation rows, not training or test.",
+      model: "Each model produces its own probabilities, so the threshold with the lowest cost for one model is not the lowest for another. I sweep thresholds on the validation probabilities of the model I keep, never on its training rows, and then use the test set once with that model and that threshold." }
+  ]
+};
+</script>
+
+<script src="../../assets/js/diagram.js?v=20261124"></script>
+<script src="../../assets/js/scrolly.js?v=20261124"></script>
+<script src="../../assets/js/modals.js?v=20261124"></script>
+<script src="../../assets/js/quiz.js?v=20261124"></script>
+<script src="../../assets/js/widgets.js?v=20261124"></script>
+<script src="../../assets/js/glossary.js?v=20261124"></script>
+</body>
+</html>

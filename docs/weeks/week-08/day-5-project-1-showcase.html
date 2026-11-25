@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w08d5">
+<title>W8·D5 — Project 1 showcase | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261124">
+<script src="../../assets/js/theme.js?v=20261124"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="../../exit-criteria/index.html">Exit criteria</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>Project 1 showcase: presenting a model to a mixed audience and telling it in an interview</h1>
+        <div class="meta">
+          <span><b>Week 8</b> · Day 5</span>
+          <span>Fri Dec 4, 2026</span>
+          <span>Feature engineering &amp; vector databases</span>
+          <span><b>~44 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span class="verified">Sources checked 2026-11-24 · python 3.13.18</span>
+          <span class="exit"><a href="../../exit-criteria/qc-4-ai-ml-tensorflow-vector-dbs.html#w08d5">Exit criteria</a></span>
+        </div>
+        <p class="summary">This page assumes Thursday's pipeline: forum posts embedded with the same model, stored in
+        Chroma and Pinecone, and searched by meaning. It is study material for after the Project 1 showcase. It
+        reviews the week's vector-database ideas on one page, then covers presenting a model to a mixed audience,
+        explaining metrics and a confusion matrix in plain words, and what a reviewer asks about a model and why. It
+        closes with checking your own notebook, telling the project as a STAR story and what a strong 5 to 7 minutes
+        holds. Afterwards you can answer "explain your model to a manager" and "tell me about a project you built" in a
+        few spoken sentences.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="0">
+        <div class="tag">Review</div>
+        <h2>The week's vector-database ideas on one page</h2>
+        <p>Tuesday to Thursday built one idea three ways: texts turned into vectors, stored, then searched by meaning.
+        This step puts those ideas side by side in the order an interviewer tends to ask about them. Each subsection
+        names the day that taught it, so you can open that page for the full version.</p>
+        <h3>What a vector database adds over a table you scan</h3>
+        <p><a href="day-2-vector-databases-chroma-and-pinecone.html">Tuesday's page</a> first stored each article's
+        vector in a SQLite table and searched by reading every row, comparing the query's vector with each one. That is
+        fine for thirty articles. It slows as the table grows, because every query has to touch every row. A vector
+        database keeps each vector with its id and metadata and answers "which stored vectors are closest to this one?"
+        in one call, with calls beside it to add, change, filter and delete records.</p>
+        <p>The week used two of them, and they differ mostly in where they run:</p>
+        <table>
+          <thead><tr><th></th><th>Chroma</th><th>Pinecone</th></tr></thead>
+          <tbody>
+            <tr><td>Where it runs</td><td>Inside your Python process; <code>PersistentClient</code> saves to a local folder and loads it on start<sup class="cite"><a href="#src-1">1</a></sup></td><td>A managed service on AWS, GCP and Azure, with writes and reads on separate paths that scale apart<sup class="cite"><a href="#src-2">2</a></sup></td></tr>
+            <tr><td>Records live in</td><td>A collection</td><td>An index, split into namespaces</td></tr>
+            <tr><td>A query reports</td><td>A distance: lower is closer</td><td>A score: higher is closer</td></tr>
+            <tr><td>Needs a key</td><td>No</td><td>Yes, read from Colab Secrets</td></tr>
+          </tbody>
+        </table>
+        <p>In this week's notebooks neither database embeds anything: they store and compare the vectors you hand
+        them. Pinecone's guide states the rule that follows. You embed each document before you upsert it and each query
+        before you search, with the same model, and the index's dimension and metric match that
+        model.<sup class="cite"><a href="#src-3">3</a></sup> The week's model, <code>all-MiniLM-L6-v2</code>, turns a
+        text into 384 numbers and cuts any input longer than 256 word pieces, the chunks of words it
+        reads.<sup class="cite"><a href="#src-4">4</a></sup></p>
+        <p>The same-model rule matters because its failure is quiet. A different model that also gives 384 numbers puts
+        the query in a different space from the stored vectors. The call succeeds, results come back, and the nearest
+        neighbours are near only by accident.</p>
+        <h3>add, update and upsert</h3>
+        <p>Chroma's <code>add</code> needs a unique string id per record and documents, embeddings or both. Adding a
+        record whose id already exists is ignored without an error.<sup class="cite"><a href="#src-5">5</a></sup>
+        <code>update</code> on a missing id logs an error and skips that item, and <code>upsert</code> creates the ids
+        that are missing and updates the ones that exist.<sup class="cite"><a href="#src-6">6</a></sup> The cell below
+        uses vectors of two numbers so you can check every result by hand.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>%pip install -q chromadb==1.5.9
+import chromadb
+
+client = chromadb.Client()
+# start from an empty collection, so the cell reruns
+try:
+    client.delete_collection("review")
+except Exception:
+    pass
+col = client.create_collection(
+    "review",
+    embedding_function=None,
+    configuration={"hnsw": {"space": "cosine"}},
+)
+col.add(ids=["a"], embeddings=[[1.0, 0.0]], documents=["first text"])
+col.add(ids=["a"], embeddings=[[0.0, 1.0]], documents=["second text"])
+print(col.count(), col.get(ids=["a"])["documents"])
+
+col.upsert(ids=["a"], embeddings=[[0.0, 1.0]], documents=["second text"])
+print(col.count(), col.get(ids=["a"])["documents"])</code></pre>
+<pre class="out">1 ['first text']
+1 ['second text']</pre>
+        <p><code>chromadb.Client()</code> is the in-memory client, for experiments where nothing has to
+        persist.<sup class="cite"><a href="#src-1">1</a></sup> The <code>try</code> block removes a
+        <code>review</code> collection if one is already there, so the cell can run twice. <code>embedding_function=None</code> switches off
+        Chroma's own embedding, which would otherwise embed any document sent without a
+        vector.<sup class="cite"><a href="#src-5">5</a></sup> The <code>configuration</code> line picks the cosine
+        space; the default is <code>l2</code>, and the space cannot be changed after the collection is
+        created.<sup class="cite"><a href="#src-7">7</a></sup></p>
+        <p>The first line of output is the trap. The second <code>add</code> was skipped, the count stayed at 1 and the
+        record still holds "first text", with nothing on screen to say so. The <code>upsert</code> replaced it. In
+        Pinecone an upsert with an existing id overwrites the entire record, and one request carries up to 1,000 records
+        and 2 MB.<sup class="cite"><a href="#src-8">8</a></sup></p>
+        <div class="ix-predict" data-q="A notebook calls add with ten corrected articles whose ids are already stored. The count is unchanged and no error appears. What does the collection hold?" data-a="The old ten articles. add ignores an id that already exists, without an error, so the corrections were never stored. upsert would have replaced them."></div>
+        <h3>Distance against score</h3>
+        <p>The interviewer's next question is usually "so is a bigger number better?" It depends on which database
+        printed it. Run this in the next cell, after the one above:</p>
+<pre><code>col.upsert(ids=["b"], embeddings=[[0.6, 0.8]], documents=["third text"])
+res = col.query(query_embeddings=[[1.0, 0.0]], n_results=2)
+print(res["ids"][0], [round(d, 2) for d in res["distances"][0]])</code></pre>
+<pre class="out">['b', 'a'] [0.4, 1.0]</pre>
+        <p>Work it by hand. Both vectors have length 1, so their cosine similarity is the dot product: 1 × 0.6 + 0 × 0.8
+        = 0.6. Chroma's cosine distance is 1 minus the similarity, so "b" sits at 0.4.<sup class="cite"><a href="#src-7">7</a></sup>
+        Record "a" now points straight up, at right angles to the query: similarity 0, distance 1. The closest record
+        comes first, with the smallest number.</p>
+        <p>Pinecone reports the similarity itself. Cosine similarity runs from -1 to 1, where 1 means the two vectors
+        point the same way, so the same two records would score 0.6 and 0.<sup class="cite"><a href="#src-9">9</a></sup>
+        Down a Chroma results table the distance column rises; down a Pinecone table the score column falls. The rule of
+        thumb for choosing a metric is the one the embedding model was trained
+        with.<sup class="cite"><a href="#src-9">9</a></sup></p>
+        <p>In someone else's code the two queries look like this, with <code>q</code> a question and <code>embed</code>
+        the week's embedding function:</p>
+<pre><code># Chroma: distances, lower is closer
+collection.query(query_embeddings=embed([q]), n_results=5,
+                 where={"category": "billing"})
+
+# Pinecone: scores, higher is closer
+index.query(vector=embed([q])[0].tolist(), top_k=5, namespace="web",
+            filter={"category": {"$eq": "billing"}}, include_metadata=True)</code></pre>
+        <p>These two lines are for recognising. They need a built collection and index, so they do not run on their own. Chroma takes a
+        list of query vectors and a <code>where</code> filter; Pinecone takes one vector as a plain list, a
+        <code>namespace</code> and a <code>filter</code> whose comparisons are spelled with operators such as
+        <code>$eq</code>.</p>
+        <h3>Namespace or metadata filter</h3>
+        <p>Pinecone splits an index's records into namespaces, which are created automatically during upsert, and a
+        query scans only its own namespace. Metadata is a flat JSON object of fields you filter on at query time, up to
+        40 KB per record, with no null values.<sup class="cite"><a href="#src-3">3</a></sup> Both give a way to keep one
+        customer's articles apart from another's. A tenant is one customer whose data must stay apart from the
+        others. Pinecone's guidance compares the two:</p>
+        <table>
+          <thead><tr><th></th><th>One namespace per tenant</th><th>One namespace, a metadata filter</th></tr></thead>
+          <tbody>
+            <tr><td>Isolation</td><td>Physical: each tenant's records sit apart</td><td>None: every record shares the namespace</td></tr>
+            <tr><td>Query cost</td><td>Scans only that tenant's records</td><td>Scans the whole namespace, so it costs more and takes longer</td></tr>
+            <tr><td>Search across tenants</td><td>No: every operation targets one namespace</td><td>Yes</td></tr>
+          </tbody>
+        </table>
+        <p>Pinecone recommends one namespace per tenant and keeps the filter for cases where isolation is not strict
+        or a search must cross tenants.<sup class="cite"><a href="#src-10">10</a></sup> Wednesday's <code>web</code> and <code>mobile</code> namespaces are the
+        first shape, and <code>{"product": {"$eq": "web"}}</code> is the second. Pinecone does not allow a bare
+        comparison operator at the top level of a filter.<sup class="cite"><a href="#src-11">11</a></sup> Chroma's
+        <code>where</code> uses the same style of operators, such as <code>$eq</code> and
+        <code>$in</code>.<sup class="cite"><a href="#src-12">12</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>The same model embeds every stored text and every query, at the index's dimension.</li>
+          <li>Chroma's add skips an existing id without an error; upsert replaces it.</li>
+          <li>Chroma reports a distance, lower is closer; Pinecone reports a score, higher is closer.</li>
+          <li>A namespace isolates a tenant and scans less; a filter can cross tenants but scans everything.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A SQL table can hold vectors, but searching it means comparing the query with every row, so it slows as the
+          data grows. A vector database stores each vector with its id and metadata and answers "what is closest to
+          this?" in one call. I embed the documents and the queries with the same model, or the results are close only
+          by accident.</p>
+          <p>In Chroma, add ignores an id that already exists without any error, so a correction silently never lands.
+          Upsert creates the missing ids and replaces the existing ones, and in Pinecone an upsert overwrites the whole
+          record.</p>
+          <p>For one index holding every customer's articles I'd give each customer a namespace. A query then reads only
+          that customer's records and they're physically apart. A metadata filter only makes sense when isolation isn't
+          strict or I need to search across customers, and it scans the whole namespace.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">Presenting</div>
+        <h2>Presenting a model to a mixed audience: the problem and the finding first</h2>
+        <p>A model is finished when someone who did not build it can decide what to do with it. The rest of this page
+        covers what to show, what to say about the numbers and what you will be asked.</p>
+        <h3>Who is listening to a model talk</h3>
+        <p><a href="../week-05/day-5-project-0-showcase.html">Week 5's showcase page</a> set out the audience rule from
+        Google's technical writing course: define the audience by role first, then by how close it is to the
+        knowledge.<sup class="cite"><a href="#src-13">13</a></sup> A model talk stretches that distance further than a
+        data talk. An engineer in the call knows what a validation set is, while a manager may never have seen what a
+        model's output looks like.</p>
+        <p>The same course warns that an expert's understanding of a topic ruins their explanations to newcomers, and
+        that the wider the audience, the more you must explain.<sup class="cite"><a href="#src-13">13</a></sup> After a
+        week inside a notebook, words such as recall, epoch and threshold feel ordinary. To most listeners they are
+        noise until you say what each one means for the decision. A mixed audience usually holds three kinds of
+        listener:</p>
+        <ul>
+          <li>a manager, who wants to know what the model is for and whether to trust it</li>
+          <li>an engineer, who wants to know how it was evaluated and whether it reruns</li>
+          <li>someone who knows the problem, such as a credit officer, who wants to know which mistakes it makes and how often</li>
+        </ul>
+        <h3>A slide flow that follows the listener</h3>
+        <p>A first deck tends to follow the order of the notebook: data, cleaning, features, model, metrics. That is the
+        order you built it in. The listener wants the order they would use it in, which starts with the problem and
+        the answer. A flow that works for most model talks:</p>
+        <ol>
+          <li>The problem and who has it, in one line.</li>
+          <li>The finding, as a sentence with one number in it.</li>
+          <li>The data, and the baseline the model is compared against.</li>
+          <li>The model, and the one choice that mattered most.</li>
+          <li>The result, said in plain words, with the baseline beside it.</li>
+          <li>What it gets wrong, from looking at the wrong predictions.</li>
+          <li>The improvement you tried, and what it did to the number.</li>
+          <li>The limits, and what would come next.</li>
+        </ol>
+        <p>The method sits in the middle, short. The engineer will ask about it, and step 4 covers what they ask.</p>
+        <h3>The finding as the title, one number per slide</h3>
+        <p>The UK Government Analysis Function's chart guidance says a chart's title should communicate its headline
+        message. Its test for a chart: if you cannot tell its message over the phone in a few sentences, rethink
+        it.<sup class="cite"><a href="#src-14">14</a></sup> Penn State's assertion-evidence approach does the same for
+        whole slides, building each one on a short sentence message rather than a topic phrase, backed by visual evidence
+        rather than a bulleted list.<sup class="cite"><a href="#src-15">15</a></sup></p>
+        <table>
+          <thead><tr><th>Topic title</th><th>Finding title (illustrative)</th></tr></thead>
+          <tbody>
+            <tr><td>Results</td><td>The model finds about 7 in 10 of the applicants who later default</td></tr>
+            <tr><td>Confusion matrix</td><td>Most of its mistakes are good applicants flagged, not defaulters missed</td></tr>
+            <tr><td>Model comparison</td><td>The larger network did no better than logistic regression</td></tr>
+          </tbody>
+        </table>
+        <p>Each finding title carries one number or one direction, so a listener who reads only the titles still gets
+        the argument. A results slide holds one number, said in words: "0.70 recall" becomes "finds 7 in 10 defaulters".
+        Show a five-column table of metrics and the listener has to pick which number matters. Most will pick accuracy,
+        because it is the one they recognise, and step 3 shows why that is often the wrong one.</p>
+        <div class="ix-spot" data-snippet="Slide 4  Results (illustrative)&#10;           accuracy 0.76 · precision 0.61 · recall 0.52 · F1 0.56 · AUC 0.79&#10;Slide 5  Adding L2 regularisation did not lower the validation loss (illustrative)" data-q="Which slide would a manager struggle with, and how would you rewrite it?" data-a="Slide 4. Its title is a topic and it carries five numbers with no baseline. Title it with the finding, keep one number in plain words (for example, it finds about half of the defaulters), and put the baseline beside it. Slide 5 is already a finding title."></div>
+        <h3>Say what the model cannot do</h3>
+        <p>Plain words cost precision. "Finds 7 in 10 defaulters" hides the good applicants wrongly flagged on the way.
+        So the slide gives one number in plain words, and the notebook keeps the full table for the engineer's question.
+        Overstating is the bigger risk. The Analysis Function's guidance says being upfront about limitations
+        protects the integrity of the findings, while overstated certainty risks inappropriate
+        decisions.<sup class="cite"><a href="#src-16">16</a></sup></p>
+        <p>The same guidance asks the analyst to explain how each limitation feeds through into the decisions users
+        take.<sup class="cite"><a href="#src-16">16</a></sup> A limitation with its consequence attached reads like this:
+        "It learned from 600 past applicants in one table and has not been checked on new ones, so it should advise a
+        credit officer rather than decide alone." A listener can act on that sentence, where "The data has some
+        limitations" gives them nothing.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Order the deck the way the listener uses it: problem and finding first, method short.</li>
+          <li>Title each slide with its finding, and give a results slide one number in plain words.</li>
+          <li>State each limitation with what it means for the decision to use the model.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>For a manager I'd start with the problem and the answer, not the method. Something like: the model flags
+          applicants likely to default, and it finds about seven in ten of them, where the simplest rule finds none.</p>
+          <p>Then one limitation with its consequence, that it should support a credit officer rather than replace one,
+          and I'd keep the full metrics table in the notebook for whoever asks.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">Presenting</div>
+        <h2>Metrics, curves and a confusion matrix for people who do not train models</h2>
+        <p>Every listener asks some version of "how good is it?" A metric answers that only once you say what it
+        counts. <a href="day-1-feature-engineering-and-model-evaluation.html">Monday's page</a> computes the metrics on
+        the credit table; this step is about saying them to someone who has never computed one.</p>
+        <h3>The confusion matrix in two sentences</h3>
+        <p>A confusion matrix sorts every prediction into four boxes: true positives, false positives, false negatives
+        and true negatives.<sup class="cite"><a href="#src-17">17</a></sup> "Positive" means the class the model looks
+        for, here an applicant who defaults, which is a quirk of the vocabulary: a positive is bad news. For a listener,
+        give each box a plain name:</p>
+        <table>
+          <thead><tr><th>Box</th><th>Plain name</th><th>In the credit example</th></tr></thead>
+          <tbody>
+            <tr><td>True positive</td><td>Caught</td><td>Defaulted, and the model flagged them</td></tr>
+            <tr><td>False negative</td><td>Missed</td><td>Defaulted, and the model let them through</td></tr>
+            <tr><td>False positive</td><td>False alarm</td><td>Repaid, but the model flagged them</td></tr>
+            <tr><td>True negative</td><td>Correctly cleared</td><td>Repaid, and the model let them through</td></tr>
+          </tbody>
+        </table>
+        <p>The cell below builds 200 illustrative predictions from counts, not from any notebook, and prints the matrix
+        and three metrics. scikit-learn is preinstalled on Colab.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>import numpy as np
+from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, recall_score
+
+# illustrative: 60 applicants defaulted (1), 140 repaid (0)
+y_true = np.array([1] * 60 + [0] * 140)
+y_pred = np.array([1] * 42 + [0] * 18 + [1] * 25 + [0] * 115)
+
+print(confusion_matrix(y_true, y_pred, labels=[1, 0]))
+print("recall   ", round(recall_score(y_true, y_pred), 2))
+print("precision", round(precision_score(y_true, y_pred), 2))
+print("accuracy ", round(accuracy_score(y_true, y_pred), 3))</code></pre>
+<pre class="out">[[ 42  18]
+ [ 25 115]]
+recall    0.7
+precision 0.63
+accuracy  0.785</pre>
+        <p><code>labels=[1, 0]</code> puts the defaulters first, so the top row is the 60 who defaulted (42 caught, 18
+        missed) and the bottom row is the 140 who repaid (25 flagged, 115 cleared). Recall is 42 / 60 = 0.70, the share
+        of defaulters caught. Precision is 42 / (42 + 25) = 0.63, the share of flags that were right. Accuracy is
+        (42 + 115) / 200 = 0.785.</p>
+        <p>Said to a manager, the whole matrix is two sentences. Of the 60 applicants who defaulted, the model caught 42
+        and missed 18. Of the 140 who repaid, it wrongly flagged 25 and cleared the rest.</p>
+        <h3>Which number leads</h3>
+        <p>Accuracy is the share of all predictions that were right. On a rare positive class, a model that always
+        predicts negative can score 99% and still be useless.<sup class="cite"><a href="#src-18">18</a></sup> The same
+        happens here on a smaller scale. A rule that approves everyone is right about all 140 who repaid, so it scores
+        140 / 200 = 0.70 and catches no defaulter at all. Against that, 0.785 sounds like a small gain, while recall went
+        from 0 to 0.70.</p>
+        <p>Which metric leads depends on which mistake costs more. Recall matters most when a missed positive is the
+        costly mistake, precision when a positive prediction has to be reliable.<sup class="cite"><a href="#src-18">18</a></sup>
+        If a missed defaulter costs the lender more than a refused good applicant, recall leads the slide. If every
+        flag triggered an expensive manual review, precision would.</p>
+        <p>The two move against each other through the threshold, the probability above which the model says "flag".
+        Raising it generally lowers false positives and raises false negatives.<sup class="cite"><a href="#src-17">17</a></sup>
+        For a listener: a stricter model flags fewer people, so it raises fewer false alarms and misses more
+        defaulters.</p>
+        <h3>Two curves on one chart</h3>
+        <p>A network's training history is two curves: the loss on the examples it learns from, and the loss on the
+        validation examples it never trains on. Week 7's <code>plot_history(history, metric="loss")</code> draws both on
+        one chart. TensorFlow's overfitting tutorial reads them the same way you will be asked to: a lower validation
+        loss means a better model.<sup class="cite"><a href="#src-19">19</a></sup></p>
+        <p>While both curves fall, the model is learning patterns that carry over to new applicants. When the
+        validation curve turns up while the training curve keeps falling, the model has started to fit details of its
+        own training rows that do not carry over, which is overfitting.<sup class="cite"><a href="#src-19">19</a></sup></p>
+        <p>For a listener, one sentence carries it: "after about epoch 20 it stopped getting better on applicants it had not
+        seen, so I kept the earlier weights" (illustrative). Both curves belong on one chart because the gap between them
+        is the evidence.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Name the four boxes caught, missed, false alarm and correctly cleared.</li>
+          <li>Accuracy flatters a model when one class is common; name the baseline beside it.</li>
+          <li>Recall leads when a miss costs more, precision when a false alarm does.</li>
+          <li>A validation curve rising while training keeps falling is overfitting.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A confusion matrix counts four kinds of outcome. In two sentences: of the 60 applicants who defaulted, the
+          model caught 42 and missed 18; of the 140 who repaid, it wrongly flagged 25 and cleared the rest.</p>
+          <p>I wouldn't lead with accuracy on that data, because approving everyone already scores 70 percent and
+          catches nobody. A missed defaulter is the costly mistake, so I lead with recall and give precision beside it,
+          and I say that moving the threshold trades one against the other.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="3">
+        <div class="tag">Presenting</div>
+        <h2>What a reviewer asks about a model, and why</h2>
+        <p>Four questions come up in almost every review of a model. Each one has a reason, and once you know the
+        reason you know what a good answer has to contain. They map onto the parts of a model card, a short report on
+        a model. It says how the model performs under varied conditions, including across relevant groups, the context
+        it is meant for and how it was evaluated, so it is not used where it is poorly
+        suited.<sup class="cite"><a href="#src-20">20</a></sup></p>
+        <table>
+          <thead><tr><th>Question</th><th>Why a reviewer asks it</th><th>Model card part (closest)</th></tr></thead>
+          <tbody>
+            <tr><td>What is the baseline?</td><td>A score means nothing until it is compared with something simpler</td><td>—</td></tr>
+            <tr><td>How was the test set kept apart?</td><td>A test set that influenced the model gives a score that is too good</td><td>Evaluation procedure</td></tr>
+            <tr><td>What does it get wrong?</td><td>An average hides which cases, and which people, pay for the mistakes</td><td>Performance under varied conditions</td></tr>
+            <tr><td>Would you ship it?</td><td>It checks that you know what the model is for and where it stops</td><td>Intended use</td></tr>
+          </tbody>
+        </table>
+        <h3>What is the baseline?</h3>
+        <p>scikit-learn's <code>DummyClassifier</code> makes predictions that ignore the input features and serves as a
+        simple baseline to compare other classifiers against. With <code>strategy="most_frequent"</code> it always
+        predicts the most common class.<sup class="cite"><a href="#src-21">21</a></sup> The cell loads Monday's credit
+        table and splits it the week's way: 200 rows for test, then 200 of the remaining 800 for validation.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>from sklearn.datasets import fetch_openml
+from sklearn.dummy import DummyClassifier
+from sklearn.metrics import accuracy_score, recall_score
+from sklearn.model_selection import train_test_split
+
+RANDOM_STATE = 42
+credit = fetch_openml("credit-g", version=1, as_frame=True).frame
+y = (credit["class"] == "bad").astype(int)
+X = credit.drop(columns=["class"])
+X_trval, X_test, y_trval, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=RANDOM_STATE)
+X_tr, X_val, y_tr, y_val = train_test_split(X_trval, y_trval, test_size=0.25, stratify=y_trval, random_state=RANDOM_STATE)
+
+baseline = DummyClassifier(strategy="most_frequent").fit(X_tr, y_tr)
+val_pred = baseline.predict(X_val)
+print("val accuracy", round(accuracy_score(y_val, val_pred), 3))
+print("val recall  ", round(recall_score(y_val, val_pred), 3))</code></pre>
+<pre class="out">val accuracy 0.7
+val recall   0.0</pre>
+        <p><code>y</code> is 1 for an applicant who defaulted, so the most common class is 0 and the baseline approves
+        everyone. It is fitted on <code>X_tr</code> and scored on <code>X_val</code>, never on the test rows. Its 0.7
+        accuracy is the 140 good applicants among the 200 validation rows, and its recall of 0.0 means it catches no
+        defaulter. Any model you present has to clear both numbers, and a slide that shows 0.75 accuracy without this
+        row invites the question.</p>
+        <p>TensorFlow's overfitting tutorial works the same way. It starts with a simple model of densely-connected
+        layers as a baseline, then builds larger models and compares each one against
+        it.<sup class="cite"><a href="#src-19">19</a></sup></p>
+        <h3>How was the test set kept apart?</h3>
+        <p>This question is about data leakage: using information that would not be available at prediction time,
+        which gives over-optimistic scores. scikit-learn's guidance is blunt: test data should never be used to make
+        choices about the model, you never call <code>fit</code> on it, and you split before any
+        preprocessing.<sup class="cite"><a href="#src-22">22</a></sup> A good answer names the split, says where choices
+        were made and says how often the test set was scored:</p>
+        <ul>
+          <li>the split came first, before any scaling or encoding</li>
+          <li>every choice, from features to threshold, was made on the validation rows</li>
+          <li>the test set was scored once, at the end, by the model already chosen</li>
+        </ul>
+        <p>Step 5 shows how to check your own notebook for each of these.</p>
+        <h3>What does it get wrong, and would you ship it?</h3>
+        <p>Error analysis means looking at the examples a model gets wrong and asking what they have in common. A
+        reviewer asks for it because an average can hide a pattern. Eighteen missed defaulters is one number; eighteen
+        missed defaulters who all asked for short, small loans is a finding about where the model fails (illustrative).
+        The model card's call for performance across relevant groups asks the same of
+        people.<sup class="cite"><a href="#src-20">20</a></sup></p>
+        <p>"Would you ship it?" checks whether you know the model's intended use and its limits. "Yes, it's 78 percent
+        accurate" fails that check. A good answer says what the model is fit for now and what it would need before real
+        customers: a check on new applicants, its performance across groups of applicants, and a person who reviews
+        the flags.</p>
+        <h3>The improvement that did not help</h3>
+        <p>Many attempts to improve a model make it no better, and some make it worse. The common slip is leaving that
+        out or spinning it. Report it as a row in the results table with one sentence on why. Owning a limitation
+        protects the integrity of the rest of the findings.<sup class="cite"><a href="#src-16">16</a></sup></p>
+        <table>
+          <thead><tr><th>Model (illustrative)</th><th>Validation recall</th><th>Validation F1</th></tr></thead>
+          <tbody>
+            <tr><td>Baseline, most frequent class</td><td>0.00</td><td>0.00</td></tr>
+            <tr><td>Logistic regression</td><td>0.70</td><td>0.62</td></tr>
+            <tr><td>Network with L2 regularisation</td><td>0.66</td><td>0.60</td></tr>
+          </tbody>
+        </table>
+        <p>The sentence for that last row: "The network with L2 reached 0.66 recall against 0.70 for logistic
+        regression, so I kept logistic regression; the network's curves showed little overfitting for a penalty to
+        fix."</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A most-frequent baseline sets the floor every presented score must clear.</li>
+          <li>The test set answer names the split, where choices were made, and one final score.</li>
+          <li>An improvement that did not help goes in the table with one sentence on why.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>The first thing I'd ask about any model is the baseline. A dummy model that always predicts the commonest
+          class scored 70 percent accuracy on my validation rows and caught no defaulters, so a 75 percent model is
+          barely better unless its recall says otherwise.</p>
+          <p>Yes, the failed improvement stays in the deck. I show it as a row next to the model I kept, say its recall
+          came out a little lower, and give the reason I think it didn't help. It tells the reviewer the other numbers weren't
+          picked to look good.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">Project review</div>
+        <h2>Project review: checking your own notebook before you present</h2>
+        <p>Before anyone else reads your notebook, read it the way a reviewer will. Five checks catch most of what
+        goes wrong between the last edit and the presentation:</p>
+        <ul>
+          <li>Runtime, then Run all, on a fresh runtime, finishes without an edit</li>
+          <li>the test set is used once</li>
+          <li>the training and validation curves share one chart</li>
+          <li>the results table holds the improvement attempt as its own row</li>
+          <li>every number on a slide is printed by a cell</li>
+        </ul>
+        <h3>Run all on a fresh runtime</h3>
+        <p>Colab deletes a virtual machine that has been idle for a while, and every machine has a maximum lifetime, in
+        general at most 12 hours. Colab does not publish the exact limits, so a notebook has to carry the cells that
+        reinstall its libraries and reload its data.<sup class="cite"><a href="#src-23">23</a></sup></p>
+        <p>A runtime you have
+        used all day hides missing cells: a name you defined in a cell you later deleted still lives in memory, and the
+        notebook works for you and fails for everyone else.</p>
+        <p>The test is a fresh runtime (Runtime, then Disconnect and delete runtime), then Runtime, then Run all, with
+        no edits on the way. You can spot a notebook that was never rerun this way by its execution counts. Cells
+        numbered <code>[7]</code>, <code>[3]</code>, <code>[12]</code> down the page were run out of order.</p>
+        <p>A rerun should also land on the same numbers. <code>tf.keras.utils.set_random_seed</code> sets the Python,
+        NumPy and TensorFlow seeds in one call and can make almost any Keras program fully deterministic, with limits
+        around some GPU operations.<sup class="cite"><a href="#src-24">24</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>import numpy as np
+import tensorflow as tf
+
+tf.keras.utils.set_random_seed(42)
+print(np.random.rand(3).round(4))
+tf.keras.utils.set_random_seed(42)
+print(np.random.rand(3).round(4))</code></pre>
+<pre class="out">[0.3745 0.9507 0.732 ]
+[0.3745 0.9507 0.732 ]</pre>
+        <p>Each line draws three random numbers between 0 and 1. Because the seed is set again before the second draw,
+        both lines match. That is why the seed call belongs at the top of the notebook: every shuffle, split and weight
+        that follows starts from the same place on every Run all.</p>
+        <h3>The test set used once</h3>
+        <p>Two patterns give leakage away on sight. One is <code>model.evaluate(X_test, y_test)</code> appearing in
+        several cells, each after a change. The other is a preprocessing step fitted before the split:</p>
+<pre><code># leaks: the scaler learned the mean and spread of the test rows too
+X_scaled = StandardScaler().fit_transform(X)
+X_trval, X_test, y_trval, y_test = train_test_split(X_scaled, y, test_size=0.2)
+
+# guarded: split first, then fit every step on the training rows only
+X_trval, X_test, y_trval, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
+X_tr, X_val, y_tr, y_val = train_test_split(X_trval, y_trval, test_size=0.25, stratify=y_trval, random_state=42)
+pipe.fit(X_tr, y_tr)</code></pre>
+        <p>These lines are for recognising, so they print nothing. In the first version the scaler has seen the test
+        rows before the model is scored on them, which breaks the rule to split before any
+        preprocessing.<sup class="cite"><a href="#src-22">22</a></sup> In the second, the test rows are split off
+        first, a second split carves the validation rows out of the rest (the same names as step 4's baseline cell),
+        and every step of the pipeline learns from <code>X_tr</code> alone.</p>
+        <p>Cross-validation does not remove the need for a test set. scikit-learn says a test set should still be held
+        out for final evaluation, and tuning settings until the test score is best lets knowledge of the test set leak
+        into the model.<sup class="cite"><a href="#src-25">25</a></sup> Validation data has a quieter limit. Google's
+        course says validation and test sets wear out with repeated use: each decision taken on the same rows tunes the
+        model to them, leaving less confidence about new data.<sup class="cite"><a href="#src-26">26</a></sup></p>
+        <p>That explains a common surprise. Suppose validation recall was 0.70 and test recall is 0.65 (illustrative).
+        Twenty choices made on the validation rows made 0.70 a little optimistic. The test score is the one to trust, so
+        you report it, and you do not go back and tune until the test number rises.</p>
+        <h3>Every number on a slide found in a cell</h3>
+        <p>A slide number typed from an earlier run, rounded differently, or changed by a rerun without seeds, is the
+        number a reviewer will ask about. Copy every number on a slide from the output of the final Run all, at the same
+        rounding the cell prints. If a slide says "about 7 in 10", some cell prints 0.70. Keep both curves on one chart,
+        since the reviewer reads overfitting from the gap between them.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Run all on a fresh runtime proves the notebook rebuilds its own state.</li>
+          <li>One seed call at the top makes a rerun land on the presented numbers.</li>
+          <li>Split first, fit on training rows, score the test set once.</li>
+          <li>Every slide number comes from a cell of the final run.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Before I share a notebook I delete the runtime, start a fresh one and run all with no edits. Colab throws
+          runtimes away, so the notebook has to install and load everything itself, and the seed call at the top means
+          the numbers come out the same as on my slides.</p>
+          <p>I split off the test set before any preprocessing, made every choice on the validation rows and scored the
+          test set once at the end.</p>
+          <p>If the test score comes in a few points lower, that's the honest number. My
+          validation score was a bit optimistic from all the choices I made on it, and I don't go back and tune on the
+          test set.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
+        <div class="tag">Interview</div>
+        <h2>Telling the project in an interview: situation, task, action, result</h2>
+        <p>The showcase and the interview tell the same story to different listeners. "Tell me about a machine
+        learning project you built" is a behavioural question, and
+        <a href="../week-05/day-5-project-0-showcase.html">week 5's showcase page</a> introduced the shape that answers
+        it. This step fits that shape to a model.</p>
+        <h3>STAR with the time where it belongs</h3>
+        <p>STAR splits an answer into Situation, Task, Action and Result. The University of Washington's career centre
+        puts about 20% of the time on the situation, 10% on the task, 60% on the action and 10% on the result. The action
+        is the steps you personally took, which it calls the most important part, and the result carries numbers where
+        possible.<sup class="cite"><a href="#src-27">27</a></sup> For a two-minute answer that is 24 seconds, 12, 72 and
+        12.</p>
+        <table>
+          <thead><tr><th>Part</th><th>Share</th><th>For a model project (illustrative)</th></tr></thead>
+          <tbody>
+            <tr><td>Situation</td><td>About 20%</td><td>A table of past loan applicants, and a lender who wanted to know which new ones would default</td></tr>
+            <tr><td>Task</td><td>About 10%</td><td>Build and evaluate a classifier on my own, then present it in under seven minutes</td></tr>
+            <tr><td>Action</td><td>About 60%</td><td>Split first, set a baseline, chose recall because a missed defaulter costs more, tuned the threshold on validation, tried L2 and measured it</td></tr>
+            <tr><td>Result</td><td>About 10%</td><td>Test recall of 0.65 against 0 for the baseline, and what it would need before real use</td></tr>
+          </tbody>
+        </table>
+        <p>The common slip is a long situation and a short action: three minutes on the dataset and one sentence on the
+        model. The action is where the interviewer learns how you think, so it gets the time. Each action names a choice
+        and the reason for it.</p>
+        <h3>"I", a number, and the follow-up</h3>
+        <p>MIT's career office suggests preparing three to five stories as bullet notes, using "I" statements to show
+        ownership, and not memorising scripts, which are hard to adapt and can sound
+        unnatural.<sup class="cite"><a href="#src-28">28</a></sup> A project built alone makes "I" easy. The trap is the
+        tutorial voice, "we then fit the model", which hides what you decided.</p>
+        <p>Amazon calls STAR the cornerstone of its interviews and asks for precise metrics and data that quantify
+        your impact: "Don't just list what you did, but demonstrate the impact of your
+        actions."<sup class="cite"><a href="#src-29">29</a></sup> For a model, the impact is a number against the
+        baseline. "I trained a logistic regression" is an activity. "It caught 65% of defaulters on the test set, where
+        approving everyone catches none" is a result.</p>
+        <p>The first answer is rarely the last. Google's structured-interviewing guide says interviewers plan
+        follow-ups to draw out a high level of detail, and score every answer on a shared rubric of outstanding, solid,
+        borderline and poor.<sup class="cite"><a href="#src-30">30</a></sup> Your story has to survive a second and a
+        third question, so prepare the reason behind each action. The follow-ups a model story draws:</p>
+        <ul>
+          <li>Walk me through one choice you made, and why.</li>
+          <li>Why that metric, and why that threshold?</li>
+          <li>What did the model get wrong?</li>
+          <li>What would you need before it was used on real customers?</li>
+        </ul>
+        <p>The same guide separates behavioural questions, which ask about something you did, from hypothetical ones,
+        which pose a job-related situation.<sup class="cite"><a href="#src-30">30</a></sup> The last follow-up above is
+        hypothetical. The model card questions in step 4 answer it: checked on new applicants, measured across groups,
+        and a person reviewing the flags.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>STAR gives the action about 60% of the answer; the result ends on a number.</li>
+          <li>Say "I" for what you decided, and give each action its reason.</li>
+          <li>Prepare from bullet notes, and expect a second and third question.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I built a classifier that flags loan applicants likely to default. I split off a test set first, set a
+          baseline that approves everyone, tuned on validation data and kept logistic regression. On the test set it
+          caught about two thirds of defaulters, where the baseline caught none.</p>
+          <p>One choice was the metric. I led with recall rather than accuracy, because approving everyone already
+          scores 70 percent accuracy, and a missed defaulter costs the lender more than a refused good applicant. Then I
+          tuned the threshold on the validation rows, never on the test set.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="6">
+        <div class="tag">Showcase</div>
+        <h2>The Project 1 showcase: what a strong 5 to 7 minutes holds</h2>
+        <p>Each presentation is solo and runs 5 to 7 minutes with its question included; the table below spends a
+        6-minute slot.</p>
+        <h3>The slot, minute by minute</h3>
+        <p>Ten slides in six minutes leaves well under a minute a slide, and the question still has to fit. So the
+        flow from step 2 stays, while the time goes to the results, the errors and the improvement. One way to spend
+        a 6-minute slot:</p>
+        <table>
+          <thead><tr><th>Time</th><th>What it holds</th></tr></thead>
+          <tbody>
+            <tr><td>0:00 to 0:30</td><td>The problem, and the finding in one sentence</td></tr>
+            <tr><td>0:30 to 1:15</td><td>The data and the baseline</td></tr>
+            <tr><td>1:15 to 2:00</td><td>The model, and the one choice that mattered</td></tr>
+            <tr><td>2:00 to 3:30</td><td>The result in plain words, the confusion matrix in two sentences, what it gets wrong</td></tr>
+            <tr><td>3:30 to 4:15</td><td>The improvement attempt and its row in the table</td></tr>
+            <tr><td>4:15 to 4:45</td><td>The limits, and what would come next</td></tr>
+            <tr><td>4:45 to 6:00</td><td>One question</td></tr>
+          </tbody>
+        </table>
+        <p>The usual way to lose the slot is to read ten slides aloud and reach the last one at seven minutes, with no
+        time for the question. Rehearse twice against a clock, to the slot you were given, from bullet notes rather than
+        a script. A memorised script cannot bend to the question asked.<sup class="cite"><a href="#src-28">28</a></sup></p>
+        <h3>Sharing one screen on a call</h3>
+        <p>Speaker notes are private notes attached to each slide, which you see and the audience does not. Google
+        Slides shows them in presenter view, and pressing <code>s</code> during a presentation opens it. One limit
+        matters on a call: you cannot use presenter view and full screen at the same time with one
+        monitor.<sup class="cite"><a href="#src-31">31</a></sup> On a single laptop screen you choose between seeing
+        your notes and filling the shared screen with the slide.</p>
+        <p>Decide which before your slot, and keep the bullet notes somewhere that is not the shared screen, such as
+        paper beside the keyboard. Open the notebook in a second tab with its outputs showing, so a question about a
+        number takes you straight to the cell that printed it. Sharing your screen once before you present catches the
+        wrong window being shared.</p>
+        <h3>One question, answered in two sentences</h3>
+        <p>The Scrum Guide describes the Sprint Review, where a team shows its work to stakeholders, as a working
+        session that the team should avoid limiting to a presentation.<sup class="cite"><a href="#src-32">32</a></sup>
+        A showcase works the same way: the question is part of the review, and how you handle it counts as much as the
+        slides. Answer in two sentences, the answer first, then the evidence or the limitation:</p>
+        <ul>
+          <li>"Why not accuracy?" Approving everyone already scores 0.70 accuracy and catches no defaulter. Recall
+          shows the model finds about two thirds of them, and the full table is in the notebook.</li>
+          <li>"Would you use it tomorrow?" Not on its own. It has only been scored on a held-out part of one historical
+          table, so I would check it on new applicants and keep a person reviewing its flags.</li>
+        </ul>
+        <p>If you do not know, say so in the first sentence and say how you would find out in the second.</p>
+        <p>Your repository is the part of the showcase that stays. A project folder a stranger can use opens with a
+        README that states the problem, links the dataset, says how to run the notebook and shows the results table.
+        Anyone who reads it after the call can check every number you said.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Spend the slot on results, errors and the improvement, and leave time for the question.</li>
+          <li>On one monitor, presenter view and full screen cannot run together.</li>
+          <li>Answer a question in two sentences: the answer, then the evidence or the limit.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Before real customers I'd want three things. I'd score it on applicants who came after the training data,
+          check how it performs across different groups of applicants, and keep a person reviewing the flags at first.
+          Until then it's a well-evaluated prototype rather than something I'd ship.</p>
+        </div>
+      </section>
+
+      <div class="callout mindset">
+        <div class="k">Weekly feedback form</div>
+        <p>Week 8 ends with this page. Before Check yourself, take ten minutes for the
+        <a href="https://forms.cloud.microsoft/pages/responsepage.aspx?id=iuJja_motUeqQJfiMSFRZMU3bOO2vNdAiSFsti9sgKVUQkhYWEhIRzJSWjNOVVM5REFOU0tWT0JXQyQlQCN0PWcu&amp;route=shorturl" target="_blank" rel="noopener">weekly feedback form</a>
+        (it opens in a new tab): what helped this week, what did not, and what you would change.</p>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="7">
+        <div class="tag">Check yourself</div>
+        <h2>Check yourself</h2>
+        <p>Ten questions over the week and the showcase, at least one per section. Answer each out loud before you
+        open it.</p>
+        <details class="check"><summary>What does a vector database add over storing vectors in a SQL table and reading every row?</summary><p>A table scan compares the query with every stored vector, so each search slows as the rows grow. A vector database keeps each vector with its id and metadata and answers "which stored vectors are closest to this one?" in one call, with calls to add, change, filter and delete records beside it.</p></details>
+        <details class="check"><summary>What makes a slide title a finding title, and how many numbers does a results slide carry?</summary><p>A finding title is a sentence that states the slide's message, with one number or one direction in it, so a listener who reads only the titles still gets the argument. A results slide carries one number, said in plain words, such as "finds about 7 in 10 defaulters".</p></details>
+        <details class="check"><summary>You call Chroma's <code>add</code> with an id that is already stored. What happens, and what should you have called?</summary><p>Chroma ignores the record without raising an error, so the stored version stays. <code>upsert</code> creates ids that are missing and updates those that exist; in Pinecone an upsert overwrites the whole record.</p></details>
+        <details class="check"><summary>Chroma shows 0.4 for a result and Pinecone shows 0.6 for the same pair of vectors. Which is closer, and why do the numbers differ?</summary><p>They describe the same closeness. Pinecone reports cosine similarity, where higher is closer, and Chroma reports cosine distance, 1 minus the similarity, where lower is closer: 1 − 0.6 = 0.4.</p></details>
+        <details class="check"><summary>One Pinecone index holds every customer's articles. Namespaces or a metadata filter?</summary><p>A namespace per customer: records are physically apart and a query scans only that customer's records. A filter suits cases where isolation is not strict or one search must cross customers, and it scans the whole namespace, which costs more and takes longer.</p></details>
+        <details class="check"><summary>Explain a confusion matrix to a manager in two sentences, using 60 defaulters (42 caught) and 140 good applicants (25 flagged).</summary><p>Of the 60 applicants who defaulted, the model caught 42 and missed 18. Of the 140 who repaid, it wrongly flagged 25 and cleared the other 115.</p></details>
+        <details class="check"><summary>Why does a reviewer ask for the baseline, and what does a most-frequent baseline score on 140 good and 60 bad applicants?</summary><p>A score means nothing until it is compared with something simpler. Always predicting "good" scores 140 / 200 = 0.70 accuracy and 0 recall, so a model at 0.75 accuracy is barely better unless its recall says otherwise.</p></details>
+        <details class="check"><summary>Your test score is five points below your validation score. What does it tell you, and what do you not do next?</summary><p>Many choices made on the validation rows wore them out, so the validation score was optimistic; the test score is the honest one and is the one you report. You do not tune until the test score rises, because that leaks the test set into the model.</p></details>
+        <details class="check"><summary>In a two-minute STAR answer about your project, how long is the action, and what does the result end on?</summary><p>About 60%, so roughly 72 seconds, naming the choices you made and why, in "I" statements. The result ends on a number from the notebook against the baseline, with the limit that matters.</p></details>
+        <details class="check"><summary>You have one laptop screen and are sharing slides on a call. What can't you do, and how do you answer the one question?</summary><p>Presenter view and full screen cannot run together on one monitor, so keep your bullet notes off the shared screen, for example on paper. Answer the question in two sentences: the answer first, then the evidence or the limit.</p></details>
+      </section>
+
+      <section class="reading-sources" aria-label="Sources and deeper dive">
+        <h2>Sources &amp; deeper dive</h2>
+        <ul>
+          <li id="src-1"><a href="https://docs.trychroma.com/docs/run-chroma/clients" target="_blank" rel="noopener">Chroma Clients (Chroma docs)</a> — <code>PersistentClient</code> on a local folder and the in-memory client.</li>
+          <li id="src-2"><a href="https://docs.pinecone.io/guides/get-started/database-architecture" target="_blank" rel="noopener">Database architecture (Pinecone docs)</a> — Pinecone as a managed service with separate write and read paths.</li>
+          <li id="src-3"><a href="https://docs.pinecone.io/guides/index-data/indexing-overview" target="_blank" rel="noopener">Indexing overview (Pinecone docs)</a> — namespaces, metadata limits and the same-model rule.</li>
+          <li id="src-4"><a href="https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2" target="_blank" rel="noopener">sentence-transformers/all-MiniLM-L6-v2 (Hugging Face)</a> — 384 numbers per text and the 256 word-piece cut.</li>
+          <li id="src-5"><a href="https://docs.trychroma.com/docs/collections/add-data" target="_blank" rel="noopener">Adding data to Chroma collections (Chroma docs)</a> — <code>add</code>, ids, and an existing id ignored without an error.</li>
+          <li id="src-6"><a href="https://docs.trychroma.com/docs/collections/update-data" target="_blank" rel="noopener">Updating data in Chroma collections (Chroma docs)</a> — <code>update</code> and <code>upsert</code> on missing and existing ids.</li>
+          <li id="src-7"><a href="https://docs.trychroma.com/docs/collections/configure" target="_blank" rel="noopener">Configure (Chroma docs)</a> — the distance space, its default and cosine distance.</li>
+          <li id="src-8"><a href="https://docs.pinecone.io/guides/index-data/upsert-data" target="_blank" rel="noopener">Upsert data (Pinecone docs)</a> — an existing id overwritten, and the batch limits.</li>
+          <li id="src-9"><a href="https://www.pinecone.io/learn/vector-similarity/" target="_blank" rel="noopener">Vector Similarity Explained (Pinecone Learn)</a> — the range of cosine similarity and choosing a metric.</li>
+          <li id="src-10"><a href="https://docs.pinecone.io/guides/index-data/implement-multitenancy" target="_blank" rel="noopener">Implement multitenancy (Pinecone docs)</a> — namespace per tenant against a metadata filter.</li>
+          <li id="src-11"><a href="https://docs.pinecone.io/guides/search/filter-by-metadata" target="_blank" rel="noopener">Filter by metadata (Pinecone docs)</a> — the filter operators and where they may sit.</li>
+          <li id="src-12"><a href="https://docs.trychroma.com/docs/querying-collections/metadata-filtering" target="_blank" rel="noopener">Metadata filtering (Chroma docs)</a> — the operators a <code>where</code> filter takes.</li>
+          <li id="src-13"><a href="https://developers.google.com/tech-writing/one/audience" target="_blank" rel="noopener">Audience (Google Technical Writing One)</a> — role first, then distance from the knowledge.</li>
+          <li id="src-14"><a href="https://analysisfunction.civilservice.gov.uk/policy-store/data-visualisation-charts/" target="_blank" rel="noopener">Data visualisation: charts (Government Analysis Function)</a> — headline titles and the phone test.</li>
+          <li id="src-15"><a href="https://www.assertion-evidence.com/" target="_blank" rel="noopener">The Assertion-Evidence Approach (Penn State)</a> — a sentence message per slide, backed by visual evidence.</li>
+          <li id="src-16"><a href="https://analysisfunction.civilservice.gov.uk/policy-store/communicating-quality-uncertainty-and-change/" target="_blank" rel="noopener">Communicating quality, uncertainty and change (Government Analysis Function)</a> — stating limitations and what they mean for decisions.</li>
+          <li id="src-17"><a href="https://developers.google.com/machine-learning/crash-course/classification/thresholding" target="_blank" rel="noopener">Thresholds and the confusion matrix (Google ML Crash Course)</a> — the four boxes and what the threshold trades.</li>
+          <li id="src-18"><a href="https://developers.google.com/machine-learning/crash-course/classification/accuracy-precision-recall" target="_blank" rel="noopener">Classification: accuracy, recall, precision (Google ML Crash Course)</a> — when accuracy misleads and which metric leads.</li>
+          <li id="src-19"><a href="https://www.tensorflow.org/tutorials/keras/overfit_and_underfit" target="_blank" rel="noopener">Overfit and underfit (TensorFlow tutorial)</a> — a baseline model first, and reading the two curves.</li>
+          <li id="src-20"><a href="https://arxiv.org/abs/1810.03993" target="_blank" rel="noopener">Model Cards for Model Reporting (Mitchell et al., arXiv)</a> — what a model report holds, which mirrors a reviewer's questions.</li>
+          <li id="src-21"><a href="https://scikit-learn.org/stable/modules/generated/sklearn.dummy.DummyClassifier.html" target="_blank" rel="noopener">sklearn.dummy.DummyClassifier (scikit-learn)</a> — the baseline that ignores its inputs.</li>
+          <li id="src-22"><a href="https://scikit-learn.org/stable/common_pitfalls.html" target="_blank" rel="noopener">Common pitfalls and recommended practices (scikit-learn)</a> — data leakage and splitting before preprocessing.</li>
+          <li id="src-23"><a href="https://research.google.com/colaboratory/faq.html" target="_blank" rel="noopener">Colab FAQ (Google Research)</a> — idle runtimes, maximum lifetimes, and why a notebook rebuilds its state.</li>
+          <li id="src-24"><a href="https://www.tensorflow.org/api_docs/python/tf/keras/utils/set_random_seed" target="_blank" rel="noopener">tf.keras.utils.set_random_seed (TensorFlow)</a> — one call for the Python, NumPy and TensorFlow seeds.</li>
+          <li id="src-25"><a href="https://scikit-learn.org/stable/modules/cross_validation.html" target="_blank" rel="noopener">Cross-validation: evaluating estimator performance (scikit-learn)</a> — why a test set is still held out.</li>
+          <li id="src-26"><a href="https://developers.google.com/machine-learning/crash-course/overfitting/dividing-datasets" target="_blank" rel="noopener">Dividing the original dataset (Google ML Crash Course)</a> — validation and test sets wearing out.</li>
+          <li id="src-27"><a href="https://careers.uw.edu/resources/star-method-of-interviewing/" target="_blank" rel="noopener">STAR Method of Interviewing (UW Career &amp; Internship Center)</a> — the four parts and their share of the time.</li>
+          <li id="src-28"><a href="https://capd.mit.edu/resources/the-star-method-for-behavioral-interviews/" target="_blank" rel="noopener">The STAR method for behavioral interviews (MIT CAPD)</a> — bullet notes, "I" statements and no memorised scripts.</li>
+          <li id="src-29"><a href="https://www.aboutamazon.com/news/workplace/amazon-interview-guide" target="_blank" rel="noopener">Amazon interview guide (About Amazon)</a> — STAR answers that quantify impact.</li>
+          <li id="src-30"><a href="https://rework.withgoogle.com/intl/en/guides/a-guide-to-structured-interviewing-for-better-hiring-practices" target="_blank" rel="noopener">A guide to structured interviewing (Google re:Work)</a> — behavioural and hypothetical questions, follow-ups and the rubric.</li>
+          <li id="src-31"><a href="https://support.google.com/docs/answer/1696787" target="_blank" rel="noopener">Present slides (Google Docs Editors Help)</a> — presenter view, speaker notes and the one-monitor limit.</li>
+          <li id="src-32"><a href="https://scrumguides.org/scrum-guide.html" target="_blank" rel="noopener">The Scrum Guide</a> — the Sprint Review as a working session.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · after you have read the page</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 8 Day 5</footer>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 5 — goals</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Explain what a vector database adds over a scanned table, add against upsert, distance against score, and a namespace against a metadata filter</li>
+      <li>Present a model to a mixed audience with finding titles, one plain-words number per results slide and a confusion matrix in two sentences</li>
+      <li>Answer a reviewer's four questions about a model: the baseline, how the test set was kept apart, what it gets wrong, and whether you would ship it</li>
+      <li>Check your own notebook before presenting: a fresh Run all, the test set used once, and every slide number found in a cell</li>
+      <li>Tell the project as a STAR story with the action at its centre, and fit it into a 5 to 7 minute slot with one question</li>
+    </ul>
+    <p class="goals-foot">This is the last page of week 8. Finish the check, then fill in the weekly feedback form.</p>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Back to program →", href: "../../index.html" };
+window.DIAGRAM = {
+  title: "Day 5 · from the week's vector databases to a model told well",
+  width: 500, height: 480,
+  nodes: [
+    { id:"review", step:0, kind:"example", x:14, y:14, w:472, h:50, label:"VECTOR DATABASES\n  add · upsert · distance · score · namespace", detail:"Same model for every stored text and every query. Chroma's add skips an existing id; upsert replaces. Chroma reports a distance (lower is closer), Pinecone a score (higher is closer). A namespace isolates a tenant; a filter scans the whole namespace." },
+    { id:"audience", step:1, x:24, y:90, w:200, h:48, label:"Mixed audience\n  problem and finding first", detail:"Role first, then distance from the knowledge. Finding titles, one number per results slide in plain words, and each limitation with what it means for the decision." },
+    { id:"metrics", step:2, x:276, y:90, w:200, h:48, label:"Metrics in plain words\n  caught · missed · false alarm", detail:"Of 60 defaulters, 42 caught and 18 missed; of 140 good applicants, 25 flagged. Recall 0.70, precision 0.63, accuracy 0.785 against 0.70 for approving everyone." },
+    { id:"reviewer", step:3, x:24, y:166, w:200, h:56, label:"A reviewer asks\n  baseline · test set\n  errors · would you ship it?", detail:"Each question maps onto a model card part: performance, evaluation procedure, performance across groups, intended use. The failed improvement stays in the table." },
+    { id:"selfcheck", step:4, x:276, y:166, w:200, h:56, label:"Project review\n  fresh Run all · seed\n  test set once", detail:"Colab throws runtimes away, so the notebook rebuilds its own state. One seed call; split before preprocessing; validation wears out, the test score is the honest one." },
+    { id:"star", step:5, x:24, y:250, w:200, h:48, label:"STAR story\n  action 60% · result a number", detail:"Situation 20%, task 10%, action 60%, result 10%. I statements, bullet notes, and the reason behind each action for the follow-up." },
+    { id:"showcase", step:6, kind:"example", x:24, y:330, w:452, h:50, label:"SHOWCASE\n  5 to 7 minutes · results, errors, improvement · one question", detail:"Solo, 5 to 7 minutes with the question included. Presenter view and full screen do not run together on one monitor. Answer in two sentences: the answer, then the evidence or limit." },
+    { id:"check", step:7, x:24, y:410, w:452, h:40, label:"CHECK YOURSELF\n  answer out loud, then open" }
+  ],
+  edges: [
+    { id:"e1", step:1, from:"review", to:"audience", label:"the work becomes a talk" },
+    { id:"e2", step:2, from:"audience", to:"metrics", label:"say the numbers" },
+    { id:"e3", step:3, from:"metrics", to:"reviewer", label:"then the questions" },
+    { id:"e4", step:4, from:"reviewer", to:"selfcheck", label:"check before asked" },
+    { id:"e5", step:5, from:"selfcheck", to:"star", label:"the same story" },
+    { id:"e6", step:6, from:"star", to:"showcase", dir:"-" },
+    { id:"e7", step:6, from:"selfcheck", to:"showcase", dir:"-" },
+    { id:"e8", step:7, from:"showcase", to:"check", dir:"-" }
+  ],
+  captions: [
+    "The week's vector databases on one page: same model both ways, add against upsert, distance against score, namespace against filter. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "A mixed audience gets the problem and the finding first, a finding as each title and one plain-words number per results slide.",
+    "Metrics for people who do not train models: four plain names, a two-sentence confusion matrix, and the baseline beside accuracy.",
+    "A reviewer's four questions each have a reason, and each maps onto a part of a model card.",
+    "Before presenting, the notebook passes a fresh Run all, uses the test set once and prints every slide number.",
+    "The interview tells the same project as STAR, with the action at its centre and a number at the end.",
+    "The showcase slot spends its minutes on results, errors and the improvement, and ends with one question answered in two sentences.",
+    "You can now explain the week's vector databases, present a model to a mixed audience and tell it in an interview."
+  ]
+};
+window.QUIZ = {
+  id: "w08-d5",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "A Chroma query on a cosine collection returns distances 0.12, 0.30 and 0.41 for its top three results. Which result is closest to the query?",
+      options: ["The one at 0.12", "The one at 0.41", "They are equally close", "It cannot be told without the Pinecone score"], answer: 0,
+      explain: "Chroma reports cosine distance, 1 minus the similarity, so lower is closer. Pinecone reports the similarity itself, where higher is closer." },
+    { type: "tf", stem: "Calling Chroma's add with an id that is already stored replaces the stored record.", answer: false,
+      explain: "add ignores a record whose id already exists, without an error. upsert creates missing ids and updates existing ones." },
+    { type: "mcq", stem: "Which of these let the test set influence the model? Select all that apply.",
+      options: ["A scaler fitted on all the rows before train_test_split", "model.evaluate(X_test, y_test) run after each change, keeping the best", "The threshold tuned on the validation rows", "The test set scored once, at the end, by the model already chosen"], answer: [0, 1],
+      explain: "Fitting a step before the split, and choosing by test score, both leak the test set into the model. Tuning on validation rows and one final test score are the guard." },
+    { type: "match", stem: "Match each confusion-matrix box to its plain name in the credit example (positive = defaulted).",
+      pairs: [
+        { l: "true positive", r: "caught: defaulted and flagged" },
+        { l: "false negative", r: "missed: defaulted and let through" },
+        { l: "false positive", r: "false alarm: repaid but flagged" },
+        { l: "true negative", r: "correctly cleared: repaid and let through" }
+      ],
+      explain: "Positive is the class the model looks for. A false negative is a defaulter the model missed; a false positive is a good applicant it flagged." },
+    { type: "scq", stem: "Which results-slide title follows the finding-as-title rule?",
+      options: ["Results", "Model evaluation metrics", "The model finds about 7 in 10 of the applicants who later default", "Confusion matrix and F1"], answer: 2,
+      explain: "A finding title is a sentence that states the slide's message, usually with a number or a direction. The others are topics." },
+    { type: "open", stem: "In two or three sentences: an interviewer asks whether you would ship your Project 1 model tomorrow. Answer them.",
+      hint: "What it is fit for now, and what it would need first.",
+      model: "Not on its own yet. It was scored once on a held-out part of one historical table, so before real customers I would check it on new data, measure how it does across groups, and keep a person reviewing its decisions. Until then it is a well-evaluated prototype." }
+  ]
+};
+</script>
+
+<script src="../../assets/js/diagram.js?v=20261124"></script>
+<script src="../../assets/js/scrolly.js?v=20261124"></script>
+<script src="../../assets/js/modals.js?v=20261124"></script>
+<script src="../../assets/js/quiz.js?v=20261124"></script>
+<script src="../../assets/js/widgets.js?v=20261124"></script>
+<script src="../../assets/js/glossary.js?v=20261124"></script>
+</body>
+</html>

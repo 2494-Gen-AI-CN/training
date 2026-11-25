@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w08d3">
+<title>W8·D3 — Vector index &amp; collection management | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261124">
+<script src="../../assets/js/theme.js?v=20261124"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="../../exit-criteria/index.html">Exit criteria</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>Vector index &amp; collection management</h1>
+        <div class="meta">
+          <span><b>Week 8</b> · Day 3</span>
+          <span>Wed Dec 2, 2026</span>
+          <span>Feature engineering &amp; vector databases</span>
+          <span><b>~42 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span class="verified">Sources checked 2026-11-24 · colab-python 3.13.18 · numpy 2.4.6 · sentence-transformers 5.7.0 · chromadb 1.5.9 · pinecone 9.1.0</span>
+          <span class="notebook"><a href="https://colab.research.google.com/github/2494-Gen-AI-CN/demos/blob/main/notebooks/week-08/03_wednesday_vector_index_management.ipynb" target="_blank" rel="noopener">Open the notebook in Colab</a></span>
+          <span class="exit"><a href="../../exit-criteria/qc-4-ai-ml-tensorflow-vector-dbs.html#w08d3">Exit criteria</a></span>
+        </div>
+        <p class="summary">Tuesday's page stored the invented help-centre articles in Chroma and in Pinecone and searched
+        them by cosine similarity, and this page assumes that much. It teaches how an index finds near vectors without
+        reading every row, how collections and Pinecone indexes are created, inspected, protected and deleted, and how
+        upsert keeps a store current. It then splits the data with collections, namespaces and metadata filters, and
+        compares cosine, dot product and Euclidean distance. Afterwards you can explain HNSW, run a collection's
+        lifecycle, give each customer a namespace, write a filter with operators and pick a metric from the model
+        card.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="0">
+        <div class="tag">Index management</div>
+        <h2>Index management: finding near vectors without reading every row</h2>
+        <p>Tuesday's page stored the help-centre articles and searched them. This step asks what makes that search fast; the
+        next one covers how Pinecone manages the structure that does it.</p>
+        <h3>Exact search: one comparison per stored vector</h3>
+        <p>The simplest search compares the query with every stored vector and keeps the closest. That is exact search,
+        also called flat search. It always finds the true nearest vectors, and its cost grows in proportion to the number
+        of rows.<sup class="cite"><a href="#src-1">1</a></sup> The block below times it on random vectors of the
+        size the week's model produces, 384 numbers each.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>import time
+import numpy as np
+
+rng = np.random.default_rng(42)
+for n in [10_000, 100_000, 400_000]:
+    vectors = rng.standard_normal((n, 384), dtype=np.float32)
+    vectors /= np.linalg.norm(vectors, axis=1, keepdims=True)
+    query = vectors[0]
+    start = time.perf_counter()
+    scores = vectors @ query
+    top10 = np.argsort(-scores)[:10]
+    seconds = time.perf_counter() - start
+    print(f"{n:&gt;7} rows  {vectors.nbytes / 1e6:4.0f} MB  {seconds:.4f} s  best={top10[0]}")</code></pre>
+        <p>It prints one line per size. The memory column is plain arithmetic: 384 numbers of 4 bytes make 1,536 bytes a
+        row, so the three sizes hold about 15 MB, 154 MB and 614 MB.<sup class="cite"><a href="#src-2">2</a></sup>
+        The seconds depend on the machine, but each tenfold jump in rows makes roughly ten times the work, because every
+        row is multiplied once. <code>best=0</code> says the query's own row came first, as it must.</p>
+        <p><code>standard_normal</code> with <code>dtype=np.float32</code> draws 4-byte numbers directly, half the memory of
+        the 8-byte default.<sup class="cite"><a href="#src-2">2</a></sup> The division by <code>np.linalg.norm</code>
+        scales every row to length 1: <code>axis=1</code> measures along each row, and <code>keepdims=True</code> keeps the
+        lengths as a column so each row is divided by its own length. <code>vectors @ query</code> multiplies every row by
+        the query at once, and <code>np.argsort(-scores)</code> lists row positions from the highest score down.</p>
+        <p>A vector index exists to avoid that full pass. It is a structure built beside the vectors so that a query
+        reaches its near neighbours after visiting only a small share of them.</p>
+        <h3>HNSW: a layered graph walked from the top</h3>
+        <p>HNSW, short for Hierarchical Navigable Small World, is the index Chroma builds for each
+        collection.<sup class="cite"><a href="#src-3">3</a></sup> It is a stack of graphs. Each vector is a point
+        linked to a few of its near neighbours; the bottom layer holds every vector, and each layer above holds a smaller
+        random subset with longer links.<sup class="cite"><a href="#src-1">1</a></sup> A search walks it like
+        this:<sup class="cite"><a href="#src-4">4</a></sup></p>
+        <ol>
+          <li>Enter at the top layer, where the links are longest.</li>
+          <li>Move to whichever linked neighbour is closest to the query, and repeat until no neighbour is closer.</li>
+          <li>Drop to the same point one layer down and walk again.</li>
+          <li>Stop on the bottom layer and return the closest points met.</li>
+        </ol>
+        <p>The search cost grows about logarithmically with the number of vectors.<sup class="cite"><a href="#src-1">1</a></sup>
+        As a worked number, log₂ of 1,000 is about 10 and log₂ of 1,000,000 about 20, so a thousand times more vectors
+        roughly doubles the walk instead of multiplying it by a thousand.</p>
+        <p>The walk is greedy, and that is why the index is approximate. It can stop at a point whose neighbours are all
+        farther from the query, while a closer vector sits in another part of the graph.<sup class="cite"><a href="#src-4">4</a></sup>
+        Two settings tune the trade: more links per point (called M) and a longer candidate list during search (efSearch)
+        raise recall and slow the search, and memory is set almost entirely by M.<sup class="cite"><a href="#src-4">4</a></sup></p>
+        <h3>Chroma's index settings, and recall</h3>
+        <p>Chroma takes the index settings in <code>configuration</code> when a collection is created. The block installs
+        the pinned Chroma, opens a folder-backed client on an empty folder, and prints the settings of a new
+        collection.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>%pip install -q chromadb==1.5.9
+import shutil
+import chromadb
+
+chromadb.api.client.SharedSystemClient.clear_system_cache()
+shutil.rmtree("chroma_wed", ignore_errors=True)  # start from an empty store, so the page reruns from the top
+client = chromadb.PersistentClient(path="chroma_wed")
+
+random_2k = client.create_collection(
+    "random_2k", configuration={"hnsw": {"space": "cosine"}}, embedding_function=None)
+print(random_2k.configuration["hnsw"])</code></pre>
+<pre class="out">{'space': 'cosine', 'ef_construction': 100, 'ef_search': 100, 'max_neighbors': 16, 'resize_factor': 1.2, 'sync_threshold': 1000}</pre>
+        <p><code>"space": "cosine"</code> picks the distance; without it the space is <code>l2</code>. The printed values are
+        Chroma's defaults.<sup class="cite"><a href="#src-3">3</a></sup> <code>max_neighbors</code> is Chroma's name
+        for M, <code>ef_search</code> its name for efSearch, and <code>ef_construction</code> is the matching list size
+        used while the graph is built. Some settings are fixed once the collection exists:</p>
+        <table>
+          <thead><tr><th>Setting</th><th>Default</th><th>Can change later?</th></tr></thead>
+          <tbody>
+            <tr><td><code>space</code></td><td><code>l2</code></td><td>No</td></tr>
+            <tr><td><code>ef_construction</code></td><td>100</td><td>No</td></tr>
+            <tr><td><code>max_neighbors</code></td><td>16</td><td>No</td></tr>
+            <tr><td><code>ef_search</code></td><td>100</td><td>Yes, with <code>modify(configuration=...)</code></td></tr>
+          </tbody>
+        </table>
+        <p>The fixed and changeable settings come from Chroma's configuration guide, which also says the older
+        <code>metadata={"hnsw:space": "cosine"}</code> form still works but is deprecated, so expect it in older
+        code.<sup class="cite"><a href="#src-5">5</a></sup></p>
+        <p>Recall measures the price of approximation: the share of the exact top 10 that the index returns. The block
+        stores 2,000 random unit vectors, asks 20 queries, and checks each answer against numpy's exact
+        ranking.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>data = rng.standard_normal((2_000, 384), dtype=np.float32)
+data /= np.linalg.norm(data, axis=1, keepdims=True)
+random_2k.add(ids=[str(i) for i in range(2_000)], embeddings=data)
+
+queries = rng.standard_normal((20, 384), dtype=np.float32)
+queries /= np.linalg.norm(queries, axis=1, keepdims=True)
+found = random_2k.query(query_embeddings=queries, n_results=10, include=[])
+
+hits = 0
+for q, got in zip(queries, found["ids"]):
+    exact = {str(i) for i in np.argsort(-(data @ q))[:10]}
+    hits += len(exact &amp; set(got))
+print("recall:", hits / 200)</code></pre>
+        <p>There are 20 × 10 = 200 true neighbours, so 184 found prints 0.92. Four runs printed 0.92, 0.96, 0.92 and
+        0.93: the share moves a little because the graph is built slightly differently each time, and the index misses
+        a few true neighbours in a hundred here. <code>exact &amp; set(got)</code> is the set of ids both lists share. A team runs this check on its own vectors and raises
+        <code>ef_search</code> until recall is high enough.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Exact search compares the query with every vector, so its time grows with the rows.</li>
+          <li>HNSW walks a layered graph from the top: fast, and it can miss a true neighbour.</li>
+          <li>Space and graph size are fixed at creation; ef_search can be raised later to buy recall.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A vector index lets a search find the closest vectors without comparing the query with every stored one.
+          Exact search costs time in proportion to the rows, so at millions of vectors it gets slow. HNSW links each
+          vector to a few neighbours in layers, and a query walks from the top layer down, so the cost grows roughly
+          logarithmically.</p>
+          <p>It's approximate because the greedy walk can stop at a local minimum and miss a true neighbour. I'd measure
+          recall against an exact search on our own data and raise ef_search until it's high enough, accepting a slower
+          query.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">Index management in Pinecone</div>
+        <h2>Index management in Pinecone: lifecycle, performance and backups</h2>
+        <p>Chroma builds its index inside each collection. Pinecone makes the index itself the named thing a team
+        creates, inspects, protects, tunes and backs up.</p>
+        <h3>An index's lifecycle in Pinecone</h3>
+        <p>In Pinecone the index is the thing you create and manage by name. The block installs the pinned client, reads
+        the <code>PINECONE_API_KEY</code> Colab secret that Tuesday's page set up, and walks the lifecycle: create, describe,
+        list, protect, and a delete that is refused.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>%pip install -q pinecone==9.1.0
+from google.colab import userdata
+from pinecone import Pinecone, ServerlessSpec
+
+pc = Pinecone(api_key=userdata.get("PINECONE_API_KEY"))
+if not pc.has_index("kb-wednesday"):
+    pc.create_index(name="kb-wednesday", dimension=384, metric="cosine",
+                    spec=ServerlessSpec(cloud="aws", region="us-east-1"))
+info = pc.describe_index("kb-wednesday")
+print(info.dimension, info.metric, info.status, info.deletion_protection)
+print(pc.list_indexes().names())
+
+pc.configure_index("kb-wednesday", deletion_protection="enabled")
+try:
+    pc.delete_index("kb-wednesday")
+except Exception as err:
+    print("refused:", err)
+pc.configure_index("kb-wednesday", deletion_protection="disabled")</code></pre>
+        <p>The first line should show 384, cosine, the status (its ready flag is true once the index takes requests) and
+        disabled. The second lists the project's index names. Then comes "refused:" with a 403 FORBIDDEN error, 403
+        being the HTTP status a server sends when it understands a request and refuses it. Its message says "Deletion
+        protection is enabled for this index. Disable deletion protection before retrying."<sup class="cite"><a href="#src-6">6</a></sup></p>
+        <ul>
+          <li><code>dimension</code> and <code>metric</code> should match the embedding model: 384 and cosine for the
+          week's model.<sup class="cite"><a href="#src-7">7</a></sup></li>
+          <li><code>describe_index</code> returns the dimension, the metric, the host the data calls go to, the status
+          and the deletion protection setting. These are the Python SDK's fields in the pinned client; the newest REST
+          API version names its raw response differently.<sup class="cite"><a href="#src-6">6</a></sup></li>
+          <li>The free Starter plan supports only AWS <code>us-east-1</code>, which is why the spec names that
+          region.<sup class="cite"><a href="#src-8">8</a></sup></li>
+          <li><code>configure_index</code> changes deletion protection, tags, replicas, pod type and read capacity; it has
+          no field for the metric or the dimension.<sup class="cite"><a href="#src-9">9</a></sup></li>
+        </ul>
+        <p>The same lifecycle can be run by hand in the Pinecone console at app.pinecone.io. An index can be deleted
+        there, and its backups are listed under the Backups tab or the Indexes tab.<sup class="cite"><a href="#src-6">6</a></sup></p>
+        <p>Pinecone's current docs call this kind of index, built from a dimension and a metric, a legacy vector index,
+        and point new projects to a Documents API.<sup class="cite"><a href="#src-7">7</a></sup> The two styles do not
+        mix on one index, so check that an example you copy uses the calls on this page.</p>
+        <h3>Performance options</h3>
+        <p><a href="day-2-vector-databases-chroma-and-pinecone.html">Tuesday's page</a> compared pod-based and
+        serverless indexes; this table adds the options inside each. A read unit (RU) is the unit Pinecone meters reads
+        in, and the options differ in who shares the hardware:</p>
+        <table>
+          <thead><tr><th>Option</th><th>What it is</th><th>Catch</th></tr></thead>
+          <tbody>
+            <tr><td>Serverless, on-demand reads</td><td>Reads run on shared capacity<sup class="cite"><a href="#src-10">10</a></sup></td><td>At most 2,000 RU per second per index and per namespace</td></tr>
+            <tr><td>Dedicated read nodes</td><td>The index gets its own memory, SSDs (fast solid-state disks) and compute for reads, with no read rate limit<sup class="cite"><a href="#src-10">10</a></sup></td><td>One namespace only</td></tr>
+            <tr><td>Pod-based (s1, p1, p2)</td><td>s1 storage-optimised, p1 low latency, p2 highest throughput; sizes x1 to x8 each double capacity; replicas (copies of the pods) multiply cost<sup class="cite"><a href="#src-11">11</a></sup></td><td>Legacy; the current API version cannot create them<sup class="cite"><a href="#src-12">12</a></sup></td></tr>
+          </tbody>
+        </table>
+        <p>The usual path is to start serverless, which is what the free plan gives, and to move an index with a steady,
+        heavy read load to dedicated read nodes, accepting the one-namespace limit.</p>
+        <h3>Backups, Pinecone collections and rollback</h3>
+        <p>A backup is a static copy of a serverless index that cannot be queried and costs only storage. Restoring one
+        creates a new serverless index in the same project and cloud.<sup class="cite"><a href="#src-13">13</a></sup>
+        Backups can run daily, weekly or monthly, a schedule needs an expiration policy, and a backup holds only vectors
+        that were in the index at least 15 minutes before it ran.<sup class="cite"><a href="#src-13">13</a></sup></p>
+        <p>A Pinecone collection, unrelated to a Chroma collection, is the older read-only snapshot of a pod-based index.
+        Existing ones can still be listed, described and deleted, but a new one has no pod index to copy, and an index
+        built from one is rejected.<sup class="cite"><a href="#src-12">12</a></sup> Neither can be tried on a learner's
+        account: backups are not offered on the Starter plan.<sup class="cite"><a href="#src-13">13</a></sup><sup class="cite"><a href="#src-14">14</a></sup></p>
+        <p>A backup and rollback plan has three parts:</p>
+        <ol>
+          <li>Scheduled backups with an expiration policy cover disaster recovery: a restore makes a new
+          index.<sup class="cite"><a href="#src-13">13</a></sup></li>
+          <li>Each new version of the data goes into a new namespace while a namespace alias, a stable name for a
+          namespace, still serves the old one; once the load checks out, the alias is repointed in one atomic
+          step. Atomic means all at once, so no query sees a half-done change.<sup class="cite"><a href="#src-15">15</a></sup></li>
+          <li>Rolling back is repointing the alias to the old namespace, kept until the new one has proved itself.</li>
+        </ol>
+        <p>Creating aliases needs API version 2026-07, while reading through one works on any
+        version.<sup class="cite"><a href="#src-8">8</a></sup> This page pins the pinecone 9.1.0 client on purpose, so
+        the calls stay the same all week. That client sends API version 2025-10, so it can read through an alias but
+        cannot create one, and the plan here is described, not run.<sup class="cite"><a href="#src-16">16</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A Pinecone index is created, described, protected and deleted by name.</li>
+          <li>Deletion protection refuses every delete until it is switched off.</li>
+          <li>Serverless reads share capacity; dedicated read nodes give one index its own hardware.</li>
+          <li>Backups restore into a new index; an alias swap between namespaces gives rollback.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>With the Pinecone SDK I check has_index, create the index with the model's dimension and metric and a
+          serverless spec, then read describe_index for the host and status. I switch deletion protection on with
+          configure_index for anything that matters, so a stray delete gets a 403.</p>
+          <p>For a Pinecone deployment I'd start serverless, and move a heavy read workload to dedicated read nodes. For
+          backups I'd schedule them with an expiration policy, load each new data version into a new namespace behind
+          an alias, and roll back by pointing the alias at the old namespace.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">Collection</div>
+        <h2>Collections: one model, one size, one lifecycle</h2>
+        <p>A Chroma collection is a named set of records, each an id, a vector and optional text and metadata, with its
+        own HNSW index. Tuesday's page created one; this step runs the whole life of a collection, from creation to
+        deletion, and shows what a collection refuses to hold.</p>
+        <h3>The collection lifecycle</h3>
+        <p>The examples need the week's embedding function and some articles. The block repeats Tuesday's
+        <code>embed</code>, a small model that turns each text into 384 numbers of length 1, and stores eight of the 30
+        invented help-centre articles, copied unchanged, in a collection called <code>kb_articles</code>.<sup class="cite"><a href="#src-17">17</a></sup>
+        To keep the page short, the upsert step likewise uses two of the ten updates. <code>meta</code> picks the fields
+        stored beside each vector.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>from sentence_transformers import SentenceTransformer
+
+encoder = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+
+def embed(texts):
+    return encoder.encode(texts, normalize_embeddings=True).astype("float32")
+
+KB_SAMPLE = [
+    {"id": "kb-001", "title": "Resetting a forgotten password", "text": "Choose Forgot password on the sign-in screen, type the email address you registered with, and open the link we send to pick a new password. The link expires after 30 minutes.", "category": "account", "product": "web", "updated": 2025},
+    {"id": "kb-005", "title": "Signing out on every device", "text": "If you used a shared or lost phone, choose Sign out everywhere under Settings, Security. Every session ends at once, and each device asks for your password the next time it opens.", "category": "account", "product": "mobile", "updated": 2025},
+    {"id": "kb-008", "title": "Ending a plan", "text": "To end a plan, open Billing, choose Manage plan and select Cancel renewal. Access continues until the current period ends, and no further amount is billed after that date.", "category": "billing", "product": "web", "updated": 2025},
+    {"id": "kb-012", "title": "Refund timelines", "text": "Once a return is approved, the refund goes back to the original payment method. Cards usually show it within 5 to 10 business days; store credit appears in your wallet immediately.", "category": "billing", "product": "mobile", "updated": 2025},
+    {"id": "kb-015", "title": "Tracking an order that has not arrived", "text": "If a package has not arrived ten business days after dispatch, open Orders, select it and choose Report a problem. We trace it with the courier, then resend the items or refund you.", "category": "shipping", "product": "web", "updated": 2025},
+    {"id": "kb-019", "title": "Returning an item", "text": "Most items can be returned within 30 days of delivery. Start a return under Orders, print the prepaid label, and drop the box at any post office; we email you when it is received.", "category": "shipping", "product": "mobile", "updated": 2024},
+    {"id": "kb-022", "title": "Fixing crashes on phones", "text": "If the mobile version quits unexpectedly, install the latest update from your phone's store, restart the phone, and clear cached data under Settings. Send a report from the Help menu if it continues.", "category": "technical", "product": "mobile", "updated": 2025},
+    {"id": "kb-024", "title": "Supported browsers", "text": "The website supports the two latest versions of Chrome, Firefox, Safari and Edge. Older browsers may load pages slowly or show broken layouts, so update the browser before reporting a display problem.", "category": "technical", "product": "web", "updated": 2023},
+]
+sample_vectors = embed([a["text"] for a in KB_SAMPLE])
+
+def meta(a):
+    return {"title": a["title"], "category": a["category"], "product": a["product"], "updated": a["updated"]}
+
+kb = client.create_collection(
+    "kb_articles", configuration={"hnsw": {"space": "cosine"}}, embedding_function=None)
+kb.add(ids=[a["id"] for a in KB_SAMPLE], embeddings=sample_vectors,
+       documents=[a["text"] for a in KB_SAMPLE], metadatas=[meta(a) for a in KB_SAMPLE])
+print(sample_vectors.shape, kb.count())</code></pre>
+<pre class="out">(8, 384) 8</pre>
+        <p>Eight rows of 384 numbers went in, and <code>count()</code> agrees: the collection holds 8 records. The next
+        block runs every lifecycle call on a throwaway collection, <code>kb_scratch</code>, so <code>kb_articles</code>
+        stays untouched.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>scratch = client.create_collection(
+    "kb_scratch", configuration={"hnsw": {"space": "cosine"}}, embedding_function=None)
+same = client.get_or_create_collection("kb_scratch", embedding_function=None)
+print(same.id == scratch.id)
+try:
+    client.create_collection("kb_scratch", embedding_function=None)
+except Exception as err:
+    print(type(err).__name__, err)
+
+scratch.add(ids=["s-1", "s-2", "s-3", "s-4"], embeddings=sample_vectors[:4])
+print(client.get_collection("kb_scratch", embedding_function=None).count())
+print(scratch.peek(3)["ids"])
+print(sorted(c.name for c in client.list_collections()))
+
+scratch.modify(name="kb_scratch_old")
+print(sorted(c.name for c in client.list_collections()))
+client.delete_collection("kb_scratch_old")
+print(sorted(c.name for c in client.list_collections()))</code></pre>
+<pre class="out">True
+InternalError Collection [kb_scratch] already exists
+4
+['s-1', 's-2', 's-3']
+['kb_articles', 'kb_scratch', 'random_2k']
+['kb_articles', 'kb_scratch_old', 'random_2k']
+['kb_articles', 'random_2k']</pre>
+        <p>Read the output line by line against the calls:</p>
+        <ul>
+          <li><code>True</code>: <code>get_or_create_collection</code> returned the existing collection, the same id,
+          and ignores any other arguments it is given, metadata included.<sup class="cite"><a href="#src-18">18</a></sup></li>
+          <li>The <code>InternalError</code>: <code>create_collection</code> on a name that exists raises.<sup class="cite"><a href="#src-19">19</a></sup></li>
+          <li><code>4</code> and the three ids: <code>count()</code> returns the number of records, and
+          <code>peek</code> returns the first records, 10 unless told otherwise.<sup class="cite"><a href="#src-19">19</a></sup></li>
+          <li>The three lists: <code>list_collections()</code> returns collection objects, so the names are read with
+          <code>c.name</code>; <code>modify</code> renamed the scratch collection, and <code>delete_collection</code>
+          removed it.<sup class="cite"><a href="#src-18">18</a></sup></li>
+        </ul>
+        <p><code>sorted(c.name for c in ...)</code> builds the names one collection at a time and sorts them, so the lists
+        read the same on every run. Without a sort, <code>list_collections</code> returns up to 100 collections, oldest
+        first.<sup class="cite"><a href="#src-19">19</a></sup></p>
+        <p>Deleting a collection is destructive and cannot be undone.<sup class="cite"><a href="#src-19">19</a></sup>
+        That is why the risky calls ran on a scratch copy. Names have rules too: 3 to 512 characters, starting and ending
+        with a lowercase letter or digit, with dots, dashes and underscores allowed between, no two dots in a row, and
+        not shaped like an IP address.<sup class="cite"><a href="#src-19">19</a></sup> <code>kb_scratch_old</code>
+        passes; <code>KB</code> fails twice, being too short and upper case.</p>
+        <p>In other people's code, <code>get_or_create_collection</code> near the top of a script is the common way to
+        open a collection that may or may not exist yet. Because it ignores new settings for a collection that exists,
+        changing the space in that line later changes nothing.</p>
+        <h3>One model and one size per collection</h3>
+        <p>Every vector in a collection must have the same length. The block tries to add a vector of 768 numbers, the
+        size a larger model might produce, to the 384-number collection.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>wrong_size = np.zeros((1, 768), dtype="float32")
+try:
+    kb.add(ids=["kb-999"], embeddings=wrong_size)
+except Exception as err:
+    print(type(err).__name__, err)
+print(kb.count())</code></pre>
+<pre class="out">InvalidArgumentError Collection expecting embedding with dimension of 384, got 768
+8</pre>
+        <p>The first line names the problem in full: the collection was built for 384 numbers per vector, and the add
+        sent 768. An embedding whose length differs from the collection's raises an
+        exception.<sup class="cite"><a href="#src-20">20</a></sup> The second line shows that nothing was stored: the
+        count is still 8.</p>
+        <p>Equal length is not enough. Two models of the same size place texts in different spaces, so their numbers
+        cannot be compared, and a search across them returns noise.<sup class="cite"><a href="#src-20">20</a></sup> A
+        model change therefore means a new collection, filled again from the source texts.</p>
+        <p>A collection can also carry an embedding function, the model Chroma would run on a text sent without a
+        vector. This week passes <code>embedding_function=None</code> everywhere and
+        sends every vector itself, so the only model in play is <code>embed</code>.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Create raises on an existing name; get-or-create returns the existing collection unchanged.</li>
+          <li>Count, peek, list, rename and delete are one call each, and delete cannot be undone.</li>
+          <li>A collection holds vectors of one length from one model; a new model needs a new collection.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>In Chroma I create a collection with create_collection, which raises if the name exists, or
+          get_or_create_collection, which returns the existing one and ignores the other arguments. I check it with count
+          and peek, list them with list_collections, rename with modify, and remove one with delete_collection, which
+          can't be undone.</p>
+          <p>Two embedding models can't share a collection. Different lengths are refused outright, and even at the same
+          length the two models' numbers mean different things, so similarity across them is meaningless. A new model
+          means a new collection, re-embedded from the source text.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="3">
+        <div class="tag">Upsert</div>
+        <h2>Upsert: insert what is new, replace what exists</h2>
+        <p>Help-centre articles change: a policy is rewritten, a new article appears. A load of fresh data usually mixes
+        both kinds of record, and upsert is the write built for that mix. Its name joins "update" and "insert".</p>
+        <h3>Add, update and upsert in Chroma</h3>
+        <p>The block defines a batch of two articles. <code>kb-019</code> already exists and gets a new text with a
+        60-day window; <code>kb-031</code> is new. The same batch is sent first with <code>add</code>, then with
+        <code>upsert</code>.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>SAMPLE_UPDATES = [
+    {"id": "kb-019", "title": "Returning an item", "text": "Most items can be returned within 60 days of delivery. Start a return under Orders, choose a drop-off point, and show the QR code there; no label or printer is needed.", "category": "shipping", "product": "mobile", "updated": 2026},
+    {"id": "kb-031", "title": "Buying a gift card", "text": "Gift cards come in amounts from 10 to 500 dollars and never expire. Buy one under Gift cards, add the recipient's email address, and choose the day the card is delivered.", "category": "billing", "product": "web", "updated": 2026},
+]
+update_vectors = embed([a["text"] for a in SAMPLE_UPDATES])
+batch = dict(ids=[a["id"] for a in SAMPLE_UPDATES], embeddings=update_vectors,
+             documents=[a["text"] for a in SAMPLE_UPDATES],
+             metadatas=[meta(a) for a in SAMPLE_UPDATES])
+
+kb.add(**batch)
+print(kb.count(), kb.get(ids=["kb-019"])["documents"][0][:45])
+kb.upsert(**batch)
+print(kb.count(), kb.get(ids=["kb-019"])["documents"][0][:45])</code></pre>
+<pre class="out">9 Most items can be returned within 30 days of 
+9 Most items can be returned within 60 days of </pre>
+        <p><code>batch</code> is a dictionary of the four arguments, and <code>**batch</code> unpacks it into keyword
+        arguments, so both calls receive exactly the same records. <code>get(ids=["kb-019"])</code> reads one record back,
+        and <code>[:45]</code> keeps the first 45 characters of its text.</p>
+        <p>After <code>add</code> the count is 9 and the text still says 30 days. Chroma ignored the existing id without
+        raising an error, and wrote the new id.<sup class="cite"><a href="#src-20">20</a></sup> Nothing warned that
+        the policy change was lost. After <code>upsert</code> the count stays 9 and the text says 60 days: upsert adds
+        records whose ids are missing and updates those whose ids exist.<sup class="cite"><a href="#src-21">21</a></sup></p>
+        <table>
+          <thead><tr><th>Call</th><th>The id is new</th><th>The id exists</th></tr></thead>
+          <tbody>
+            <tr><td><code>add</code></td><td>Inserted</td><td>Ignored, with no error<sup class="cite"><a href="#src-20">20</a></sup></td></tr>
+            <tr><td><code>update</code></td><td>An error is logged and nothing changes</td><td>Replaced<sup class="cite"><a href="#src-21">21</a></sup></td></tr>
+            <tr><td><code>upsert</code></td><td>Inserted</td><td>Replaced<sup class="cite"><a href="#src-21">21</a></sup></td></tr>
+          </tbody>
+        </table>
+        <p>The table is why a regular load that may meet both kinds of record uses <code>upsert</code>: <code>add</code>
+        silently drops the changes and <code>update</code> silently drops the new articles.</p>
+        <h3>Stable ids and loads you can run twice</h3>
+        <p>Upsert decides between insert and replace by the id alone, so the id must name the same article on every
+        load. The block makes the common mistake: it numbers the batch's rows and uses the row numbers as ids.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>kb.upsert(ids=[f"row-{i}" for i in range(len(SAMPLE_UPDATES))], embeddings=update_vectors,
+          documents=[a["text"] for a in SAMPLE_UPDATES],
+          metadatas=[meta(a) for a in SAMPLE_UPDATES])
+print(kb.count())
+found = kb.query(query_embeddings=embed(["how many days do I have to send something back"]), n_results=3)
+print(found["ids"][0])
+kb.delete(ids=["row-0", "row-1"])
+print(kb.count())</code></pre>
+<pre class="out">11
+['kb-019', 'row-0', 'kb-015']
+9</pre>
+        <p>The count jumps from 9 to 11, because <code>row-0</code> and <code>row-1</code> are ids the collection has
+        never seen. The query shows the damage: the returns article comes back twice, once as <code>kb-019</code> and
+        once as <code>row-0</code>, and the copy fills one of the three places. <code>found["ids"][0]</code> is the
+        first query's list, because <code>query</code> groups its results per query.<sup class="cite"><a href="#src-22">22</a></sup>
+        <code>delete</code> removes
+        records by id, permanently, which puts the count back to 9.<sup class="cite"><a href="#src-23">23</a></sup></p>
+        <p>The fix is to take the id from the source record, <code>a["id"]</code>, never from a position in a list. A load
+        built that way is idempotent: running it twice leaves the same records as running it once. With stable ids and
+        upsert, a failed load can run again.</p>
+        <h3>Upsert in Pinecone</h3>
+        <p>Pinecone has no separate add: every write of a record is an upsert. A new id is inserted, and an existing id
+        has its entire record overwritten.<sup class="cite"><a href="#src-24">24</a></sup> The block writes the eight
+        articles to <code>kb-wednesday</code>, then the update batch, and fetches the changed article.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>def wait_for_count(index, expected, namespace=None):
+    """Poll the index stats every 2 seconds, for up to 60 seconds, until they show `expected` vectors."""
+    for _ in range(30):
+        stats = index.describe_index_stats()
+        if namespace is None:
+            count = stats.total_vector_count
+        else:
+            ns = stats.namespaces.get(namespace)
+            count = ns.vector_count if ns else 0
+        if count == expected:
+            break
+        time.sleep(2)
+    print(namespace or "all", count)
+
+def to_records(articles, vectors):
+    return [{"id": a["id"], "values": v.tolist(), "metadata": {**meta(a), "text": a["text"]}}
+            for a, v in zip(articles, vectors)]
+
+index = pc.Index("kb-wednesday")
+index.upsert(vectors=to_records(KB_SAMPLE, sample_vectors))
+wait_for_count(index, 8)
+index.upsert(vectors=to_records(SAMPLE_UPDATES, update_vectors))
+wait_for_count(index, 9)
+print(index.fetch(ids=["kb-019"]).vectors["kb-019"].metadata["text"][:45])</code></pre>
+        <p>It should print <code>all 8</code>, then <code>all 9</code>, then the 60-day text. <code>to_records</code> builds
+        Pinecone's record shape: an id, the vector as <code>values</code>, and the metadata.
+        <code>v.tolist()</code> turns a numpy row into a plain Python list, and <code>{**meta(a), "text": ...}</code> copies
+        the four fields and adds the text, so the fetched record can show which version is stored.</p>
+        <p><code>fetch</code> returns <code>vectors</code>, a map from each id to its stored record, which is where the
+        new text is read.<sup class="cite"><a href="#src-25">25</a></sup> <code>wait_for_count</code> is the week's
+        helper: it reads <code>describe_index_stats()</code> until the count arrives, so the next line never runs
+        against a count that has not caught up.</p>
+        <p>The overwrite has a cost. An upsert that sends only new metadata replaces the whole record, so a change to one
+        field belongs in <code>update</code>, which changes part of a record.<sup class="cite"><a href="#src-24">24</a></sup>
+        A single upsert request should hold up to 1,000 records within 2 MB, so a large load is sent in
+        batches.<sup class="cite"><a href="#src-24">24</a></sup></p>
+        <p>In other people's code, <code>col.upsert(ids=..., embeddings=...)</code> or
+        <code>index.upsert(vectors=[{"id": ..., "values": ..., "metadata": ...}])</code> marks a load meant to be
+        rerun.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Upsert inserts a new id and replaces an existing one; Chroma's add silently skips existing ids.</li>
+          <li>Ids come from the source record, so a load can run twice without duplicates.</li>
+          <li>Pinecone writes only by upsert, and an upsert overwrites the whole record.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Upsert inserts a record when its id is new and replaces it when the id exists, so one call handles a batch
+          that mixes new and changed records. In Chroma, add ignores an existing id without an error, which silently
+          loses the change; in Pinecone every write is an upsert and overwrites the whole record.</p>
+          <p>The id has to come from the source data, like the article's own id. If I used row numbers, the next load
+          would write the same articles under new ids and every search would return duplicates. Stable ids plus upsert
+          make the load safe to rerun.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">Partitioning vectors</div>
+        <h2>Partitioning vectors: collections and namespaces</h2>
+        <p>Partitioning splits the stored vectors into separate parts so that a query searches one part and never sees
+        the others. Chroma partitions with collections, and Pinecone with namespaces inside one index.</p>
+        <h3>A collection per partition in Chroma</h3>
+        <p>The block first builds <code>SAMPLE_ALL</code>, the eight articles with the update batch applied by id, nine
+        in all. It then stores the web articles and the mobile articles in two collections and asks both the same
+        question.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>by_id = {a["id"]: a for a in KB_SAMPLE}
+by_id.update({a["id"]: a for a in SAMPLE_UPDATES})
+SAMPLE_ALL = [by_id[i] for i in sorted(by_id)]
+sample_all_vectors = embed([a["text"] for a in SAMPLE_ALL])
+
+parts = {}
+for product in ["web", "mobile"]:
+    rows = [i for i, a in enumerate(SAMPLE_ALL) if a["product"] == product]
+    parts[product] = client.create_collection(
+        f"kb_{product}", configuration={"hnsw": {"space": "cosine"}}, embedding_function=None)
+    parts[product].add(ids=[SAMPLE_ALL[i]["id"] for i in rows], embeddings=sample_all_vectors[rows],
+                       metadatas=[meta(SAMPLE_ALL[i]) for i in rows])
+
+question = embed(["the app keeps closing by itself"])
+for product, col in parts.items():
+    found = col.query(query_embeddings=question, n_results=2)
+    print(product, col.count(), found["ids"][0], [round(d, 2) for d in found["distances"][0]])
+
+client.delete_collection("kb_mobile")
+print(sorted(c.name for c in client.list_collections()))</code></pre>
+<pre class="out">web 5 ['kb-008', 'kb-024'] [0.73, 0.8]
+mobile 4 ['kb-022', 'kb-005'] [0.5, 0.75]
+['kb_articles', 'kb_web', 'random_2k']</pre>
+        <p><code>by_id</code> maps each id to its article, and <code>update</code> replaces <code>kb-019</code> and adds
+        <code>kb-031</code>, the same rule as upsert. <code>rows</code> lists the positions of one product's articles,
+        and <code>sample_all_vectors[rows]</code> picks those rows out of the numpy array.</p>
+        <p>The mobile collection finds <code>kb-022</code>, the crash article, at distance 0.50. The web collection cannot
+        see it, so its best answer is the billing article <code>kb-008</code> at 0.73, a poor match: a cosine distance of
+        0.73 is a similarity of only 0.27. The partition did its job, and it also shows the cost: a question asked in the
+        wrong partition gets the wrong answers.</p>
+        <p>The last line shows that deleting a whole partition is one <code>delete_collection</code>
+        call.<sup class="cite"><a href="#src-19">19</a></sup></p>
+        <h3>Namespaces in Pinecone</h3>
+        <p>A namespace is a named partition inside a Pinecone index. Every upsert, query and other read or write targets
+        exactly one namespace, and a namespace is created automatically by the first upsert into
+        it.<sup class="cite"><a href="#src-26">26</a></sup> The records written in the upsert step went to the default
+        namespace, since no name was given. The block writes the same nine articles again, split by product into
+        <code>web</code> and <code>mobile</code>, and queries one.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>for product in ["web", "mobile"]:
+    rows = [i for i, a in enumerate(SAMPLE_ALL) if a["product"] == product]
+    index.upsert(vectors=to_records([SAMPLE_ALL[i] for i in rows], sample_all_vectors[rows]),
+                 namespace=product)
+wait_for_count(index, 5, namespace="web")
+wait_for_count(index, 4, namespace="mobile")
+
+question = embed(["the app keeps closing by itself"])[0].tolist()
+found = index.query(vector=question, top_k=2, namespace="web", include_metadata=True)
+for match in found.matches:
+    print(match.id, round(match.score, 2), match.metadata["title"])</code></pre>
+        <p>It should print <code>web 5</code> and <code>mobile 4</code>, then <code>kb-008</code> and <code>kb-024</code>,
+        the same two articles <code>kb_web</code> returned, because the vectors are the same. Pinecone's cosine score is
+        a similarity, 1 minus Chroma's cosine distance, and higher is closer. So the two scores should come out near
+        1 − 0.73 = 0.27 and 1 − 0.80 = 0.20. Each match carries an <code>id</code>, a <code>score</code> and the <code>metadata</code>.<sup class="cite"><a href="#src-25">25</a></sup>
+        A <code>namespace=</code> argument on <code>index.upsert</code> or <code>index.query</code> is the sign of a
+        partitioned index.</p>
+        <p>The other namespace calls a team uses:</p>
+        <ul>
+          <li><code>describe_index_stats()</code> lists every namespace with its <code>vector_count</code>.<sup class="cite"><a href="#src-25">25</a></sup></li>
+          <li><code>index.list_namespaces()</code> and <code>describe_namespace</code> list and describe them, and the name
+          <code>"__default__"</code> targets the default namespace.<sup class="cite"><a href="#src-27">27</a></sup></li>
+          <li><code>index.delete_namespace(namespace="mobile")</code> deletes every record in that namespace,
+          permanently.<sup class="cite"><a href="#src-27">27</a></sup></li>
+          <li><code>query_namespaces(...)</code> searches several namespaces and merges the results.<sup class="cite"><a href="#src-25">25</a></sup></li>
+        </ul>
+        <p>The free Starter plan allows 100 namespaces per index, so the two here are well inside
+        it.<sup class="cite"><a href="#src-14">14</a></sup></p>
+        <h3>When to partition: multitenancy</h3>
+        <p>Multitenancy means one index serving many customers, called tenants, and it is the main reason namespaces
+        exist. Pinecone's guide gives each tenant its own namespace, which brings three properties:<sup class="cite"><a href="#src-28">28</a></sup></p>
+        <ul>
+          <li>Isolation: a query in one tenant's namespace cannot return another tenant's records.</li>
+          <li>Even load: a search's cost follows the size of its namespace, so a large tenant does not slow a small one.</li>
+          <li>Easy removal: offboarding a tenant is deleting its namespace, which the guide calls "lightweight and almost
+          instant".</li>
+        </ul>
+        <p>The other common reasons to partition are data that must never mix, such as two languages, and vectors from
+        different models. In Chroma different models go in different collections. A Pinecone index has one dimension,
+        so a model of another size needs its own index.<sup class="cite"><a href="#src-7">7</a></sup></p>
+        <p>Partitions have costs too. A question that spans partitions needs one query per partition, or
+        <code>query_namespaces</code>, and an index on dedicated read nodes supports only one
+        namespace.<sup class="cite"><a href="#src-10">10</a></sup> Namespaces per serverless index run from 100 on
+        Starter to 1,000,000 on Enterprise.<sup class="cite"><a href="#src-28">28</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A partition is a part of the data a query searches alone; other parts are invisible to it.</li>
+          <li>Chroma partitions with collections, Pinecone with namespaces inside one index.</li>
+          <li>One namespace per tenant isolates customers and makes deleting one customer a single call.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A Pinecone namespace is a named partition inside an index. Every upsert and query targets one namespace, so
+          records in other namespaces are never seen. In a multi-tenant app I'd give each customer a namespace: their
+          data is isolated, a big customer doesn't slow the others, and offboarding is deleting that namespace.</p>
+          <p>With the SDK I'd create the index with has_index and create_index, upsert each customer's records with
+          namespace set to their name, and query with the same namespace argument. describe_index_stats shows the vector
+          count per namespace, which is how I'd check the writes landed.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
+        <div class="tag">Metadata partitioning</div>
+        <h2>Vector partitioning using metadata: filters</h2>
+        <p>A metadata filter is a condition on the fields stored beside each vector, such as category or year. It limits
+        which records a similarity search may return, so it carves a part out of one collection at query time instead of
+        storing the parts apart.</p>
+        <h3>A where filter</h3>
+        <p>Chroma's <code>query</code> and <code>get</code> both take a <code>where</code>
+        argument.<sup class="cite"><a href="#src-22">22</a></sup> The block asks one question of
+        <code>kb_articles</code> twice, without a filter and with one.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>question = embed(["how do I get my money back"])
+for where in [None, {"category": "billing"}]:
+    found = kb.query(query_embeddings=question, n_results=3, where=where)
+    print(where, found["ids"][0], [round(d, 2) for d in found["distances"][0]])</code></pre>
+<pre class="out">None ['kb-012', 'kb-019', 'kb-001'] [0.56, 0.72, 0.74]
+{'category': 'billing'} ['kb-012', 'kb-008', 'kb-031'] [0.56, 0.77, 0.9]</pre>
+        <p>Without a filter the top 3 mixes billing, shipping and account articles. With the filter every answer is a
+        billing article: the refund article stays first at 0.56, while the returns and password articles give way to
+        <code>kb-008</code> and <code>kb-031</code>. Those are weaker matches at 0.77 and 0.90, kept because they
+        pass the filter.</p>
+        <p><code>{"category": "billing"}</code> is shorthand: Chroma reads a bare value as
+        <code>{"category": {"$eq": "billing"}}</code>.<sup class="cite"><a href="#src-29">29</a></sup> In other people's
+        code, a <code>where=</code> next to <code>query_embeddings=</code> is the sign of a filtered search.</p>
+        <h3>Operators</h3>
+        <p>Chroma's <code>where</code> takes these operators, and each filter object holds one field or one logical
+        operator:<sup class="cite"><a href="#src-30">30</a></sup></p>
+        <table>
+          <thead><tr><th>Operator</th><th>Matches when the field</th><th>Takes</th></tr></thead>
+          <tbody>
+            <tr><td><code>$eq</code>, <code>$ne</code></td><td>equals, or does not equal, the value</td><td>a string, number or boolean</td></tr>
+            <tr><td><code>$gt</code>, <code>$gte</code>, <code>$lt</code>, <code>$lte</code></td><td>is above or below the value</td><td>numbers only</td></tr>
+            <tr><td><code>$in</code>, <code>$nin</code></td><td>is, or is not, one of the values</td><td>a list of one type</td></tr>
+            <tr><td><code>$and</code>, <code>$or</code></td><td>passes all, or any, of the filters</td><td>a list of filters</td></tr>
+          </tbody>
+        </table>
+        <p class="run-label">Run in Colab</p>
+<pre><code>filters = [
+    {"product": {"$ne": "web"}},
+    {"category": {"$in": ["billing", "shipping"]}},
+    {"updated": {"$gte": 2025}},
+    {"$and": [{"product": "mobile"}, {"updated": {"$gte": 2025}}]},
+]
+for where in filters:
+    print(sorted(kb.get(where=where)["ids"]))
+
+recent_mobile = {"$and": [{"product": "mobile"}, {"updated": {"$gte": 2025}}]}
+found = kb.query(query_embeddings=question, n_results=3, where=recent_mobile)
+print(found["ids"][0])</code></pre>
+<pre class="out">['kb-005', 'kb-012', 'kb-019', 'kb-022']
+['kb-008', 'kb-012', 'kb-015', 'kb-019', 'kb-031']
+['kb-001', 'kb-005', 'kb-008', 'kb-012', 'kb-015', 'kb-019', 'kb-022', 'kb-031']
+['kb-005', 'kb-012', 'kb-019', 'kb-022']
+['kb-012', 'kb-019', 'kb-022']</pre>
+        <p>The first four lines use <code>get</code>, which returns every match with no ranking. The four mobile articles
+        pass <code>$ne</code>, five pass <code>$in</code>, and only <code>kb-024</code>, from 2023, fails
+        <code>$gte</code>. The <code>$and</code> line keeps the mobile articles from 2025 or later. That is all four,
+        because the upsert moved <code>kb-019</code> from 2024 to 2026.</p>
+        <p>The last line is a ranked search inside that filter, the top 3 of the four by distance. The comparison
+        operators take numbers only, which is why <code>updated</code> is stored as an integer year and never as the text
+        "2025".<sup class="cite"><a href="#src-30">30</a></sup></p>
+        <p>Pinecone's <code>filter</code> uses the same dictionary syntax, plus <code>$exists</code> and <code>$not</code>,
+        and its <code>$in</code> takes up to 10,000 values.<sup class="cite"><a href="#src-31">31</a></sup> The block
+        sends a billing filter and the same <code>recent_mobile</code> filter to the default namespace of
+        <code>kb-wednesday</code>.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>question_list = question[0].tolist()
+for flt in [{"category": {"$eq": "billing"}}, recent_mobile]:
+    found = index.query(vector=question_list, top_k=3, filter=flt, include_metadata=True)
+    print([match.id for match in found.matches])</code></pre>
+        <p>With the same vectors it should print <code>['kb-012', 'kb-008', 'kb-031']</code> and then
+        <code>['kb-012', 'kb-019', 'kb-022']</code>, the Chroma answers. A Pinecone metadata field can also hold a list of
+        strings, and a filter on it matches when any element matches.<sup class="cite"><a href="#src-31">31</a></sup></p>
+        <h3>A filter that leaves too few rows</h3>
+        <p>A filter can leave fewer matching records than the number of results asked for. The block asks for 3 mobile
+        billing articles, and then makes the type mistake the table warns about.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>mobile_billing = {"$and": [{"category": "billing"}, {"product": "mobile"}]}
+found = kb.query(query_embeddings=question, n_results=3, where=mobile_billing)
+print(found["ids"][0])
+try:
+    kb.get(where={"updated": {"$gte": "2025"}})
+except Exception as err:
+    print(type(err).__name__, err)</code></pre>
+<pre class="out">['kb-012']
+ValueError Expected operand value to be an int or a float for operator $gte, got 2025 in get.</pre>
+        <p>Only <code>kb-012</code> is both billing and mobile, so one id comes back although <code>n_results</code> was 3,
+        with no error and no warning. Code that reads the third result without checking the length fails here. The
+        second line shows <code>$gte</code> refusing the text "2025": the operator wants an int or a float.</p>
+        <h3>Partition or filter</h3>
+        <p>Both narrow a search, and they suit different needs. In Pinecone, a filter narrows the candidates while the
+        search still scans the whole namespace, so a filter-based tenant scheme reads every tenant's
+        data.<sup class="cite"><a href="#src-28">28</a></sup></p>
+        <table>
+          <thead><tr><th>Need</th><th>Use</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td>A hard boundary, such as one customer's data</td><td>A namespace or a collection</td><td>Records outside it are never read, and deleting it removes them all</td></tr>
+            <tr><td>A condition on a field, such as category or year</td><td>A metadata filter</td><td>One query can combine conditions, and they change per question</td></tr>
+            <tr><td>Both: one customer, recent articles only</td><td>A filter inside the customer's namespace</td><td>The boundary stays physical; the filter narrows within it</td></tr>
+          </tbody>
+        </table>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A where filter limits a search to records whose metadata passes the condition.</li>
+          <li>Comparison operators take numbers only, so years are stored as integers.</li>
+          <li>A tight filter can return fewer results than asked, with no warning.</li>
+          <li>Hard boundaries go in partitions; per-question conditions go in filters.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>To restrict a similarity search I add a metadata filter: where in Chroma, filter in Pinecone. For mobile
+          articles updated in 2025 or later I'd write an $and of product equals mobile and updated $gte 2025, with the
+          year stored as a number, because the comparison operators only take numbers.</p>
+          <p>I use a namespace instead when the boundary is hard, like one customer's data. A filter still scans the
+          whole namespace, while a namespace keeps the records apart and can be deleted in one call.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="6">
+        <div class="tag">Distance metrics</div>
+        <h2>Distance metrics: cosine, dot product and Euclidean</h2>
+        <p>A distance metric is the rule that turns two vectors into one number saying how close they are. Every
+        collection and index on this page was created with one, and this step compares the three common ones.</p>
+        <h3>Three measures worked by hand</h3>
+        <p>Take <code>a = [3, 4]</code> and <code>b = [6, 8]</code>. The three measures, each worked once:</p>
+        <ul>
+          <li>Dot product: multiply matching numbers and add them. 3 × 6 + 4 × 8 = 50.</li>
+          <li>Cosine similarity: the dot product divided by both lengths. The length of a is √(3² + 4²) = 5 and of b is
+          10, so 50 / (5 × 10) = 1.0, the highest a cosine can be.</li>
+          <li>Euclidean distance: the straight-line gap, √((3 − 6)² + (4 − 8)²) = √25 = 5.0.</li>
+        </ul>
+        <div class="ix-predict" data-q="Add c = [4, 3]. Which pair of a, b and c does cosine call closest, and which pair does Euclidean distance call closest?" data-a="Cosine calls a, b closest (1.0, the same direction). Euclidean calls a, c closest (about 1.41 apart, against 5.0 for a, b), because b is twice as long as a."></div>
+        <p class="run-label">Run in Colab</p>
+<pre><code>a, b, c = np.array([3, 4]), np.array([6, 8]), np.array([4, 3])
+
+def cosine(u, v):
+    return np.dot(u, v) / (np.linalg.norm(u) * np.linalg.norm(v))
+
+for name, u, v in [("a,b", a, b), ("a,c", a, c), ("b,c", b, c)]:
+    print(name, round(cosine(u, v), 2), np.dot(u, v), round(np.linalg.norm(u - v), 2))</code></pre>
+<pre class="out">a,b 1.0 50 5.0
+a,c 0.96 24 1.41
+b,c 0.96 48 5.39</pre>
+        <p>Each line shows a pair, its cosine, its dot product and its distance. The measures
+        disagree.<sup class="cite"><a href="#src-3">3</a></sup> Cosine and dot product call a, b the closest pair,
+        and Euclidean calls a, c closest. The reason is length. b points exactly the way a does, which is why the cosine
+        is 1.0, but it is twice as long, so its tip sits 5 away. Cosine looks only at direction; the dot product and
+        the distance also feel length.</p>
+        <p>Make b ten times longer, <code>b = [30, 40]</code>, and the gap grows. Cosine for a, b stays 1.0 while the
+        distance grows to 45.0 and the dot product to 250.<sup class="cite"><a href="#src-3">3</a></sup> Euclidean
+        distance fits vectors whose length carries meaning, such as counts or
+        measurements.<sup class="cite"><a href="#src-32">32</a></sup></p>
+        <h3>Vectors of length 1</h3>
+        <p>The disagreement disappears when every vector has length 1, a unit vector. The block divides a, b and c by
+        their lengths and measures again, printing the squared distance this time.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>ua, ub, uc = (x / np.linalg.norm(x) for x in (a, b, c))
+for name, u, v in [("a,b", ua, ub), ("a,c", ua, uc), ("b,c", ub, uc)]:
+    print(name, round(cosine(u, v), 2), round(np.dot(u, v), 2), round(np.sum((u - v) ** 2), 2))</code></pre>
+<pre class="out">a,b 1.0 1.0 0.0
+a,c 0.96 0.96 0.08
+b,c 0.96 0.96 0.08</pre>
+        <p>For unit vectors the dot product equals the cosine, and the squared Euclidean distance is 2 − 2 × cosine.
+        Check one line by hand: 2 − 2 × 0.96 = 0.08.<sup class="cite"><a href="#src-3">3</a></sup> Since the distance
+        is a fixed function of the cosine, the closest pair by one measure is the closest by all three. a and b now
+        coincide, so they are 0 apart.</p>
+        <p>This is the case this week uses. <code>embed</code> passes <code>normalize_embeddings=True</code>, so
+        every stored vector has length 1, and the three metrics put the articles in the same
+        order.<sup class="cite"><a href="#src-3">3</a></sup></p>
+        <h3>Distance against score, and the metric fixed at creation</h3>
+        <p>Chroma's three spaces are all distances, so lower is closer: <code>l2</code> is the squared distance,
+        <code>cosine</code> is 1 − cosine similarity, and <code>ip</code> (inner product, another name for the dot
+        product) is 1 − dot product.<sup class="cite"><a href="#src-3">3</a></sup> The block stores the nine articles
+        three times, once per space, and asks the refund question.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>for space in ["cosine", "ip", "l2"]:
+    col = client.create_collection(
+        f"kb_{space}", configuration={"hnsw": {"space": space}}, embedding_function=None)
+    col.add(ids=[a["id"] for a in SAMPLE_ALL], embeddings=sample_all_vectors)
+    found = col.query(query_embeddings=question, n_results=3, include=["distances"])
+    print(space, found["ids"][0], [round(d, 3) for d in found["distances"][0]])</code></pre>
+<pre class="out">cosine ['kb-012', 'kb-019', 'kb-001'] [0.564, 0.723, 0.745]
+ip ['kb-012', 'kb-019', 'kb-001'] [0.564, 0.723, 0.745]
+l2 ['kb-012', 'kb-019', 'kb-001'] [1.127, 1.446, 1.49]</pre>
+        <p>All three return the same top 3, as the unit-vector rule predicts. <code>kb_cosine</code> and
+        <code>kb_ip</code> print the same numbers, because for unit vectors 1 − dot equals 1 − cosine. The
+        <code>l2</code> numbers are double: 2 − 2 × cosine is twice 1 − cosine, so 0.564 becomes about 1.127 once
+        rounding is allowed for.</p>
+        <p>Pinecone reports a score, and which end is better depends on the metric:<sup class="cite"><a href="#src-33">33</a></sup></p>
+        <table>
+          <thead><tr><th>Pinecone metric</th><th>The score is</th><th>Closest is</th></tr></thead>
+          <tbody>
+            <tr><td><code>cosine</code></td><td>the cosine similarity, from −1 to 1</td><td>highest</td></tr>
+            <tr><td><code>dotproduct</code></td><td>the dot product</td><td>most positive</td></tr>
+            <tr><td><code>euclidean</code></td><td>the squared Euclidean distance</td><td>lowest</td></tr>
+          </tbody>
+        </table>
+        <p><code>kb_cosine</code> put the refund article at distance 0.564, a cosine similarity of 1 − 0.564 = 0.436.
+        So the cosine index should score it about 0.44, highest first, and an index created with
+        <code>metric="euclidean"</code> about 2 − 2 × 0.436 = 1.13, lowest first.</p>
+        <p>The metric cannot be changed later in either database. Chroma's <code>space</code> is fixed at creation, and
+        Pinecone's <code>configure_index</code> has no metric field, so a wrong choice means a new collection or index,
+        filled again.<sup class="cite"><a href="#src-5">5</a></sup><sup class="cite"><a href="#src-9">9</a></sup>
+        This is also the page's last Pinecone call, so the block deletes the index, guarded the same way as the
+        create.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>if pc.has_index("kb-wednesday"):
+    pc.delete_index("kb-wednesday")
+print(pc.list_indexes().names())</code></pre>
+        <p>The list printed no longer contains <code>kb-wednesday</code>, so the project is back inside the free plan's
+        limits for the next day.</p>
+        <h3>Choosing a metric</h3>
+        <p>Use the metric the embedding model was trained with. all-MiniLM-L6-v2 was trained on the cosine similarity of
+        sentence pairs, so cosine is its metric.<sup class="cite"><a href="#src-17">17</a></sup><sup class="cite"><a href="#src-32">32</a></sup>
+        Cosine on raw vectors and dot product on normalised vectors are the same calculation, so a dot-product index
+        also suits it when the vectors have length 1.<sup class="cite"><a href="#src-32">32</a></sup></p>
+        <p>The model card is where to look for a new model. Pinecone's index guide says the dimension and metric should
+        match the model's.<sup class="cite"><a href="#src-7">7</a></sup> Most text models name cosine; Euclidean
+        belongs to vectors that encode counts or measurements.</p>
+        <p>The metric is named once, at creation: <code>configuration={"hnsw": {"space": "ip"}}</code> in Chroma, and
+        <code>metric="euclidean"</code> in <code>create_index</code>.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Cosine looks at direction only; dot product and Euclidean distance also feel length.</li>
+          <li>For unit vectors all three give the same order, since squared distance is 2 − 2 × cosine.</li>
+          <li>Chroma reports distances, lower closer; Pinecone's cosine score is a similarity, higher closer.</li>
+          <li>The metric is fixed at creation, and it should be the one the model was trained with.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Cosine similarity compares direction only, the dot product multiplies matching numbers and adds them, and
+          Euclidean distance is the straight-line gap. They disagree when lengths differ: [3, 4] and [6, 8] have cosine 1
+          but sit 5 apart.</p>
+          <p>For vectors of length 1 they agree on the order, because squared distance is 2 minus 2 times the cosine.
+          I pick the metric the model card names, cosine for most text models, and set it when I create the index,
+          since neither Chroma nor Pinecone lets me change it later.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="7">
+        <div class="tag">Check yourself</div>
+        <h2>Check yourself</h2>
+        <p>Nine questions, at least one per section. Answer each out loud before you open it.</p>
+        <details class="check"><summary>What is a vector index for, and why is an HNSW index approximate?</summary><p>Without an index a search compares the query with every stored vector, so its time grows in proportion to the rows. HNSW links each vector to a few near neighbours in layers and walks from the top layer down, so the cost grows about logarithmically. The walk is greedy and can stop at a local minimum, which is why it sometimes misses a true neighbour.</p></details>
+        <details class="check"><summary>An HNSW collection returns 182 of the exact top 10 over 20 queries. What is its recall, and what would you change to raise it?</summary><p>20 queries × 10 = 200 true neighbours, so recall is 182 / 200 = 0.91. Raise <code>ef_search</code> with <code>modify(configuration={"hnsw": {"ef_search": 200}})</code>, which buys recall with slower queries; <code>space</code>, <code>ef_construction</code> and <code>max_neighbors</code> cannot change after creation.</p></details>
+        <details class="check"><summary>Walk through a Pinecone index's lifecycle with the SDK. What happens if someone deletes it while deletion protection is on?</summary><p>Check <code>has_index</code>, then <code>create_index</code> with the model's dimension and metric and a serverless spec; read <code>describe_index</code> for the dimension, metric, host, status and protection, and <code>list_indexes</code> for the names. With protection switched on by <code>configure_index</code>, <code>delete_index</code> fails with 403 FORBIDDEN until protection is disabled again. The console at app.pinecone.io can do the same by hand, deleting an index included.</p></details>
+        <details class="check"><summary>How would you make a Pinecone deployment faster, and how would you back it up and roll it back?</summary><p>Serverless reads share capacity up to 2,000 read units per second per index and namespace; dedicated read nodes give one index its own read hardware, with one namespace only. For backups, schedule them with an expiration policy and restore into a new index; for rollback, load each data version into a new namespace behind an alias and repoint the alias to the old one. Backups are not on the free Starter plan, and new pod-based collections cannot be created.</p></details>
+        <details class="check"><summary>What is the difference between <code>create_collection</code> and <code>get_or_create_collection</code>, and what happens when you add a 768-number vector to a 384-number collection?</summary><p><code>create_collection</code> raises if the name exists; <code>get_or_create_collection</code> returns the existing collection and ignores the other arguments. The 768-number add raises an error naming both sizes, and the count does not change; even two models of the same size cannot share a collection, because their numbers mean different things.</p></details>
+        <details class="check"><summary>A nightly job writes the help-centre articles to Chroma with <code>add</code>, using each article's row number as its id. What goes wrong, and what is the fix?</summary><p><code>add</code> ignores ids that already exist, so changed texts are silently kept old. Row-number ids name a different article as soon as the list changes, so the same article gets written under a new id and searches return duplicates. Use the article's own id and <code>upsert</code>, which makes the job safe to run twice.</p></details>
+        <details class="check"><summary>How would you keep two customers' data apart in one Pinecone index, and remove a customer who leaves?</summary><p>Give each customer a namespace: every upsert and query names it, so one customer's query never reads the other's records, and a large customer does not slow a small one. Removing a customer is <code>delete_namespace</code>, which deletes that namespace's records permanently.</p></details>
+        <details class="check"><summary>Write a Chroma filter for mobile articles updated in 2025 or later. Why might a query with it and <code>n_results=3</code> return one result?</summary><p><code>{"$and": [{"product": "mobile"}, {"updated": {"$gte": 2025}}]}</code>, with the year stored as an integer because the comparison operators take numbers only. If only one record passes the filter, only one comes back, with no error or warning.</p></details>
+        <details class="check"><summary>Why do cosine, dot product and Euclidean distance rank the week's vectors in the same order, and when would they disagree?</summary><p><code>embed</code> normalises every vector to length 1, and for unit vectors the dot product equals the cosine and squared distance is 2 − 2 × cosine. They disagree when lengths differ: [3, 4] and [6, 8] have cosine 1.0 but are 5 apart, so Euclidean prefers [4, 3]. Pick the metric the model was trained with, at creation.</p></details>
+      </section>
+
+      <section class="reading-sources" aria-label="Sources and deeper dive">
+        <h2>Sources &amp; deeper dive</h2>
+        <ul>
+          <li id="src-1"><a href="https://arxiv.org/abs/1603.09320" target="_blank" rel="noopener">Efficient and robust approximate nearest neighbor search using HNSW graphs (Malkov and Yashunin)</a> — the layered graph and its logarithmic search cost.</li>
+          <li id="src-2"><a href="https://numpy.org/doc/stable/reference/random/generated/numpy.random.Generator.standard_normal.html" target="_blank" rel="noopener">numpy.random.Generator.standard_normal</a> — drawing float32 directly, half the memory of float64.</li>
+          <li id="src-3"><a href="https://docs.trychroma.com/docs/collections/configure" target="_blank" rel="noopener">Configure Collections (Chroma)</a> — the HNSW settings, their defaults and the three distance spaces.</li>
+          <li id="src-4"><a href="https://www.pinecone.io/learn/series/faiss/hnsw/" target="_blank" rel="noopener">HNSW: Hierarchical Navigable Small Worlds (Pinecone)</a> — the greedy walk, local minima, and what M and efSearch trade.</li>
+          <li id="src-5"><a href="https://cookbook.chromadb.dev/core/configuration/" target="_blank" rel="noopener">Configuration (Chroma Cookbook)</a> — which settings can change after creation, and the deprecated metadata form.</li>
+          <li id="src-6"><a href="https://docs.pinecone.io/guides/manage-data/manage-indexes" target="_blank" rel="noopener">Manage indexes (Pinecone)</a> — describe_index fields, deletion protection and the 403 refusal.</li>
+          <li id="src-7"><a href="https://docs.pinecone.io/guides/legacy/vectors-api/create-a-vector-index" target="_blank" rel="noopener">Create a legacy vector index (Pinecone)</a> — dimension and metric to match the model, and the Documents API note.</li>
+          <li id="src-8"><a href="https://docs.pinecone.io/release-notes/2026" target="_blank" rel="noopener">Pinecone 2026 changelog</a> — the Starter plan's single region and the API version that adds aliases.</li>
+          <li id="src-9"><a href="https://docs.pinecone.io/reference/api/2026-04/control-plane/configure_index" target="_blank" rel="noopener">Configure an index (Pinecone API 2026-04, the version cited; the no-metric-field rule holds on 2026-07)</a> — what configure_index can change, and that the metric is not among it.</li>
+          <li id="src-10"><a href="https://docs.pinecone.io/guides/index-data/dedicated-read-nodes/overview" target="_blank" rel="noopener">Dedicated read nodes overview (Pinecone)</a> — on-demand read limits against dedicated read hardware.</li>
+          <li id="src-11"><a href="https://docs.pinecone.io/guides/indexes/pods/understanding-pod-based-indexes" target="_blank" rel="noopener">Understanding pod-based indexes (Pinecone)</a> — the legacy s1, p1 and p2 pods, sizes and replicas.</li>
+          <li id="src-12"><a href="https://sdk.pinecone.io/python/how-to/collections.html" target="_blank" rel="noopener">Working with collections (Pinecone Python SDK)</a> — Pinecone collections as pod snapshots, and what the current API refuses.</li>
+          <li id="src-13"><a href="https://docs.pinecone.io/guides/manage-data/backups-overview" target="_blank" rel="noopener">Backups overview (Pinecone)</a> — what a backup holds, restoring it, schedules and plan limits.</li>
+          <li id="src-14"><a href="https://www.pinecone.io/pricing/" target="_blank" rel="noopener">Pinecone pricing (fetched 2026-11-24)</a> — the free Starter plan's indexes, namespaces and missing backups.</li>
+          <li id="src-15"><a href="https://docs.pinecone.io/guides/manage-data/namespace-aliases/swap-a-namespace" target="_blank" rel="noopener">Swap a namespace without downtime (Pinecone)</a> — namespace aliases and the atomic cutover.</li>
+          <li id="src-16"><a href="https://pypi.org/pypi/pinecone/9.1.0/json" target="_blank" rel="noopener">pinecone 9.1.0 on PyPI (fetched 2026-11-24)</a> — the client version pinned for the week, released 2026-06-03.</li>
+          <li id="src-17"><a href="https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2" target="_blank" rel="noopener">sentence-transformers/all-MiniLM-L6-v2 model card</a> — 384 numbers per text, trained on cosine similarity.</li>
+          <li id="src-18"><a href="https://docs.trychroma.com/docs/overview/migration" target="_blank" rel="noopener">Migration (Chroma)</a> — list_collections returning collection objects, and get_or_create ignoring arguments.</li>
+          <li id="src-19"><a href="https://docs.trychroma.com/docs/collections/manage-collections" target="_blank" rel="noopener">Manage Collections (Chroma)</a> — the lifecycle calls, name rules and irreversible deletes.</li>
+          <li id="src-20"><a href="https://docs.trychroma.com/docs/collections/add-data" target="_blank" rel="noopener">Adding Data to Chroma Collections</a> — add skipping existing ids, and the one-length rule.</li>
+          <li id="src-21"><a href="https://docs.trychroma.com/docs/collections/update-data" target="_blank" rel="noopener">Update Data (Chroma)</a> — update and upsert on new and existing ids.</li>
+          <li id="src-22"><a href="https://docs.trychroma.com/docs/querying-collections/query-and-get" target="_blank" rel="noopener">Query and Get (Chroma)</a> — results grouped per query, and where on query and get.</li>
+          <li id="src-23"><a href="https://docs.trychroma.com/docs/collections/delete-data" target="_blank" rel="noopener">Delete Data (Chroma)</a> — deleting records by id or filter, permanently.</li>
+          <li id="src-24"><a href="https://docs.pinecone.io/guides/legacy/vectors-api/upsert-vectors" target="_blank" rel="noopener">Upsert vectors into a legacy vector index (Pinecone)</a> — overwrite on an existing id, update for part of a record, batch sizes.</li>
+          <li id="src-25"><a href="https://sdk.pinecone.io/python/reference/sync-index.html" target="_blank" rel="noopener">Sync index reference (Pinecone Python SDK)</a> — upsert, query, fetch, stats and query_namespaces on an index.</li>
+          <li id="src-26"><a href="https://docs.pinecone.io/guides/index-data/indexing-overview" target="_blank" rel="noopener">Index data overview (Pinecone)</a> — namespaces as partitions created on first upsert.</li>
+          <li id="src-27"><a href="https://docs.pinecone.io/guides/manage-data/manage-namespaces" target="_blank" rel="noopener">Manage namespaces (Pinecone)</a> — listing, describing and deleting namespaces, and the default name.</li>
+          <li id="src-28"><a href="https://docs.pinecone.io/guides/index-data/implement-multitenancy" target="_blank" rel="noopener">Implement multitenancy (Pinecone)</a> — one namespace per tenant, and why a filter-based scheme costs more.</li>
+          <li id="src-29"><a href="https://docs.trychroma.com/docs/querying-collections/metadata-filtering" target="_blank" rel="noopener">Metadata Filtering (Chroma)</a> — a bare value as shorthand for $eq.</li>
+          <li id="src-30"><a href="https://docs.trychroma.com/reference/where-filter" target="_blank" rel="noopener">Where Filters (Chroma)</a> — every where operator and the types each takes.</li>
+          <li id="src-31"><a href="https://docs.pinecone.io/guides/search/filter-by-metadata" target="_blank" rel="noopener">Filter by metadata (Pinecone)</a> — Pinecone's filter operators and list fields.</li>
+          <li id="src-32"><a href="https://www.pinecone.io/learn/vector-similarity/" target="_blank" rel="noopener">Vector Similarity Explained (Pinecone)</a> — when each metric fits, and matching the model's training metric.</li>
+          <li id="src-33"><a href="https://docs.pinecone.io/guides/indexes/index-configuration" target="_blank" rel="noopener">Index configuration (Pinecone)</a> — how to read cosine, dotproduct and euclidean scores.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · after you have read the page</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 8 Day 3</footer>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 3 — goals</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Explain what a vector index is for and how HNSW makes similarity search faster than comparing a query with every stored vector, at a small cost in recall</li>
+      <li>Create, inspect, rename and delete collections in Chroma, keeping one model's vectors of one size in each</li>
+      <li>Create, describe, protect and delete a Pinecone index with the SDK, and write to and query its namespaces</li>
+      <li>Explain Pinecone namespaces and use one per customer to keep tenants' data apart and remove a tenant in one call</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Day 4 — Semantic search & embedding pipelines →", href: "day-4-semantic-search-and-embeddings.html" };
+window.DIAGRAM = {
+  title: "Day 3 · managing what holds the vectors",
+  width: 500, height: 430,
+  nodes: [
+    { id:"exact", step:0, x:24, y:14, w:200, h:56, label:"Exact search\n  every row compared\n  time grows with rows", detail:"vectors @ query over 10,000, 100,000 and 400,000 rows: about 15 MB, 154 MB and 614 MB, and roughly ten times the work per tenfold jump." },
+    { id:"hnsw", step:0, x:276, y:14, w:200, h:56, label:"HNSW index\n  layered graph walk\n  recall 0.92 to 0.96 here", detail:"Greedy walk from the top layer down, about logarithmic cost. Chroma defaults: ef_search 100, ef_construction 100, max_neighbors 16; only ef_search can change later." },
+    { id:"pinecone", step:1, x:276, y:100, w:200, h:56, label:"Pinecone index\n  create · describe\n  protect · back up", detail:"has_index, create_index(dimension=384, metric=\"cosine\"), describe_index, configure_index(deletion_protection=\"enabled\") and a 403 on delete. Backups restore into a new index; an alias swap gives rollback." },
+    { id:"collection", step:2, x:24, y:100, w:200, h:56, label:"Chroma collection\n  one model · one size\n  create → delete", detail:"create_collection raises on an existing name, get_or_create_collection returns it; count, peek, list_collections, modify(name=...), delete_collection. A 768-number add is refused." },
+    { id:"upsert", step:3, x:24, y:186, w:200, h:56, label:"Upsert\n  new id: insert\n  existing id: replace", detail:"add skipped kb-019's new text (count 9, still 30 days); upsert replaced it. Row-number ids took the count to 11 with a duplicate." },
+    { id:"partition", step:4, x:276, y:186, w:200, h:56, label:"Partitions\n  kb_web · kb_mobile\n  namespaces web · mobile", detail:"A crash question in kb_web never sees kb-022 (best 0.73); in kb_mobile it comes first (0.50). One namespace per tenant isolates and deletes in one call." },
+    { id:"filter", step:5, x:24, y:272, w:200, h:56, label:"Metadata filter\n  $eq · $in · $gte · $and\n  may return fewer", detail:"where={\"category\": \"billing\"} keeps billing answers only. Comparisons take numbers only; billing and mobile together leave one result of three." },
+    { id:"metric", step:6, x:276, y:272, w:200, h:56, label:"Distance metric\n  cosine · ip · l2\n  fixed at creation", detail:"[3, 4] and [6, 8]: cosine 1.0, distance 5.0. For unit vectors l2 = 2 − 2 × cosine, so kb_l2 prints double kb_cosine's distances in the same order." },
+    { id:"check", step:7, x:24, y:370, w:452, h:40, label:"CHECK YOURSELF\n  answer out loud, then open" }
+  ],
+  edges: [
+    { id:"e1", step:0, from:"exact", to:"hnsw", label:"avoid the full pass" },
+    { id:"e2", step:1, from:"hnsw", to:"pinecone", label:"managed index" },
+    { id:"e3", step:2, from:"hnsw", to:"collection", label:"one per collection" },
+    { id:"e4", step:3, from:"collection", to:"upsert", label:"keep it current" },
+    { id:"e5", step:4, from:"collection", to:"partition", label:"split by product" },
+    { id:"e6", step:4, from:"pinecone", to:"partition", label:"namespaces" },
+    { id:"e7", step:5, from:"partition", to:"filter", label:"partition or filter" },
+    { id:"e8", step:6, from:"partition", to:"metric", label:"ranked by" },
+    { id:"e9", step:7, from:"filter", to:"check", dir:"-" }
+  ],
+  captions: [
+    "Exact search compares the query with every vector; HNSW walks a layered graph instead, fast and almost always right. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "In Pinecone the index is created, described, protected and deleted by name, and backups restore into a new index.",
+    "A Chroma collection has a lifecycle of its own and holds one model's vectors of one size.",
+    "Upsert inserts new ids and replaces existing ones, so ids must come from the source record.",
+    "Collections and namespaces keep partitions apart: a query in one never sees another.",
+    "Metadata filters narrow a search inside one partition, and a tight filter can return fewer results than asked.",
+    "Cosine, dot product and Euclidean agree on vectors of length 1; the model sets the metric at creation.",
+    "You can now explain a vector index, run a collection's and an index's lifecycle, partition, filter and pick a metric."
+  ]
+};
+window.QUIZ = {
+  id: "w08-d3",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "A Chroma collection holds kb-019. What does add do with a batch that contains a new text for kb-019?",
+      options: ["It replaces the stored text", "It ignores kb-019 without an error, so the old text stays", "It raises an error and stores nothing", "It stores a second record under kb-019"], answer: 1,
+      explain: "Chroma's add skips an id that already exists without raising, which silently loses the change. upsert replaces it." },
+    { type: "tf", stem: "Pinecone's configure_index can switch an existing index from cosine to euclidean.", answer: false,
+      explain: "configure_index changes deletion protection, tags, replicas, pod type and read capacity, and has no metric field. A different metric means a new index." },
+    { type: "mcq", stem: "Which are true for vectors of length 1? Select all that apply.",
+      options: ["The dot product equals the cosine similarity", "Squared Euclidean distance equals 2 − 2 × cosine", "Cosine, dot product and Euclidean distance rank them in the same order", "Euclidean distance prefers the longer vector"], answer: [0, 1, 2],
+      explain: "With every length equal to 1, the dot product is the cosine and the squared distance is a fixed function of it, so all three give the same order. Length cannot differ, so nothing prefers a longer vector." },
+    { type: "match", stem: "Match each Chroma call to what it does.",
+      pairs: [
+        { l: "create_collection on an existing name", r: "raises an error" },
+        { l: "get_or_create_collection", r: "returns the existing collection and ignores the other arguments" },
+        { l: "peek()", r: "returns the first records, 10 by default" },
+        { l: "delete_collection", r: "removes the collection permanently" }
+      ],
+      explain: "These are the lifecycle calls run on kb_scratch: create, get-or-create, inspect, rename with modify, and a delete that cannot be undone." },
+    { type: "scq", stem: "A filter matches one record, and the query asks for n_results=3. What comes back?",
+      options: ["Three results: the match and the two nearest records outside the filter", "An error saying too few records match", "One result, with no error or warning", "Nothing, because the filter is too narrow"], answer: 2,
+      explain: "A filter limits the candidates, and Chroma returns what passes. Code that reads the third result without checking the length fails." },
+    { type: "tf", stem: "A Pinecone query that names no namespace searches every namespace in the index.", answer: false,
+      explain: "Every read and write targets exactly one namespace; without a name it is the default namespace. Searching several needs one query each, or query_namespaces." }
+  ]
+};
+</script>
+
+<script src="../../assets/js/diagram.js?v=20261124"></script>
+<script src="../../assets/js/scrolly.js?v=20261124"></script>
+<script src="../../assets/js/modals.js?v=20261124"></script>
+<script src="../../assets/js/quiz.js?v=20261124"></script>
+<script src="../../assets/js/widgets.js?v=20261124"></script>
+<script src="../../assets/js/glossary.js?v=20261124"></script>
+</body>
+</html>

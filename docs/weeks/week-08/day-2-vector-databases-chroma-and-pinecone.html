@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tc-day" content="w08d2">
+<title>W8·D2 — Vector databases: Chroma &amp; Pinecone | 2494 · Gen-AI Python</title>
+<link rel="stylesheet" href="../../assets/css/style.css?v=20261124">
+<script src="../../assets/js/theme.js?v=20261124"></script>
+</head>
+<body>
+<a class="skip-link" href="#reading-main">Skip to content</a>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="brand"><a href="../../index.html"><b>2494</b>·Gen-AI</a></span>
+    <a class="topnav" href="../../index.html">Home</a>
+  </div>
+  <nav class="topbar-center">
+    <a class="topnav" href="https://github.com/2494-Gen-AI-CN/demos" target="_blank" rel="noopener">Demos</a>
+    <a class="topnav" href="../../exit-criteria/index.html">Exit criteria</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="progressbar"><i></i></span></div>
+</div>
+
+<main class="lesson2" id="reading-main">
+  <div class="reading2col">
+
+    <nav class="toc" aria-label="On this page"></nav>
+
+    <article class="reading-col">
+      <div class="lede">
+        <h1>Vector databases with Chroma &amp; Pinecone: storing text as numbers and finding the nearest</h1>
+        <div class="meta">
+          <span><b>Week 8</b> · Day 2</span>
+          <span>Tue Dec 1, 2026</span>
+          <span>Feature engineering &amp; vector databases</span>
+          <span><b>~45 min</b> · reference notes @150 wpm · diagram · check</span>
+          <span class="verified">Sources checked 2026-11-24 · python 3.13.18 · chromadb 1.5.9 · pinecone 9.1.0 · sentence-transformers 5.7.0 · numpy 2.4.6 · pandas 2.2.3</span>
+          <span class="notebook"><a href="https://colab.research.google.com/github/2494-Gen-AI-CN/demos/blob/main/notebooks/week-08/02_tuesday_vector_databases_chroma_and_pinecone.ipynb" target="_blank" rel="noopener">Open the notebook in Colab</a></span>
+          <span class="exit"><a href="../../exit-criteria/qc-4-ai-ml-tensorflow-vector-dbs.html#w08d2">Exit criteria</a></span>
+        </div>
+        <p class="summary">Monday's page turned each row of a table into numeric columns a model can read, and this
+        page assumes only that. It turns whole texts into vectors of 384 numbers, compares them with cosine similarity,
+        stores them in SQLite to show why a table stops scaling, and then uses two vector databases: Chroma inside a
+        notebook and Pinecone in the cloud. Afterwards you can explain what a vector database is, set up both, keep an
+        API key out of your code, and run create, read, update and delete on each.</p>
+        <div class="ix-legend"></div>
+      </div>
+
+      <section class="step" data-diagram="0" data-step="0">
+        <div class="tag">Vectors</div>
+        <h2>Vectors: a list of numbers that places a thing</h2>
+        <p>A vector database stores vectors and finds the ones nearest to a question. Before the database comes the
+        vector itself: what it is, and how two of them are compared.</p>
+        <h3>A vector places a thing</h3>
+        <p>A vector is an ordered list of numbers. Two numbers place a point on a flat page and three place it in a
+        room. A list of 384 numbers places it in a space nobody can draw, but the arithmetic is the same at any
+        length.</p>
+        <p>An embedding is a vector that represents a piece of data, such as a word, a film or a whole paragraph. The
+        numbers are chosen so that things that are alike sit close together, which means the distance between two
+        embeddings can be read as how alike the two things are. Google's machine-learning course shows this by placing
+        foods as points such as (0.5, 0.3).<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <p>Turning data into such numbers is called vectorising it, and it is what makes text or images readable by a
+        program that only does arithmetic.</p>
+        <p>The smallest example is hand-made. Four films are scored from 0 to 10 on two invented features, action and
+        romance, so each film becomes a vector of two numbers.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>import numpy as np
+
+films = {
+    "Star Run":     np.array([9, 1]),   # [action, romance]
+    "Moon Base":    np.array([8, 2]),
+    "Love Letters": np.array([1, 9]),
+    "Paris Days":   np.array([2, 8]),
+}
+for name, v in films.items():
+    print(f"{name:13} {v}")</code></pre>
+<pre class="out">Star Run      [9 1]
+Moon Base     [8 2]
+Love Letters  [1 9]
+Paris Days    [2 8]</pre>
+        <p><code>np.array</code> makes a NumPy array, a list of numbers that supports arithmetic on the whole list at
+        once. The dictionary maps each film's name to its vector, and <code>{name:13}</code> pads the name to 13
+        characters so the vectors line up. Drawn as points, the two action films sit together near the action axis and
+        the two romance films near the other.</p>
+        <p>A hand-made vector carries only what its features say: these two numbers know nothing about a film's length
+        or language. A learned embedding has hundreds of numbers, and none of them has a name, so a single number cannot
+        be read alone; only the position as a whole means something.<sup class="cite"><a href="#src-1">1</a></sup></p>
+        <h3>Cosine similarity, worked by hand</h3>
+        <p>Cosine similarity measures how closely two vectors point the same way, ignoring how long they are. It is the
+        dot product of the two vectors divided by the product of their lengths.<sup class="cite"><a href="#src-2">2</a></sup></p>
+        <ul>
+          <li>The dot product multiplies the numbers in matching positions and adds the results.</li>
+          <li>A vector's length, or norm, is the square root of the sum of its squared numbers.</li>
+          <li>The result runs from -1 (opposite directions) through 0 (nothing in common) to 1 (the same direction).</li>
+        </ul>
+        <p>Work two pairs by hand. For <code>[3, 4]</code> and <code>[6, 8]</code> the dot product is 3 × 6 + 4 × 8 =
+        50, and the lengths are 5 and 10, so the similarity is 50 / 50 = 1.0. The second vector is the first one
+        doubled: longer, same direction, so it scores a perfect 1. For <code>[3, 4]</code> and <code>[4, -3]</code> the
+        dot product is 12 - 12 = 0, so the similarity is 0.0. Those two point at right angles.</p>
+        <div class="ix-predict" data-q="What is the cosine similarity of [3, 4] and [-3, -4]?" data-a="-1.0. The dot product is -9 - 16 = -25 and the lengths are 5 and 5, so -25 / 25 = -1: the two vectors point in exactly opposite directions."></div>
+        <p class="run-label">Run in Colab</p>
+<pre><code>def cosine(a, b):
+    return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+
+print(cosine(np.array([3, 4]), np.array([6, 8])), cosine(np.array([3, 4]), np.array([4, -3])))
+print(round(cosine(films["Star Run"], films["Moon Base"]), 2),
+      round(cosine(films["Star Run"], films["Love Letters"]), 2))</code></pre>
+<pre class="out">1.0 0.0
+0.99 0.22</pre>
+        <p>The function is the formula line for line: <code>np.dot</code> is the dot product and
+        <code>np.linalg.norm</code> is the length. NumPy agrees with the hand calculation, 1.0 and 0.0. Star Run and
+        Moon Base score 0.99, nearly the same direction, while Star Run and Love Letters score only 0.22.</p>
+        <p>When every vector has length 1, the bottom of the fraction is 1 × 1, so
+        the dot product alone is the cosine similarity. That is why the embedding code on the next step scales every
+        vector to length 1 first.<sup class="cite"><a href="#src-3">3</a></sup> Week 6's k-means measured a different
+        thing, the straight-line (Euclidean) distance between two points; Wednesday's page compares the two
+        measures.</p>
+        <p>You recognise cosine similarity in someone else's code by
+        <code>np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))</code>, or by a bare <code>@</code> or
+        <code>np.dot</code> between vectors that were normalised to length 1.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A vector is a list of numbers that places a thing as a point.</li>
+          <li>An embedding places alike things close together, so closeness reads as similarity.</li>
+          <li>Cosine similarity runs from -1 to 1 and ignores a vector's length.</li>
+          <li>For vectors of length 1, the dot product is the cosine similarity.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A vector embedding is a list of numbers that represents a piece of data, like a sentence or an image, as a
+          point in space. The model that makes it places similar things close together, so a program can compare
+          meaning with plain arithmetic. That's what makes text machine-readable for search.</p>
+          <p>To compare two embeddings I usually use cosine similarity: the dot product divided by the product of their
+          lengths. It goes from -1 to 1, where 1 means the same direction, and it ignores length, so a vector and its
+          double score exactly 1.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="1">
+        <div class="tag">Similarity search</div>
+        <h2>Vector similarity search: text in, nearest texts out</h2>
+        <p>Vector similarity search finds the stored vectors closest to a query's vector and returns them in order,
+        nearest first. It has two halves: turn every text into a vector with one model, then compare the query's
+        vector with the stored ones.</p>
+        <h3>A model turns text into 384 numbers</h3>
+        <p>The model on this page is <code>all-MiniLM-L6-v2</code> from the sentence-transformers library, which Colab
+        ships. It maps a sentence or a short paragraph to a vector of 384 numbers and is built for search and for
+        grouping similar texts.<sup class="cite"><a href="#src-4">4</a></sup> Input longer than 256 word pieces (the
+        fragments of words the model reads) is cut off. Thursday's page opens the model up; here it is a black box,
+        text in and 384 numbers out.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>from sentence_transformers import SentenceTransformer
+
+encoder = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+
+def embed(texts):
+    return encoder.encode(texts, normalize_embeddings=True).astype("float32")
+
+v = embed(["hello"])
+print(v.shape)
+print(np.round(v[0, :5], 3))
+print(round(float(np.linalg.norm(v[0])), 3))</code></pre>
+<pre class="out">(1, 384)
+[-0.063  0.055  0.052  0.086 -0.083]
+1.0</pre>
+        <p>The first run downloads the model's files from Hugging Face, a public site that hosts models. The work is
+        done by <code>encode</code>, which returns one row per text, so one text gives the shape
+        <code>(1, 384)</code>. With <code>normalize_embeddings=True</code> every row is scaled to length 1, which the
+        last line confirms, so a dot product of two rows is their cosine
+        similarity.<sup class="cite"><a href="#src-3">3</a></sup> <code>astype("float32")</code> stores each number in
+        4 bytes, which matters when the vectors go into a file.</p>
+        <h3>Search by comparing with every row</h3>
+        <p>The data is a list of invented help-centre articles, one dictionary per article holding an id, a title, a
+        short text, a category, a product and the year it was last updated. The full set has 30 articles; this page keeps ten of them so every example fits on
+        screen.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>KB = [
+    {"id": "kb-001", "title": "Resetting a forgotten password", "text": "Choose Forgot password on the sign-in screen, type the email address you registered with, and open the link we send to pick a new password. The link expires after 30 minutes.", "category": "account", "product": "web", "updated": 2025},
+    {"id": "kb-003", "title": "Changing the email on your account", "text": "Open Settings, then Profile, and enter the new email address. We send a confirmation link to the new address, and the change takes effect only after you open that link.", "category": "account", "product": "web", "updated": 2023},
+    {"id": "kb-004", "title": "Deleting your account", "text": "Deleting your account removes your profile, saved addresses and order history after a 14-day grace period. Request it under Settings, Privacy, Delete account; signing in again during the grace period cancels the request.", "category": "account", "product": "web", "updated": 2024},
+    {"id": "kb-005", "title": "Signing out on every device", "text": "If you used a shared or lost phone, choose Sign out everywhere under Settings, Security. Every session ends at once, and each device asks for your password the next time it opens.", "category": "account", "product": "mobile", "updated": 2025},
+    {"id": "kb-008", "title": "Ending a plan", "text": "To end a plan, open Billing, choose Manage plan and select Cancel renewal. Access continues until the current period ends, and no further amount is billed after that date.", "category": "billing", "product": "web", "updated": 2025},
+    {"id": "kb-009", "title": "Two entries for one purchase", "text": "If your card statement lists the same purchase two times, the second line is usually a temporary authorisation hold. Your bank releases it within five business days; contact us if it remains after that.", "category": "billing", "product": "web", "updated": 2024},
+    {"id": "kb-015", "title": "Tracking an order that has not arrived", "text": "If a package has not arrived ten business days after dispatch, open Orders, select it and choose Report a problem. We trace it with the courier, then resend the items or refund you.", "category": "shipping", "product": "web", "updated": 2025},
+    {"id": "kb-016", "title": "Delivery times and costs", "text": "Standard delivery takes three to seven business days and is free over 50 dollars. Express delivery arrives in one to two business days for a flat fee shown at checkout before you pay.", "category": "shipping", "product": "web", "updated": 2024},
+    {"id": "kb-022", "title": "Fixing crashes on phones", "text": "If the mobile version quits unexpectedly, install the latest update from your phone's store, restart the phone, and clear cached data under Settings. Send a report from the Help menu if it continues.", "category": "technical", "product": "mobile", "updated": 2025},
+    {"id": "kb-030", "title": "Using the site with a screen reader", "text": "Every page works with common screen readers such as NVDA, JAWS and VoiceOver. Use the Skip to content link at the top of each page, and report any control that is not read aloud correctly.", "category": "technical", "product": "web", "updated": 2024},
+]
+print(len(KB))</code></pre>
+<pre class="out">10</pre>
+        <p class="run-label">Run in Colab</p>
+<pre><code>kb_vectors = embed([a["text"] for a in KB])
+query = "I can't get into my account"
+query_vector = embed([query])[0]
+scores = kb_vectors @ query_vector
+print(kb_vectors.shape, query_vector.shape)
+for i in np.argsort(-scores)[:3]:
+    print(KB[i]["id"], f"{scores[i]:.2f}", KB[i]["title"])</code></pre>
+<pre class="out">(10, 384) (384,)
+kb-001 0.46 Resetting a forgotten password
+kb-004 0.34 Deleting your account
+kb-005 0.33 Signing out on every device</pre>
+        <p><code>embed([query])[0]</code> embeds a list of one text and takes its only row, a
+        vector of shape <code>(384,)</code>. <code>@</code> is matrix multiplication: each of the ten article rows is
+        dotted with the query, giving ten scores. <code>np.argsort</code> returns positions from the smallest value to
+        the largest, so negating the scores puts the largest first, and <code>[:3]</code> keeps
+        three.<sup class="cite"><a href="#src-5">5</a></sup> Colab's NumPy has no <code>descending=</code> option yet,
+        which is why the minus sign is there.</p>
+        <p>The top article is the password reset, and the query shares no word with its title or text. The model placed
+        both texts near each other because they are about the same problem. Embedding the query and the stored texts
+        into one space and returning the closest is exactly how the library describes this kind of
+        search.<sup class="cite"><a href="#src-6">6</a></sup> Other queries from the full set of 30 behave the same
+        way:</p>
+        <ul>
+          <li>"my parcel never showed up" finds kb-015, "Tracking an order that has not arrived" (about 0.56).</li>
+          <li>"the app keeps closing by itself" finds kb-022, "Fixing crashes on phones" (about 0.50).</li>
+          <li>"how do I stop paying every month" finds kb-008, "Ending a plan" (about 0.55).</li>
+        </ul>
+        <p>The query must go through the same <code>embed</code> as the articles. A vector only has a meaning next to
+        vectors from the same model.</p>
+        <h3>Reading the scores</h3>
+        <p>The scores for related short texts sat between about 0.3 and 0.65, nowhere near 1.0. So the useful reading is
+        the order and the gap: kb-001 at 0.46 stands well clear of the next article at
+        0.34.<sup class="cite"><a href="#src-4">4</a></sup> A fixed rule such as "only trust scores above 0.8" would
+        throw away every good match here.</p>
+        <p>Similarity search also has no threshold built in. It returns the top results even when none of them is
+        relevant, so a question about cooking still gets three help-centre articles back, and only the scores show it.<sup class="cite"><a href="#src-7">7</a></sup></p>
+        <p>The top <i>k</i> results are called the <i>k</i> nearest neighbours: the stored vectors with the highest
+        similarity to the query. This page finds them by comparing with every row. A vector database answers the same
+        question with an index, explained further down this page.</p>
+        <div class="ix-spot" data-snippet="scores = kb_vectors @ query_vector&#10;top = np.argsort(scores)[:3]&#10;for i in top:&#10;    print(KB[i][&quot;title&quot;])" data-q="This search prints three titles and raises no error. What is wrong with it?" data-a="np.argsort sorts from smallest to largest, so np.argsort(scores)[:3] picks the three least similar articles. Sort -scores instead: np.argsort(-scores)[:3]."></div>
+        <p>You recognise this search in code by <code>query_vector = embed([query])[0]</code>, then
+        <code>scores = kb_vectors @ query_vector</code> and <code>np.argsort(-scores)[:3]</code>.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A model turns each text into 384 numbers of length 1.</li>
+          <li>Search embeds the query with the same model and compares it with every stored vector.</li>
+          <li>The nearest article can share no word with the query.</li>
+          <li>Read the order and the gap between scores; there is no built-in cut-off.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>To vectorise text, I run every document through an embedding model, which gives each one a fixed-length
+          vector, 384 numbers for MiniLM, normalised to length 1. At search time I embed the query with the same model,
+          compare it with every stored vector by cosine similarity, and return the top few.</p>
+          <p>Vector similarity search means finding the stored vectors nearest to the query's vector and returning them
+          nearest first. It finds matches that share no words with the query, but it always returns something, so I
+          look at the scores and the gap, not just the top hit.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="2">
+        <div class="tag">SQLite</div>
+        <h2>Storing and retrieving vectors in SQLite</h2>
+        <p>Before reaching for a vector database, try an ordinary one. SQLite is a whole database in one file with no
+        separate server, and Python ships the <code>sqlite3</code> module to use it, so week 3's SQL now runs from
+        Python.<sup class="cite"><a href="#src-8">8</a></sup></p>
+        <h3>A table with a vector column</h3>
+        <p>A relational table has no vector type, but it can hold raw bytes. SQLite's <code>BLOB</code> column type
+        stores bytes, which arrive in Python as a <code>bytes</code> value.<sup class="cite"><a href="#src-8">8</a></sup>
+        A NumPy array's <code>tobytes()</code> copies its raw bytes, so each vector fits in one
+        column.<sup class="cite"><a href="#src-9">9</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>import sqlite3
+
+con = sqlite3.connect("kb.db")
+con.execute("DROP TABLE IF EXISTS articles")
+con.execute("""CREATE TABLE articles (id TEXT PRIMARY KEY, title TEXT, text TEXT,
+               category TEXT, product TEXT, updated INTEGER, vector BLOB)""")
+rows = [(a["id"], a["title"], a["text"], a["category"], a["product"], a["updated"], v.tobytes())
+        for a, v in zip(KB, kb_vectors)]
+con.executemany("INSERT INTO articles VALUES (?, ?, ?, ?, ?, ?, ?)", rows)
+con.commit()
+print(con.execute("SELECT COUNT(*) FROM articles").fetchone())</code></pre>
+<pre class="out">(10,)</pre>
+        <p><code>connect</code> opens the file <code>kb.db</code>, creating it if needed, and the
+        <code>DROP TABLE IF EXISTS</code> line lets the cell run twice. <code>zip</code> pairs each article with its
+        vector row. <code>executemany</code> runs the one <code>INSERT</code> once per row, and
+        <code>commit()</code> saves the transaction the insert opened; without it the rows are lost when the connection
+        closes.<sup class="cite"><a href="#src-8">8</a></sup> The count comes back as a one-item tuple,
+        <code>(10,)</code>.</p>
+        <p>Each <code>?</code> is a placeholder. The values travel separately from the SQL text, so a value can never
+        change the statement. Pasting values into the string with an f-string invites SQL injection, where a crafted
+        value rewrites the query.<sup class="cite"><a href="#src-8">8</a></sup></p>
+        <h3>Reading vectors back, and narrowing with WHERE</h3>
+        <p>Reading a vector back is the reverse: <code>np.frombuffer</code> turns the bytes into an array. Its
+        <code>dtype</code> defaults to float64, eight bytes per number, while the vectors were written as float32, four
+        bytes per number.<sup class="cite"><a href="#src-10">10</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>blob = query_vector.tobytes()
+print(len(blob), np.frombuffer(blob).shape, np.frombuffer(blob, dtype=np.float32).shape)</code></pre>
+<pre class="out">1536 (192,) (384,)</pre>
+        <p>384 numbers × 4 bytes = 1,536 bytes. Read with the default type, those bytes become 192 meaningless numbers
+        and no error is raised. With <code>dtype=np.float32</code> the original 384 come back.</p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>ids, vectors = [], []
+for id_, blob in con.execute("SELECT id, vector FROM articles"):
+    ids.append(id_)
+    vectors.append(np.frombuffer(blob, dtype=np.float32))
+stored = np.vstack(vectors)
+scores = stored @ query_vector
+best = int(np.argmax(scores))
+print(stored.shape, ids[best], round(float(scores[best]), 2))
+
+print(con.execute("SELECT id, title FROM articles WHERE category = 'billing'").fetchall())</code></pre>
+<pre class="out">(10, 384) kb-001 0.46
+[('kb-008', 'Ending a plan'), ('kb-009', 'Two entries for one purchase')]</pre>
+        <p>The loop reads every row, <code>np.vstack</code> stacks the vectors into one 10-by-384 array, and
+        <code>np.argmax</code> gives the position of the highest score. The answer matches the search on the previous
+        step: kb-001 at 0.46. The last line uses a <code>WHERE</code> clause to narrow the rows to the two billing
+        articles before any comparison. A vector database's metadata filter does the same job at scale; Wednesday's
+        page adds its operators.</p>
+        <h3>What happens at 50,000 rows</h3>
+        <p>SQLite has no index for vectors. Every search reads every row and compares it in Python, so the time grows
+        in step with the number of rows. This is called a brute-force search: exact, and slower with every row
+        added.<sup class="cite"><a href="#src-11">11</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>import time
+
+rng = np.random.default_rng(42)
+big = rng.normal(size=(50_000, 384)).astype("float32")
+big /= np.linalg.norm(big, axis=1, keepdims=True)    # every row to length 1
+con.execute("DROP TABLE IF EXISTS scale_test")
+con.execute("CREATE TABLE scale_test (id INTEGER PRIMARY KEY, vector BLOB)")
+con.executemany("INSERT INTO scale_test VALUES (?, ?)", ((i, v.tobytes()) for i, v in enumerate(big)))
+con.commit()
+
+start = time.perf_counter()
+best_score = max(float(np.frombuffer(blob, dtype=np.float32) @ query_vector)
+                 for (blob,) in con.execute("SELECT vector FROM scale_test"))
+print(f"{time.perf_counter() - start:.1f} s to read and compare 50,000 rows")
+con.execute("DROP TABLE scale_test")</code></pre>
+        <p>The first block makes 50,000 random unit vectors; <code>axis=1</code> takes one length per row.
+        <code>keepdims=True</code> keeps the lengths as a 50,000-by-1 column, so each row is divided by its own length.
+        The timed part reads each blob, scores it and keeps the maximum. Each row comes back as a one-item tuple, so
+        <code>(blob,)</code> unpacks the single column.</p>
+        <p>On one laptop a loop like this
+        took about 0.6 seconds at 50,000 rows and about 1.6 seconds at 100,000. Colab's CPU prints its own numbers, but
+        doubling the rows roughly doubles the time.<sup class="cite"><a href="#src-11">11</a></sup> The table takes
+        about 100 MB of disk, so the last line drops it.</p>
+        <p>A second is acceptable until every search pays it on millions of rows. Avoiding that full comparison is why
+        vector databases exist.</p>
+        <p>You recognise vectors in a relational table by a <code>vector BLOB</code> column, a
+        <code>tobytes()</code> in the insert, and <code>np.frombuffer(blob, dtype=np.float32)</code> on the way
+        out.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A vector fits in a BLOB column as its raw bytes.</li>
+          <li>Read it back with dtype float32, or you get 192 wrong numbers.</li>
+          <li>Placeholders keep values apart from the SQL text.</li>
+          <li>Without a vector index, search time grows with every row.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I'd store each vector as bytes in a BLOB column next to its other fields, using tobytes on the way in and
+          frombuffer with the right dtype on the way out. Inserts use placeholders, so values never become part of the
+          SQL text and can't inject anything.</p>
+          <p>The catch is search. The table has no vector index, so every query reads every row and compares in Python.
+          Double the rows and you roughly double the time, which is why at scale I'd move the vectors into a vector
+          database.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="3">
+        <div class="tag">Vector databases</div>
+        <h2>Vector databases: what they add and where they are used</h2>
+        <p>A vector database indexes and stores vector embeddings for fast retrieval and similarity search. A
+        traditional database looks for rows whose values exactly match the query; a vector database applies a
+        similarity measure to find the vectors most like the query's.<sup class="cite"><a href="#src-11">11</a></sup></p>
+        <h3>What a vector database adds</h3>
+        <p>Each addition answers something the SQLite table lacked.<sup class="cite"><a href="#src-11">11</a></sup></p>
+        <ul>
+          <li>An approximate nearest-neighbour index finds vectors close to the query without comparing it with every
+          stored vector. The best-known kind is HNSW, a graph that links nearby vectors, and it is the one Chroma
+          builds.<sup class="cite"><a href="#src-12">12</a></sup></li>
+          <li>Metadata, such as an article's category, is stored with each vector and can filter a search.</li>
+          <li>Client libraries handle connecting, writing and querying, so no SQL or byte conversion is written by
+          hand.</li>
+        </ul>
+        <p>The index works like the SQL indexes from week 3. A B-tree index finds rows with an exact value without
+        reading the whole table. An HNSW graph, the kind of index Chroma builds, finds vectors near a query vector
+        without visiting every row, so both avoid the full scan.</p>
+        <p>"Approximate" is the trade: the index can miss a few of the true nearest neighbours, so it
+        gives up a little recall (the share of true neighbours found) for a large gain in speed. Teams accept that
+        because a near-perfect answer fast beats a perfect one after reading millions of rows. An HNSW index must also
+        sit in memory to be queried or updated, so a single machine's RAM caps how large one Chroma collection can
+        grow.<sup class="cite"><a href="#src-12">12</a></sup></p>
+        <h3>The vector databases you will meet</h3>
+        <p>The tools you will see named differ mostly in where they run.</p>
+        <table>
+          <thead><tr><th>Tool</th><th>What it is</th><th>Where it runs</th></tr></thead>
+          <tbody>
+            <tr><td>Chroma</td><td>a vector database</td><td>inside your Python program, or as a server</td></tr>
+            <tr><td>Pinecone</td><td>a managed vector database</td><td>on Pinecone's servers, as serverless indexes</td></tr>
+            <tr><td>pgvector</td><td>vector similarity search for PostgreSQL, with HNSW and IVFFlat indexes<sup class="cite"><a href="#src-13">13</a></sup></td><td>inside an existing Postgres database</td></tr>
+            <tr><td>FAISS</td><td>a library for similarity search of dense vectors, not a server<sup class="cite"><a href="#src-14">14</a></sup></td><td>inside your program</td></tr>
+            <tr><td>Qdrant</td><td>a vector database<sup class="cite"><a href="#src-15">15</a></sup></td><td>open source on your machines, or a managed cloud</td></tr>
+            <tr><td>Weaviate</td><td>a vector database<sup class="cite"><a href="#src-16">16</a></sup></td><td>open source, cloud, Docker or Kubernetes</td></tr>
+            <tr><td>Milvus</td><td>a vector database<sup class="cite"><a href="#src-17">17</a></sup></td><td>open source, from Lite to Standalone to Distributed</td></tr>
+          </tbody>
+        </table>
+        <p>You recognise one in an architecture diagram as a "Vector DB" box between an embedding model and the
+        application. In code it looks like <code>collection.query(query_embeddings=..., n_results=5)</code> in Chroma or
+        <code>index.query(vector=..., top_k=5)</code> in Pinecone.</p>
+        <h3>Vector database use cases</h3>
+        <p>Pinecone describes its own database as powering retrieval for applications "including search,
+        recommendations, and long-term memory".<sup class="cite"><a href="#src-18">18</a></sup> The same pattern fits any
+        app that finds "things like this one". For each, ask what the vectors are made from and what the metadata
+        holds.</p>
+        <table>
+          <thead><tr><th>Use case</th><th>Vectors made from</th><th>Metadata holds</th></tr></thead>
+          <tbody>
+            <tr><td>Help-centre or document search</td><td>articles</td><td>category, product</td></tr>
+            <tr><td>Recommendations</td><td>products or films a user liked</td><td>genre, price</td></tr>
+            <tr><td>Duplicate detection</td><td>support tickets</td><td>status, date</td></tr>
+            <tr><td>Image search</td><td>photos</td><td>size, owner</td></tr>
+            <tr><td>Unusual-item flags</td><td>transactions</td><td>account, amount</td></tr>
+            <tr><td>Retrieval for a language model's answer</td><td>document passages</td><td>source, date</td></tr>
+          </tbody>
+        </table>
+        <p>Week 7's recommender filled the blanks of a ratings table. A similarity recommender works differently: it
+        finds items whose vectors sit near the ones a user already liked. A duplicate ticket is a new ticket whose
+        vector sits very close to an open one.</p>
+        <p>The last row is called retrieval-augmented generation: the application embeds a question, retrieves similar
+        stored text and gives it to a language model with the question.<sup class="cite"><a href="#src-19">19</a></sup>
+        Week 9 builds it; this week builds the part that finds the right text.</p>
+        <p>Metadata is a record's key-value fields beside its id and vector, and a query can filter on
+        them.<sup class="cite"><a href="#src-20">20</a></sup> Filters are needed because similarity only says that two
+        things are alike. It cannot say whether an article is current, correct or allowed for this user, so real
+        searches also filter on dates, product or permissions.<sup class="cite"><a href="#src-11">11</a></sup></p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A vector database adds an approximate nearest-neighbour index, metadata filters and client libraries.</li>
+          <li>Approximate indexes trade a little recall for a lot of speed.</li>
+          <li>Search, recommendations, duplicates and retrieval for language models all find near vectors.</li>
+          <li>Similarity says alike, so metadata filters handle dates, product and permissions.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>A vector database stores embeddings with their metadata and finds the ones nearest to a query vector. A
+          normal database matches exact values; a vector database ranks by similarity. It uses an approximate
+          nearest-neighbour index such as HNSW, so it doesn't compare the query with every stored vector.</p>
+          <p>I wouldn't keep vectors in a plain SQL table at scale, because every search would read every row. The
+          index gives up a little recall for a lot of speed, and the metadata lets me filter by things similarity can't
+          judge, like dates or permissions.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="4">
+        <div class="tag">Chroma setup</div>
+        <h2>Chroma DB setup: install, clients and where the data lives</h2>
+        <p>Chroma is the vector database that fits inside a notebook. It runs in the same Python process as your code,
+        needs no account, and keeps its data in a folder, so it suits learning, prototypes and small apps. When several
+        programs need the same data, the same Chroma runs as a server instead.</p>
+        <h3>Installing Chroma in a notebook</h3>
+        <p>Colab does not ship Chroma, so the notebook installs it with one pinned line. <code>%pip</code> is a notebook
+        command that runs pip, Python's package installer, for the notebook's own Python. <code>-q</code> keeps the
+        output short, and <code>==1.5.9</code> pins the version, so the calls on this page keep working when a newer
+        release comes out.<sup class="cite"><a href="#src-21">21</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>%pip install -q chromadb==1.5.9
+import chromadb
+print(chromadb.__version__)</code></pre>
+<pre class="out">1.5.9</pre>
+        <p>The install pulls in about fifteen packages Colab lacks. Checked against Colab's own package list, it adds
+        new packages and changes none of Colab's, so it should not ask for a runtime restart.<sup class="cite"><a href="#src-22">22</a></sup></p>
+        <h3>Clients: in memory or on disk</h3>
+        <p>A client is the object your code talks to. Chroma's constructor decides where the data
+        lives.<sup class="cite"><a href="#src-23">23</a></sup></p>
+        <table>
+          <thead><tr><th>Client</th><th>Where the data lives</th><th>After a restart</th></tr></thead>
+          <tbody>
+            <tr><td><code>EphemeralClient()</code></td><td>in memory</td><td>gone</td></tr>
+            <tr><td><code>PersistentClient(path=...)</code></td><td>a folder on disk</td><td>still there</td></tr>
+            <tr><td><code>HttpClient(host, port)</code></td><td>a Chroma server</td><td>kept by the server</td></tr>
+            <tr><td><code>CloudClient</code></td><td>Chroma's hosted service</td><td>kept by the service</td></tr>
+          </tbody>
+        </table>
+        <p class="run-label">Run in Colab</p>
+<pre><code>import shutil
+
+chromadb.api.client.SharedSystemClient.clear_system_cache()
+shutil.rmtree("chroma_kb", ignore_errors=True)   # start from an empty store, so the notebook reruns from the top
+scratch = chromadb.EphemeralClient()
+client = chromadb.PersistentClient(path="chroma_kb")
+print(client.heartbeat())</code></pre>
+        <p><code>heartbeat()</code> prints a 19-digit integer such as 1795553514122653035: the server's clock in
+        nanoseconds. Its job is to prove the client is alive.<sup class="cite"><a href="#src-23">23</a></sup>
+        <code>PersistentClient</code> stores its files in <code>chroma_kb</code> and loads them again when a new client
+        opens that path.<sup class="cite"><a href="#src-24">24</a></sup> On Colab that folder survives a session restart
+        but not a brand-new runtime.</p>
+        <p>The first two lines make the cell safe to run twice. <code>shutil.rmtree</code> deletes the folder. Chroma
+        also caches one system per path for the life of the process, so without
+        <code>clear_system_cache()</code> a second run reuses the stale one and fails with "Collection [kb_articles]
+        already exists".<sup class="cite"><a href="#src-25">25</a></sup></p>
+        <p>Chroma's own store is SQLite again. Inside <code>chroma_kb</code> sits a <code>chroma.sqlite3</code> file
+        holding the documents and metadata, plus one folder per collection for its HNSW
+        index.<sup class="cite"><a href="#src-12">12</a></sup> Its tables include <code>collections</code> and
+        <code>embeddings</code>, but the layout may change between releases, so code never reads it
+        directly.<sup class="cite"><a href="#src-26">26</a></sup></p>
+        <h3>Chroma as a server: Docker, the cloud and HttpClient</h3>
+        <p>An embedded client belongs to one program. To share one store between several programs, Chroma runs as a
+        server: <code>chroma run --path /db_path</code> serves it on your own machine at port
+        8000 (a numbered door on the machine that a program listens on).<sup class="cite"><a href="#src-27">27</a></sup> Docker is a tool that runs a program packaged with
+        everything it needs, called a container, and Chroma publishes one.</p>
+        <p class="run-label">In a terminal on a machine with Docker (not Colab)</p>
+<pre><code>docker run -v ./chroma-data:/data -p 8000:8000 chromadb/chroma</code></pre>
+        <p><code>-v ./chroma-data:/data</code> maps a folder on the host into the container, so the data outlives the
+        container. <code>-p 8000:8000</code> opens port 8000 to the outside.<sup class="cite"><a href="#src-28">28</a></sup></p>
+        <p class="run-label">A Python program that connects to it</p>
+<pre><code>client = chromadb.HttpClient(host="localhost", port=8000)</code></pre>
+        <p>Only the constructor changes; every collection call stays the same. On a cloud machine,
+        <code>host</code> is that machine's address.<sup class="cite"><a href="#src-27">27</a></sup><sup class="cite"><a href="#src-28">28</a></sup>
+        You recognise the three set-ups by their constructors: <code>PersistentClient(path=...)</code> for a local
+        folder, <code>HttpClient(host=..., port=8000)</code> for a server.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Chroma installs with one pinned pip line and runs inside the notebook.</li>
+          <li>EphemeralClient keeps data in memory; PersistentClient keeps it in a folder.</li>
+          <li>Chroma keeps documents and metadata in SQLite and each collection's index beside it.</li>
+          <li>As a server, in Docker or the cloud, programs connect with HttpClient.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Vector databases are the retrieval layer of an ML app: they hold the embeddings and find the nearest ones
+          fast. Chroma is the lightweight end. I install it with pip and it runs inside my Python process, which is
+          ideal for prototypes and small apps.</p>
+          <p>For storage I pick the client. EphemeralClient is in memory and gone on restart, which is fine for tests.
+          PersistentClient writes to a folder, so the data survives. When several services need the same data, I run
+          Chroma as a server, for example in Docker with a volume, and connect with HttpClient and the host and
+          port.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="5">
+        <div class="tag">Chroma</div>
+        <h2>A local vector database with Chroma</h2>
+        <p>A Chroma collection is a named set of records, roughly what a table is in SQL. Each record has an id, a
+        document (the text), an embedding and metadata.</p>
+        <h3>A collection with no embedding function</h3>
+        <p>Chroma can embed text for you. A collection created without an <code>embedding_function</code> gets
+        Chroma's default one, which runs its own copy of <code>all-MiniLM-L6-v2</code> locally and downloads the model
+        files on first use.<sup class="cite"><a href="#src-29">29</a></sup> Passing <code>embedding_function=None</code>
+        switches that off, so the collection holds exactly the vectors <code>embed</code> made, and nothing is embedded
+        behind your back.</p>
+        <p>The distance measure is set when the collection is created. The default is squared L2, a straight-line
+        distance; <code>configuration={"hnsw": {"space": "cosine"}}</code> picks cosine.<sup class="cite"><a href="#src-2">2</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>collection = client.create_collection(
+    "kb_articles",
+    embedding_function=None,
+    configuration={"hnsw": {"space": "cosine"}},
+)
+collection.add(
+    ids=[a["id"] for a in KB],
+    documents=[a["text"] for a in KB],
+    embeddings=kb_vectors,
+    metadatas=[{"title": a["title"], "category": a["category"],
+                "product": a["product"], "updated": a["updated"]} for a in KB],
+)
+print(collection.count())</code></pre>
+<pre class="out">10</pre>
+        <p>The four lists line up by position: the first id goes with the first document, vector and metadata. Metadata
+        values may be strings, integers, floats, booleans or non-empty lists of one
+        type.<sup class="cite"><a href="#src-30">30</a></sup> Two behaviours to watch for:</p>
+        <ul>
+          <li><code>add</code> with an id that already exists is ignored, with no error, and the old record stays.</li>
+          <li>A vector of the wrong length raises <code>InvalidArgumentError: Collection expecting embedding with
+          dimension of 384, got 10</code>.</li>
+        </ul>
+        <p>Because a skipped add is silent, <code>count()</code> is the check after every
+        write.<sup class="cite"><a href="#src-30">30</a></sup></p>
+        <h3>Query: the nearest neighbours and their distances</h3>
+        <p class="run-label">Run in Colab</p>
+<pre><code>import pandas as pd
+
+def chroma_hits(result):
+    """A Chroma query result as a table: id, distance, then the display fields."""
+    rows = []
+    for id_, dist, meta in zip(result["ids"][0], result["distances"][0], result["metadatas"][0]):
+        rows.append({"id": id_, "distance": round(dist, 2), "title": meta["title"],
+                     "category": meta["category"], "product": meta["product"]})
+    return pd.DataFrame(rows)
+
+result = collection.query(query_embeddings=[query_vector], n_results=3)
+print(chroma_hits(result))</code></pre>
+<pre class="out">       id  distance                           title category product
+0  kb-001      0.54  Resetting a forgotten password  account     web
+1  kb-004      0.66           Deleting your account  account     web
+2  kb-005      0.67     Signing out on every device  account  mobile</pre>
+        <p><code>query</code> ranks by nearest neighbour and returns 10 results unless <code>n_results</code> says
+        otherwise. Its answer is a dictionary with one inner list per query, which is why the helper reads
+        <code>[0]</code>, the first and only query.<sup class="cite"><a href="#src-7">7</a></sup></p>
+        <p>The rows are the same three as the NumPy search, but the numbers point the other way. Chroma reports a
+        cosine distance, 1 minus the cosine similarity, so lower is closer: 0.54 is 1 - 0.46. A vector queried against
+        itself gives a distance of about 0.0000007, zero apart from rounding.<sup class="cite"><a href="#src-2">2</a></sup>
+        Sorting Chroma's distances from high to low, as if they were scores, puts the worst match first.</p>
+        <h3>Update and delete</h3>
+        <p class="run-label">Run in Colab</p>
+<pre><code>print(collection.get(ids=["kb-003"])["metadatas"][0]["title"])
+new_text = "Open Settings, then Profile, and enter the new address. The change takes effect once you open the link we email to it."
+collection.update(ids=["kb-003"], documents=[new_text], embeddings=embed([new_text]))
+collection.delete(ids=["kb-030"])
+print(collection.count())</code></pre>
+<pre class="out">Changing the email on your account
+9</pre>
+        <p><code>get</code> fetches records by id with no ranking.<sup class="cite"><a href="#src-7">7</a></sup>
+        <code>update</code> changes any field of an existing record; an id that is not found is logged and
+        ignored.<sup class="cite"><a href="#src-31">31</a></sup> <code>delete</code> removes the record for good, and
+        the count drops from 10 to 9.<sup class="cite"><a href="#src-32">32</a></sup></p>
+        <p>The new text travels with its new vector, <code>embeddings=embed([new_text])</code>. A document sent without
+        one is re-embedded with the collection's embedding function, and this collection has none, so Chroma
+        refuses:<sup class="cite"><a href="#src-31">31</a></sup></p>
+<pre><code>collection.update(ids=["kb-003"], documents=[new_text])   # the vector left out</code></pre>
+<pre class="out">ValueError: You must provide an embedding function to compute embeddings.https://docs.trychroma.com/guides/embeddings in update.</pre>
+        <p>On a collection left with the default function, the same call would succeed quietly, with the text embedded by
+        Chroma's own model copy instead of <code>embed</code>. Either way the fix is the same: pass the vector with every
+        changed text.</p>
+        <h3>The data survives a new client</h3>
+        <p class="run-label">Run in Colab</p>
+<pre><code>reopened = chromadb.PersistentClient(path="chroma_kb")
+again = reopened.get_collection("kb_articles", embedding_function=None)
+print(again.count())</code></pre>
+<pre class="out">9</pre>
+        <p>A second client on the same folder finds the collection and all nine records, because they live on disk.
+        You recognise Chroma in code by <code>create_collection(...)</code> or <code>get_collection(...)</code> followed by
+        <code>query(query_embeddings=..., n_results=...)</code>.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A collection holds ids, documents, embeddings and metadata.</li>
+          <li>Chroma reports cosine distance, so lower means closer.</li>
+          <li>add skips an existing id silently, so check count after writes.</li>
+          <li>With no embedding function, every changed text needs its new vector.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>In Chroma I create a collection, then call add with ids, documents, embeddings and metadata. update changes
+          a record by id, and if I change the text I send the new embedding too. delete removes records by id, and I
+          check count afterwards, because adding an id that already exists is silently skipped.</p>
+          <p>For search I call query with the query's embedding and n_results. In the cosine space Chroma returns a
+          distance, one minus the similarity, so the smallest distance is the nearest neighbour.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="6">
+        <div class="tag">Pinecone overview</div>
+        <h2>Pinecone: a managed vector database</h2>
+        <p>Pinecone is a managed vector database: the index lives on Pinecone's servers, and your code reaches it over
+        the internet with an API key. Its core features are the ones a vector database adds, an approximate
+        nearest-neighbour index, metadata beside every vector and client libraries, run as a service with no server for
+        your team to manage.<sup class="cite"><a href="#src-11">11</a></sup></p>
+        <h3>Projects, indexes and records</h3>
+        <p>Pinecone nests its objects four levels deep.<sup class="cite"><a href="#src-33">33</a></sup></p>
+        <ul>
+          <li>An organization is your account, which owns projects.</li>
+          <li>A project holds indexes and the API keys that reach them.</li>
+          <li>An index holds the vectors, all of one length, compared with one metric.</li>
+          <li>A namespace splits an index into parts; Wednesday's page uses them.</li>
+        </ul>
+        <p>Each record has an id, its values (the vector) and optional metadata that a query can filter
+        on.<sup class="cite"><a href="#src-20">20</a></sup> It is a Chroma record without the separate document
+        field.</p>
+        <p>A serverless index keeps its data in object storage, a cheap cloud file store, and runs writes and reads on
+        separate paths. Reads also check an in-memory table of recent writes, so new data is searchable right after it
+        is written. The cost is a "cold" read: a namespace nobody has queried lately is fetched from object storage on
+        its first query, which is slower.<sup class="cite"><a href="#src-33">33</a></sup></p>
+        <p>In a retrieval workflow for a language model, Pinecone is the store the application searches for passages
+        to hand the model; week 9 wires that up.<sup class="cite"><a href="#src-19">19</a></sup></p>
+        <h3>The free Starter plan</h3>
+        <p>Every example on this page runs on the free Starter plan. Its limits, as Pinecone's pricing page listed them
+        when fetched on 2026-11-24, which the documentation's object limits
+        repeat:<sup class="cite"><a href="#src-34">34</a></sup><sup class="cite"><a href="#src-35">35</a></sup></p>
+        <table>
+          <thead><tr><th>Limit</th><th>Starter plan</th></tr></thead>
+          <tbody>
+            <tr><td>Storage</td><td>up to 2 GB</td></tr>
+            <tr><td>Read units</td><td>up to 1M a month</td></tr>
+            <tr><td>Write units</td><td>up to 2M a month</td></tr>
+            <tr><td>Egress (data sent out)</td><td>up to 1 GB a month</td></tr>
+            <tr><td>Indexes</td><td>up to 5, with 100 namespaces each</td></tr>
+            <tr><td>Projects and users</td><td>1 project, up to 2 users</td></tr>
+            <tr><td>Region</td><td>AWS <code>us-east-1</code> only</td></tr>
+          </tbody>
+        </table>
+        <p>Usage past a monthly allowance is blocked rather than billed, and a read past the cap returns a 429
+        error (the server's "too many requests" answer).<sup class="cite"><a href="#src-34">34</a></sup><sup class="cite"><a href="#src-36">36</a></sup></p>
+        <p>Units are how Pinecone counts work. A query costs 1 read unit per GB of namespace, with a minimum of 0.25. An
+        upsert, update or delete costs 1 write unit per KB, with a minimum of 5 per
+        request.<sup class="cite"><a href="#src-37">37</a></sup></p>
+        <p>Worked through for all 30 articles: each record is about 1.5 KB (384 numbers × 4 bytes, plus metadata), so
+        one upsert costs about 50 write units, and ten queries about 2.5 read units. Both sit far inside the monthly
+        allowance.</p>
+        <h3>Pod-based against serverless indexes</h3>
+        <p>Older Pinecone code uses pod-based indexes, and interviewers still ask for the comparison. A pod is a
+        pre-configured unit of hardware that you choose and pay for whether it is busy or
+        not.<sup class="cite"><a href="#src-38">38</a></sup></p>
+        <table>
+          <thead><tr><th></th><th>Pod-based</th><th>Serverless</th></tr></thead>
+          <tbody>
+            <tr><td>Hardware</td><td>chosen: s1 storage-optimised, p1 low latency, p2 higher throughput; sizes x1 to x8 each double capacity</td><td>none chosen; storage and compute are separate</td></tr>
+            <tr><td>Scale</td><td>by hand, changing pod size and replicas</td><td>automatic</td></tr>
+            <tr><td>Cost</td><td>per minute per pod, used or idle</td><td>reads, writes and storage used; cheaper in most cases</td></tr>
+            <tr><td>When it costs more</td><td>a quiet index still pays for its pods</td><td>sustained reads above about 1 query per second, or one very large namespace</td></tr>
+            <tr><td>Latency</td><td>fixed hardware kept warm; p1 is built for low latency</td><td>fast once warm; a cold namespace's first query is slower</td></tr>
+            <tr><td>Status</td><td>legacy: Standard and Enterprise customers who signed up on or after August 18, 2025 cannot create them</td><td>the default, and the only kind on the free plan</td></tr>
+          </tbody>
+        </table>
+        <p>The cost rows come from Pinecone's migration guide,<sup class="cite"><a href="#src-39">39</a></sup> and
+        client version 10 refuses to create pod indexes.<sup class="cite"><a href="#src-40">40</a></sup> You recognise the two in code by their spec:
+        <code>ServerlessSpec(cloud="aws", region="us-east-1")</code> against
+        <code>PodSpec(environment=..., pod_type="p1.x1")</code>. A top-level <code>pinecone.init(...)</code> marks code
+        from before the client was renamed.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Pinecone is a managed vector database reached over the internet with a key.</li>
+          <li>An organization holds projects, projects hold indexes, indexes hold records.</li>
+          <li>The free plan is serverless only, in AWS us-east-1, with monthly read and write units.</li>
+          <li>Pods are fixed hardware billed by the minute; serverless bills use and scales itself.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>Pinecone is a managed vector database. I create an index with a dimension and a metric, upsert records of
+          id, vector and metadata, and query for the nearest ones. Over a traditional database it gives me similarity
+          ranking, metadata filtering and scaling without running servers. In a RAG app it's the store I retrieve
+          passages from before calling the language model.</p>
+          <p>Pod-based indexes are fixed hardware billed per minute whether used or not, and can be tuned for latency.
+          Serverless scales itself and bills by reads, writes and storage, which is usually cheaper unless the load stays
+          above roughly one query per second.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="7">
+        <div class="tag">Pinecone setup</div>
+        <h2>Pinecone setup: keys, permissions and an index</h2>
+        <p>Setting up Pinecone takes an API key from the console, a safe place to keep it and the Python client. Then
+        one call creates an index.</p>
+        <h3>API keys and their permissions</h3>
+        <p>An API key is a secret string that proves to Pinecone which project a request belongs to. You create one in
+        the Pinecone console:<sup class="cite"><a href="#src-41">41</a></sup></p>
+        <ol>
+          <li>Open your project, then API keys, then "+ API key".</li>
+          <li>Name the key, choose its permissions and press Create key.</li>
+          <li>Copy the key at once: it is shown only this once and cannot be viewed again.</li>
+        </ol>
+        <p>A key belongs to one project, and deleting it immediately disables every application that uses it. On a paid
+        plan a key carries a role.<sup class="cite"><a href="#src-41">41</a></sup><sup class="cite"><a href="#src-42">42</a></sup></p>
+        <table>
+          <thead><tr><th>Role</th><th>What it may do</th></tr></thead>
+          <tbody>
+            <tr><td>ProjectEditor</td><td>read and write all resources and data</td></tr>
+            <tr><td>ProjectViewer</td><td>read only</td></tr>
+            <tr><td>ControlPlaneEditor / Viewer</td><td>indexes, backups and collections</td></tr>
+            <tr><td>DataPlaneEditor / Viewer</td><td>records and namespaces</td></tr>
+          </tbody>
+        </table>
+        <p>Least privilege means giving each program only what it needs: a read-only search service gets
+        DataPlaneViewer. Starter keys can only have the All permission, so a free key can also create and delete
+        indexes, and needs guarding.<sup class="cite"><a href="#src-41">41</a></sup></p>
+        <p>If a key leaks, delete it in the console straight away; applications using it get a 401 error (the server's
+        "not authorised" answer) within seconds. Then create a new key and store it where the old one was. A planned rotation runs the other way round:
+        create the replacement, switch to it, then delete the old key.<sup class="cite"><a href="#src-43">43</a></sup></p>
+        <h3>The key lives in Colab Secrets</h3>
+        <p>Notebooks get shared and pushed to public repositories, and bots scan GitHub for keys. Week 5 kept
+        <code>ANTHROPIC_API_KEY</code> in an environment variable for the same reason. In Colab the place is the Secrets
+        panel behind the key icon: add a secret named <code>PINECONE_API_KEY</code>, paste the key as its
+        value and switch on Notebook access. Secrets belong to your Google account and are never saved in the
+        notebook.</p>
+        <p>The client's package is <code>pinecone</code>; the old <code>pinecone-client</code> package is marked
+        deprecated.<sup class="cite"><a href="#src-44">44</a></sup> The pin stays on 9.x because version 10 speaks a newer API version, under which a new
+        index can be a document index that refuses the vector writes this page teaches.<sup class="cite"><a href="#src-40">40</a></sup></p>
+        <p class="run-label">Run in Colab</p>
+<pre><code>%pip install -q pinecone==9.1.0
+from google.colab import userdata
+from pinecone import Pinecone, ServerlessSpec
+
+pc = Pinecone(api_key=userdata.get("PINECONE_API_KEY"))
+print(pc.has_index("kb-tuesday"))</code></pre>
+        <p>The key line reads the secret and hands it straight to the client, so no variable holds the key and nothing
+        prints it. On a fresh project the check prints <code>False</code>. If the cell fails instead, the error says
+        which fix you need:<sup class="cite"><a href="#src-46">46</a></sup><sup class="cite"><a href="#src-47">47</a></sup></p>
+        <table>
+          <thead><tr><th>Error</th><th>Meaning</th><th>Fix</th></tr></thead>
+          <tbody>
+            <tr><td><code>SecretNotFoundError</code></td><td>no secret has that name</td><td>add it, spelled exactly <code>PINECONE_API_KEY</code></td></tr>
+            <tr><td><code>NotebookAccessError</code></td><td>the secret exists, access is off</td><td>switch on Notebook access</td></tr>
+            <tr><td><code>UnauthorizedError</code> (401)</td><td>Pinecone rejected the key</td><td>copy the key again, or make a new one</td></tr>
+          </tbody>
+        </table>
+        <h3>Creating an index</h3>
+        <p class="run-label">Run in Colab</p>
+<pre><code>if not pc.has_index("kb-tuesday"):
+    pc.create_index(
+        name="kb-tuesday",
+        dimension=384,
+        metric="cosine",
+        spec=ServerlessSpec(cloud="aws", region="us-east-1"),
+    )
+print(pc.describe_index("kb-tuesday").status.ready)
+index = pc.Index("kb-tuesday")</code></pre>
+        <p>It prints <code>True</code>: <code>create_index</code> waits, polling every 5 seconds, until the index is
+        ready.<sup class="cite"><a href="#src-48">48</a></sup> <code>dimension=384</code> must match the vectors
+        <code>embed</code> makes, <code>metric="cosine"</code> fixes how they are compared, and the spec places a
+        serverless index in the free plan's region. The <code>has_index</code> guard lets the cell run twice.
+        <code>pc.Index(...)</code> returns the object that reads and writes records.</p>
+        <p>These <code>pc.*</code> calls are kept for compatibility; the newer spellings are
+        <code>pc.indexes.create</code>, <code>.exists</code> and <code>.delete</code>.<sup class="cite"><a href="#src-47">47</a></sup>
+        You recognise a safe set-up by <code>userdata.get("PINECONE_API_KEY")</code>. A key pasted between quotes in a
+        cell is the anti-pattern.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>A key belongs to one project and is shown only once.</li>
+          <li>Roles limit what a key can do; free keys get All.</li>
+          <li>The key lives in Colab Secrets and is read with userdata.get.</li>
+          <li>An index is created once, with a dimension, a metric and a spec.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>I create the API key in the Pinecone console and copy it once, because it can't be shown again. The key
+          never goes in the code. In Colab it lives in the Secrets panel and I read it with userdata.get; elsewhere it's
+          an environment variable.</p>
+          <p>Keys carry roles, so I give each program the least it needs: a search service gets a data-plane viewer
+          key. If a key leaks, I delete it in the console first, which cuts off access in seconds, then create a new one
+          and update the secret.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="8">
+        <div class="tag">CRUD</div>
+        <h2>CRUD with vector data in Pinecone</h2>
+        <p>CRUD is short for create, read, update and delete, the four basic operations on stored records. Pinecone's
+        index object has a method for each, and every one takes keyword arguments only: a positional
+        <code>index.query(v, 3)</code> raises a <code>TypeError</code>.<sup class="cite"><a href="#src-49">49</a></sup></p>
+        <h3>Create: upsert the records</h3>
+        <p class="run-label">Run in Colab</p>
+<pre><code>import time
+
+def wait_for_count(index, expected, namespace=None):
+    """Poll the index stats every 2 seconds, for up to 60 seconds, until it holds `expected` vectors."""
+    for _ in range(30):
+        stats = index.describe_index_stats()
+        if namespace is None:
+            count = stats.total_vector_count
+        else:
+            ns = stats.namespaces.get(namespace)
+            count = ns.vector_count if ns else 0
+        if count == expected:
+            break
+        time.sleep(2)
+    print(f"{count} vectors in the index")
+
+records = [{"id": a["id"], "values": v.tolist(),
+            "metadata": {"title": a["title"], "category": a["category"],
+                         "product": a["product"], "updated": a["updated"]}}
+           for a, v in zip(KB, kb_vectors)]
+index.upsert(vectors=records)
+wait_for_count(index, 10)</code></pre>
+<pre class="out">10 vectors in the index</pre>
+        <p>Pinecone has no separate add: new records are written with <code>upsert</code>, and Wednesday's page shows
+        what it does beyond adding. Each record is a dictionary of id, values and metadata. <code>.tolist()</code>
+        matters: this client never converts NumPy, so an array in <code>values</code> raises <code>TypeError: Type is not
+        JSON serializable: numpy.float32</code>.<sup class="cite"><a href="#src-45">45</a></sup> The metadata comes from
+        the <code>KB</code> dictionaries, plain Python numbers, for the same reason.</p>
+        <p>Pinecone is eventually consistent: a count or a read can lag a write by a few seconds. Reading the stats
+        straight after the upsert can show 0, which is why the helper polls instead of sleeping for a guessed
+        time.<sup class="cite"><a href="#src-50">50</a></sup> With <code>namespace=None</code> it reads the whole
+        index's <code>total_vector_count</code>; given a namespace's name it reads that namespace's
+        <code>vector_count</code>, which Wednesday's page uses.</p>
+        <h3>Read: query and fetch</h3>
+        <p class="run-label">Run in Colab</p>
+<pre><code>def pinecone_hits(result):
+    """A Pinecone query result as a table: id, score, then the display fields."""
+    return pd.DataFrame([{"id": m.id, "score": round(m.score, 2), "title": m.metadata["title"],
+                          "category": m.metadata["category"], "product": m.metadata["product"]}
+                         for m in result.matches])
+
+result = index.query(vector=query_vector.tolist(), top_k=3, include_metadata=True)
+print(pinecone_hits(result))
+print(index.fetch(ids=["kb-003"]).vectors["kb-003"].metadata["updated"])</code></pre>
+        <p>The query should return kb-001, kb-004 and kb-005, the NumPy and Chroma top three, because all three stores
+        hold the same vectors. Here the number is a score, the cosine similarity itself, so higher is closer: the
+        opposite of Chroma's distance. Without <code>include_metadata=True</code> each match's metadata comes back as
+        <code>None</code> and the helper fails.<sup class="cite"><a href="#src-51">51</a></sup></p>
+        <p><code>fetch</code> reads records by id with no ranking and leaves out ids the index does not hold. The last
+        line prints 2023, the year in kb-003's metadata.<sup class="cite"><a href="#src-51">51</a></sup></p>
+        <h3>Update, delete and clean up</h3>
+        <p class="run-label">Run in Colab</p>
+<pre><code>index.update(id="kb-003", set_metadata={"updated": 2026})
+index.delete(ids=["kb-030"])
+wait_for_count(index, 9)
+print(index.fetch(ids=["kb-003"]).vectors["kb-003"].metadata["updated"])
+
+if pc.has_index("kb-tuesday"):
+    pc.delete_index("kb-tuesday")</code></pre>
+        <p><code>set_metadata</code> merges: it sets <code>updated</code> to 2026 and leaves the title, category and
+        product alone.<sup class="cite"><a href="#src-51">51</a></sup> Because Pinecone is eventually consistent, a
+        fetch straight afterwards can still print 2023 for a moment.<sup class="cite"><a href="#src-50">50</a></sup>
+        <code>delete</code> cannot be undone, and the count falls to
+        9.<sup class="cite"><a href="#src-51">51</a></sup> The last two lines delete the index, which keeps the free
+        project empty between runs and lets the page rerun from a clean start.</p>
+        <h3>CRUD in SQLite, Chroma and Pinecone side by side</h3>
+        <table>
+          <thead><tr><th>Operation</th><th>SQLite</th><th>Chroma</th><th>Pinecone</th></tr></thead>
+          <tbody>
+            <tr><td>Create</td><td><code>INSERT</code></td><td><code>add(...)</code></td><td><code>upsert(vectors=...)</code></td></tr>
+            <tr><td>Read by id</td><td><code>SELECT ... WHERE id = ?</code></td><td><code>get(ids=...)</code></td><td><code>fetch(ids=...)</code></td></tr>
+            <tr><td>Read nearest</td><td>read every row and compare</td><td><code>query(query_embeddings=..., n_results=3)</code></td><td><code>query(vector=..., top_k=3, include_metadata=True)</code></td></tr>
+            <tr><td>Update</td><td><code>UPDATE ... SET</code></td><td><code>update(ids=..., documents=..., embeddings=...)</code></td><td><code>update(id=..., set_metadata=...)</code></td></tr>
+            <tr><td>Delete</td><td><code>DELETE ... WHERE</code></td><td><code>delete(ids=...)</code></td><td><code>delete(ids=...)</code></td></tr>
+          </tbody>
+        </table>
+        <p>One difference hides in the first row: Chroma's <code>add</code> skips an id that already exists without an
+        error; what Pinecone's <code>upsert</code> does with one is Wednesday's.<sup class="cite"><a href="#src-30">30</a></sup> You recognise
+        Pinecone CRUD by <code>index.upsert(vectors=[...])</code>, <code>index.query(vector=..., top_k=...)</code>
+        and <code>index.delete(ids=[...])</code>.</p>
+        <div class="recap"><div class="k">Takeaways</div><ul>
+          <li>Pinecone writes new records with upsert; there is no separate add.</li>
+          <li>Send vectors as lists with tolist, never as NumPy arrays.</li>
+          <li>Counts and reads can lag a write, so poll the stats.</li>
+          <li>Pinecone returns a similarity score; Chroma returns a distance.</li>
+        </ul></div>
+        <div class="callout interview">
+          <div class="k">Say it in an interview</div>
+          <p>In Pinecone, create is upsert with a list of id, values and metadata. Read is query with a vector and
+          top_k for the nearest records, or fetch by id. Update with set_metadata merges new fields into a record, and
+          delete takes a list of ids. Chroma has the same four as add, get or query, update and delete.</p>
+          <p>If the stats show zero right after an upsert, nothing is wrong: Pinecone is eventually consistent, so
+          the count catches up a few seconds later. I poll describe_index_stats instead of writing the data again.</p>
+        </div>
+      </section>
+
+      <section class="step" data-diagram="0" data-step="9">
+        <div class="tag">Check yourself</div>
+        <h2>Check yourself</h2>
+        <p>Nine questions, one per section, asked the way an interviewer would. Answer each out loud before you open
+        it.</p>
+        <details class="check"><summary>What is a vector embedding, and what is the cosine similarity of [3, 4] and [6, 8]?</summary><p>An embedding is a list of numbers that represents a piece of data as a point, placed so that alike things sit close together. The cosine similarity is 50 / (5 × 10) = 1.0: the second vector is the first one doubled, and cosine ignores length.</p></details>
+        <details class="check"><summary>Walk through turning a text into a vector and searching with it.</summary><p>Embed every stored text with one model, here 384 numbers of length 1 each. Embed the query with the same model, score it against every stored vector with a dot product, which equals the cosine similarity for unit vectors, and return the top few, nearest first.</p></details>
+        <details class="check"><summary>How would you store a vector in SQLite, and why does search there slow down as the table grows?</summary><p>As bytes in a BLOB column, written with <code>tobytes()</code> and read back with <code>np.frombuffer(blob, dtype=np.float32)</code>, with <code>?</code> placeholders in the insert. SQLite has no vector index, so every search reads and compares every row, and doubling the rows roughly doubles the time.</p></details>
+        <details class="check"><summary>What is a vector database, and what does "approximate" in approximate nearest neighbour cost you?</summary><p>A database that stores embeddings with metadata and finds those most similar to a query vector, using an index such as HNSW instead of a full scan. The index can miss a few true nearest neighbours, a little recall given up for a lot of speed.</p></details>
+        <details class="check"><summary>When would you use EphemeralClient, PersistentClient and HttpClient in Chroma?</summary><p>EphemeralClient for throwaway tests, since its data is gone on restart. PersistentClient when one program keeps its data in a folder. HttpClient when several programs share one Chroma server, for example one run in Docker.</p></details>
+        <details class="check"><summary>A Chroma query returns a distance of 0.54 for the top article. Is that good, and what happens if you update a text without its embedding?</summary><p>It is a cosine distance, 1 minus the similarity, so lower is closer and 0.54 means a similarity of about 0.46. On a collection with <code>embedding_function=None</code> the update raises a <code>ValueError</code> asking for an embedding function; on one with the default function, Chroma quietly embeds the text with its own model.</p></details>
+        <details class="check"><summary>Compare pod-based and serverless Pinecone indexes for cost, latency and scale.</summary><p>Pods are legacy hardware you choose, billed per minute whether used or not and scaled by hand, with types tuned for latency or throughput. Serverless scales itself and bills use, which is cheaper in most cases but dearer above about one query per second sustained; a cold namespace's first query is slower.</p></details>
+        <details class="check"><summary>A teammate pushed a notebook with a Pinecone key in a cell to a public repository. What do you do, in order?</summary><p>Delete the key in the Pinecone console at once, which cuts off every application using it within seconds. Create a new key, store it in Colab Secrets or an environment variable, and change the notebook to read it with <code>userdata.get</code>.</p></details>
+        <details class="check"><summary>Why can <code>describe_index_stats()</code> show 0 right after an upsert, and what does Chroma's add do with an id that already exists?</summary><p>Pinecone is eventually consistent, so counts lag a write by a few seconds; poll instead of writing again. Chroma's <code>add</code> skips an id that already exists without an error, and the old record stays.</p></details>
+      </section>
+
+      <section class="reading-sources" aria-label="Sources and deeper dive">
+        <h2>Sources &amp; deeper dive</h2>
+        <ul>
+          <li id="src-1"><a href="https://developers.google.com/machine-learning/crash-course/embeddings/embedding-space" target="_blank" rel="noopener">Embeddings: Embedding space and static embeddings (Google ML Crash Course)</a> — embeddings as points, and closeness read as similarity.</li>
+          <li id="src-2"><a href="https://docs.trychroma.com/docs/collections/configure" target="_blank" rel="noopener">Configure Collections (Chroma Docs)</a> — the cosine formula, cosine distance and the <code>configuration=</code> spelling.</li>
+          <li id="src-3"><a href="https://sbert.net/docs/package_reference/sentence_transformer/SentenceTransformer.html" target="_blank" rel="noopener">SentenceTransformer API reference</a> — <code>encode</code> and <code>normalize_embeddings</code>.</li>
+          <li id="src-4"><a href="https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2" target="_blank" rel="noopener">sentence-transformers/all-MiniLM-L6-v2 (model card)</a> — 384 dimensions, intended uses and the 256 word-piece limit.</li>
+          <li id="src-5"><a href="https://numpy.org/doc/stable/reference/generated/numpy.argsort.html" target="_blank" rel="noopener">numpy.argsort</a> — ascending order and when <code>descending=</code> arrived.</li>
+          <li id="src-6"><a href="https://sbert.net/examples/sentence_transformer/applications/semantic-search/README.html" target="_blank" rel="noopener">Semantic Search (Sentence Transformers documentation)</a> — embedding query and texts into one space and returning the closest.</li>
+          <li id="src-7"><a href="https://docs.trychroma.com/docs/querying-collections/query-and-get" target="_blank" rel="noopener">Query and Get (Chroma Docs)</a> — <code>n_results</code>, the column-major result and <code>get</code> by id.</li>
+          <li id="src-8"><a href="https://docs.python.org/3/library/sqlite3.html" target="_blank" rel="noopener">sqlite3 (Python documentation)</a> — placeholders, transactions, <code>commit</code> and BLOB as bytes.</li>
+          <li id="src-9"><a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.tobytes.html" target="_blank" rel="noopener">numpy.ndarray.tobytes</a> — an array's raw bytes for a BLOB column.</li>
+          <li id="src-10"><a href="https://numpy.org/doc/stable/reference/generated/numpy.frombuffer.html" target="_blank" rel="noopener">numpy.frombuffer</a> — reading bytes back, and the float64 default dtype.</li>
+          <li id="src-11"><a href="https://www.pinecone.io/learn/vector-database/" target="_blank" rel="noopener">What is a Vector Database (Pinecone Learn)</a> — what a vector database adds over a table, and approximate indexes.</li>
+          <li id="src-12"><a href="https://docs.trychroma.com/guides/performance/single-node" target="_blank" rel="noopener">Single-Node Performance (Chroma Docs)</a> — SQLite plus an in-memory HNSW index, and RAM as the limit.</li>
+          <li id="src-13"><a href="https://github.com/pgvector/pgvector" target="_blank" rel="noopener">pgvector (GitHub)</a> — vector similarity search inside PostgreSQL.</li>
+          <li id="src-14"><a href="https://github.com/facebookresearch/faiss" target="_blank" rel="noopener">Faiss (GitHub)</a> — a library for similarity search of dense vectors.</li>
+          <li id="src-15"><a href="https://qdrant.tech/documentation/overview/" target="_blank" rel="noopener">Qdrant documentation overview</a> — open source or managed cloud.</li>
+          <li id="src-16"><a href="https://docs.weaviate.io/weaviate" target="_blank" rel="noopener">Weaviate documentation</a> — open source, cloud, Docker or Kubernetes.</li>
+          <li id="src-17"><a href="https://milvus.io/docs/overview.md" target="_blank" rel="noopener">Milvus overview</a> — Lite, Standalone and Distributed.</li>
+          <li id="src-18"><a href="https://docs.pinecone.io/guides/get-started/overview" target="_blank" rel="noopener">Pinecone Database (Pinecone Docs)</a> — search, recommendations and long-term memory.</li>
+          <li id="src-19"><a href="https://www.pinecone.io/learn/retrieval-augmented-generation/" target="_blank" rel="noopener">Retrieval-Augmented Generation (Pinecone Learn)</a> — retrieval for a language model's answer, week 9's topic.</li>
+          <li id="src-20"><a href="https://docs.pinecone.io/guides/index-data/indexing-overview" target="_blank" rel="noopener">Index data overview (Pinecone Docs)</a> — records as id, values and filterable metadata.</li>
+          <li id="src-21"><a href="https://pypi.org/project/chromadb/" target="_blank" rel="noopener">chromadb on PyPI</a> — the 1.5.9 release the install pins.</li>
+          <li id="src-22"><a href="https://raw.githubusercontent.com/googlecolab/backend-info/main/pip-freeze.txt" target="_blank" rel="noopener">Colab runtime package list (googlecolab/backend-info)</a> — what Colab ships, checked against both installs.</li>
+          <li id="src-23"><a href="https://docs.trychroma.com/reference/python/client" target="_blank" rel="noopener">Client (Chroma Python reference)</a> — the four client constructors and <code>heartbeat()</code>.</li>
+          <li id="src-24"><a href="https://docs.trychroma.com/docs/run-chroma/clients" target="_blank" rel="noopener">Chroma Clients (Chroma Docs)</a> — where <code>PersistentClient</code> keeps its files.</li>
+          <li id="src-25"><a href="https://github.com/chroma-core/chroma/blob/main/chromadb/api/shared_system_client.py" target="_blank" rel="noopener">shared_system_client.py (Chroma source)</a> — the per-path cache and <code>clear_system_cache()</code>.</li>
+          <li id="src-26"><a href="https://cookbook.chromadb.dev/core/storage-layout/" target="_blank" rel="noopener">Storage Layout (Chroma Cookbook)</a> — what is inside the persistent folder.</li>
+          <li id="src-27"><a href="https://docs.trychroma.com/docs/run-chroma/client-server" target="_blank" rel="noopener">Client-Server Mode (Chroma Docs)</a> — <code>chroma run</code> and <code>HttpClient</code>.</li>
+          <li id="src-28"><a href="https://docs.trychroma.com/guides/deploy/docker" target="_blank" rel="noopener">Docker (Chroma Docs)</a> — running Chroma in a container with a data volume.</li>
+          <li id="src-29"><a href="https://docs.trychroma.com/docs/embeddings/embedding-functions" target="_blank" rel="noopener">Embedding Functions (Chroma Docs)</a> — the default MiniLM function and when it is attached.</li>
+          <li id="src-30"><a href="https://docs.trychroma.com/docs/collections/add-data" target="_blank" rel="noopener">Adding Data to Chroma Collections (Chroma Docs)</a> — existing ids, dimensions and metadata types.</li>
+          <li id="src-31"><a href="https://docs.trychroma.com/docs/collections/update-data" target="_blank" rel="noopener">Update Data (Chroma Docs)</a> — <code>update</code>, missing ids and re-embedding.</li>
+          <li id="src-32"><a href="https://docs.trychroma.com/docs/collections/delete-data" target="_blank" rel="noopener">Delete Data (Chroma Docs)</a> — deleting by id, for good.</li>
+          <li id="src-33"><a href="https://docs.pinecone.io/guides/get-started/database-architecture" target="_blank" rel="noopener">Pinecone architecture (Pinecone Docs)</a> — organizations, projects, indexes, namespaces and serverless reads.</li>
+          <li id="src-34"><a href="https://www.pinecone.io/pricing/" target="_blank" rel="noopener">Pinecone pricing</a> — the Starter plan's limits, fetched 2026-11-24.</li>
+          <li id="src-35"><a href="https://docs.pinecone.io/reference/api/database-limits/object-limits" target="_blank" rel="noopener">Object limits (Pinecone Docs)</a> — indexes, region and storage on Starter.</li>
+          <li id="src-36"><a href="https://docs.pinecone.io/reference/api/database-limits/rate-limits" target="_blank" rel="noopener">Rate limits (Pinecone Docs)</a> — monthly units and the 429 error.</li>
+          <li id="src-37"><a href="https://docs.pinecone.io/guides/manage-cost/understanding-cost" target="_blank" rel="noopener">Understand Pinecone cost (Pinecone Docs)</a> — read units and write units per request.</li>
+          <li id="src-38"><a href="https://docs.pinecone.io/guides/indexes/pods/understanding-pod-based-indexes" target="_blank" rel="noopener">Understanding pod-based indexes (Pinecone Docs)</a> — pod types, sizes, billing and legacy status.</li>
+          <li id="src-39"><a href="https://docs.pinecone.io/guides/indexes/pods/migrate-a-pod-based-index-to-serverless" target="_blank" rel="noopener">Migrate a pod-based index to serverless (Pinecone Docs)</a> — when serverless costs less and when more.</li>
+          <li id="src-40"><a href="https://sdk.pinecone.io/python/migration/v10-migration.html" target="_blank" rel="noopener">Migrating to v10 (Pinecone Python SDK)</a> — document indexes, and why the page pins 9.x.</li>
+          <li id="src-41"><a href="https://docs.pinecone.io/guides/projects%2Fmanage-api-keys" target="_blank" rel="noopener">Manage API keys (Pinecone Docs)</a> — creating a key, shown once, and Starter permissions.</li>
+          <li id="src-42"><a href="https://docs.pinecone.io/guides/projects%2Funderstanding-projects" target="_blank" rel="noopener">Projects overview (Pinecone Docs)</a> — the API key roles.</li>
+          <li id="src-43"><a href="https://docs.pinecone.io/admin/security/rotate-keys-and-secrets" target="_blank" rel="noopener">Rotate API keys and service account secrets (Pinecone Docs)</a> — revoking a leaked key and rotating safely.</li>
+          <li id="src-44"><a href="https://pypi.org/pypi/pinecone-client/json" target="_blank" rel="noopener">pinecone-client on PyPI (JSON API)</a> — the old package name, marked deprecated.</li>
+          <li id="src-45"><a href="https://pypi.org/pypi/pinecone/9.1.0/json" target="_blank" rel="noopener">pinecone 9.1.0 on PyPI (JSON API)</a> — the pinned client and its JSON encoder.</li>
+          <li id="src-46"><a href="https://raw.githubusercontent.com/googlecolab/colabtools/main/google/colab/userdata.py" target="_blank" rel="noopener">google/colab/userdata.py (colabtools source)</a> — <code>userdata.get</code> and its two errors.</li>
+          <li id="src-47"><a href="https://raw.githubusercontent.com/pinecone-io/pinecone-python-client/v9.1.0/pinecone/_client.py" target="_blank" rel="noopener">pinecone/_client.py at v9.1.0 (Pinecone Python SDK source)</a> — the 401 error and the compatibility shims.</li>
+          <li id="src-48"><a href="https://raw.githubusercontent.com/pinecone-io/pinecone-python-client/v9.1.0/pinecone/client/indexes.py" target="_blank" rel="noopener">pinecone/client/indexes.py at v9.1.0 (Pinecone Python SDK source)</a> — <code>create_index</code> polling until ready.</li>
+          <li id="src-49"><a href="https://raw.githubusercontent.com/pinecone-io/pinecone-python-client/v9.1.0/pinecone/index/__init__.py" target="_blank" rel="noopener">pinecone/index/__init__.py at v9.1.0 (Pinecone Python SDK source)</a> — keyword-only record methods.</li>
+          <li id="src-50"><a href="https://docs.pinecone.io/guides/manage-data/delete-data" target="_blank" rel="noopener">Delete data (Pinecone Docs)</a> — eventual consistency after a write.</li>
+          <li id="src-51"><a href="https://sdk.pinecone.io/python/how-to/vectors/upsert-and-query.html" target="_blank" rel="noopener">Upsert and query vectors (Pinecone Python SDK)</a> — query, fetch, merging updates and delete.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <aside class="side">
+      <div class="side-diagram">
+        <div class="stage-title">Live diagram</div>
+        <svg id="diagram"></svg>
+        <div class="stage-caption"></div>
+      </div>
+
+      <div class="side-cards">
+        <button class="activity-card accent" type="button" data-modal="quiz-modal">
+          <div class="ac-k">✓ Comprehension check</div>
+          <div class="ac-t">6 quick questions</div>
+          <div class="ac-meta">~5 min · after you have read the page</div>
+        </button>
+      </div>
+
+      <div class="side-nav">
+        <a class="snav-btn" href="../../index.html">◂ Back to Program</a>
+        <button class="snav-btn goals" type="button" data-modal="goals-modal">◎ Daily goals</button>
+        <a class="snav-btn snav-next"></a>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<footer class="foot">2494 · Gen-AI Python Developer Training · Week 8 Day 2</footer>
+
+<!-- quiz modal -->
+<div id="quiz-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <section id="quiz"></section>
+    <div class="modal-next"></div>
+  </div>
+</div>
+
+<!-- daily goals modal -->
+<div id="goals-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <button class="modal-close" type="button" aria-label="Close">✕</button>
+    <h2>Day 2 — goals</h2>
+    <div class="ma-k">By the end of today you can</div>
+    <ul class="goals-list">
+      <li>Explain what a vector embedding is, how text is vectorised, and how cosine similarity compares two vectors</li>
+      <li>Describe what a vector database is, how it stores and retrieves vectors for search, and where Chroma and Pinecone fit, including Pinecone's role in retrieval for a language model</li>
+      <li>Install and configure Chroma in a Colab notebook, then insert, update, delete and query embeddings in a collection</li>
+      <li>Create a Pinecone API key, explain its permissions, and read it from Colab Secrets instead of writing it in code</li>
+      <li>Run create, read, update and delete on vector data in Pinecone, side by side with Chroma and SQLite</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+window.NEXT = { label: "Day 3 — Vector index & collection management →", href: "day-3-vector-index-management.html" };
+window.DIAGRAM = {
+  title: "Day 2 · vectors from text to two databases",
+  width: 500, height: 420,
+  nodes: [
+    { id:"vec", step:0, kind:"example", x:14, y:14, w:220, h:54, label:"Vector\n  a list of numbers\n  cos([3,4],[6,8]) = 1.0", detail:"An embedding places alike things close together. Cosine similarity runs from -1 to 1 and ignores length." },
+    { id:"search", step:1, x:266, y:14, w:220, h:54, label:"Similarity search\n  embed → 384 numbers\n  kb_vectors @ query_vector", detail:"Same model for query and texts; np.argsort(-scores)[:3]; the password article wins at about 0.46 with no shared word." },
+    { id:"sqlite", step:2, x:14, y:96, w:220, h:54, label:"SQLite\n  vector BLOB · tobytes\n  reads every row", detail:"frombuffer needs dtype=np.float32; placeholders keep values out of the SQL; double the rows, roughly double the time." },
+    { id:"vdb", step:3, x:266, y:96, w:220, h:54, label:"Vector database\n  ANN index (HNSW)\n  metadata · clients", detail:"Trades a little recall for speed. Used for search, recommendations, duplicates and retrieval for language models." },
+    { id:"csetup", step:4, x:14, y:178, w:220, h:54, label:"Chroma setup\n  pip install chromadb==1.5.9\n  Ephemeral · Persistent · Http", detail:"PersistentClient keeps a folder with chroma.sqlite3; a server in Docker is reached with HttpClient(host, port)." },
+    { id:"chroma", step:5, x:266, y:178, w:220, h:54, label:"Chroma collection\n  add · query · update · delete\n  distance: lower is closer", detail:"embedding_function=None, so every write carries its vector; add skips an existing id silently." },
+    { id:"pine", step:6, x:14, y:260, w:220, h:54, label:"Pinecone\n  managed, serverless\n  free: us-east-1, 5 indexes", detail:"Organization → project → index → namespace. Pods are legacy fixed hardware billed per minute." },
+    { id:"psetup", step:7, x:266, y:260, w:220, h:54, label:"Pinecone setup\n  key in Colab Secrets\n  create_index(dimension=384)", detail:"userdata.get(\"PINECONE_API_KEY\") straight into Pinecone(api_key=...); a leaked key is deleted in the console first." },
+    { id:"crud", step:8, x:14, y:342, w:220, h:54, label:"CRUD in Pinecone\n  upsert · query/fetch\n  update · delete", detail:"Vectors sent with tolist(); counts lag a write, so poll the stats; the score is a similarity, higher is closer." },
+    { id:"check", step:9, x:266, y:342, w:220, h:54, label:"CHECK YOURSELF\n  answer out loud, then open" }
+  ],
+  edges: [
+    { id:"e1", step:1, from:"vec", to:"search", label:"compare many" },
+    { id:"e2", step:2, from:"search", to:"sqlite", label:"store them" },
+    { id:"e3", step:3, from:"sqlite", to:"vdb", label:"full scan too slow" },
+    { id:"e4", step:4, from:"vdb", to:"csetup", label:"local" },
+    { id:"e5", step:5, from:"csetup", to:"chroma", label:"collection" },
+    { id:"e6", step:6, from:"vdb", to:"pine", label:"managed", dir:"-" },
+    { id:"e7", step:7, from:"pine", to:"psetup", label:"key + index" },
+    { id:"e8", step:8, from:"psetup", to:"crud", label:"records" },
+    { id:"e9", step:8, from:"chroma", to:"crud", label:"same four", dir:"-" },
+    { id:"e10", step:9, from:"crud", to:"check", dir:"-" }
+  ],
+  captions: [
+    "A vector is a list of numbers that places a thing; cosine similarity says how alike two are. <span style='opacity:.7'>(tap nodes for detail)</span>",
+    "A model turns each text into 384 numbers, and search compares the query's vector with every stored one.",
+    "SQLite can hold vectors as bytes, but every search reads every row, so time grows with the table.",
+    "A vector database adds an approximate nearest-neighbour index, metadata filters and client libraries.",
+    "Chroma installs with pip, runs in the notebook, and keeps its data in memory, in a folder or on a server.",
+    "A Chroma collection takes ids, documents, vectors and metadata, and reports a distance where lower is closer.",
+    "Pinecone runs the index for you; the free plan is serverless in AWS us-east-1, and pods are legacy hardware.",
+    "The API key lives in Colab Secrets, carries a role, and is deleted at once if it leaks; then one call makes an index.",
+    "Upsert, query, fetch, update and delete work on Pinecone records; counts lag a write by a few seconds.",
+    "You can now explain embeddings and similarity search, why tables stop scaling, and CRUD in Chroma and Pinecone."
+  ]
+};
+window.QUIZ = {
+  id: "w08-d2",
+  title: "Check your understanding",
+  questions: [
+    { type: "scq", stem: "A Chroma collection in the cosine space returns a distance of 0.54 for an article. What is its cosine similarity to the query?",
+      options: ["0.54", "0.46", "1.54", "-0.54"], answer: 1,
+      explain: "Chroma's cosine distance is 1 minus the cosine similarity, so 1 - 0.54 = 0.46. Lower distance means closer; Pinecone reports the similarity itself." },
+    { type: "tf", stem: "In Chroma, calling add with an id that already exists replaces the old record with the new one.", answer: false,
+      explain: "add with an existing id is ignored without an error, and the old record stays. That is why count() is the check after a write." },
+    { type: "mcq", stem: "Which of these keep a Pinecone key safe in a notebook saved to a public repository? Select all that apply.",
+      options: ["Store it in Colab Secrets and read it with userdata.get(\"PINECONE_API_KEY\")", "Paste it into a cell, then clear the outputs before saving", "Print userdata.get(\"PINECONE_API_KEY\") once to check it", "If it leaks, delete it in the Pinecone console first, then create a new one"], answer: [0, 3],
+      explain: "Secrets are never saved in the notebook, so reading the key from them keeps it out of the file. A key typed in a cell travels with the notebook even with outputs cleared, and printing it shows it on screen and in saved output. A leaked key is deleted at once, which cuts off every application using it." },
+    { type: "match", stem: "Match each operation to the Pinecone call that does it.",
+      pairs: [
+        { l: "Create records", r: "index.upsert(vectors=...)" },
+        { l: "Read records by id", r: "index.fetch(ids=...)" },
+        { l: "Change one metadata field", r: "index.update(id=..., set_metadata=...)" },
+        { l: "Remove records", r: "index.delete(ids=...)" }
+      ],
+      explain: "Pinecone writes new records with upsert, reads by id with fetch (and by similarity with query), merges metadata with update and set_metadata, and removes records with delete." },
+    { type: "scq", stem: "A float32 vector of 384 numbers was stored with tobytes(). Why does np.frombuffer(blob) return 192 numbers?",
+      options: ["SQLite compresses BLOB columns", "frombuffer defaults to float64, eight bytes per number, so 1,536 bytes read as 192 numbers", "tobytes() keeps only half of the array", "The vector was not normalised to length 1"], answer: 1,
+      explain: "384 numbers × 4 bytes = 1,536 bytes. Read as 8-byte float64, that is 192 meaningless numbers and no error. Pass dtype=np.float32 to get the 384 back." },
+    { type: "open", stem: "In two or three sentences: SQLite can already store vectors, so why do vector databases exist?",
+      hint: "Every row, time, index, metadata.",
+      model: "SQLite has no vector index, so every search reads every row and compares it, and the time grows with the number of rows: double the rows, roughly double the time. A vector database adds an approximate nearest-neighbour index such as HNSW that finds near vectors without a full scan, trading a little recall for speed, and keeps metadata beside each vector for filtering." }
+  ]
+};
+</script>
+
+<script src="../../assets/js/diagram.js?v=20261124"></script>
+<script src="../../assets/js/scrolly.js?v=20261124"></script>
+<script src="../../assets/js/modals.js?v=20261124"></script>
+<script src="../../assets/js/quiz.js?v=20261124"></script>
+<script src="../../assets/js/widgets.js?v=20261124"></script>
+<script src="../../assets/js/glossary.js?v=20261124"></script>
+</body>
+</html>

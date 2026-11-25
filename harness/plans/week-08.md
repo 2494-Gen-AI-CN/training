@@ -233,24 +233,24 @@ A credit-risk team works the way Monday does: an analyst builds features from ap
 | Avoiding overfitting (regularization, cross-validation) | w08d1 | notebook | 8 |
 | VectorDB introduction | w08d2 | notebook | 4 |
 | Vector overview | w08d2 | notebook | 1 |
-| Vector database use cases | w08d2 | facilitation | 5 |
+| Vector database use cases | w08d2 | facilitation | 4 |
 | Storing and retrieving data in SQLite | w08d2 | notebook | 3 |
 | Vector similarity search | w08d2 | notebook | 2 |
-| Chroma DB setup | w08d2 | notebook | 6 |
-| Local vector DB with Chroma DB | w08d2 | notebook | 7 |
-| Pinecone overview | w08d2 | notebook | 8 |
-| CRUD with vector data | w08d2 | notebook | 10 |
-| Pinecone setup | w08d2 | notebook | 9 |
+| Chroma DB setup | w08d2 | notebook | 5 |
+| Local vector DB with Chroma DB | w08d2 | notebook | 6 |
+| Pinecone overview | w08d2 | notebook | 7 |
+| CRUD with vector data | w08d2 | notebook | 9 |
+| Pinecone setup | w08d2 | notebook | 8 |
 | Index management | w08d3 | notebook | 1 |
-| Collection | w08d3 | notebook | 2 |
-| Partitioning vectors | w08d3 | notebook | 4 |
-| Upsert | w08d3 | notebook | 3 |
-| Vector partitioning using metadata | w08d3 | notebook | 5 |
-| Distance metrics | w08d3 | notebook | 6 |
+| Collection | w08d3 | notebook | 3 |
+| Partitioning vectors | w08d3 | notebook | 5 |
+| Upsert | w08d3 | notebook | 4 |
+| Vector partitioning using metadata | w08d3 | notebook | 6 |
+| Distance metrics | w08d3 | notebook | 7 |
 | Semantic search | w08d4 | notebook | 1 |
 | Data preprocessing | w08d4 | notebook | 4 |
 | Preparing for upsert | w08d4 | notebook | 9 |
-| Vector query with semantic search | w08d4 | notebook | 10 |
+| Vector query with semantic search | w08d4 | notebook | 9 |
 | Named entity recognition (NER) | w08d4 | notebook | 5 |
 | Vector embedding models | w08d4 | notebook | 2 |
 | Data preparation | w08d4 | notebook | 3 |
@@ -356,39 +356,39 @@ Rows of weeks 6 and 7 point there. Week 8's rows (D-0107): feature engineering a
 | qc4.tensorflow-and-keras.S03 | Stretch | Can write a training loop by hand with tf.GradientTape and say when a team writes its own loop. | week 07 | — | — |
 | qc4.tensorflow-and-keras.S04 | Stretch | Can diagnose a common Keras error (a shape mismatch, labels in the wrong form for the loss) from its message. | week 07 | — | — |
 | qc4.vector-databases-chroma-and-pinecone.R01 | Required | Understands process of vectorizing data | w08d2 | notebook | 2 |
-| qc4.vector-databases-chroma-and-pinecone.R02 | Required | Understands CRUD operations with vector dbs | w08d2 | notebook | 10 |
+| qc4.vector-databases-chroma-and-pinecone.R02 | Required | Understands CRUD operations with vector dbs | w08d2 | notebook | 9 |
 | qc4.vector-databases-chroma-and-pinecone.R03 | Required | Demonstrates understanding of vector embeddings and how they represent data in a machine-readable format. | w08d2 | notebook | 1 |
 | qc4.vector-databases-chroma-and-pinecone.R04 | Required | Demonstrates knowledge of embedding models and their role in generating vector representations for text and other data. | w08d4 | notebook | 2 |
 | qc4.vector-databases-chroma-and-pinecone.R05 | Required | Explain the purpose of a vector index and describe how indexing improves the efficiency of vector similarity search. | w08d3 | notebook | 1 |
 | qc4.vector-databases-chroma-and-pinecone.R06 | Required | Describe what a vector database is and explain how it stores and retrieves vector representations for search and retrieval tasks. | w08d2 | notebook | 4 |
-| qc4.vector-databases-chroma-and-pinecone.R07 | Required | Explain the role of vector databases in AI/ML and describe where Chroma DB fits. | w08d2 | notebook | 6 |
-| qc4.vector-databases-chroma-and-pinecone.R08 | Required | Install and configure Chroma DB in a Python environment (a Colab notebook). | w08d2 | notebook | 6 |
-| qc4.vector-databases-chroma-and-pinecone.R09 | Required | Create and manage collections in Chroma DB. | w08d3 | notebook | 2 |
-| qc4.vector-databases-chroma-and-pinecone.R10 | Required | Insert, update, and delete embeddings/documents in collections. | w08d2 | notebook | 7 |
-| qc4.vector-databases-chroma-and-pinecone.R11 | Required | Execute basic similarity search queries using Chroma DB (e.g., nearest neighbor, cosine similarity). | w08d2 | notebook | 7 |
-| qc4.vector-databases-chroma-and-pinecone.R12 | Required | Integrate Chroma DB into a simple Python application for retrieval tasks. | w08d4 | notebook | 10 |
-| qc4.vector-databases-chroma-and-pinecone.R13 | Required | Demonstrates the ability to explain the purpose and core features of Pinecone, including its role in RAG workflows and its benefits over traditional databases. | w08d2 | notebook | 8 |
-| qc4.vector-databases-chroma-and-pinecone.R14 | Required | Can create, manage, and query indices and namespaces using Pinecone's console and SDK. | w08d3 | notebook | 4 |
-| qc4.vector-databases-chroma-and-pinecone.R15 | Required | Describes the concept of namespaces in Pinecone and their use in multi-tenant or segmented data architectures | w08d3 | notebook | 4 |
-| qc4.vector-databases-chroma-and-pinecone.R16 | Required | Demonstrates basic API usage including setting API keys, managing API tokens, and understanding permissions | w08d2 | notebook | 9 |
-| qc4.vector-databases-chroma-and-pinecone.R17 | Required | Successfully implements a semantic search using Pinecone with uploaded vector embeddings and retrieves ranked results | w08d4 | notebook | 10 |
+| qc4.vector-databases-chroma-and-pinecone.R07 | Required | Explain the role of vector databases in AI/ML and describe where Chroma DB fits. | w08d2 | notebook | 5 |
+| qc4.vector-databases-chroma-and-pinecone.R08 | Required | Install and configure Chroma DB in a Python environment (a Colab notebook). | w08d2 | notebook | 5 |
+| qc4.vector-databases-chroma-and-pinecone.R09 | Required | Create and manage collections in Chroma DB. | w08d3 | notebook | 3 |
+| qc4.vector-databases-chroma-and-pinecone.R10 | Required | Insert, update, and delete embeddings/documents in collections. | w08d2 | notebook | 6 |
+| qc4.vector-databases-chroma-and-pinecone.R11 | Required | Execute basic similarity search queries using Chroma DB (e.g., nearest neighbor, cosine similarity). | w08d2 | notebook | 6 |
+| qc4.vector-databases-chroma-and-pinecone.R12 | Required | Integrate Chroma DB into a simple Python application for retrieval tasks. | w08d4 | notebook | 9 |
+| qc4.vector-databases-chroma-and-pinecone.R13 | Required | Demonstrates the ability to explain the purpose and core features of Pinecone, including its role in RAG workflows and its benefits over traditional databases. | w08d2 | notebook | 7 |
+| qc4.vector-databases-chroma-and-pinecone.R14 | Required | Can create, manage, and query indices and namespaces using Pinecone's console and SDK. | w08d3 | notebook | 2 |
+| qc4.vector-databases-chroma-and-pinecone.R15 | Required | Describes the concept of namespaces in Pinecone and their use in multi-tenant or segmented data architectures | w08d3 | notebook | 5 |
+| qc4.vector-databases-chroma-and-pinecone.R16 | Required | Demonstrates basic API usage including setting API keys, managing API tokens, and understanding permissions | w08d2 | notebook | 8 |
+| qc4.vector-databases-chroma-and-pinecone.R17 | Required | Successfully implements a semantic search using Pinecone with uploaded vector embeddings and retrieves ranked results | w08d4 | notebook | 9 |
 | qc4.vector-databases-chroma-and-pinecone.R18 | Required | Demonstrates knowledge of data preprocessing, upserting vectors, and querying the database for semantic search, including metadata filtering | w08d4 | notebook | 9 |
 | qc4.vector-databases-chroma-and-pinecone.R19 | Required | Can explain how semantic search differs from keyword search and when each finds the better result. | w08d4 | notebook | 1 |
 | qc4.vector-databases-chroma-and-pinecone.R20 | Required | Can explain what named entity recognition (NER) finds and use it to build metadata for a search index. | w08d4 | notebook | 5 |
 | qc4.vector-databases-chroma-and-pinecone.P01 | Preferred | Ability to describe the concept of vector similarity search | w08d2 | notebook | 2 |
-| qc4.vector-databases-chroma-and-pinecone.P02 | Preferred | Ability to describe and execute vector query with semantic search | w08d4 | notebook | 10 |
+| qc4.vector-databases-chroma-and-pinecone.P02 | Preferred | Ability to describe and execute vector query with semantic search | w08d4 | notebook | 9 |
 | qc4.vector-databases-chroma-and-pinecone.P03 | Preferred | Applies sentence transformers for creating sentence-level embeddings in vector databases. | w08d4 | notebook | 8 |
 | qc4.vector-databases-chroma-and-pinecone.P04 | Preferred | Connect Chroma DB with an external embedding model (e.g., a Hugging Face sentence-transformers model). | w08d4 | notebook | 2 |
-| qc4.vector-databases-chroma-and-pinecone.P05 | Preferred | Apply metadata filtering in similarity searches. | w08d3 | notebook | 5 |
-| qc4.vector-databases-chroma-and-pinecone.P06 | Preferred | Configure persistence and storage options in Chroma DB (an in-memory client and a persistent client that stores on disk). | w08d2 | notebook | 6 |
-| qc4.vector-databases-chroma-and-pinecone.P07 | Preferred | Explains and selects appropriate distance metrics and vector similarity algorithms for specific use cases. | w08d3 | notebook | 6 |
-| qc4.vector-databases-chroma-and-pinecone.P08 | Preferred | Can describe strategies for performance optimization, including pod types, serverless configurations, and backup/collection best practices. | w08d3 | notes-only | 1 |
-| qc4.vector-databases-chroma-and-pinecone.P09 | Preferred | Compares pod-based and serverless Pinecone deployments, evaluating them for cost, latency, and scale | w08d2 | notes-only | 8 |
+| qc4.vector-databases-chroma-and-pinecone.P05 | Preferred | Apply metadata filtering in similarity searches. | w08d3 | notebook | 6 |
+| qc4.vector-databases-chroma-and-pinecone.P06 | Preferred | Configure persistence and storage options in Chroma DB (an in-memory client and a persistent client that stores on disk). | w08d2 | notebook | 5 |
+| qc4.vector-databases-chroma-and-pinecone.P07 | Preferred | Explains and selects appropriate distance metrics and vector similarity algorithms for specific use cases. | w08d3 | notebook | 7 |
+| qc4.vector-databases-chroma-and-pinecone.P08 | Preferred | Can describe strategies for performance optimization, including pod types, serverless configurations, and backup/collection best practices. | w08d3 | notes-only | 2 |
+| qc4.vector-databases-chroma-and-pinecone.P09 | Preferred | Compares pod-based and serverless Pinecone deployments, evaluating them for cost, latency, and scale | w08d2 | notes-only | 7 |
 | qc4.vector-databases-chroma-and-pinecone.P10 | Preferred | Demonstrates ability to clean and normalize raw text data, including handling noisy inputs, duplicates, and formatting issues | w08d4 | notebook | 4 |
 | qc4.vector-databases-chroma-and-pinecone.P11 | Preferred | Can embed a large set of texts in batches and explain why batches are used. | w08d4 | notebook | 8 |
 | qc4.vector-databases-chroma-and-pinecone.S01 | Stretch | Ability to integrate Vector DB with other tools | w08d4 | notebook | 9 |
 | qc4.vector-databases-chroma-and-pinecone.S02 | Stretch | Able to design a warehouse for documents to be vectorized and searched through | w08d4 | notebook | 9 |
-| qc4.vector-databases-chroma-and-pinecone.S03 | Stretch | Explain how Chroma DB is deployed as a server using Docker or a cloud environment, and how a client connects to it. | w08d2 | notes-only | 6 |
-| qc4.vector-databases-chroma-and-pinecone.S04 | Stretch | Build a mini semantic search app using Chroma DB. | w08d4 | notebook | 10 |
+| qc4.vector-databases-chroma-and-pinecone.S03 | Stretch | Explain how Chroma DB is deployed as a server using Docker or a cloud environment, and how a client connects to it. | w08d2 | notes-only | 5 |
+| qc4.vector-databases-chroma-and-pinecone.S04 | Stretch | Build a mini semantic search app using Chroma DB. | w08d4 | notebook | 9 |
 | qc4.vector-databases-chroma-and-pinecone.S05 | Stretch | Demonstrates the ability to design and implement advanced metadata structures for efficient filtering and querying in Pinecone, enhancing semantic search results. | w08d4 | notebook | 7 |
-| qc4.vector-databases-chroma-and-pinecone.S06 | Stretch | Describes a backup plan using Pinecone collections and explains versioning or rollback strategy | w08d3 | notes-only | 1 |
+| qc4.vector-databases-chroma-and-pinecone.S06 | Stretch | Describes a backup plan using Pinecone collections and explains versioning or rollback strategy | w08d3 | notes-only | 2 |
