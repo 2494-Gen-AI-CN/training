@@ -475,9 +475,8 @@ print(chromadb.__version__)</code></pre>
 <pre class="out">1.5.9</pre>
         <p>The install pulls in about fifteen packages Colab lacks. Checked against Colab's own package list, it adds
         new packages, upgrades three of Colab's own, and needed no runtime restart.<sup class="cite"><a href="#src-22">22</a></sup>
-        Colab may still print red <code>ERROR: pip's dependency resolver</code> text naming google-adk and tweepy, and
-        a model load may warn about unauthenticated requests to the HF Hub. Both are harmless: the install works, and
-        this page uses neither package.</p>
+        Red <code>ERROR: pip's dependency resolver</code> text naming google-adk and tweepy, and an HF Hub warning
+        about unauthenticated requests, are both harmless.</p>
         <h3>Clients: in memory or on disk</h3>
         <p>A client is the object your code talks to. Chroma's constructor decides where the data
         lives.<sup class="cite"><a href="#src-23">23</a></sup></p>
@@ -795,6 +794,7 @@ print(pc.has_index("kb-tuesday"))</code></pre>
           <tbody>
             <tr><td><code>SecretNotFoundError</code></td><td>no secret has that name</td><td>add it, spelled exactly <code>PINECONE_API_KEY</code></td></tr>
             <tr><td><code>NotebookAccessError</code></td><td>the secret exists, access is off</td><td>switch on Notebook access</td></tr>
+            <tr><td><code>TimeoutException</code></td><td>the first-run "Grant access?" dialog went unanswered for about a minute</td><td>click Grant access and rerun, or switch on Notebook access first</td></tr>
             <tr><td><code>UnauthorizedError</code> (401)</td><td>Pinecone rejected the key: <code>[401 UNAUTHENTICATED] Invalid API key</code></td><td>copy the key again, or make a new one</td></tr>
           </tbody>
         </table>

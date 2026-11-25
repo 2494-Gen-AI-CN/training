@@ -64,8 +64,8 @@
         Only one sentence is about that problem, and it shares no content word with the query. The first block also installs the two database clients Colab lacks, at the week's pinned
         versions, and defines <code>encoder</code> and <code>embed</code>, which every later example reuses. Run the
         page's cells in order in one Colab notebook.</p>
-        <p>On Colab, red <code>ERROR: pip's dependency resolver</code> text naming google-adk and tweepy is harmless:
-        the installs still work. So is a warning about unauthenticated requests to the HF Hub.</p>
+        <p>Red <code>ERROR: pip's dependency resolver</code> text (google-adk, tweepy) and an HF Hub
+        warning about unauthenticated requests are harmless.</p>
         <div class="ix-predict" data-q="Before you run it: which of the eight sentences will the TF-IDF keyword search rank first for &quot;my car will not start when it is freezing&quot;?" data-a="&quot;When it is sunny, the park fills with families.&quot; It shares &quot;when it is&quot; with the query. The engine sentence, the only one about the problem, shares no word and scores 0."></div>
         <p class="run-label">Run in Colab</p>
 <pre><code>%pip install -q chromadb==1.5.9
@@ -226,12 +226,12 @@ print(v.shape, v.dtype, round(float(np.linalg.norm(v[0])), 3))</code></pre>
             <tr><td>Word pieces read</td><td>256</td><td>384</td></tr>
             <tr><td>Bytes per vector (× 4)</td><td>1,536</td><td>3,072</td></tr>
             <tr><td>Per million vectors</td><td>about 1.5 GB</td><td>about 3.1 GB</td></tr>
-            <tr><td>100 texts of about 400 characters, Colab's CPU</td><td>about 4.7 s</td><td>about 29.7 s</td></tr>
+            <tr><td>100 texts of about 400 characters, Colab's CPU</td><td>about 5 s</td><td>about 30 to 47 s</td></tr>
           </tbody>
         </table>
         <p>The storage row is plain arithmetic: 384 numbers × 4 bytes = 1,536 bytes, times a million is about 1.5 GB,
-        before the index adds its own overhead. The timings come from one Colab CPU run, where mpnet was about six
-        times slower; both models put the engine sentence first for the cold-morning query. For this data the bigger model
+        before the index adds its own overhead. The timings come from two Colab CPU runs, where mpnet was six to nine
+        times slower; expect yours to differ. Both models put the engine sentence first for the cold-morning query. For this data the bigger model
         doubles the storage and costs far more time without changing the top answer.</p>
         <h3>Choosing a model, and keeping it</h3>
         <p>A team weighs four things:</p>
@@ -564,7 +564,7 @@ print(f"{len(ents)} posts, {time.time() - start:.0f} s")
 for topic in sorted(TOPICS):
     orgs = Counter(o for e, t in zip(ents, posts["topic"]) if t == topic for o in e["orgs"])
     print(topic, orgs.most_common(4))</code></pre>
-        <p>It prints the post count, the seconds taken (about 10 on Colab's CPU in our run) and the four most
+        <p>It prints the post count, the seconds taken (10 to 16 on our Colab runs) and the four most
         common organisations per topic. Read the <code>Counter(...)</code> line as two loops: for each post's entities
         <code>e</code> and topic <code>t</code>, keep the post if it is in this topic, then take every name
         <code>o</code> in its <code>orgs</code> list.</p>
@@ -588,7 +588,7 @@ for topic in sorted(TOPICS):
         <code>disable=["parser", "lemmatizer"]</code> to <code>nlp.pipe</code> skips the sentence parser and the word-root
         finder; a disabled component stays loaded but does not run, while an excluded one is never
         loaded.<sup class="cite"><a href="#src-17">17</a></sup></p>
-        <p>On our Colab run this cut the 1,000 posts from about 9.9 s to about 6.9 s, and 995 of them kept exactly
+        <p>On our Colab runs this cut the time to about 70%, and 995 of the 1,000 posts kept exactly
         the same organisations, so compare the output before switching. <code>n_process</code> spreads the work over several processes, but its start-up cost is
         high.<sup class="cite"><a href="#src-17">17</a></sup></p>
         <div class="recap"><div class="k">Takeaways</div><ul>
@@ -749,8 +749,8 @@ print(vectors.shape, vectors.dtype, f"{time.time() - start:.0f} s")</code></pre>
         32.<sup class="cite"><a href="#src-5">5</a></sup> <code>show_progress_bar</code> defaults to showing a bar only
         when logging is set to a detailed level, which is why the call passes
         <code>True</code>.<sup class="cite"><a href="#src-5">5</a></sup> Every row has length 1, ready for cosine.</p>
-        <p>Our Colab run took about 72 s at batch size 64. On a laptop, 8 against 64 hardly moved the time
-        (about 33 s against 30 to 37 s over three runs); Colab did not time 8. <code>batch_size</code> can change speed and memory, and the vectors stay the same (next
+        <p>Our two Colab runs took one to two minutes at batch size 64. On a laptop, 8 against 64 hardly moved the time
+        (about 33 s against 30 to 37 s); Colab did not time 8. <code>batch_size</code> can change speed and memory, and the vectors stay the same (next
         subsection).</p>
         <p>The result is one sentence-level embedding per post, handed to the database as numbers. Chroma's bridge,
         <code>SentenceTransformerEmbeddingFunction</code>, would compute them inside the client
@@ -914,7 +914,7 @@ for query, topic in CHECKS:
         <h3>The same records in Pinecone</h3>
         <p>The same records go to a Pinecone index, with the key read from Colab Secrets as on Tuesday. A missing secret
         raises Colab's <code>SecretNotFoundError</code>, which means the notebook found no secret named
-        <code>PINECONE_API_KEY</code> with notebook access switched on; add it in the Secrets panel and rerun.</p>
+        <code>PINECONE_API_KEY</code> with notebook access switched on; add it in the Secrets panel and rerun. An unanswered "Grant access?" dialog fails the cell after about a minute with <code>TimeoutException</code>; grant access and rerun.</p>
         <p class="run-label">Run in Colab</p>
 <pre><code>from google.colab import userdata
 from pinecone import Pinecone, ServerlessSpec
